@@ -17,7 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -207,8 +206,10 @@ public final class ExperimentalModHotLoader {
                 urls[i] = ordered.get(i).path().toUri().toURL();
             }
             // One shared loader per scan batch allows candidate mods to share classes.
-            classLoader = new URLClassLoader(urls,
-                    ExperimentalModHotLoader.class.getClassLoader());
+            ClassLoader parent = RETAINED_LOADERS.isEmpty()
+                    ? ExperimentalModHotLoader.class.getClassLoader()
+                    : RETAINED_LOADERS.get(RETAINED_LOADERS.size() - 1);
+            classLoader = new URLClassLoader(urls, parent);
 
             Set<String> successfullyInitialized = new HashSet<>();
             for (Candidate candidate : ordered) {
