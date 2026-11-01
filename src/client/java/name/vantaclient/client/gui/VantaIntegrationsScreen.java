@@ -486,8 +486,8 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFF10141C);
         graphics.fill(left, top, right, top + 3, accent);
         graphics.fill(left, top + 3, right, top + 53, 0xFF141923);
-        graphics.fill(left + 12, top + 62, left + 12 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF151A23);
-        graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 62,
+        graphics.fill(left + 12, top + 12, left + 12 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF151A23);
+        graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 12,
                 left + 13 + SIDEBAR_WIDTH + 14, bottom - 12, 0xFF292F3A);
         graphics.fill(left + 12 + SIDEBAR_WIDTH + 20, top + 62,
                 right - 12, bottom - 12, 0xFF11151D);
