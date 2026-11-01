@@ -248,7 +248,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     clickGui.openSettings(feature, controlX, rowY);
                 }).bounds(controlX + 98, rowY, 86, 22).build());
             }
-            y += ROW_HEIGHT;
+            y += rowHeight();
         }
     }
 
@@ -283,7 +283,7 @@ public final class VantaIntegrationsScreen extends Screen {
         int y = CONTENT_TOP + 8;
         for (int i = firstSetting; i < end; i++) {
             addSettingControl(settings.get(i), y);
-            y += ROW_HEIGHT;
+            y += rowHeight();
         }
     }
 
@@ -430,7 +430,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 if (preferences.showDescriptions && !feature.getDescription().isBlank()) {
                     graphics.drawString(font, feature.getDescription(), contentX(), y + 13, 0xFF858A98);
                 }
-                y += ROW_HEIGHT;
+                y += rowHeight();
             }
         } else if (selection == Selection.INSTALLED_MOD) {
             ModContainer mod = installedMods.stream()
@@ -462,7 +462,7 @@ public final class VantaIntegrationsScreen extends Screen {
                         if (preferences.showDescriptions && !setting.description().isBlank()) {
                             graphics.drawString(font, setting.description(), contentX(), y + 13, 0xFF858A98);
                         }
-                        y += ROW_HEIGHT;
+                        y += rowHeight();
                     }
                 }
             }
