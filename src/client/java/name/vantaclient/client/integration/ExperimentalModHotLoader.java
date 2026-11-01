@@ -413,7 +413,7 @@ public final class ExperimentalModHotLoader {
         String summary = "Attempted new JARs: " + loaded + " initialized, "
                 + skipped + " skipped, " + failed + " failed.";
         if (!details.isEmpty()) {
-            summary += " " + String.join(" | ", details.stream().limit(4).toList());
+            summary += " " + String.join(" | ", details.stream().limit(10).toList());
         }
         return new Result(loaded, skipped, failed, summary);
     }
