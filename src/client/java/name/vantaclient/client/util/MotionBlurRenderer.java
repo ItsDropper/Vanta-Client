@@ -16,6 +16,7 @@ import java.nio.IntBuffer;
 /** Temporal camera-motion blur; rendered after the world so HUD/GUI remain sharp. */
 public final class MotionBlurRenderer {
     private static int program, vao, vbo, currentTexture, historyTexture, widthCache, heightCache;
+    private static int currentFrameUniform, historyFrameUniform, motionUniform, strengthUniform, samplesUniform;
     private static boolean failed, rotationValid, historyValid;
     private static float previousYaw, previousPitch, accumulatedYaw, accumulatedPitch;
     private static long previousFrameNanos;
@@ -160,14 +161,14 @@ public final class MotionBlurRenderer {
             GL30.glBindVertexArray(vao);
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,currentTexture);
-            GL20.glUniform1i(GL20.glGetUniformLocation(program,"CurrentFrame"),0);
+            GL20.glUniform1i(currentFrameUniform,0);
             GL13.glActiveTexture(GL13.GL_TEXTURE1);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,historyTexture);
-            GL20.glUniform1i(GL20.glGetUniformLocation(program,"HistoryFrame"),1);
+            GL20.glUniform1i(historyFrameUniform,1);
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
-            GL20.glUniform2f(GL20.glGetUniformLocation(program,"Motion"),mx,my);
-            GL20.glUniform1f(GL20.glGetUniformLocation(program,"Strength"),strength);
-            GL20.glUniform1i(GL20.glGetUniformLocation(program,"Samples"),config.motionBlurSamples);
+            GL20.glUniform2f(motionUniform,mx,my);
+            GL20.glUniform1f(strengthUniform,strength);
+            GL20.glUniform1i(samplesUniform,config.motionBlurSamples);
             GL11.glDrawArrays(GL11.GL_TRIANGLE_STRIP,0,4);
 
             int swap = historyTexture;
@@ -203,6 +204,19 @@ public final class MotionBlurRenderer {
         if(program==0) {
             program=link(VERTEX,FRAGMENT);
             if(program==0) { failed=true; return; }
+            currentFrameUniform=GL20.glGetUniformLocation(program,"CurrentFrame");
+            historyFrameUniform=GL20.glGetUniformLocation(program,"HistoryFrame");
+            motionUniform=GL20.glGetUniformLocation(program,"Motion");
+            strengthUniform=GL20.glGetUniformLocation(program,"Strength");
+            samplesUniform=GL20.glGetUniformLocation(program,"Samples");
+            if(currentFrameUniform<0 || historyFrameUniform<0 || motionUniform<0
+                    || strengthUniform<0 || samplesUniform<0) {
+                GL20.glDeleteProgram(program);
+                program=0;
+                failed=true;
+                System.err.println("[Vanta Client] Motion blur shader is missing a required uniform.");
+                return;
+            }
             vao=GL30.glGenVertexArrays();
             vbo=GL15.glGenBuffers();
             GL30.glBindVertexArray(vao);
