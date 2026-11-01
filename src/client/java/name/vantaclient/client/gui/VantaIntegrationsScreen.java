@@ -480,30 +480,49 @@ public class VantaIntegrationsScreen extends Screen {
                 (float) VantaPanelButton.layoutOffsetY());
         graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale());
         int left = 20, top = 18, right = 940, bottom = 522;
+        graphics.fill(left - 6, top - 6, right + 6, bottom + 6, 0x55000000);
         graphics.fill(left - 2, top - 2, right + 2, bottom + 2, 0x99000000);
-        graphics.fill(left, top, right, bottom, 0xFF101116);
+        graphics.fill(left, top, right, bottom, 0xFF0D1016);
+        graphics.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFF10141C);
         graphics.fill(left, top, right, top + 3, accent);
-        graphics.fill(left + 12, top + 12, left + 12 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF171920);
-        graphics.fill(left + 12 + SIDEBAR_WIDTH + 12, top + 12,
-                left + 13 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF30333D);
+        graphics.fill(left, top + 3, right, top + 53, 0xFF141923);
+        graphics.fill(left + 12, top + 62, left + 12 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF151A23);
+        graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 62,
+                left + 13 + SIDEBAR_WIDTH + 14, bottom - 12, 0xFF292F3A);
+        graphics.fill(left + 12 + SIDEBAR_WIDTH + 20, top + 62,
+                right - 12, bottom - 12, 0xFF11151D);
+        graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
-        graphics.drawString(font, "VANTA", 34, 34, accent);
-        graphics.drawString(font, "CLIENT", 79, 34, 0xFFF0F1F5);
+        graphics.fill(34, 31, 37, 44, accent);
+        graphics.drawString(font, "VANTA", 45, 28, 0xFFF4F6FC);
+        graphics.drawString(font, "CLIENT", 90, 28, 0xFF9AA4B6);
+        graphics.drawString(font, "MINECRAFT MOD", 34, 47, 0xFF727D90);
+        graphics.drawString(font, "LOCAL CONFIGURATION", 810, 34, 0xFF778296);
         if (section == Section.MODS) {
             graphics.drawString(font, "BUILT-IN", 34, 132, 0xFF858A98);
             graphics.drawString(font, "INSTALLED MODS", 34, 266, 0xFF858A98);
         }
         graphics.drawString(font, section == Section.SETTINGS ? "SETTINGS" : "MODS",
-                contentX(), 40, 0xFFF2F3F8);
+                contentX(), 27, 0xFFF2F4F9);
+        graphics.drawString(font, section == Section.SETTINGS
+                ? "Appearance and interface preferences"
+                : "Built-in features and installed integrations",
+                contentX(), 43, 0xFF8D98AA);
+        graphics.fill(contentX() - 8, 98, right - 14, 99, 0xFF252B36);
 
         if (section == Section.SETTINGS) {
-            graphics.drawString(font, "Personalize the Vanta Client interface.",
-                    contentX(), 66, 0xFF9296A3);
-            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 14, 0xFFE8EAF0);
-            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 62, 0xFFE8EAF0);
-            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 104, 0xFFE8EAF0);
-            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 146, 0xFFE8EAF0);
-            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 194, 0xFFE8EAF0);
+            int cardX = contentX() - 8;
+            int cardWidth = contentWidth() + 8;
+            drawCard(graphics, cardX, CONTENT_TOP, cardWidth, 38, 0xFF171D27);
+            drawCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 38, 0xFF151A23);
+            drawCard(graphics, cardX, CONTENT_TOP + 86, cardWidth, 38, 0xFF171D27);
+            drawCard(graphics, cardX, CONTENT_TOP + 128, cardWidth, 38, 0xFF151A23);
+            drawCard(graphics, cardX, CONTENT_TOP + 174, cardWidth, 38, 0xFF171D27);
+            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 14, 0xFFE8ECF4);
+            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 58, 0xFFE8ECF4);
+            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 100, 0xFFE8ECF4);
+            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 142, 0xFFE8ECF4);
+            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 188, 0xFFE8ECF4);
         } else if (selection == Selection.BUILTIN_CATEGORY) {
             graphics.drawString(font, selectedCategory.name(), contentX(), 66, 0xFFE8EAF0);
             graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, 0xFF9296A3);
@@ -514,7 +533,13 @@ public class VantaIntegrationsScreen extends Screen {
             int y = CONTENT_TOP + 14;
             for (int i = firstSetting; i < end; i++) {
                 Feature feature = features.get(i);
-                graphics.drawString(font, feature.getName(), contentX(), y, 0xFFE8EAF0);
+                drawCard(graphics, contentX() - 8, y - 10, contentWidth() + 8,
+                        rowHeight() - 4, 0xFF171D27);
+                if (feature.isEnabled()) {
+                    graphics.fill(contentX() - 8, y - 7, contentX() - 5,
+                            y + rowHeight() - 13, accent);
+                }
+                graphics.drawString(font, feature.getName(), contentX(), y, 0xFFE8ECF4);
                 if (preferences.showDescriptions && !feature.getDescription().isBlank()) {
                     drawWrappedText(graphics, feature.getDescription(), contentX(), y + 13,
                             contentWidth() - 210, 0xFF858A98, 2);
@@ -522,9 +547,17 @@ public class VantaIntegrationsScreen extends Screen {
                 y += rowHeight();
             }
         } else if (selection == Selection.BUILTIN_SETTINGS && selectedFeature != null) {
-            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8EAF0);
+            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8ECF4);
             drawWrappedText(graphics, selectedFeature.getDescription(), contentX(), 86,
-                    contentWidth() - 12, 0xFF9296A3, 2);
+                    contentWidth() - 12, 0xFF929CAF, 2);
+            List<name.vantaclient.client.gui.components.settings.Setting> featureSettings =
+                    name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature);
+            int y = CONTENT_TOP + 8;
+            for (int i = firstSetting; i < Math.min(featureSettings.size(), firstSetting + visibleRows(34)); i++) {
+                drawCard(graphics, contentX() - 8, y - 3, Math.min(340, contentWidth() + 8),
+                        31, 0xFF171D27);
+                y += 34;
+            }
         } else if (selection == Selection.INSTALLED_MOD) {
             ModContainer mod = installedMods.stream()
                     .filter(entry -> entry.getMetadata().getId().equals(selectedModId))
@@ -572,6 +605,12 @@ public class VantaIntegrationsScreen extends Screen {
 
         graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void drawCard(GuiGraphics graphics, int x, int y, int width, int height, int color) {
+        graphics.fill(x, y, x + width, y + height, color);
+        graphics.fill(x, y, x + width, y + 1, 0xFF252D39);
+        graphics.fill(x, y, x + 1, y + height, 0xFF252D39);
     }
 
     private void drawWrappedText(GuiGraphics graphics, String value, int x, int y,
