@@ -37,7 +37,7 @@ public class ClickGuiScreen extends Screen {
         rebuildWidgets();
     }
 
-    public void openIntegrations() {
+    public void openVantaSettings() {
         Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this));
     }
 
