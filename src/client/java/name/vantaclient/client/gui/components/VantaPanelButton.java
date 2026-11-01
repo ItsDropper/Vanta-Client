@@ -19,6 +19,7 @@ public final class VantaPanelButton extends AbstractWidget {
     private final BooleanSupplier selected;
     private final IntSupplier accent;
     private String label;
+    private float hoverAmount;
 
     public VantaPanelButton(int x, int y, int width, int height, String label,
                             Runnable action, BooleanSupplier selected, IntSupplier accent) {
@@ -78,15 +79,37 @@ public final class VantaPanelButton extends AbstractWidget {
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = isHovered();
         boolean active = selected.getAsBoolean();
-        int background = active ? 0xFF292E3A : hovered ? 0xFF252A34 : 0xFF1D2129;
+        float target = hovered ? 1.0f : 0.0f;
+        hoverAmount += (target - hoverAmount) * 0.24f;
+        if (Math.abs(target - hoverAmount) < 0.015f) hoverAmount = target;
+
+        int background = mixColor(0xFF171B23, 0xFF252D3B, hoverAmount);
+        if (active) background = mixColor(background, 0xFF293244, 0.72f);
         graphics.fill(getX(), getY(), getX() + width, getY() + height, background);
+
+        int accentColor = accent.getAsInt();
         if (active) {
-            graphics.fill(getX(), getY(), getX() + 2, getY() + height, accent.getAsInt());
+            graphics.fill(getX(), getY() + 3, getX() + 3, getY() + height - 3, accentColor);
+            graphics.fill(getX() + 3, getY(), getX() + width, getY() + 1,
+                    (accentColor & 0x00FFFFFF) | 0x33000000);
+        } else if (hoverAmount > 0.08f) {
+            graphics.fill(getX(), getY() + 5, getX() + 1, getY() + height - 5,
+                    mixColor(0xFF252D3B, accentColor, hoverAmount * 0.7f));
         }
-        int textColor = active ? 0xFFF5F6FA : hovered ? 0xFFE3E6ED : 0xFFB2B7C3;
+
+        int textColor = active ? 0xFFF5F7FC : hovered ? 0xFFE8ECF4 : 0xFFADB5C4;
         String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
         graphics.drawString(Minecraft.getInstance().font, visibleLabel,
-                getX() + 8, getY() + (height - 8) / 2, textColor);
+                getX() + 10, getY() + (height - 8) / 2, textColor);
+    }
+
+    private static int mixColor(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     @Override
