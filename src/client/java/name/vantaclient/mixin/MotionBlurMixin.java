@@ -16,8 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MotionBlurMixin {
     @Shadow @Final private CrossFrameResourcePool resourcePool;
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void dropperutils$renderMotionBlur(DeltaTracker tracker, boolean tick, CallbackInfo ci) {
+    @Inject(method = "renderLevel", at = @At("TAIL"))
+    private void dropperutils$renderMotionBlur(CallbackInfo ci) {
         if (MotionBlurFeature.INSTANCE.isEnabled()) {
             MotionBlurRenderer.render(this.resourcePool);
         } else {
