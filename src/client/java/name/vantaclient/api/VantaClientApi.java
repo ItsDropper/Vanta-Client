@@ -26,9 +26,4 @@ public final class VantaClientApi {
                 .sorted(java.util.Comparator.comparing(ModDescriptor::id))
                 .toList();
     }
-
-    /** Intended for controlled lifecycle cleanup and tests. */
-    public static boolean unregisterMod(String modId) {
-        return modId != null && !modId.isBlank() && MODS.remove(modId) != null;
-    }
 }
