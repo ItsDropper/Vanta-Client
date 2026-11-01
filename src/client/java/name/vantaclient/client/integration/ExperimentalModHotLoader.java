@@ -54,6 +54,7 @@ public final class ExperimentalModHotLoader {
                     continue;
                 }
 
+                URLClassLoader classLoader = null;
                 try {
                     if (!Files.isRegularFile(jar) || Files.size(jar) <= 0
                             || Files.size(jar) > MAX_JAR_SIZE) {
@@ -98,7 +99,7 @@ public final class ExperimentalModHotLoader {
                         continue;
                     }
 
-                    URLClassLoader classLoader = new URLClassLoader(
+                    classLoader = new URLClassLoader(
                             new java.net.URL[]{jar.toUri().toURL()},
                             Thread.currentThread().getContextClassLoader());
                     boolean initialized = false;
@@ -129,7 +130,10 @@ public final class ExperimentalModHotLoader {
                         skipped++;
                     }
                     ATTEMPTED.add(key);
-                } catch (Throwable throwable) {
+                } catch (Exception | LinkageError throwable) {
+                    if (classLoader != null) {
+                        try { classLoader.close(); } catch (IOException ignored) {}
+                    }
                     failed++;
                     ATTEMPTED.add(key);
                     details.add(jar.getFileName() + ": "
