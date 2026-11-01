@@ -30,6 +30,10 @@ public final class BooleanSetting implements Setting {
         screen.addButton(button);
     }
 
+    public String getName() { return name; }
+    public Supplier<Boolean> getGetter() { return getter; }
+    public Consumer<Boolean> getSetter() { return setter; }
+
     private Component message() {
         return Component.literal(name + ": " + (getter.get() ? "On" : "Off"));
     }
