@@ -123,10 +123,11 @@ public final class MotionBlurRenderer {
         float movement = (float) Math.sqrt(motionYaw * motionYaw + motionPitch * motionPitch);
 
 
-        int w = mc.getWindow().getWidth(), h = mc.getWindow().getHeight();
         VIEWPORT_BUFFER.clear();
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, VIEWPORT_BUFFER);
         int vx=VIEWPORT_BUFFER.get(0), vy=VIEWPORT_BUFFER.get(1), vw=VIEWPORT_BUFFER.get(2), vh=VIEWPORT_BUFFER.get(3);
+        if (vw <= 0 || vh <= 0) return;
+        int w = vw, h = vh;
         SCISSOR_BUFFER.clear();
         GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, SCISSOR_BUFFER);
         int sx=SCISSOR_BUFFER.get(0), sy=SCISSOR_BUFFER.get(1);
@@ -154,17 +155,17 @@ public final class MotionBlurRenderer {
 
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,currentTexture);
-            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D,0,0,0,0,0,w,h);
+            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D,0,0,0,vx,vy,w,h);
             // The previous frame contains scene positions from before the camera
             // moved: yaw-right shifts the old image right; pitch-down shifts it down.
-            float mx = clamp(motionYaw / 90.0f, -0.10f, 0.10f);
-            float my = clamp(-motionPitch / 70.0f, -0.10f, 0.10f);
+            float mx = clamp(motionYaw / 60.0f, -0.16f, 0.16f);
+            float my = clamp(-motionPitch / 45.0f, -0.16f, 0.16f);
             float strength = historyValid
                     ? clamp(config.motionBlurStrength, 0.0f, 0.85f)
-                      * clamp(movement / 0.20f, 0.0f, 1.0f)
+                      * clamp(movement / 0.035f, 0.0f, 1.0f)
                     : 0.0f;
 
-            GL11.glViewport(0,0,w,h);
+            GL11.glViewport(vx,vy,w,h);
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             GL11.glDisable(GL11.GL_BLEND);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
