@@ -35,6 +35,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
 
 base {
