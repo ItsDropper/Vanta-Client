@@ -41,7 +41,7 @@ public class ZoomFeature extends Feature {
 
     public static float getZoomMultiplier() {
         return (Math.max(1, Math.min(zoomFov, 70)) / 70.0f)
-                * (float) Math.pow(0.65, scrollSteps);
+                * (float) Math.pow(DropperUtilsConfig.get().zoomScrollStrength, scrollSteps);
     }
 
     public static int getZoomFov() {
@@ -55,12 +55,30 @@ public class ZoomFeature extends Feature {
     }
 
     public static float getZoomSpeed() {
-        return zoomSpeed;
+        return DropperUtilsConfig.get().smoothZoom ? zoomSpeed : 1.0f;
     }
 
     public static void setZoomSpeed(float value) {
         zoomSpeed = Math.max(0.01f, Math.min(value, 1.0f));
         DropperUtilsConfig.get().zoomSpeed = zoomSpeed;
+        DropperUtilsConfig.save();
+    }
+
+    public static float getScrollStrength() {
+        return DropperUtilsConfig.get().zoomScrollStrength;
+    }
+
+    public static void setScrollStrength(float value) {
+        DropperUtilsConfig.get().zoomScrollStrength = Math.max(0.35f, Math.min(value, 0.90f));
+        DropperUtilsConfig.save();
+    }
+
+    public static boolean isSmoothZoom() {
+        return DropperUtilsConfig.get().smoothZoom;
+    }
+
+    public static void setSmoothZoom(boolean value) {
+        DropperUtilsConfig.get().smoothZoom = value;
         DropperUtilsConfig.save();
     }
 
