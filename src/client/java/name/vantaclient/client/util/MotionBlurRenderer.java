@@ -18,7 +18,9 @@ public final class MotionBlurRenderer {
     private static int program, vao, vbo, currentTexture, historyTexture, widthCache, heightCache;
     private static int currentFrameUniform, historyFrameUniform, motionUniform, strengthUniform, samplesUniform;
     private static boolean failed, rotationValid, historyValid;
-    private static float previousYaw, previousPitch, accumulatedYaw, accumulatedPitch;
+    private static float previousYaw, previousPitch, previousPlayerYaw, previousPlayerPitch;
+    private static float accumulatedYaw, accumulatedPitch;
+    private static boolean playerRotationValid;
     private static long previousFrameNanos;
     private static Object previousLevel, previousPlayer;
     private static double previousX, previousY, previousZ;
@@ -63,6 +65,7 @@ public final class MotionBlurRenderer {
     public static void reset() {
 
         rotationValid = false;
+        playerRotationValid = false;
         historyValid = false;
         accumulatedYaw = 0.0f;
         accumulatedPitch = 0.0f;
@@ -82,6 +85,8 @@ public final class MotionBlurRenderer {
         // move between entity ticks, so player rotation misses fast mouse input.
         float yaw = mc.gameRenderer.getMainCamera().yRot();
         float pitch = mc.gameRenderer.getMainCamera().xRot();
+        float playerYaw = mc.player.getYRot();
+        float playerPitch = mc.player.getXRot();
         long now = System.nanoTime();
         double playerX = mc.player.getX(), playerY = mc.player.getY(), playerZ = mc.player.getZ();
         double dx = playerX - previousX, dy = playerY - previousY, dz = playerZ - previousZ;
@@ -96,18 +101,32 @@ public final class MotionBlurRenderer {
         previousZ = playerZ;
         if (cameraCut) reset();
 
-        if (!rotationValid) {
+        if (!rotationValid || !playerRotationValid) {
             previousYaw = yaw;
             previousPitch = pitch;
+            previousPlayerYaw = playerYaw;
+            previousPlayerPitch = playerPitch;
             previousFrameNanos = now;
             rotationValid = true;
+            playerRotationValid = true;
             return;
         }
 
-        float dyaw = wrap(yaw - previousYaw);
-        float dpitch = pitch - previousPitch;
+        float cameraYawDelta = wrap(yaw - previousYaw);
+        float cameraPitchDelta = pitch - previousPitch;
+        float entityYawDelta = wrap(playerYaw - previousPlayerYaw);
+        float entityPitchDelta = playerPitch - previousPlayerPitch;
         previousYaw = yaw;
         previousPitch = pitch;
+        previousPlayerYaw = playerYaw;
+        previousPlayerPitch = playerPitch;
+
+        // Some render paths expose a camera that is updated later in the frame.
+        // Fall back to the player view rotation when it reports more motion.
+        float cameraMotion = cameraYawDelta * cameraYawDelta + cameraPitchDelta * cameraPitchDelta;
+        float entityMotion = entityYawDelta * entityYawDelta + entityPitchDelta * entityPitchDelta;
+        float dyaw = entityMotion > cameraMotion ? entityYawDelta : cameraYawDelta;
+        float dpitch = entityMotion > cameraMotion ? entityPitchDelta : cameraPitchDelta;
 
         // Keep a short exposure window with time-based decay. A fixed per-frame
         // multiplier made the effect vanish much faster at high frame rates.
@@ -162,7 +181,7 @@ public final class MotionBlurRenderer {
             float my = clamp(-motionPitch / 45.0f, -0.16f, 0.16f);
             float strength = historyValid
                     ? clamp(config.motionBlurStrength, 0.0f, 0.85f)
-                      * clamp(movement / 0.035f, 0.0f, 1.0f)
+                      * clamp(movement / 0.02f, 0.0f, 1.0f)
                     : 0.0f;
 
             GL11.glViewport(vx,vy,w,h);
