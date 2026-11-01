@@ -84,7 +84,8 @@ public final class VantaPanelButton extends AbstractWidget {
             graphics.fill(getX(), getY(), getX() + 2, getY() + height, accent.getAsInt());
         }
         int textColor = active ? 0xFFF5F6FA : hovered ? 0xFFE3E6ED : 0xFFB2B7C3;
-        graphics.drawString(Minecraft.getInstance().font, label,
+        String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
+        graphics.drawString(Minecraft.getInstance().font, visibleLabel,
                 getX() + 8, getY() + (height - 8) / 2, textColor);
     }
 

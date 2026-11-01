@@ -73,11 +73,7 @@ public class VantaIntegrationsScreen extends Screen {
                 addBuiltInFeatures();
             } else if (selection == Selection.BUILTIN_SETTINGS) {
                 addBuiltInFeatureSettings();
-            } else if (selection == Selection.BUILTIN_SETTINGS && selectedFeature != null) {
-            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8EAF0);
-            drawWrappedText(graphics, selectedFeature.getDescription(), contentX(), 86,
-                    contentWidth() - 12, 0xFF9296A3, 2);
-        } else if (selection == Selection.INSTALLED_MOD) {
+            } else if (selection == Selection.INSTALLED_MOD) {
                 addInstalledModContent();
             }
         } else {
@@ -360,7 +356,7 @@ public class VantaIntegrationsScreen extends Screen {
 
     private void addIntegrationSettings(ModDescriptor descriptor) {
         List<SettingDefinition<?>> settings = descriptor.settings();
-        int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
+        int visibleRows = visibleRows(rowHeight());
         int maxFirst = Math.max(0, settings.size() - visibleRows);
         firstSetting = Math.max(0, Math.min(firstSetting, maxFirst));
         int end = Math.min(settings.size(), firstSetting + visibleRows);
@@ -509,7 +505,7 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, 0xFF9296A3);
             List<Feature> features = FeatureRegistry.FEATURES.stream()
                     .filter(feature -> feature.getCategory() == selectedCategory).toList();
-            int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
+            int visibleRows = visibleRows(rowHeight());
             int end = Math.min(features.size(), firstSetting + visibleRows);
             int y = CONTENT_TOP + 14;
             for (int i = firstSetting; i < end; i++) {
@@ -520,6 +516,20 @@ public class VantaIntegrationsScreen extends Screen {
                             contentWidth() - 210, 0xFF858A98, 2);
                 }
                 y += rowHeight();
+            }
+        } else if (selection == Selection.BUILTIN_SETTINGS && selectedFeature != null) {
+            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8EAF0);
+            drawWrappedText(graphics, selectedFeature.getDescription(), contentX(), 86,
+                    contentWidth() - 12, 0xFF9296A3, 2);
+            List<name.vantaclient.client.gui.components.settings.Setting> settings =
+                    name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature);
+            int y = CONTENT_TOP + 14;
+            int end = Math.min(settings.size(), firstSetting + visibleRows(34));
+            for (int i = firstSetting; i < end; i++) {
+                if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.SliderSetting setting) {
+                    graphics.drawString(font, setting.getName(), contentX(), y, 0xFFE8EAF0);
+                }
+                y += 34;
             }
         } else if (selection == Selection.INSTALLED_MOD) {
             ModContainer mod = installedMods.stream()
@@ -574,7 +584,7 @@ public class VantaIntegrationsScreen extends Screen {
         if (value == null || value.isBlank() || maxWidth <= 0) return;
         StringBuilder line = new StringBuilder();
         int lineIndex = 0;
-        for (String word : value.trim().split("\\\\s+")) {
+        for (String word : value.trim().split(" ")) {
             String candidate = line.isEmpty() ? word : line + " " + word;
             if (font.width(candidate) > maxWidth && !line.isEmpty()) {
                 graphics.drawString(font, line.toString(), x, y + lineIndex * 11, color);
@@ -603,7 +613,7 @@ public class VantaIntegrationsScreen extends Screen {
         }
         if (section == Section.MODS && (selection == Selection.BUILTIN_CATEGORY
                 || selection == Selection.BUILTIN_SETTINGS)) {
-            int count = selection == Selection.BUILTIN_SETTINGS
+            int count = selection == Selection.BUILTIN_SETTINGS && selectedFeature != null
                     ? name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature).size()
                     : (int) FeatureRegistry.FEATURES.stream()
                     .filter(feature -> feature.getCategory() == selectedCategory).count();
