@@ -38,6 +38,24 @@ public class AnchorOptimizerFeature extends Feature {
         setEnabled(DropperUtilsConfig.get().anchorOptimizer);
     }
 
+    public static int getScanInterval() {
+        return Math.max(1, Math.min(DropperUtilsConfig.get().anchorScanInterval, 100));
+    }
+
+    public static void setScanInterval(int value) {
+        DropperUtilsConfig.get().anchorScanInterval = Math.max(1, Math.min(value, 100));
+        DropperUtilsConfig.save();
+    }
+
+    public static int getScanRange() {
+        return Math.max(1, Math.min(DropperUtilsConfig.get().anchorScanRange, 8));
+    }
+
+    public static void setScanRange(int value) {
+        DropperUtilsConfig.get().anchorScanRange = Math.max(1, Math.min(value, 8));
+        DropperUtilsConfig.save();
+    }
+
     public static int getPredictionTimeout() {
         return DropperUtilsConfig.get().anchorPredictionTimeoutTicks;
     }
