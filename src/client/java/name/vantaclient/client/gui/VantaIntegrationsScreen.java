@@ -45,7 +45,7 @@ public class VantaIntegrationsScreen extends Screen {
     private int firstSetting;
     private float openProgress;
     private VantaClientPreferences preferences;
-    private String hotLoadStatus = "Experimental: only simple client entrypoints can be attempted; Mixins and loader-managed features are unsupported.";
+    private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
     public VantaIntegrationsScreen(Screen parent) {
         super(Component.literal("Vanta Client"));
@@ -75,7 +75,7 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS) {
             addModNavigation();
             if (selection == Selection.NONE) {
-                addPanelButton("Try hot-load new mod JARs", contentX(), CONTENT_TOP + 54, 230, 24, () -> {
+                addPanelButton("Try hot-load new mods", contentX(), CONTENT_TOP + 54, 230, 24, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
                 });
