@@ -60,6 +60,7 @@ public final class ExperimentalModHotLoader {
         int failed = 0;
         List<String> details = new ArrayList<>();
         Map<String, Candidate> candidates = new LinkedHashMap<>();
+        Set<String> duplicateIds = new HashSet<>();
 
         try (var paths = Files.list(modsDirectory)) {
             for (Path jar : paths
@@ -130,9 +131,22 @@ public final class ExperimentalModHotLoader {
                         continue;
                     }
 
-                    Set<String> dependencies = requiredDependencies(metadata);
-                    candidates.put(id, new Candidate(id, jar, identity,
-                            entrypoints, dependencies));
+                    if (duplicateIds.contains(id)) {
+                        skipped++;
+                        ATTEMPTED.add(identity);
+                        continue;
+                    }
+                    Candidate candidate = new Candidate(id, jar, identity,
+                            entrypoints, requiredDependencies(metadata));
+                    Candidate previous = candidates.putIfAbsent(id, candidate);
+                    if (previous != null) {
+                        candidates.remove(id);
+                        duplicateIds.add(id);
+                        ATTEMPTED.add(previous.identity());
+                        ATTEMPTED.add(identity);
+                        skipped += 2;
+                        details.add(id + ": multiple JARs declare this mod id; both were skipped");
+                    }
                 } catch (Exception | LinkageError exception) {
                     failed++;
                     ATTEMPTED.add(identity);
@@ -143,17 +157,6 @@ public final class ExperimentalModHotLoader {
             failed++;
             details.add("Could not scan mods directory: " + safeMessage(exception));
             return result(0, skipped, failed, details);
-        }
-
-        // Duplicate IDs make dependency selection ambiguous; never pick one silently.
-        Set<String> duplicateIds = findDuplicateIds(candidates);
-        for (String duplicate : duplicateIds) {
-            Candidate removed = candidates.remove(duplicate);
-            if (removed != null) {
-                skipped++;
-                ATTEMPTED.add(removed.identity());
-                details.add(duplicate + ": multiple candidate JARs declare this mod id");
-            }
         }
 
         Set<String> loadedByFabric = new HashSet<>();
@@ -371,12 +374,6 @@ public final class ExperimentalModHotLoader {
             if (!progressed) break;
         }
         return result;
-    }
-
-    private static Set<String> findDuplicateIds(Map<String, Candidate> candidates) {
-        // Candidate map construction is keyed by ID; duplicate IDs are detected during scan
-        // through the explicit path list in a separate conservative pass below.
-        return Set.of();
     }
 
     private static boolean hasNonEmpty(JsonElement value) {
