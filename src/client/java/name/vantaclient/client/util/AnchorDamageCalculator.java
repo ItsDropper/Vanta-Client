@@ -21,13 +21,14 @@ public class AnchorDamageCalculator {
                 playerPos.distanceTo(explosionPos);
 
 
-        if (distance > 12) {
+        float predictionRange = name.vantaclient.client.feature.AnchorOptimizerFeature.getPredictionRange();
+        if (distance > predictionRange) {
             return 0;
         }
 
 
         double exposure =
-                1.0 - (distance / 12.0);
+                1.0 - (distance / predictionRange);
 
 
         float baseDamage = 85.0F;
