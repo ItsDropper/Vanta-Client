@@ -58,6 +58,10 @@ public class ZoomFeature extends Feature {
         return DropperUtilsConfig.get().smoothZoom ? zoomSpeed : 1.0f;
     }
 
+    public static float getConfiguredZoomSpeed() {
+        return zoomSpeed;
+    }
+
     public static void setZoomSpeed(float value) {
         zoomSpeed = Math.max(0.01f, Math.min(value, 1.0f));
         DropperUtilsConfig.get().zoomSpeed = zoomSpeed;
