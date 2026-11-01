@@ -18,7 +18,8 @@ public class ScreenEffectRendererMixin {
 
     @Inject(
             method = "renderFire",
-            at = @At("HEAD")
+            at = @At("HEAD"),
+            cancellable = true
     )
     private static void lowerFire(
             PoseStack poseStack,
@@ -28,6 +29,11 @@ public class ScreenEffectRendererMixin {
     ) {
 
         if (!LowFireFeature.INSTANCE.isEnabled()) {
+            return;
+        }
+
+        if (LowFireFeature.isOverlayHidden()) {
+            ci.cancel();
             return;
         }
 
