@@ -9,6 +9,7 @@ import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.ModConfigDiscovery;
+import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
@@ -44,6 +45,7 @@ public class VantaIntegrationsScreen extends Screen {
     private int firstSetting;
     private float openProgress;
     private VantaClientPreferences preferences;
+    private String hotLoadStatus = "Experimental: only simple client entrypoints can be attempted; Mixins and loader-managed features are unsupported.";
 
     public VantaIntegrationsScreen(Screen parent) {
         super(Component.literal("Vanta Client"));
@@ -72,6 +74,12 @@ public class VantaIntegrationsScreen extends Screen {
 
         if (section == Section.MODS) {
             addModNavigation();
+            if (selection == Selection.NONE) {
+                addPanelButton("Try hot-load new mod JARs", contentX(), CONTENT_TOP + 54, 230, 24, () -> {
+                    ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
+                    hotLoadStatus = result.summary();
+                });
+            }
             if (selection == Selection.BUILTIN_CATEGORY) {
                 addBuiltInFeatures();
             } else if (selection == Selection.BUILTIN_SETTINGS) {
@@ -641,6 +649,8 @@ public class VantaIntegrationsScreen extends Screen {
                     contentX(), 86, 0xFF9296A3);
             graphics.drawString(font, "Select a mod in the sidebar to view its details and available settings.",
                     contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
+            drawWrappedText(graphics, hotLoadStatus, contentX(), CONTENT_TOP + 92,
+                    contentWidth() - 12, 0xFFB3B6C0, 5);
         }
 
         graphics.pose().popMatrix();
