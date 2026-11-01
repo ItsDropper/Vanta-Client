@@ -90,6 +90,20 @@ Each setting has a stable ID, display name, description, default value, and type
 - Existing public method signatures and current setting semantics will not be changed incompatibly within API version 1.
 - A future incompatible API will use a new major version and a migration period.
 
+## In-game Vanta Client panel
+
+The unified panel is opened from the Click GUI's **Settings** entry or through Mod Menu when Mod Menu is installed.
+
+- **Settings** contains Vanta Client appearance preferences: accent colour, interface animations, compact layout, description visibility, and UI scale/spacing. Preferences are stored separately in `config/vanta-client.json`.
+- **Mods** contains the built-in HUD, Visual, Combat, and Misc categories.
+- The installed-mod sidebar is populated from Fabric Loader's loaded mod containers, using each mod's declared metadata. It does not scan or load arbitrary JAR files itself.
+- Mods that register a `ModDescriptor` through Vanta Client API v1 expose their typed settings directly in the panel.
+- Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
+
+## Optional Mod Menu integration
+
+Mod Menu is an optional compile-time API dependency and runtime suggestion, not a required dependency. Vanta Client implements `ModMenuApi` to expose its own settings screen. The panel uses Mod Menu's public helper to open its standard mods screen; it does not reflect into Mod Menu internals or attempt to call private config factories belonging to other mods.
+
 ## Current scope
 
-This milestone includes registration, typed setting definitions, validation, registry access, and an in-game integrations browser reachable from the existing Click GUI. The browser supports boolean toggles, bounded numeric controls, bounded string inputs, and enum cycling. Setting callbacks are isolated so a runtime exception from one integration control does not crash the screen. Integrating mods remain responsible for persisting their own values; shared config persistence, custom control renderers, and public release artifacts are not implemented yet.
+The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Shared persistence for third-party integrations, custom control renderers, and public release artifacts are not implemented yet.
