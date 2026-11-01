@@ -27,7 +27,7 @@ public class ClickGuiScreen extends Screen {
     private Feature hoveredFeature;
 
     public ClickGuiScreen() {
-        super(Component.literal("DropperUtils"));
+        super(Component.literal("Vanta Client"));
     }
 
     @Override
@@ -119,7 +119,7 @@ public class ClickGuiScreen extends Screen {
          */
         graphics.drawCenteredString(
                 font,
-                "DropperUtils",
+                "Vanta Client",
                 width / 2,
                 40,
                 0xFFFFFFFF
