@@ -660,7 +660,7 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "Select a mod in the sidebar to view its details and available settings.",
                     contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
             drawWrappedText(graphics, hotLoadStatus, contentX(), CONTENT_TOP + 92,
-                    contentWidth() - 12, 0xFFB3B6C0, 5);
+                    contentWidth() - 12, 0xFFB3B6C0, 18);
         }
 
         graphics.pose().popMatrix();
