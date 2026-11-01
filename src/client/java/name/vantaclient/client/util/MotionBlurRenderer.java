@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -19,6 +20,8 @@ public final class MotionBlurRenderer {
     private static float previousYaw, previousPitch, accumulatedYaw, accumulatedPitch;
     private static long previousFrameNanos;
     private static final IntBuffer VIEWPORT_BUFFER = BufferUtils.createIntBuffer(4);
+    private static final IntBuffer SCISSOR_BUFFER = BufferUtils.createIntBuffer(4);
+    private static final ByteBuffer COLOR_MASK_BUFFER = BufferUtils.createByteBuffer(4);
 
     private static final String VERTEX = """
             #version 150
@@ -109,11 +112,22 @@ public final class MotionBlurRenderer {
         VIEWPORT_BUFFER.clear();
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, VIEWPORT_BUFFER);
         int vx=VIEWPORT_BUFFER.get(0), vy=VIEWPORT_BUFFER.get(1), vw=VIEWPORT_BUFFER.get(2), vh=VIEWPORT_BUFFER.get(3);
+        SCISSOR_BUFFER.clear();
+        GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, SCISSOR_BUFFER);
+        int sx=SCISSOR_BUFFER.get(0), sy=SCISSOR_BUFFER.get(1);
+        int sw=SCISSOR_BUFFER.get(2), sh=SCISSOR_BUFFER.get(3);
+        COLOR_MASK_BUFFER.clear();
+        GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, COLOR_MASK_BUFFER);
+        boolean colorRed=COLOR_MASK_BUFFER.get(0)!=0, colorGreen=COLOR_MASK_BUFFER.get(1)!=0;
+        boolean colorBlue=COLOR_MASK_BUFFER.get(2)!=0, colorAlpha=COLOR_MASK_BUFFER.get(3)!=0;
         int oldProgram=GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int oldVao=GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int oldArrayBuffer=GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
         int oldActive=GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         boolean depth=GL11.glIsEnabled(GL11.GL_DEPTH_TEST), blend=GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean scissor=GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        boolean stencil=GL11.glIsEnabled(GL11.GL_STENCIL_TEST);
+        boolean cull=GL11.glIsEnabled(GL11.GL_CULL_FACE);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         int oldTex0=GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -138,6 +152,10 @@ public final class MotionBlurRenderer {
             GL11.glViewport(0,0,w,h);
             GL11.glDisable(GL11.GL_DEPTH_TEST);
             GL11.glDisable(GL11.GL_BLEND);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glColorMask(true, true, true, true);
             GL20.glUseProgram(program);
             GL30.glBindVertexArray(vao);
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -171,8 +189,13 @@ public final class MotionBlurRenderer {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,oldTex1);
             GL13.glActiveTexture(oldActive);
             GL11.glViewport(vx,vy,vw,vh);
+            GL11.glScissor(sx,sy,sw,sh);
+            GL11.glColorMask(colorRed,colorGreen,colorBlue,colorAlpha);
             if(depth) GL11.glEnable(GL11.GL_DEPTH_TEST); else GL11.glDisable(GL11.GL_DEPTH_TEST);
             if(blend) GL11.glEnable(GL11.GL_BLEND); else GL11.glDisable(GL11.GL_BLEND);
+            if(scissor) GL11.glEnable(GL11.GL_SCISSOR_TEST); else GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            if(stencil) GL11.glEnable(GL11.GL_STENCIL_TEST); else GL11.glDisable(GL11.GL_STENCIL_TEST);
+            if(cull) GL11.glEnable(GL11.GL_CULL_FACE); else GL11.glDisable(GL11.GL_CULL_FACE);
         }
     }
 
