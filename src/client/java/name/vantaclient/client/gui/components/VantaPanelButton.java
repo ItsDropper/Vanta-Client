@@ -32,7 +32,7 @@ public final class VantaPanelButton extends AbstractWidget {
         float fit = Math.min(1.0f, Math.min((guiWidth - 32.0f) / 920.0f,
                 (guiHeight - 32.0f) / 540.0f));
         float preference = (float) VantaClientPreferences.get().uiScale;
-        return Math.max(0.42f, Math.min(1.0f, fit * preference));
+        return Math.max(0.25f, Math.min(1.0f, fit * preference));
     }
 
     public static int layoutOffsetX() {

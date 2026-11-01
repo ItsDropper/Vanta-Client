@@ -110,7 +110,7 @@ public class VantaIntegrationsScreen extends Screen {
                 () -> selectCategory(Category.MISC),
                 () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
 
-        y += 34;
+        y += 54;
         int available = Math.max(0, (504 - y - 38) / 25);
         int startIndex = Math.min(sidebarScroll, Math.max(0, installedMods.size() - available));
         int endIndex = Math.min(installedMods.size(), startIndex + available);
@@ -258,9 +258,12 @@ public class VantaIntegrationsScreen extends Screen {
                         DropperUtilsConfig.save();
                         button.setMessage(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"));
                     }).bounds(controlX, rowY, 88, 22).build());
-            addRenderableWidget(VantaPanelButton.builder(Component.literal("Settings"),
-                    button -> selectFeatureSettings(feature))
-                    .bounds(controlX + 94, rowY, 90, 22).build());
+            if (!name.vantaclient.client.gui.components.settings.SettingRegistry
+                    .getSettings(feature).isEmpty()) {
+                addRenderableWidget(VantaPanelButton.builder(Component.literal("Settings"),
+                        button -> selectFeatureSettings(feature))
+                        .bounds(controlX + 94, rowY, 90, 22).build());
+            }
             y += rowHeight();
         }
     }
@@ -521,16 +524,6 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8EAF0);
             drawWrappedText(graphics, selectedFeature.getDescription(), contentX(), 86,
                     contentWidth() - 12, 0xFF9296A3, 2);
-            List<name.vantaclient.client.gui.components.settings.Setting> settings =
-                    name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature);
-            int y = CONTENT_TOP + 14;
-            int end = Math.min(settings.size(), firstSetting + visibleRows(34));
-            for (int i = firstSetting; i < end; i++) {
-                if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.SliderSetting setting) {
-                    graphics.drawString(font, setting.getName(), contentX(), y, 0xFFE8EAF0);
-                }
-                y += 34;
-            }
         } else if (selection == Selection.INSTALLED_MOD) {
             ModContainer mod = installedMods.stream()
                     .filter(entry -> entry.getMetadata().getId().equals(selectedModId))
@@ -553,7 +546,7 @@ public class VantaIntegrationsScreen extends Screen {
                             contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
                 } else {
                     List<SettingDefinition<?>> settings = descriptor.settings();
-                    int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
+                    int visibleRows = visibleRows(rowHeight());
                     int end = Math.min(settings.size(), firstSetting + visibleRows);
                     int y = CONTENT_TOP + 14;
                     for (int i = firstSetting; i < end; i++) {
@@ -589,22 +582,30 @@ public class VantaIntegrationsScreen extends Screen {
             if (font.width(candidate) > maxWidth && !line.isEmpty()) {
                 graphics.drawString(font, line.toString(), x, y + lineIndex * 11, color);
                 line.setLength(0);
-                line.append(word);
                 if (++lineIndex >= maxLines) return;
+                if (font.width(word) > maxWidth) word = font.plainSubstrByWidth(word, maxWidth);
+                line.append(word);
             } else {
+                if (font.width(word) > maxWidth) word = font.plainSubstrByWidth(word, maxWidth);
                 if (!line.isEmpty()) line.append(' ');
                 line.append(word);
             }
         }
-        if (!line.isEmpty() && lineIndex < maxLines) graphics.drawString(font, line.toString(), x, y + lineIndex * 11, color);
+        if (!line.isEmpty() && lineIndex < maxLines) {
+            graphics.drawString(font, line.toString(), x, y + lineIndex * 11, color);
+        }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double rawMouseX = mouseX;
+        double rawMouseY = mouseY;
+        mouseX = VantaPanelButton.unlayoutX(mouseX);
+        mouseY = VantaPanelButton.unlayoutY(mouseY);
         mouseX = VantaPanelButton.unlayoutX(mouseX);
         mouseY = VantaPanelButton.unlayoutY(mouseY);
         if (section == Section.MODS && mouseX < 34 + SIDEBAR_WIDTH + 12) {
-            int available = Math.max(0, (504 - 143 - 4 * 27 - 34 - 38) / 25);
+            int available = Math.max(0, (504 - 143 - 4 * 27 - 54 - 38) / 25);
             int maxScroll = Math.max(0, installedMods.size() - available);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
                     sidebarScroll - (int) Math.signum(scrollY)));
@@ -628,14 +629,14 @@ public class VantaIntegrationsScreen extends Screen {
                     .filter(entry -> entry.id().equals(selectedModId)).findFirst().orElse(null);
             if (descriptor != null) {
                 int maxFirst = Math.max(0, descriptor.settings().size()
-                        - Math.max(1, (height - CONTENT_TOP - 48) / rowHeight()));
+                        - visibleRows(rowHeight()));
                 firstSetting = Math.max(0, Math.min(maxFirst,
                         firstSetting - (int) Math.signum(scrollY)));
                 rebuildWidgets();
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(rawMouseX, rawMouseY, scrollX, scrollY);
     }
 
     @Override
