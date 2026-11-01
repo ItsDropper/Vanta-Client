@@ -45,6 +45,10 @@ DropperUtils includes a fully customizable HUD system:
 * Customizable quality of life improvements
 * Lightweight visual enhancements
 
+## Vanta Client Integration API
+
+Third-party Fabric mods can register typed settings through the public API. See [docs/API.md](docs/API.md) for the API v1 contract and integration example.
+
 ## Installation
 
 1. Install Fabric Loader
