@@ -133,8 +133,9 @@ public final class MotionBlurRenderer {
         float elapsed = clamp((now - previousFrameNanos) / 1_000_000_000.0f, 0.0f, 0.1f);
         previousFrameNanos = now;
         float decay = (float) Math.pow(0.72, elapsed * 60.0f);
-        accumulatedYaw = accumulatedYaw * decay + dyaw;
-        accumulatedPitch = accumulatedPitch * decay + dpitch;
+        float frameScale = elapsed * 60.0f;
+        accumulatedYaw = accumulatedYaw * decay + dyaw * frameScale;
+        accumulatedPitch = accumulatedPitch * decay + dpitch * frameScale;
 
         float sensitivity = clamp(config.motionBlurSensitivity, 0.25f, 2.0f);
         float motionYaw = accumulatedYaw * sensitivity;
