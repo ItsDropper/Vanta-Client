@@ -33,6 +33,15 @@ public abstract class FeatureSliderWidget extends AbstractSliderButton {
     protected abstract String getValueText();
 
     @Override
+    public boolean isMouseOver(double mouseX, double mouseY) {
+        int hitboxTop = getY() + 4;
+        return mouseX >= getX()
+                && mouseX < getX() + width
+                && mouseY >= hitboxTop
+                && mouseY < hitboxTop + height;
+    }
+
+    @Override
     protected void updateMessage() {
         setMessage(Component.literal(name));
     }
