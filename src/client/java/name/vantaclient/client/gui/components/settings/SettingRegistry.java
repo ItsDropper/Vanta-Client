@@ -17,7 +17,7 @@ public final class SettingRegistry {
                     () -> (double) ZoomFeature.getZoomFov(),
                     value -> ZoomFeature.setZoomFov(value.intValue())));
             settings.add(new SliderSetting("Zoom Speed", 0.01, 0.5, "",
-                    () -> (double) ZoomFeature.getZoomSpeed(),
+                    () -> (double) ZoomFeature.getConfiguredZoomSpeed(),
                     value -> ZoomFeature.setZoomSpeed(value.floatValue())));
             settings.add(new SliderSetting("Scroll Strength", 0.35, 0.90, "x",
                     () -> (double) ZoomFeature.getScrollStrength(),
