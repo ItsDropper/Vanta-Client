@@ -37,6 +37,8 @@ public final class ExperimentalModHotLoader {
     private static final long MAX_JAR_SIZE = 128L * 1024L * 1024L;
     private static final int MAX_METADATA_BYTES = 1024 * 1024;
     private static final Set<String> ATTEMPTED = new HashSet<>();
+    private static final Set<String> ATTEMPTED_MOD_IDS = new HashSet<>();
+    private static final Map<String, HotLoadedMod> HOT_LOADED_MODS = new LinkedHashMap<>();
     private static final List<URLClassLoader> RETAINED_LOADERS = new ArrayList<>();
     private static final Set<String> BUILT_IN_DEPENDENCIES =
             Set.of("minecraft", "fabricloader", "java");
@@ -44,10 +46,15 @@ public final class ExperimentalModHotLoader {
     private ExperimentalModHotLoader() {}
 
     public record Result(int loaded, int skipped, int failed, String summary) {}
+    public record HotLoadedMod(String id, String name, String version, String jarName) {}
 
     private record Candidate(
-            String id, Path path, String identity, List<String> entrypoints,
-            Set<String> dependencies) {}
+            String id, String name, String version, Path path, String identity,
+            List<String> entrypoints, Set<String> dependencies) {}
+
+    public static synchronized List<HotLoadedMod> getHotLoadedMods() {
+        return List.copyOf(HOT_LOADED_MODS.values());
+    }
 
     public static synchronized Result scanAndLoad() {
         Path modsDirectory = FabricLoader.getInstance().getGameDir().resolve("mods");
@@ -108,7 +115,8 @@ public final class ExperimentalModHotLoader {
                         ATTEMPTED.add(identity);
                         continue;
                     }
-                    if (FabricLoader.getInstance().isModLoaded(id)) {
+                    if (FabricLoader.getInstance().isModLoaded(id)
+                            || HOT_LOADED_MODS.containsKey(id) || ATTEMPTED_MOD_IDS.contains(id)) {
                         skipped++;
                         ATTEMPTED.add(identity);
                         continue;
@@ -135,8 +143,10 @@ public final class ExperimentalModHotLoader {
                         ATTEMPTED.add(identity);
                         continue;
                     }
-                    Candidate candidate = new Candidate(id, jar, identity,
-                            entrypoints, requiredDependencies(metadata));
+                    String name = string(metadata, "name");
+                    String version = string(metadata, "version");
+                    Candidate candidate = new Candidate(id, name.isBlank() ? id : name,
+                            version, jar, identity, entrypoints, requiredDependencies(metadata));
                     Candidate previous = candidates.putIfAbsent(id, candidate);
                     if (previous != null) {
                         candidates.remove(id);
@@ -225,6 +235,7 @@ public final class ExperimentalModHotLoader {
                     continue;
                 }
 
+                ATTEMPTED_MOD_IDS.add(candidate.id());
                 boolean modSucceeded = true;
                 for (String entrypoint : candidate.entrypoints()) {
                     try {
@@ -262,6 +273,9 @@ public final class ExperimentalModHotLoader {
                 ATTEMPTED.add(candidate.identity());
                 if (modSucceeded) {
                     successfullyInitialized.add(candidate.id());
+                    HOT_LOADED_MODS.put(candidate.id(), new HotLoadedMod(candidate.id(),
+                            candidate.name(), candidate.version(),
+                            candidate.path().getFileName().toString()));
                     loaded++;
                     details.add(candidate.id() + ": client entrypoint(s) invoked");
                 } else {
