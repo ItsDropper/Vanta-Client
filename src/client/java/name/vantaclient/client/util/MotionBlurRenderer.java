@@ -23,9 +23,9 @@ import java.util.function.Supplier;
 /**
  * Temporal frame-blending motion blur implemented as a native Minecraft post-chain.
  *
- * The effect runs against Minecraft's main render target after the complete frame,
- * rather than copying whichever raw OpenGL framebuffer happens to be bound during
- * world rendering. Persistent post-chain targets retain the previous frame.
+ * The effect runs against Minecraft's main render target at the end of the world pass,
+ * before HUD rendering, rather than copying whichever raw OpenGL framebuffer happens
+ * to be bound. Persistent post-chain targets retain the previous frame.
  */
 public final class MotionBlurRenderer {
     private static final Identifier EFFECT_ID =
