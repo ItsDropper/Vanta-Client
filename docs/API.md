@@ -104,6 +104,22 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 
 Mod Menu is an optional compile-time API dependency and runtime suggestion, not a required dependency. Vanta Client implements `ModMenuApi` to expose its own settings screen. The panel uses Mod Menu's public helper to open its standard mods screen; it does not reflect into Mod Menu internals or attempt to call private config factories belonging to other mods.
 
+## Experimental best-effort hot-load attempt
+
+The Mods landing page includes **Try hot-load new mod JARs**. It scans the instance's `mods` directory for JARs that were not loaded by Fabric and attempts to invoke their plain string-based `entrypoints.client` classes as `ClientModInitializer` instances.
+
+This is an opt-in experiment, not a second Fabric Loader. It does not register discovered JARs as Fabric mod containers and cannot provide normal Fabric initialization semantics. It skips metadata that declares Mixins, access wideners, language adapters, unsupported environments, or dependencies that are not already loaded. Entrypoints must be public classes with public no-argument constructors and implement Fabric's `ClientModInitializer`.
+
+Important limitations:
+
+- It cannot apply Mixins or access wideners after startup.
+- It does not resolve or load missing dependencies, process nested jars, or support custom entrypoint adapters.
+- It does not register the JAR with Fabric Loader, so `FabricLoader.isModLoaded(id)` remains false for it and Fabric metadata/resource APIs will not treat it as a normal loaded mod.
+- An initializer can still mutate global state, start threads, or register callbacks that Vanta cannot undo. A failed attempt may therefore leave partial side effects; restart Minecraft to return to a clean state.
+- A successful invocation only means the declared client initializer returned without throwing. It is not proof that the mod is fully functional.
+
+Use this only with trusted mods and expect many ordinary Fabric mods to be skipped or fail. Standard installation before launching Minecraft remains the supported path.
+
 ## Current scope
 
 The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Shared persistence for third-party integrations, custom control renderers, and public release artifacts are not implemented yet.
