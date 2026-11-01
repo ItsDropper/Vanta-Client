@@ -76,7 +76,7 @@ public class GuiInitializer {
         screen.addButton(
                 Button.builder(
                         Component.literal("Settings"),
-                        button -> screen.openIntegrations()
+                        button -> screen.openVantaSettings()
                 ).bounds(sidebarX, sidebarY + 144, 130, 22).build()
         );
 
