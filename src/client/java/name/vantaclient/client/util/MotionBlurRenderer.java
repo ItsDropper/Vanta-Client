@@ -20,6 +20,8 @@ public final class MotionBlurRenderer {
     private static boolean failed, rotationValid, historyValid;
     private static float previousYaw, previousPitch, accumulatedYaw, accumulatedPitch;
     private static long previousFrameNanos;
+    private static Object previousLevel, previousPlayer;
+    private static double previousX, previousY, previousZ;
     private static final IntBuffer VIEWPORT_BUFFER = BufferUtils.createIntBuffer(4);
     private static final IntBuffer SCISSOR_BUFFER = BufferUtils.createIntBuffer(4);
     private static final ByteBuffer COLOR_MASK_BUFFER = BufferUtils.createByteBuffer(4);
@@ -81,6 +83,19 @@ public final class MotionBlurRenderer {
         float yaw = mc.gameRenderer.getMainCamera().yRot();
         float pitch = mc.gameRenderer.getMainCamera().xRot();
         long now = System.nanoTime();
+        double playerX = mc.player.getX(), playerY = mc.player.getY(), playerZ = mc.player.getZ();
+        double dx = playerX - previousX, dy = playerY - previousY, dz = playerZ - previousZ;
+        boolean cameraCut = (previousLevel != null && previousLevel != mc.level)
+                || (previousPlayer != null && previousPlayer != mc.player)
+                || (rotationValid && dx * dx + dy * dy + dz * dz > 256.0)
+                || (previousFrameNanos != 0L && now - previousFrameNanos > 250_000_000L);
+        previousLevel = mc.level;
+        previousPlayer = mc.player;
+        previousX = playerX;
+        previousY = playerY;
+        previousZ = playerZ;
+        if (cameraCut) reset();
+
         if (!rotationValid) {
             previousYaw = yaw;
             previousPitch = pitch;
@@ -96,8 +111,7 @@ public final class MotionBlurRenderer {
 
         // Keep a short exposure window with time-based decay. A fixed per-frame
         // multiplier made the effect vanish much faster at high frame rates.
-        float elapsed = previousFrameNanos == 0L ? 1.0f / 60.0f
-                : clamp((now - previousFrameNanos) / 1_000_000_000.0f, 0.0f, 0.1f);
+        float elapsed = clamp((now - previousFrameNanos) / 1_000_000_000.0f, 0.0f, 0.1f);
         previousFrameNanos = now;
         float decay = (float) Math.pow(0.72, elapsed * 60.0f);
         accumulatedYaw = accumulatedYaw * decay + dyaw;
