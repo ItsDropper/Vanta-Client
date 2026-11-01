@@ -39,6 +39,7 @@ public final class VantaIntegrationsScreen extends Screen {
     private List<ModDescriptor> integrations = List.of();
     private int sidebarScroll;
     private int firstSetting;
+    private float openProgress;
     private VantaClientPreferences preferences;
 
     public VantaIntegrationsScreen(Screen parent) {
@@ -49,6 +50,7 @@ public final class VantaIntegrationsScreen extends Screen {
     @Override
     protected void init() {
         preferences = VantaClientPreferences.get();
+        openProgress = preferences.animations ? 0.0f : 1.0f;
         refreshModList();
 
         addRenderableWidget(Button.builder(Component.literal("Settings"), button -> {
@@ -187,6 +189,10 @@ public final class VantaIntegrationsScreen extends Screen {
         }).bounds(x, y, 170, 22).build());
     }
 
+    private int rowHeight() {
+        return Math.max(26, (int) Math.round((preferences.compactMode ? 30 : ROW_HEIGHT) * preferences.uiScale));
+    }
+
     private int contentX() {
         return 34 + SIDEBAR_WIDTH + 30;
     }
@@ -199,7 +205,7 @@ public final class VantaIntegrationsScreen extends Screen {
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == selectedCategory)
                 .toList();
-        int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT);
+        int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
         int maxFirst = Math.max(0, features.size() - visibleRows);
         firstSetting = Math.min(firstSetting, maxFirst);
         int end = Math.min(features.size(), firstSetting + visibleRows);
@@ -217,7 +223,6 @@ public final class VantaIntegrationsScreen extends Screen {
                     }).bounds(controlX, rowY, 92, 22).build());
 
             if (parent instanceof ClickGuiScreen clickGui) {
-                int rowY = y;
                 addRenderableWidget(Button.builder(Component.literal("Configure"), button -> {
                     minecraft.setScreen(parent);
                     clickGui.openSettings(feature, controlX, rowY);
@@ -251,7 +256,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private void addIntegrationSettings(ModDescriptor descriptor) {
         List<SettingDefinition<?>> settings = descriptor.settings();
-        int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT);
+        int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
         int maxFirst = Math.max(0, settings.size() - visibleRows);
         firstSetting = Math.max(0, Math.min(firstSetting, maxFirst));
         int end = Math.min(settings.size(), firstSetting + visibleRows);
@@ -351,9 +356,20 @@ public final class VantaIntegrationsScreen extends Screen {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (preferences == null || !preferences.animations) {
+            openProgress = 1.0f;
+        } else {
+            openProgress = Math.min(1.0f, openProgress + 0.16f);
+        }
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int accent = preferences == null ? 0xFF718BFF : preferences.accent.color();
-        graphics.fill(0, 0, width, height, 0xD9000000);
+        int alpha = (int) (0xD9 * Math.min(1.0f, openProgress + 0.16f * partialTick));
+        graphics.fill(0, 0, width, height, (alpha << 24));
 
         int left = 20, top = 18, right = width - 20, bottom = height - 18;
         graphics.fill(left - 2, top - 2, right + 2, bottom + 2, 0x99000000);
@@ -365,6 +381,10 @@ public final class VantaIntegrationsScreen extends Screen {
 
         graphics.drawString(font, "VANTA", 34, 34, accent);
         graphics.drawString(font, "CLIENT", 79, 34, 0xFFF0F1F5);
+        if (section == Section.MODS) {
+            graphics.drawString(font, "BUILT-IN", 34, 132, 0xFF858A98);
+            graphics.drawString(font, "INSTALLED MODS", 34, 266, 0xFF858A98);
+        }
         graphics.drawString(font, section == Section.SETTINGS ? "SETTINGS" : "MODS",
                 contentX(), 40, 0xFFF2F3F8);
 
@@ -375,13 +395,13 @@ public final class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 62, 0xFFE8EAF0);
             graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 104, 0xFFE8EAF0);
             graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 146, 0xFFE8EAF0);
-            graphics.drawString(font, "UI scale", contentX(), CONTENT_TOP + 194, 0xFFE8EAF0);
+            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 194, 0xFFE8EAF0);
         } else if (selection == Selection.BUILTIN_CATEGORY) {
             graphics.drawString(font, selectedCategory.name(), contentX(), 66, 0xFFE8EAF0);
             graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, 0xFF9296A3);
             List<Feature> features = FeatureRegistry.FEATURES.stream()
                     .filter(feature -> feature.getCategory() == selectedCategory).toList();
-            int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT);
+            int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
             int end = Math.min(features.size(), firstSetting + visibleRows);
             int y = CONTENT_TOP + 14;
             for (int i = firstSetting; i < end; i++) {
@@ -413,7 +433,7 @@ public final class VantaIntegrationsScreen extends Screen {
                             contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
                 } else {
                     List<SettingDefinition<?>> settings = descriptor.settings();
-                    int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT);
+                    int visibleRows = Math.max(1, (height - CONTENT_TOP - 48) / rowHeight());
                     int end = Math.min(settings.size(), firstSetting + visibleRows);
                     int y = CONTENT_TOP + 14;
                     for (int i = firstSetting; i < end; i++) {
@@ -450,7 +470,7 @@ public final class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS && selection == Selection.BUILTIN_CATEGORY) {
             int count = (int) FeatureRegistry.FEATURES.stream()
                     .filter(feature -> feature.getCategory() == selectedCategory).count();
-            int maxFirst = Math.max(0, count - Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT));
+            int maxFirst = Math.max(0, count - Math.max(1, (height - CONTENT_TOP - 48) / rowHeight()));
             firstSetting = Math.max(0, Math.min(maxFirst, firstSetting - (int) Math.signum(scrollY)));
             rebuildWidgets();
             return true;
@@ -460,7 +480,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     .filter(entry -> entry.id().equals(selectedModId)).findFirst().orElse(null);
             if (descriptor != null) {
                 int maxFirst = Math.max(0, descriptor.settings().size()
-                        - Math.max(1, (height - CONTENT_TOP - 48) / ROW_HEIGHT));
+                        - Math.max(1, (height - CONTENT_TOP - 48) / rowHeight()));
                 firstSetting = Math.max(0, Math.min(maxFirst,
                         firstSetting - (int) Math.signum(scrollY)));
                 rebuildWidgets();
