@@ -530,8 +530,9 @@ public class VantaIntegrationsScreen extends Screen {
                     .findFirst().orElse(null);
             if (mod != null) {
                 graphics.drawString(font, mod.getMetadata().getName(), contentX(), 66, 0xFFE8EAF0);
-                graphics.drawString(font, mod.getMetadata().getId() + "  •  " +
-                        mod.getMetadata().getVersion().getFriendlyString(), contentX(), 86, 0xFF9296A3);
+                drawWrappedText(graphics, mod.getMetadata().getId() + "  •  " +
+                        mod.getMetadata().getVersion().getFriendlyString(), contentX(), 86,
+                        contentWidth() - 12, 0xFF9296A3, 1);
                 ModDescriptor descriptor = integrations.stream()
                         .filter(entry -> entry.id().equals(selectedModId)).findFirst().orElse(null);
                 String description = descriptor != null ? descriptor.description() : mod.getMetadata().getDescription();
@@ -540,10 +541,10 @@ public class VantaIntegrationsScreen extends Screen {
                             contentWidth() - 12, 0xFF858A98, 2);
                 }
                 if (descriptor == null) {
-                    graphics.drawString(font, FabricLoader.getInstance().isModLoaded("modmenu")
+                    drawWrappedText(graphics, FabricLoader.getInstance().isModLoaded("modmenu")
                             ? "This mod has not registered Vanta settings. Open Mod Menu to access its config, if provided."
                             : "This mod has not registered Vanta settings. Install Mod Menu to access its config, if provided.",
-                            contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
+                            contentX(), CONTENT_TOP + 20, contentWidth() - 12, 0xFFB3B6C0, 3);
                 } else {
                     List<SettingDefinition<?>> settings = descriptor.settings();
                     int visibleRows = visibleRows(rowHeight());
@@ -600,8 +601,6 @@ public class VantaIntegrationsScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         double rawMouseX = mouseX;
         double rawMouseY = mouseY;
-        mouseX = VantaPanelButton.unlayoutX(mouseX);
-        mouseY = VantaPanelButton.unlayoutY(mouseY);
         mouseX = VantaPanelButton.unlayoutX(mouseX);
         mouseY = VantaPanelButton.unlayoutY(mouseY);
         if (section == Section.MODS && mouseX < 34 + SIDEBAR_WIDTH + 12) {
