@@ -611,9 +611,13 @@ public class VantaIntegrationsScreen extends Screen {
                             contentWidth() - 12, 0xFF858A98, 2);
                 }
                 if (descriptor == null) {
-                    drawWrappedText(graphics, FabricLoader.getInstance().isModLoaded("modmenu")
-                            ? "This mod has not registered Vanta settings. Open Mod Menu to access its config, if provided."
-                            : "This mod has not registered Vanta settings. Install Mod Menu to access its config, if provided.",
+                    boolean hasDiscoveredSettings = discoveredConfigFactories.containsKey(selectedModId);
+                    String settingsMessage = hasDiscoveredSettings
+                            ? "Vanta found this mod's existing Mod Menu config screen. Use Open Mod Settings to edit it."
+                            : FabricLoader.getInstance().isModLoaded("modmenu")
+                            ? "No config screen was exposed by this mod. Vanta cannot safely infer private settings without a supported config API."
+                            : "No config screen was exposed. Install Mod Menu to discover settings screens provided by compatible mods.";
+                    drawWrappedText(graphics, settingsMessage,
                             contentX(), CONTENT_TOP + 20, contentWidth() - 12, 0xFFB3B6C0, 3);
                 } else {
                     List<SettingDefinition<?>> settings = descriptor.settings();
