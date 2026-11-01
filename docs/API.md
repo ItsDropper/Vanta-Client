@@ -30,6 +30,8 @@ The current mod id remains `dropperutils`; the repository and mod id have not ye
 import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.VantaClientApi;
 import name.vantaclient.api.setting.SettingDefinition;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 
 public final class ExampleClient implements ClientModInitializer {
     private boolean enabled = true;
