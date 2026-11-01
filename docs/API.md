@@ -123,6 +123,8 @@ Important limitations:
 
 Use this only as an experiment and expect many ordinary Fabric mods to be skipped or fail. Standard installation before launching Minecraft remains the supported path.
 
+The runtime keeps a session-only list of successfully invoked hot-loaded client entrypoints, shown in the Mods landing-page result. It prevents a mod ID that was already attempted or successfully hot-loaded from being invoked again in the same session. A candidate skipped only because a required dependency is unavailable can be reconsidered on a later scan after that dependency becomes available.
+
 ## Current scope
 
 The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Shared persistence for third-party integrations, custom control renderers, and public release artifacts are not implemented yet.
