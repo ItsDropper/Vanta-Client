@@ -8,6 +8,7 @@ import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
+import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
@@ -18,6 +19,7 @@ import net.minecraft.network.chat.Component;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 
 /** Unified Vanta Client settings and installed-mod browser. */
@@ -36,6 +38,7 @@ public class VantaIntegrationsScreen extends Screen {
     private Feature selectedFeature;
     private String selectedModId;
     private List<ModContainer> installedMods = List.of();
+    private Map<String, Object> discoveredConfigFactories = Map.of();
     private List<ModDescriptor> integrations = List.of();
     private int sidebarScroll;
     private int firstSetting;
@@ -83,10 +86,16 @@ public class VantaIntegrationsScreen extends Screen {
 
     private void refreshModList() {
         integrations = VantaClientApi.getRegisteredMods();
+        discoveredConfigFactories = ModConfigDiscovery.discover();
         installedMods = FabricLoader.getInstance().getAllMods().stream()
-                .filter(mod -> !mod.getMetadata().getId().equals("minecraft"))
-                .filter(mod -> !mod.getMetadata().getId().equals("fabricloader"))
-                .filter(mod -> !mod.getMetadata().getId().equals("dropperutils"))
+                .filter(mod -> {
+                    String id = mod.getMetadata().getId();
+                    return !id.equals("minecraft")
+                            && !id.equals("fabricloader")
+                            && !id.equals("dropperutils")
+                            && !id.equals("fabric-api")
+                            && !id.startsWith("fabric-");
+                })
                 .sorted(Comparator.comparing(mod -> mod.getMetadata().getName(),
                         String.CASE_INSENSITIVE_ORDER))
                 .toList();
@@ -356,8 +365,15 @@ public class VantaIntegrationsScreen extends Screen {
             return;
         }
 
-        if (FabricLoader.getInstance().isModLoaded("modmenu")) {
-            int x = contentX() + contentWidth() - 190;
+        int x = contentX() + contentWidth() - 190;
+        Object configFactory = discoveredConfigFactories.get(selectedModId);
+        if (configFactory != null) {
+            addRenderableWidget(VantaPanelButton.builder(Component.literal("Open Mod Settings"),
+                    button -> {
+                        Screen configScreen = ModConfigDiscovery.open(configFactory, this);
+                        if (configScreen != null) minecraft.setScreen(configScreen);
+                    }).bounds(x, CONTENT_TOP + 8, 180, 24).build());
+        } else if (FabricLoader.getInstance().isModLoaded("modmenu")) {
             addRenderableWidget(VantaPanelButton.builder(Component.literal("Open Mod Menu"),
                     button -> openModMenu())
                     .bounds(x, CONTENT_TOP + 8, 180, 24).build());
