@@ -168,7 +168,7 @@ public final class ExperimentalModHotLoader {
                 String dependencyId = dependency.getKey();
                 if (!dependencyId.equals(ownId)
                         && !FabricLoader.getInstance().isModLoaded(dependencyId)
-                        && !dependencyId.equals("minecraft")) return false;
+                        && !Set.of("minecraft", "fabricloader", "java").contains(dependencyId)) return false;
             }
         }
         return true;
