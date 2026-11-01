@@ -17,7 +17,7 @@
 
 	"entrypoints": {
 		"client": [
-			"name.dropperutils.client.DropperUtilsClient"
+			"name.vantaclient.client.DropperUtilsClient"
 		]
 
 	},
