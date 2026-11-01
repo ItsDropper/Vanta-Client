@@ -75,7 +75,7 @@ public class GuiInitializer {
 
         screen.addButton(
                 Button.builder(
-                        Component.literal("Integrations"),
+                        Component.literal("Settings"),
                         button -> screen.openIntegrations()
                 ).bounds(sidebarX, sidebarY + 144, 130, 22).build()
         );
