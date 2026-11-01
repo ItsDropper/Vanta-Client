@@ -31,6 +31,15 @@ public class FullbrightFeature extends Feature {
         return DropperUtilsConfig.get().fullbrightBrightness;
     }
 
+    public static float getMinimumBrightness() {
+        return DropperUtilsConfig.get().fullbrightMinimum;
+    }
+
+    public static void setMinimumBrightness(float value) {
+        DropperUtilsConfig.get().fullbrightMinimum = Math.max(0.0f, Math.min(value, 100.0f));
+        DropperUtilsConfig.save();
+    }
+
     public static void setBrightness(float value) {
         DropperUtilsConfig.get().fullbrightBrightness =
                 Math.max(0.0f, Math.min(value, 100.0f));
