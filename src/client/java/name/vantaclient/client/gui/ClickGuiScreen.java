@@ -7,6 +7,7 @@ import name.vantaclient.client.gui.components.FeaturePanel;
 import name.vantaclient.client.gui.components.GuiInitializer;
 import name.vantaclient.client.gui.components.settings.SettingsPanel;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -34,6 +35,10 @@ public class ClickGuiScreen extends Screen {
         settingsPanel = new SettingsPanel(this);
 
         rebuildWidgets();
+    }
+
+    public void openIntegrations() {
+        Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this));
     }
 
     public void addButton(AbstractWidget widget) {
