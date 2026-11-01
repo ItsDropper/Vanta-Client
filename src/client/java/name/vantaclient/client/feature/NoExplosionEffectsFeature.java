@@ -16,6 +16,24 @@ public class NoExplosionEffectsFeature extends Feature {
     }
 
 
+    public static boolean removeExplosionParticles() {
+        return DropperUtilsConfig.get().noExplosionParticles;
+    }
+
+    public static void setRemoveExplosionParticles(boolean value) {
+        DropperUtilsConfig.get().noExplosionParticles = value;
+        DropperUtilsConfig.save();
+    }
+
+    public static boolean removeExplosionSmoke() {
+        return DropperUtilsConfig.get().noExplosionSmoke;
+    }
+
+    public static void setRemoveExplosionSmoke(boolean value) {
+        DropperUtilsConfig.get().noExplosionSmoke = value;
+        DropperUtilsConfig.save();
+    }
+
     @Override
     public void onEnable() {
         DropperUtilsConfig.get().noExplosionEffects = true;
