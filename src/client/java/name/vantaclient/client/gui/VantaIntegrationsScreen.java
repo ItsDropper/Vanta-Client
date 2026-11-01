@@ -280,6 +280,8 @@ public class VantaIntegrationsScreen extends Screen {
         for (int i = firstSetting; i < end; i++) {
             if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.SliderSetting setting) {
                 addFeatureSlider(setting, y);
+            } else if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.BooleanSetting setting) {
+                addFeatureToggle(setting, y);
             }
             y += 34;
         }
@@ -320,6 +322,24 @@ public class VantaIntegrationsScreen extends Screen {
                 setting.getSetter().accept(minimum + this.value * (maximum - minimum));
             }
         });
+    }
+
+    private void addFeatureToggle(
+            name.vantaclient.client.gui.components.settings.BooleanSetting setting, int y) {
+        boolean current;
+        try {
+            current = setting.getGetter().get();
+        } catch (RuntimeException exception) {
+            return;
+        }
+        int controlWidth = Math.min(300, contentWidth());
+        addRenderableWidget(VantaPanelButton.builder(
+                Component.literal(setting.getName() + ": " + (current ? "On" : "Off")),
+                button -> {
+                    boolean next = !setting.getGetter().get();
+                    setting.getSetter().accept(next);
+                    button.setMessage(Component.literal(setting.getName() + ": " + (next ? "On" : "Off")));
+                }).bounds(contentX(), y, controlWidth, 26).build());
     }
 
     private void addInstalledModContent() {
