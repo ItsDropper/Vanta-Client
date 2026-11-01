@@ -92,4 +92,4 @@ Each setting has a stable ID, display name, description, default value, and type
 
 ## Current scope
 
-This milestone establishes registration, typed setting definitions, validation, and registry access. The in-game integrations browser, shared config persistence, custom controls, and public release artifacts are not implemented yet. Integrations should not assume that registering a descriptor currently creates a visible GUI screen.
+This milestone includes registration, typed setting definitions, validation, registry access, and an in-game integrations browser reachable from the existing Click GUI. The browser supports boolean toggles, bounded numeric controls, bounded string inputs, and enum cycling. Setting callbacks are isolated so a runtime exception from one integration control does not crash the screen. Integrating mods remain responsible for persisting their own values; shared config persistence, custom control renderers, and public release artifacts are not implemented yet.
