@@ -5,6 +5,9 @@
   "client": [
     "GameRendererMixin",
     "MotionBlurMixin",
+    "PostChainAccessor",
+    "PostPassAccessor",
+    "ShaderManagerAccessor",
     "ZoomScrollMixin",
     "GuiMixin",
     "ParticleEngineMixin",
