@@ -168,15 +168,15 @@ public final class VantaIntegrationsScreen extends Screen {
         }, x, y);
         y += 48;
 
-        addRenderableWidget(Button.builder(Component.literal("−"), button -> {
+        addRenderableWidget(VantaPanelButton.builder(Component.literal("−"), button -> {
             preferences.uiScale = Math.max(0.8, Math.round((preferences.uiScale - 0.05) * 100.0) / 100.0);
             VantaClientPreferences.save();
             button.setMessage(Component.literal("−"));
             rebuildWidgets();
         }).bounds(x, y, 28, 22).build());
-        addRenderableWidget(Button.builder(Component.literal(String.format(Locale.ROOT, "%.2fx", preferences.uiScale)),
+        addRenderableWidget(VantaPanelButton.builder(Component.literal(String.format(Locale.ROOT, "%.2fx", preferences.uiScale)),
                 button -> {}).bounds(x + 34, y, 102, 22).build());
-        addRenderableWidget(Button.builder(Component.literal("+"), button -> {
+        addRenderableWidget(VantaPanelButton.builder(Component.literal("+"), button -> {
             preferences.uiScale = Math.min(1.2, Math.round((preferences.uiScale + 0.05) * 100.0) / 100.0);
             VantaClientPreferences.save();
             rebuildWidgets();
@@ -185,7 +185,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private void addPreferenceToggle(String name, boolean current, java.util.function.Consumer<Boolean> setter,
                                      int x, int y) {
-        addRenderableWidget(Button.builder(Component.literal(current ? "On" : "Off"), button -> {
+        addRenderableWidget(VantaPanelButton.builder(Component.literal(current ? "On" : "Off"), button -> {
             boolean next = !current;
             setter.accept(next);
             button.setMessage(Component.literal(next ? "On" : "Off"));
@@ -234,7 +234,7 @@ public final class VantaIntegrationsScreen extends Screen {
             Feature feature = features.get(i);
             int controlX = contentX() + contentWidth() - 190;
             int rowY = y;
-            addRenderableWidget(Button.builder(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"),
+            addRenderableWidget(VantaPanelButton.builder(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"),
                     button -> {
                         feature.toggle();
                         feature.saveConfig();
@@ -243,7 +243,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     }).bounds(controlX, rowY, 92, 22).build());
 
             if (parent instanceof ClickGuiScreen clickGui) {
-                addRenderableWidget(Button.builder(Component.literal("Configure"), button -> {
+                addRenderableWidget(VantaPanelButton.builder(Component.literal("Configure"), button -> {
                     minecraft.setScreen(parent);
                     clickGui.openSettings(feature, controlX, rowY);
                 }).bounds(controlX + 98, rowY, 86, 22).build());
@@ -268,7 +268,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
         if (FabricLoader.getInstance().isModLoaded("modmenu")) {
             int x = contentX() + contentWidth() - 190;
-            addRenderableWidget(Button.builder(Component.literal("Open Mod Menu"),
+            addRenderableWidget(VantaPanelButton.builder(Component.literal("Open Mod Menu"),
                     button -> minecraft.setScreen(VantaModMenuIntegration.openModsScreen(this)))
                     .bounds(x, CONTENT_TOP + 8, 180, 24).build());
         }
@@ -295,13 +295,13 @@ public final class VantaIntegrationsScreen extends Screen {
         try {
             value = setting.value();
         } catch (RuntimeException exception) {
-            addRenderableWidget(Button.builder(Component.literal("Unavailable"), button -> {})
+            addRenderableWidget(VantaPanelButton.builder(Component.literal("Unavailable"), button -> {})
                     .bounds(controlX, y, controlWidth, 22).build());
             return;
         }
 
         switch (setting.type()) {
-            case BOOLEAN -> addRenderableWidget(Button.builder(
+            case BOOLEAN -> addRenderableWidget(VantaPanelButton.builder(
                     Component.literal(Boolean.TRUE.equals(value) ? "On" : "Off"), button -> {
                         try {
                             setting.set(!Boolean.TRUE.equals(setting.value()));
@@ -315,20 +315,20 @@ public final class VantaIntegrationsScreen extends Screen {
                 double maximum = setting.maximum() == null ? minimum : setting.maximum();
                 double step = setting.type() == SettingDefinition.Type.INTEGER ? 1
                         : Math.max(0.01, (maximum - minimum) / 100.0);
-                VantaPanelButton valueButton = Button.builder(Component.literal(formatNumber(
+                VantaPanelButton valueButton = VantaPanelButton.builder(Component.literal(formatNumber(
                         value instanceof Number number ? number.doubleValue() : minimum)), button -> {})
                         .bounds(controlX + 30, y, 120, 22).build();
-                addRenderableWidget(Button.builder(Component.literal("−"), button -> {
+                addRenderableWidget(VantaPanelButton.builder(Component.literal("−"), button -> {
                     updateNumeric(setting, minimum, maximum, -step, valueButton);
                 }).bounds(controlX, y, 26, 22).build());
                 addRenderableWidget(valueButton);
-                addRenderableWidget(Button.builder(Component.literal("+"), button -> {
+                addRenderableWidget(VantaPanelButton.builder(Component.literal("+"), button -> {
                     updateNumeric(setting, minimum, maximum, step, valueButton);
                 }).bounds(controlX + 154, y, 26, 22).build());
             }
             case ENUM -> {
                 Object[] constants = setting.valueClass().getEnumConstants();
-                addRenderableWidget(Button.builder(Component.literal(String.valueOf(value)), button -> {
+                addRenderableWidget(VantaPanelButton.builder(Component.literal(String.valueOf(value)), button -> {
                     if (constants == null || constants.length == 0) return;
                     try {
                         Object current = setting.value();
