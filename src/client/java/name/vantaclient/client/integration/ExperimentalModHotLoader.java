@@ -171,6 +171,7 @@ public final class ExperimentalModHotLoader {
         Set<String> loadedByFabric = new HashSet<>();
         FabricLoader.getInstance().getAllMods()
                 .forEach(mod -> loadedByFabric.add(mod.getMetadata().getId()));
+        loadedByFabric.addAll(HOT_LOADED_MODS.keySet());
 
         // Remove candidates with unavailable required dependencies, then order the rest.
         boolean changed;
@@ -187,7 +188,6 @@ public final class ExperimentalModHotLoader {
                 if (missing != null) {
                     iterator.remove();
                     skipped++;
-                    ATTEMPTED.add(candidate.identity());
                     details.add(candidate.id() + ": required dependency '" + missing
                             + "' is not loaded or available for this batch");
                     changed = true;
