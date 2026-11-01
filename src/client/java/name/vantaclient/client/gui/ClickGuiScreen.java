@@ -31,7 +31,6 @@ public class ClickGuiScreen extends Screen {
     }
 
     @Override
-    @Override
     protected void init() {
         // Legacy entry point: all menu access now routes to the unified panel.
         minecraft.setScreen(new VantaIntegrationsScreen(null));

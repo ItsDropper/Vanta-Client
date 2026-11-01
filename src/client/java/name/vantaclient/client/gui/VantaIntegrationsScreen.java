@@ -475,9 +475,10 @@ public class VantaIntegrationsScreen extends Screen {
         int alpha = (int) (0xD9 * Math.min(1.0f, openProgress + 0.16f * partialTick));
         graphics.fill(0, 0, width, height, (alpha << 24));
 
-        graphics.pose().pushPose();
-        graphics.pose().translate(VantaPanelButton.layoutOffsetX(), VantaPanelButton.layoutOffsetY(), 0);
-        graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale(), 1.0f);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate((float) VantaPanelButton.layoutOffsetX(),
+                (float) VantaPanelButton.layoutOffsetY());
+        graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale());
         int left = 20, top = 18, right = 940, bottom = 522;
         graphics.fill(left - 2, top - 2, right + 2, bottom + 2, 0x99000000);
         graphics.fill(left, top, right, bottom, 0xFF101116);
@@ -569,7 +570,7 @@ public class VantaIntegrationsScreen extends Screen {
                     contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
         }
 
-        graphics.pose().popPose();
+        graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
