@@ -78,6 +78,16 @@ public class VantaIntegrationsScreen extends Screen {
                 addPanelButton("Try hot-load new mods", contentX(), CONTENT_TOP + 54, 230, 24, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
+                    List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
+                            ExperimentalModHotLoader.getHotLoadedMods();
+                    if (!hotLoaded.isEmpty()) {
+                        String names = hotLoaded.stream()
+                                .map(mod -> mod.name() + (mod.version().isBlank()
+                                        ? "" : " " + mod.version()))
+                                .limit(5)
+                                .collect(java.util.stream.Collectors.joining(", "));
+                        hotLoadStatus += " Session mods: " + names + ".";
+                    }
                 });
             }
             if (selection == Selection.BUILTIN_CATEGORY) {
