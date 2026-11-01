@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui.components;
 
+import name.vantaclient.client.config.VantaClientPreferences;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -9,17 +10,23 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 
-/** Dark, accent-aware action control used by the Vanta settings panel. */
+/** Dark, accent-aware action control used throughout the Vanta settings panel. */
 public final class VantaPanelButton extends AbstractWidget {
-    private final Runnable action;
+    private final Consumer<VantaPanelButton> action;
     private final BooleanSupplier selected;
     private final IntSupplier accent;
     private String label;
 
     public VantaPanelButton(int x, int y, int width, int height, String label,
                             Runnable action, BooleanSupplier selected, IntSupplier accent) {
+        this(x, y, width, height, label, button -> action.run(), selected, accent);
+    }
+
+    private VantaPanelButton(int x, int y, int width, int height, String label,
+                             Consumer<VantaPanelButton> action, BooleanSupplier selected, IntSupplier accent) {
         super(x, y, width, height, Component.literal(label));
         this.label = label;
         this.action = action;
@@ -27,9 +34,18 @@ public final class VantaPanelButton extends AbstractWidget {
         this.accent = accent;
     }
 
+    public static Builder builder(Component message, Consumer<VantaPanelButton> action) {
+        return new Builder(message, action);
+    }
+
     public void setLabel(String label) {
-        this.label = label;
         setMessage(Component.literal(label));
+    }
+
+    @Override
+    public void setMessage(Component message) {
+        super.setMessage(message);
+        this.label = message.getString();
     }
 
     @Override
@@ -50,12 +66,39 @@ public final class VantaPanelButton extends AbstractWidget {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (!isActive() || !isMouseOver(event.x(), event.y())) return false;
         playDownSound(Minecraft.getInstance().getSoundManager());
-        action.run();
+        action.accept(this);
         return true;
     }
 
     @Override
     protected void updateWidgetNarration(NarrationElementOutput narration) {
         narration.add(NarratedElementType.TITLE, Component.literal(label));
+    }
+
+    public static final class Builder {
+        private final Component message;
+        private final Consumer<VantaPanelButton> action;
+        private int x;
+        private int y;
+        private int width = 150;
+        private int height = 20;
+
+        private Builder(Component message, Consumer<VantaPanelButton> action) {
+            this.message = message;
+            this.action = action;
+        }
+
+        public Builder bounds(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            return this;
+        }
+
+        public VantaPanelButton build() {
+            return new VantaPanelButton(x, y, width, height, message.getString(), action,
+                    () -> false, () -> VantaClientPreferences.get().accent.color());
+        }
     }
 }
