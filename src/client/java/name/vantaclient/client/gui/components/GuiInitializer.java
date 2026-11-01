@@ -5,6 +5,8 @@ import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.gui.ClickGuiScreen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 
 public class GuiInitializer {
 
@@ -69,6 +71,13 @@ public class GuiInitializer {
                         () -> screen.selectCategory(Category.MISC),
                         () -> screen.getSelectedCategory() == Category.MISC
                 )
+        );
+
+        screen.addButton(
+                Button.builder(
+                        Component.literal("Integrations"),
+                        button -> screen.openIntegrations()
+                ).bounds(sidebarX, sidebarY + 144, 130, 22).build()
         );
 
         /*
