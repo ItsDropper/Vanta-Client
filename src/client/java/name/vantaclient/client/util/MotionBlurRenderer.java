@@ -17,6 +17,7 @@ public final class MotionBlurRenderer {
     private static int program, vao, vbo, currentTexture, historyTexture, widthCache, heightCache;
     private static boolean failed, rotationValid, historyValid;
     private static float previousYaw, previousPitch, accumulatedYaw, accumulatedPitch;
+    private static long previousFrameNanos;
     private static final IntBuffer VIEWPORT_BUFFER = BufferUtils.createIntBuffer(4);
 
     private static final String VERTEX = """
@@ -59,6 +60,7 @@ public final class MotionBlurRenderer {
         historyValid = false;
         accumulatedYaw = 0.0f;
         accumulatedPitch = 0.0f;
+        previousFrameNanos = 0L;
     }
 
     public static void render() {
@@ -70,26 +72,37 @@ public final class MotionBlurRenderer {
             return;
         }
 
-        float yaw = mc.player.getYRot(), pitch = mc.player.getXRot();
+        // Read the rendered camera rather than the player entity. The camera can
+        // move between entity ticks, so player rotation misses fast mouse input.
+        float yaw = mc.gameRenderer.getMainCamera().getYRot();
+        float pitch = mc.gameRenderer.getMainCamera().getXRot();
+        long now = System.nanoTime();
         if (!rotationValid) {
             previousYaw = yaw;
             previousPitch = pitch;
+            previousFrameNanos = now;
             rotationValid = true;
-
             return;
         }
 
-        float dyaw = wrap(yaw - previousYaw), dpitch = pitch - previousPitch;
+        float dyaw = wrap(yaw - previousYaw);
+        float dpitch = pitch - previousPitch;
         previousYaw = yaw;
         previousPitch = pitch;
 
-        // Exponential accumulation approximates a short exposure window.
-        // It keeps blur visible at high FPS without retaining old frames.
-        accumulatedYaw = accumulatedYaw * 0.72f + dyaw;
-        accumulatedPitch = accumulatedPitch * 0.72f + dpitch;
+        // Keep a short exposure window with time-based decay. A fixed per-frame
+        // multiplier made the effect vanish much faster at high frame rates.
+        float elapsed = previousFrameNanos == 0L ? 1.0f / 60.0f
+                : clamp((now - previousFrameNanos) / 1_000_000_000.0f, 0.0f, 0.1f);
+        previousFrameNanos = now;
+        float decay = (float) Math.pow(0.72, elapsed * 60.0f);
+        accumulatedYaw = accumulatedYaw * decay + dyaw;
+        accumulatedPitch = accumulatedPitch * decay + dpitch;
 
         float sensitivity = clamp(config.motionBlurSensitivity, 0.25f, 2.0f);
-        float movement = (Math.abs(accumulatedYaw) + Math.abs(accumulatedPitch)) * sensitivity;
+        float motionYaw = accumulatedYaw * sensitivity;
+        float motionPitch = accumulatedPitch * sensitivity;
+        float movement = (float) Math.sqrt(motionYaw * motionYaw + motionPitch * motionPitch);
 
 
         int w = mc.getWindow().getWidth(), h = mc.getWindow().getHeight();
@@ -98,6 +111,7 @@ public final class MotionBlurRenderer {
         int vx=VIEWPORT_BUFFER.get(0), vy=VIEWPORT_BUFFER.get(1), vw=VIEWPORT_BUFFER.get(2), vh=VIEWPORT_BUFFER.get(3);
         int oldProgram=GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int oldVao=GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        int oldArrayBuffer=GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
         int oldActive=GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         boolean depth=GL11.glIsEnabled(GL11.GL_DEPTH_TEST), blend=GL11.glIsEnabled(GL11.GL_BLEND);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -112,13 +126,13 @@ public final class MotionBlurRenderer {
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,currentTexture);
             GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D,0,0,0,0,0,w,h);
-            float mx = clamp(-accumulatedYaw / 90.0f, -0.10f, 0.10f);
-            float my = clamp(accumulatedPitch / 70.0f, -0.10f, 0.10f);
-            // Scale the blend quickly enough to remain visible at high FPS,
-            // while keeping the displacement proportional to actual camera rotation.
+            // The previous frame contains scene positions from before the camera
+            // moved: yaw-right shifts the old image right; pitch-down shifts it down.
+            float mx = clamp(motionYaw / 90.0f, -0.10f, 0.10f);
+            float my = clamp(-motionPitch / 70.0f, -0.10f, 0.10f);
             float strength = historyValid
-                    ? clamp(config.motionBlurStrength, 0.0f, 0.9f)
-                      * clamp(movement / 0.12f, 0.0f, 1.0f)
+                    ? clamp(config.motionBlurStrength, 0.0f, 0.85f)
+                      * clamp(movement / 0.20f, 0.0f, 1.0f)
                     : 0.0f;
 
             GL11.glViewport(0,0,w,h);
@@ -150,6 +164,7 @@ public final class MotionBlurRenderer {
         } finally {
             GL20.glUseProgram(oldProgram);
             GL30.glBindVertexArray(oldVao);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, oldArrayBuffer);
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,oldTex0);
             GL13.glActiveTexture(GL13.GL_TEXTURE1);
