@@ -28,7 +28,9 @@ public class LightTextureMixin {
             float brightness =
                     FullbrightFeature.getBrightness();
 
-            return brightness / 10.0F;
+            float vanilla = original.call(instance);
+            float floor = FullbrightFeature.getMinimumBrightness() / 10.0F;
+            return Math.max(floor, brightness / 10.0F);
         }
 
         return original.call(instance);
