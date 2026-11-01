@@ -3,7 +3,6 @@ package name.vantaclient.mixin;
 import com.mojang.blaze3d.resource.CrossFrameResourcePool;
 import name.vantaclient.client.feature.MotionBlurFeature;
 import name.vantaclient.client.util.MotionBlurRenderer;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
