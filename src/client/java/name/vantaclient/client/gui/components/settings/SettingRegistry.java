@@ -43,19 +43,9 @@ public class SettingRegistry {
 
         if (feature == MotionBlurFeature.INSTANCE) {
             settings.add(new SliderSetting(
-                    "Blur Strength", 0.05, 0.85, "",
+                    "Frame Persistence", 0.0, 0.95, "",
                     () -> (double) MotionBlurFeature.getStrength(),
                     value -> MotionBlurFeature.setStrength(value.floatValue())
-            ));
-            settings.add(new SliderSetting(
-                    "Samples", 2, 12, "",
-                    () -> (double) MotionBlurFeature.getSamples(),
-                    value -> MotionBlurFeature.setSamples(value.intValue())
-            ));
-            settings.add(new SliderSetting(
-                    "Sensitivity", 0.25, 2.0, "x",
-                    () -> (double) MotionBlurFeature.getSensitivity(),
-                    value -> MotionBlurFeature.setSensitivity(value.floatValue())
             ));
         }
 
