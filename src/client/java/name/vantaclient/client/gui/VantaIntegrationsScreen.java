@@ -9,7 +9,6 @@ import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.gui.components.VantaPanelButton;
-import name.vantaclient.client.integration.VantaModMenuIntegration;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.gui.GuiGraphics;
@@ -269,8 +268,21 @@ public final class VantaIntegrationsScreen extends Screen {
         if (FabricLoader.getInstance().isModLoaded("modmenu")) {
             int x = contentX() + contentWidth() - 190;
             addRenderableWidget(VantaPanelButton.builder(Component.literal("Open Mod Menu"),
-                    button -> minecraft.setScreen(VantaModMenuIntegration.openModsScreen(this)))
+                    button -> openModMenu())
                     .bounds(x, CONTENT_TOP + 8, 180, 24).build());
+        }
+    }
+
+    private void openModMenu() {
+        try {
+            Class<?> integration = Class.forName(
+                    "name.vantaclient.client.integration.VantaModMenuIntegration");
+            Screen modsScreen = (Screen) integration
+                    .getMethod("openModsScreen", Screen.class)
+                    .invoke(null, this);
+            minecraft.setScreen(modsScreen);
+        } catch (ReflectiveOperationException | LinkageError exception) {
+            System.err.println("[Vanta Client] Could not open Mod Menu: " + exception.getMessage());
         }
     }
 
