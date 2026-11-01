@@ -35,6 +35,13 @@ public class SliderSetting implements Setting {
         this.setter = setter;
     }
 
+    public String getName() { return name; }
+    public double getMin() { return min; }
+    public double getMax() { return max; }
+    public String getUnit() { return unit; }
+    public Supplier<Double> getGetter() { return getter; }
+    public Consumer<Double> getSetter() { return setter; }
+
     @Override
     public void addWidgets(
             ClickGuiScreen screen,

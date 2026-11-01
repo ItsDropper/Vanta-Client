@@ -25,9 +25,35 @@ public final class VantaPanelButton extends AbstractWidget {
         this(x, y, width, height, label, button -> action.run(), selected, accent);
     }
 
+    public static float layoutScale() {
+        Minecraft minecraft = Minecraft.getInstance();
+        int guiWidth = minecraft.getWindow().getGuiScaledWidth();
+        int guiHeight = minecraft.getWindow().getGuiScaledHeight();
+        float fit = Math.min(1.0f, Math.min((guiWidth - 32.0f) / 920.0f,
+                (guiHeight - 32.0f) / 540.0f));
+        float preference = (float) VantaClientPreferences.get().uiScale;
+        return Math.max(0.42f, Math.min(1.0f, fit * preference));
+    }
+
+    public static int layoutOffsetX() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return Math.round((minecraft.getWindow().getGuiScaledWidth() - 920.0f * layoutScale()) / 2.0f);
+    }
+
+    public static int layoutOffsetY() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return Math.round((minecraft.getWindow().getGuiScaledHeight() - 540.0f * layoutScale()) / 2.0f);
+    }
+
+    public static int layoutX(int x) { return layoutOffsetX() + Math.round(x * layoutScale()); }
+    public static int layoutY(int y) { return layoutOffsetY() + Math.round(y * layoutScale()); }
+    public static int layoutSize(int size) { return Math.max(1, Math.round(size * layoutScale())); }
+    public static int unlayoutX(double x) { return Math.round((float) (x - layoutOffsetX()) / layoutScale()); }
+    public static int unlayoutY(double y) { return Math.round((float) (y - layoutOffsetY()) / layoutScale()); }
+
     private VantaPanelButton(int x, int y, int width, int height, String label,
                              Consumer<VantaPanelButton> action, BooleanSupplier selected, IntSupplier accent) {
-        super(x, y, width, height, Component.literal(label));
+        super(layoutX(x), layoutY(y), layoutSize(width), layoutSize(height), Component.literal(label));
         this.label = label;
         this.action = action;
         this.selected = selected;
