@@ -48,6 +48,7 @@ public class DropperUtilsConfig {
     public float motionBlurSensitivity = 1.0f;
     public float lowFireHeight = 0.5f;
     public float fullbrightBrightness = 100.0f;
+    public float fullbrightMinimum = 0.0f;
     public int anchorScanInterval = 40;
     public int anchorScanRange = 3;
 
