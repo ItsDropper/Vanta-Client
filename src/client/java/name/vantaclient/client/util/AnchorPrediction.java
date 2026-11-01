@@ -108,7 +108,7 @@ public class AnchorPrediction {
 
 
             // 2 seconds timeout
-            if (anchor.getTicksAlive() > 40) {
+            if (anchor.getTicksAlive() > name.vantaclient.client.feature.AnchorOptimizerFeature.getPredictionTimeout()) {
 
                 Minecraft mc = Minecraft.getInstance();
 
