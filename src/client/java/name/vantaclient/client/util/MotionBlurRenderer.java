@@ -74,8 +74,8 @@ public final class MotionBlurRenderer {
 
         // Read the rendered camera rather than the player entity. The camera can
         // move between entity ticks, so player rotation misses fast mouse input.
-        float yaw = mc.gameRenderer.getMainCamera().getYRot();
-        float pitch = mc.gameRenderer.getMainCamera().getXRot();
+        float yaw = mc.gameRenderer.getMainCamera().yRot();
+        float pitch = mc.gameRenderer.getMainCamera().xRot();
         long now = System.nanoTime();
         if (!rotationValid) {
             previousYaw = yaw;
