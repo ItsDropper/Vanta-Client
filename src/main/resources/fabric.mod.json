@@ -1,35 +1,37 @@
 {
-	"schemaVersion": 1,
-	"id": "dropperutils",
-	"version": "${version}",
-	"name": "DropperUtils",
-	"description": "This mod adds useful features for Minecraft.",
-	"authors": [
-		"ItsDropper"
-	],
-	"contact": {
-		"homepage": "https://github.com/ItsDropper/Dropper-Utils",
-		"sources": "https://github.com/ItsDropper/Dropper-Utils"
-	},
-	"license": "MIT",
-	"icon": "assets/dropperutils/icon.png",
-	"environment": "client",
-
-	"entrypoints": {
-		"client": [
-			"name.vantaclient.client.DropperUtilsClient"
-		]
-
-	},
-
-	"mixins": [
-		"dropperutils.mixins.json"
-	],
-
-	"depends": {
-		"fabricloader": ">=0.19.3",
-		"minecraft": "~1.21.11",
-		"java": ">=21",
-		"fabric-api": "*"
-	}
+  "schemaVersion": 1,
+  "id": "dropperutils",
+  "version": "${version}",
+  "name": "Vanta Client",
+  "description": "A configurable client mod with a public integration API.",
+  "authors": [
+    "ItsDropper"
+  ],
+  "contact": {
+    "homepage": "https://github.com/ItsDropper/Dropper-Utils",
+    "sources": "https://github.com/ItsDropper/Dropper-Utils"
+  },
+  "license": "MIT",
+  "icon": "assets/dropperutils/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "name.vantaclient.client.DropperUtilsClient"
+    ],
+    "modmenu": [
+      "name.vantaclient.client.integration.VantaModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "dropperutils.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
 }
