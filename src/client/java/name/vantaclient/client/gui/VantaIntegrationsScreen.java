@@ -66,6 +66,11 @@ public final class VantaIntegrationsScreen extends Screen {
 
         if (section == Section.MODS) {
             addModNavigation();
+            if (selection == Selection.BUILTIN_CATEGORY) {
+                addBuiltInFeatures();
+            } else if (selection == Selection.INSTALLED_MOD) {
+                addInstalledModContent();
+            }
         } else {
             addClientSettings();
         }
@@ -202,19 +207,21 @@ public final class VantaIntegrationsScreen extends Screen {
         for (int i = firstSetting; i < end; i++) {
             Feature feature = features.get(i);
             int controlX = contentX() + contentWidth() - 190;
+            int rowY = y;
             addRenderableWidget(Button.builder(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"),
                     button -> {
                         feature.toggle();
                         feature.saveConfig();
                         DropperUtilsConfig.save();
                         button.setMessage(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"));
-                    }).bounds(controlX, y, 92, 22).build());
+                    }).bounds(controlX, rowY, 92, 22).build());
 
             if (parent instanceof ClickGuiScreen clickGui) {
+                int rowY = y;
                 addRenderableWidget(Button.builder(Component.literal("Configure"), button -> {
                     minecraft.setScreen(parent);
-                    clickGui.openSettings(feature, controlX, y);
-                }).bounds(controlX + 98, y, 86, 22).build());
+                    clickGui.openSettings(feature, controlX, rowY);
+                }).bounds(controlX + 98, rowY, 86, 22).build());
             }
             y += ROW_HEIGHT;
         }
@@ -433,7 +440,7 @@ public final class VantaIntegrationsScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (section == Section.MODS && mouseX < 34 + SIDEBAR_WIDTH + 12) {
-            int available = Math.max(1, (height - 340) / 25);
+            int available = Math.max(0, (height - 143 - 4 * 27 - 34 - 38) / 25);
             int maxScroll = Math.max(0, installedMods.size() - available);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
                     sidebarScroll - (int) Math.signum(scrollY)));
