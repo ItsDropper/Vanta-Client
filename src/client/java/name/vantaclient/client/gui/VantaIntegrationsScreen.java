@@ -13,7 +13,6 @@ import name.vantaclient.client.integration.VantaModMenuIntegration;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -143,7 +142,7 @@ public final class VantaIntegrationsScreen extends Screen {
     private void addClientSettings() {
         int x = contentX() + contentWidth() - 196;
         int y = CONTENT_TOP + 8;
-        addRenderableWidget(Button.builder(
+        addRenderableWidget(VantaPanelButton.builder(
                 Component.literal(preferences.accent.name()),
                 button -> {
                     VantaClientPreferences.Accent[] accents = VantaClientPreferences.Accent.values();
@@ -316,7 +315,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 double maximum = setting.maximum() == null ? minimum : setting.maximum();
                 double step = setting.type() == SettingDefinition.Type.INTEGER ? 1
                         : Math.max(0.01, (maximum - minimum) / 100.0);
-                Button valueButton = Button.builder(Component.literal(formatNumber(
+                VantaPanelButton valueButton = Button.builder(Component.literal(formatNumber(
                         value instanceof Number number ? number.doubleValue() : minimum)), button -> {})
                         .bounds(controlX + 30, y, 120, 22).build();
                 addRenderableWidget(Button.builder(Component.literal("−"), button -> {
@@ -358,7 +357,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void updateNumeric(SettingDefinition setting, double minimum, double maximum,
-                                      double delta, Button label) {
+                                      double delta, VantaPanelButton label) {
         try {
             Object current = setting.value();
             double next = Math.max(minimum, Math.min(maximum,
