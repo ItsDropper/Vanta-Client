@@ -34,14 +34,14 @@ public class ParticleEngineMixin {
             return;
         }
 
-        if (particle == ParticleTypes.EXPLOSION
-                || particle == ParticleTypes.EXPLOSION_EMITTER
-                || particle == ParticleTypes.LARGE_SMOKE
+        boolean explosionParticle = particle == ParticleTypes.EXPLOSION
+                || particle == ParticleTypes.EXPLOSION_EMITTER;
+        boolean explosionSmoke = particle == ParticleTypes.LARGE_SMOKE
                 || particle == ParticleTypes.SMOKE
-                || particle == ParticleTypes.POOF
-                || particle == ParticleTypes.CAMPFIRE_COSY_SMOKE
-                || particle == ParticleTypes.CAMPFIRE_SIGNAL_SMOKE) {
+                || particle == ParticleTypes.POOF;
 
+        if ((explosionParticle && NoExplosionEffectsFeature.removeExplosionParticles())
+                || (explosionSmoke && NoExplosionEffectsFeature.removeExplosionSmoke())) {
             cir.setReturnValue(null);
         }
     }
