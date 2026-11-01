@@ -15,6 +15,15 @@ public class LowFireFeature extends Feature {
         );
     }
 
+    public static boolean isOverlayHidden() {
+        return name.vantaclient.client.config.DropperUtilsConfig.get().lowFireHideOverlay;
+    }
+
+    public static void setOverlayHidden(boolean hidden) {
+        name.vantaclient.client.config.DropperUtilsConfig.get().lowFireHideOverlay = hidden;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
+    }
+
     @Override
     public void onEnable() {
         DropperUtilsConfig.get().lowFire = true;
