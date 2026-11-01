@@ -1,6 +1,6 @@
-# DropperUtils
+# Vanta Client
 
-A lightweight Minecraft Fabric PvP and QoL mod focused on improving gameplay without unnecessary features or bloat.
+A Minecraft 1.21.11 Fabric client mod with built-in HUD, visual and gameplay features, a unified settings panel, and a public addon integration API.
 
 ## Features
 
@@ -45,6 +45,17 @@ DropperUtils includes a fully customizable HUD system:
 * Customizable quality of life improvements
 * Lightweight visual enhancements
 
+## Vanta Client Settings
+
+The in-game panel provides:
+- Vanta Client appearance preferences and persistent UI customization
+- Built-in feature categories for HUD, Visual, Combat, and Misc
+- An installed-mod browser populated from Fabric Loader metadata
+- Direct configuration controls for mods that register with the Vanta Client API
+- Optional hand-off to Mod Menu for mods that provide their own config screens
+
+Mod Menu is optional. Vanta Client exposes its settings through Mod Menu's public API when it is installed.
+
 ## Vanta Client Integration API
 
 Third-party Fabric mods can register typed settings through the public API. See [docs/API.md](docs/API.md) for the API v1 contract and integration example.
@@ -53,12 +64,12 @@ Third-party Fabric mods can register typed settings through the public API. See 
 
 1. Install Fabric Loader
 2. Install Fabric API
-3. Download DropperUtils
+3. Download Vanta Client
 4. Place the mod file into your `.minecraft/mods` folder
 
 ## Requirements
 
-* Minecraft 1.21.11 or 26.1x
+* Minecraft 1.21.11
 * Fabric Loader
 * Fabric API
 
