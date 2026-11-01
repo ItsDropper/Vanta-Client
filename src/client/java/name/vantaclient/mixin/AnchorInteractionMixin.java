@@ -1,5 +1,6 @@
 package name.vantaclient.mixin;
 
+import name.vantaclient.client.feature.AnchorOptimizerFeature;
 import name.vantaclient.client.util.AnchorExplosionPrediction;
 import name.vantaclient.client.util.AnchorPrediction;
 
@@ -30,6 +31,10 @@ public class AnchorInteractionMixin {
             net.minecraft.world.phys.BlockHitResult hitResult,
             CallbackInfoReturnable<net.minecraft.world.InteractionResult> cir
     ) {
+
+        if (!AnchorOptimizerFeature.INSTANCE.isEnabled()) {
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
 
@@ -71,6 +76,8 @@ public class AnchorInteractionMixin {
         }
 
         AnchorPrediction.predict(pos);
-        AnchorExplosionPrediction.predict(pos);
+        if (AnchorOptimizerFeature.isExplosionPreviewEnabled()) {
+            AnchorExplosionPrediction.predict(pos);
+        }
     }
 }
