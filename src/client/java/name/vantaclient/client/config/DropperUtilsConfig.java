@@ -51,6 +51,15 @@ public class DropperUtilsConfig {
     public int anchorScanInterval = 40;
     public int anchorScanRange = 3;
 
+    public float zoomScrollStrength = 0.65f;
+    public float motionBlurIntensity = 1.0f;
+    public boolean lowFireHideOverlay = false;
+    public boolean noExplosionParticles = true;
+    public boolean noExplosionSmoke = true;
+    public int anchorPredictionTimeoutTicks = 40;
+    public float anchorPredictionRange = 12.0f;
+    public boolean anchorExplosionPreview = true;
+
     public float armorHudScale = 1.0f;
     public float debugHudScale = 1.0f;
     public float potionHudScale = 1.0f;
