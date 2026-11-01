@@ -101,7 +101,7 @@ public final class ExperimentalModHotLoader {
 
                     classLoader = new URLClassLoader(
                             new java.net.URL[]{jar.toUri().toURL()},
-                            Thread.currentThread().getContextClassLoader());
+                            ExperimentalModHotLoader.class.getClassLoader());
                     boolean initialized = false;
                     for (String entrypoint : entrypoints) {
                         Class<?> type = Class.forName(entrypoint, true, classLoader);
