@@ -122,26 +122,23 @@ public final class VantaIntegrationsScreen extends Screen {
                 double step = setting.type() == SettingDefinition.Type.INTEGER
                         ? 1.0 : Math.max(0.01, (maximum - minimum) / 100.0);
 
+                Button label = Button.builder(Component.literal(formatNumber(current)), button -> {})
+                        .bounds(controlX + 24, y, Math.max(55, controlWidth - 48), 20).build();
+
                 Button decrement = Button.builder(Component.literal("−"), button -> {
                     double next = clamp(currentValue(setting), minimum, maximum, -step);
                     try {
-                        setting.set(setting.type() == SettingDefinition.Type.INTEGER
-                                ? (int) Math.round(next) : next);
-                        button.setMessage(Component.literal("−"));
+                        setNumericValue(setting, next);
                     } catch (RuntimeException ignored) {
-                        button.setMessage(Component.literal("!"));
+                        // Keep the last valid value visible.
                     }
                     refreshNumericLabel(setting, label);
                 }).bounds(controlX, y, 22, 20).build();
 
-                Button label = Button.builder(Component.literal(formatNumber(current)), button -> {})
-                        .bounds(controlX + 24, y, Math.max(55, controlWidth - 48), 20).build();
-
                 Button increment = Button.builder(Component.literal("+"), button -> {
                     double next = clamp(currentValue(setting), minimum, maximum, step);
                     try {
-                        setting.set(setting.type() == SettingDefinition.Type.INTEGER
-                                ? (int) Math.round(next) : next);
+                        setNumericValue(setting, next);
                     } catch (RuntimeException ignored) {
                         // Keep the last valid value visible.
                     }
@@ -189,6 +186,15 @@ public final class VantaIntegrationsScreen extends Screen {
                 });
                 addRenderableWidget(input);
             }
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void setNumericValue(SettingDefinition setting, double value) {
+        if (setting.type() == SettingDefinition.Type.INTEGER) {
+            setting.set((int) Math.round(value));
+        } else {
+            setting.set(value);
         }
     }
 
