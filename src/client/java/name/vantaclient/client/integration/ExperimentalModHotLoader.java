@@ -351,13 +351,23 @@ public final class ExperimentalModHotLoader {
             return List.of();
         }
 
-        List<String> result = new ArrayList<>();
+        // Accept Fabric's plain Java entrypoint form, including the equivalent
+        // object form when it explicitly selects the default language adapter.
+        Set<String> result = new LinkedHashSet<>();
         for (JsonElement item : client.getAsJsonArray()) {
-            if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()
-                    || item.getAsString().isBlank()) {
-                return List.of(); // Custom adapters and object declarations need Loader support.
+            String value;
+            if (item.isJsonPrimitive() && item.getAsJsonPrimitive().isString()) {
+                value = item.getAsString();
+            } else if (item.isJsonObject()) {
+                JsonObject declaration = item.getAsJsonObject();
+                value = string(declaration, "value");
+                String adapter = string(declaration, "adapter");
+                if (!adapter.isBlank() && !adapter.equals("default")) return List.of();
+            } else {
+                return List.of();
             }
-            result.add(item.getAsString());
+            if (value.isBlank()) return List.of();
+            result.add(value);
         }
         return List.copyOf(result);
     }
