@@ -8,6 +8,7 @@ import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
+import name.vantaclient.client.gui.components.VantaPanelButton;
 import name.vantaclient.client.integration.VantaModMenuIntegration;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
@@ -53,18 +54,19 @@ public final class VantaIntegrationsScreen extends Screen {
         openProgress = preferences.animations ? 0.0f : 1.0f;
         refreshModList();
 
-        addRenderableWidget(Button.builder(Component.literal("Settings"), button -> {
-            section = Section.SETTINGS;
-            selection = Selection.NONE;
-            rebuildWidgets();
-        }).bounds(34, 68, SIDEBAR_WIDTH - 24, 25).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Mods"), button -> {
-            section = Section.MODS;
-            selection = Selection.NONE;
-            sidebarScroll = 0;
-            rebuildWidgets();
-        }).bounds(34, 99, SIDEBAR_WIDTH - 24, 25).build());
+        addPanelButton("Settings", 34, 68, SIDEBAR_WIDTH - 24, 25,
+                () -> {
+                    section = Section.SETTINGS;
+                    selection = Selection.NONE;
+                    rebuildWidgets();
+                }, () -> section == Section.SETTINGS);
+        addPanelButton("Mods", 34, 99, SIDEBAR_WIDTH - 24, 25,
+                () -> {
+                    section = Section.MODS;
+                    selection = Selection.NONE;
+                    sidebarScroll = 0;
+                    rebuildWidgets();
+                }, () -> section == Section.MODS);
 
         if (section == Section.MODS) {
             addModNavigation();
@@ -91,29 +93,32 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private void addModNavigation() {
         int y = 143;
-        addRenderableWidget(Button.builder(Component.literal("HUD"), button -> selectCategory(Category.HUD))
-                .bounds(34, y, SIDEBAR_WIDTH - 24, 22).build());
+        addPanelButton("HUD", 34, y, SIDEBAR_WIDTH - 24, 22,
+                () -> selectCategory(Category.HUD),
+                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.HUD);
         y += 27;
-        addRenderableWidget(Button.builder(Component.literal("Visual"), button -> selectCategory(Category.VISUAL))
-                .bounds(34, y, SIDEBAR_WIDTH - 24, 22).build());
+        addPanelButton("Visual", 34, y, SIDEBAR_WIDTH - 24, 22,
+                () -> selectCategory(Category.VISUAL),
+                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.VISUAL);
         y += 27;
-        addRenderableWidget(Button.builder(Component.literal("Combat"), button -> selectCategory(Category.COMBAT))
-                .bounds(34, y, SIDEBAR_WIDTH - 24, 22).build());
+        addPanelButton("Combat", 34, y, SIDEBAR_WIDTH - 24, 22,
+                () -> selectCategory(Category.COMBAT),
+                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.COMBAT);
         y += 27;
-        addRenderableWidget(Button.builder(Component.literal("Misc"), button -> selectCategory(Category.MISC))
-                .bounds(34, y, SIDEBAR_WIDTH - 24, 22).build());
+        addPanelButton("Misc", 34, y, SIDEBAR_WIDTH - 24, 22,
+                () -> selectCategory(Category.MISC),
+                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
 
         y += 34;
         int available = Math.max(0, (height - y - 38) / 25);
-        int start = Math.min(sidebarScroll, Math.max(0, installedMods.size() - available));
-        int end = Math.min(installedMods.size(), start + available);
-        for (int index = start; index < end; index++) {
+        int startIndex = Math.min(sidebarScroll, Math.max(0, installedMods.size() - available));
+        int endIndex = Math.min(installedMods.size(), startIndex + available);
+        for (int index = startIndex; index < endIndex; index++) {
             ModContainer mod = installedMods.get(index);
             String id = mod.getMetadata().getId();
-            addRenderableWidget(Button.builder(
-                    Component.literal(mod.getMetadata().getName()),
-                    button -> selectInstalledMod(id))
-                    .bounds(34, y, SIDEBAR_WIDTH - 24, 22).build());
+            addPanelButton(mod.getMetadata().getName(), 34, y, SIDEBAR_WIDTH - 24, 22,
+                    () -> selectInstalledMod(id),
+                    () -> selection == Selection.INSTALLED_MOD && id.equals(selectedModId));
             y += 25;
         }
     }
@@ -187,6 +192,22 @@ public final class VantaIntegrationsScreen extends Screen {
             button.setMessage(Component.literal(next ? "On" : "Off"));
             rebuildWidgets();
         }).bounds(x, y, 170, 22).build());
+    }
+
+    private int accentColor() {
+        return preferences == null ? 0xFF718BFF : preferences.accent.color();
+    }
+
+    private VantaPanelButton addPanelButton(String label, int x, int y, int buttonWidth, int buttonHeight,
+                                            Runnable action) {
+        return addPanelButton(label, x, y, buttonWidth, buttonHeight, action, () -> false);
+    }
+
+    private VantaPanelButton addPanelButton(String label, int x, int y, int buttonWidth, int buttonHeight,
+                                            Runnable action, java.util.function.BooleanSupplier selected) {
+        VantaPanelButton button = new VantaPanelButton(x, y, buttonWidth, buttonHeight, label,
+                action, selected, this::accentColor);
+        return addRenderableWidget(button);
     }
 
     private int rowHeight() {
