@@ -50,6 +50,19 @@ public final class VantaSettingsScreen extends Screen {
         runtime.layout(font, width, height);
     }
 
+    void setPageForScreenshot(int targetPage) {
+        page = switch (targetPage) {
+            case 0 -> Page.OVERVIEW;
+            case 1 -> Page.HUD;
+            case 2 -> Page.APPEARANCE;
+            default -> throw new IllegalArgumentException("Unknown settings page: " + targetPage);
+        };
+        selectedFeature = null;
+        searchQuery = "";
+        pendingSearch = "";
+        rebuildUi();
+    }
+
     private VantaUiNode buildRoot() {
         boolean compact = width < 760;
         VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
