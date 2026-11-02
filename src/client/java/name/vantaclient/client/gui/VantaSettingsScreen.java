@@ -262,8 +262,10 @@ public final class VantaSettingsScreen extends Screen {
         content.add(search);
 
         if (features.isEmpty()) {
-            content.add(VantaUiNode.paragraph("No features match this filter.",
-                    VantaUiTheme.TEXT_MUTED, 1));
+            String emptyMessage = searchQuery.isBlank()
+                    ? "No features are assigned to this category yet."
+                    : "No features match this filter.";
+            content.add(VantaUiNode.paragraph(emptyMessage, VantaUiTheme.TEXT_MUTED, 1));
             return;
         }
         VantaUiNode list = VantaUiNode.column(1, 8).background(VantaUiTheme.PANEL_RAISED);
