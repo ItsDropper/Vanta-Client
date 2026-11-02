@@ -550,6 +550,9 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.pose().translate((float) VantaPanelButton.layoutOffsetX(),
                 (float) VantaPanelButton.layoutOffsetY());
         graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale());
+        if (preferences != null && preferences.animations) {
+            graphics.pose().translate(0.0f, 7.0f * (1.0f - Math.min(1.0f, openProgress + 0.16f * partialTick)));
+        }
         int left = 20, top = 18, right = 940, bottom = 522;
         drawRoundedCard(graphics, left - 6, top - 6, right - left + 12,
                 bottom - top + 12, 0x55000000, 18);
