@@ -34,6 +34,18 @@ public final class VantaPanelButton extends AbstractWidget {
         this(x, y, width, height, label, button -> action.run(), selected, accent, accentSurface, false);
     }
 
+    public VantaPanelButton(int x, int y, int width, int height, String label,
+                            Runnable action, BooleanSupplier selected, IntSupplier accent,
+                            boolean accentSurface, boolean accentWhenSelected) {
+        super(layoutX(x), layoutY(y), layoutSize(width), layoutSize(height), Component.literal(label));
+        this.label = label;
+        this.action = button -> action.run();
+        this.selected = selected;
+        this.accent = accent;
+        this.accentSurface = accentSurface;
+        this.accentWhenSelected = accentWhenSelected;
+    }
+
     public static float layoutScale() {
         Minecraft minecraft = Minecraft.getInstance();
         int guiWidth = minecraft.getWindow().getGuiScaledWidth();
