@@ -64,7 +64,6 @@ public final class HudSettingsPanel {
                 .height(Math.max(0, viewportHeight - 44))
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
-        root.add(VantaUiNode.spacer(1).size(0, 60));
 
         VantaUiNode panel = VantaUiNode.column(9, 14)
                 .width(252)
@@ -120,7 +119,14 @@ public final class HudSettingsPanel {
                 }));
         panel.add(VantaUiNode.button("Done", HudSettingsPanel::close)
                 .height(30));
-        root.add(panel);
+
+        VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
+                .width(252)
+                .height(Math.max(0, viewportHeight - 44))
+                .align(VantaUiNode.Alignment.START);
+        inspectorSlot.add(VantaUiNode.spacer(1).height(60));
+        inspectorSlot.add(panel);
+        root.add(inspectorSlot);
         return root;
     }
 
