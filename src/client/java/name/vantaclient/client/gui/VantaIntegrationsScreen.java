@@ -27,9 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -152,12 +150,19 @@ public class VantaIntegrationsScreen extends Screen {
             var entry = jar.getJarEntry(iconPath);
             if (entry == null || entry.getSize() <= 0 || entry.getSize() > 1024 * 1024) return;
             byte[] bytes;
-            try (InputStream input = jar.getInputStream(entry);
-                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-                input.transferTo(output);
-                bytes = output.toByteArray();
+            try (InputStream input = jar.getInputStream(entry)) {
+                bytes = input.readNBytes(1024 * 1024 + 1);
             }
-            if (bytes.length == 0 || bytes.length > 1024 * 1024) return;
+            if (bytes.length < 24 || bytes.length > 1024 * 1024
+                    || bytes[0] != (byte) 0x89 || bytes[1] != 0x50
+                    || bytes[2] != 0x4E || bytes[3] != 0x47
+                    || bytes[4] != 0x0D || bytes[5] != 0x0A
+                    || bytes[6] != 0x1A || bytes[7] != 0x0A) return;
+            int imageWidth = ((bytes[16] & 0xFF) << 24) | ((bytes[17] & 0xFF) << 16)
+                    | ((bytes[18] & 0xFF) << 8) | (bytes[19] & 0xFF);
+            int imageHeight = ((bytes[20] & 0xFF) << 24) | ((bytes[21] & 0xFF) << 16)
+                    | ((bytes[22] & 0xFF) << 8) | (bytes[23] & 0xFF);
+            if (imageWidth <= 0 || imageHeight <= 0 || imageWidth > 512 || imageHeight > 512) return;
             NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
             if (image.getWidth() > 512 || image.getHeight() > 512
                     || image.getWidth() <= 0 || image.getHeight() <= 0) {
@@ -900,6 +905,10 @@ public class VantaIntegrationsScreen extends Screen {
 
     @Override
     public void onClose() {
+        for (Identifier texture : modIconTextures.values()) {
+            minecraft.getTextureManager().release(texture);
+        }
+        modIconTextures.clear();
         minecraft.setScreen(parent);
     }
 }
