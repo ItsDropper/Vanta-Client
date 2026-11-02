@@ -54,11 +54,6 @@ dependencies {
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
-tasks.register("runProductionClientGameTest", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
-	jvmArgs.add("-Dfabric.client.gametest")
-	useXVFB = true
-}
-
 base {
 	archivesName = "dropperutils"
 }
