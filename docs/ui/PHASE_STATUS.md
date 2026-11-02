@@ -94,7 +94,7 @@ No actual Minecraft screenshots have been captured or visually inspected in this
 
 <badge color="warning">CI compilation only; runtime tests pending</badge>
 
-Multiple repository GitHub Actions runs have passed the JDK 21 Gradle build for intermediate framework revisions. Latest full build: commit `851dcd27746296b34d60c81aee879861fe38f0a6`, GitHub Actions run [`41516894258`](https://github.com/ItsDropper/Vanta-Client/actions/runs/41516894258) — **success** on the repository's JDK 21 Gradle build. The later `1ea614f` commit only adds documentation.
+Multiple repository GitHub Actions runs have passed the JDK 21 Gradle build for intermediate framework revisions. Latest completed code build: commit `16cad58284a03b47003d904163d8aa4b37514fd7`, GitHub Actions run [`41517379113`](https://github.com/ItsDropper/Vanta-Client/actions/runs/41517379113) — **success** on the repository's JDK 21 Gradle build. Two newer small interaction-hardening commits (`bb7c367` and `07b1384`) are beyond that verified build; their final CI status was not yet available at the last check.
 
 No in-game FPS comparison, GPU profile, allocation profile or multi-resolution manual test has been performed. The prototype's CPU submission timer is an instrument, not a performance result.
 
