@@ -111,7 +111,7 @@ public final class HudSettingsPanel {
         drawSlider(graphics, x + 16, sliderY, PANEL_WIDTH - 32, selected.getScale(),
                 accent, alpha);
 
-        int controlsY = y + (selected instanceof ArmorHudElement ? 183 : 137);
+        int controlsY = y + (selected instanceof ArmorHudElement ? 173 : 137);
         fillRounded(graphics, x + 12, controlsY - 10, PANEL_WIDTH - 24, 1, 1,
                 withAlpha(BORDER, alpha));
         sectionLabel(graphics, mc, "ALIGNMENT", x + 16, controlsY, alpha);
