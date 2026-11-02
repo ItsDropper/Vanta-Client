@@ -131,9 +131,21 @@ public final class ModrinthBrowserService {
         if (!filename.toLowerCase(Locale.ROOT).endsWith(".jar")) throw new IOException("Selected Modrinth file is not a JAR.");
         Path destination = mods.resolve(filename).normalize();
         if (!destination.getParent().equals(mods.normalize())) throw new IOException("Invalid download filename.");
+        JsonObject hashes = primary.has("hashes") && primary.get("hashes").isJsonObject()
+                ? primary.getAsJsonObject("hashes") : new JsonObject();
+        String expectedSha512 = string(hashes, "sha512");
         if (Files.isRegularFile(destination) && Files.size(destination) > 0) {
-            installed.add(destination);
-            return;
+            if (expectedSha512.isBlank() || expectedSha512.equalsIgnoreCase(sha512(destination))) {
+                installed.add(destination);
+                return;
+            }
+            String name = filename.substring(0, filename.length() - 4);
+            destination = mods.resolve(name + "-" + projectId + ".jar").normalize();
+            if (Files.isRegularFile(destination) && Files.size(destination) > 0
+                    && expectedSha512.equalsIgnoreCase(sha512(destination))) {
+                installed.add(destination);
+                return;
+            }
         }
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(60))
                 .header("User-Agent", "VantaClient/1.0 (https://github.com/ItsDropper/Vanta-Client)")
@@ -154,6 +166,9 @@ public final class ModrinthBrowserService {
                 output.write(buffer, 0, read);
             }
             if (total == 0) throw new IOException("Modrinth returned an empty file.");
+            if (!expectedSha512.isBlank() && !expectedSha512.equalsIgnoreCase(sha512(temporary))) {
+                throw new IOException("Downloaded mod failed its Modrinth SHA-512 integrity check.");
+            }
             try (java.util.jar.JarFile ignored = new java.util.jar.JarFile(temporary.toFile())) {
                 if (ignored.getJarEntry("fabric.mod.json") == null) throw new IOException("Downloaded file is not a Fabric mod JAR.");
             }
@@ -205,6 +220,20 @@ public final class ModrinthBrowserService {
         }
         try { return JsonParser.parseString(response.body()); }
         catch (RuntimeException exception) { throw new IOException("Modrinth returned invalid JSON.", exception); }
+    }
+
+    private static String sha512(Path file) throws IOException {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-512");
+            try (InputStream input = Files.newInputStream(file)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) != -1) digest.update(buffer, 0, read);
+            }
+            return java.util.HexFormat.of().formatHex(digest.digest());
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IOException("SHA-512 is unavailable.", exception);
+        }
     }
 
     private static String string(JsonObject object, String key) {
