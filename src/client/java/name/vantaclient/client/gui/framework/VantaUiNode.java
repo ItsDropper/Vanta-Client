@@ -1,10 +1,8 @@
 package name.vantaclient.client.gui.framework;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.Style;
@@ -12,8 +10,6 @@ import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -28,7 +24,6 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    private static final Set<Identifier> REGISTERED_IMAGES = ConcurrentHashMap.newKeySet();
     public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
     public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET }
     public enum Direction { ROW, COLUMN, STACK }
@@ -165,15 +160,6 @@ public final class VantaUiNode {
     }
     public static VantaUiNode image(Identifier texture) {
         if (texture == null) throw new IllegalArgumentException("Image texture cannot be null.");
-        if (REGISTERED_IMAGES.add(texture)) {
-            try {
-                Minecraft.getInstance().getTextureManager()
-                        .registerAndLoad(texture, new SimpleTexture(texture));
-            } catch (RuntimeException exception) {
-                REGISTERED_IMAGES.remove(texture);
-                throw new IllegalStateException("Unable to load Vanta UI texture: " + texture, exception);
-            }
-        }
         VantaUiNode node = new VantaUiNode(Kind.IMAGE, null);
         node.texture = texture;
         node.size(24, 24);
@@ -586,11 +572,8 @@ public final class VantaUiNode {
                 }
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
-            case IMAGE -> {
-                graphics.fill(x, y, x + width, y + height, 0xFFFF00FF);
-                graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
-                        0.0f, 0.0f, width, height, 962, 702);
-            }
+            case IMAGE -> graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
+                    0.0f, 0.0f, width, height, 962, 702, 962, 702);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);
