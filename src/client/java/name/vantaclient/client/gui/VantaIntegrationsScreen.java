@@ -857,16 +857,30 @@ public class VantaIntegrationsScreen extends Screen {
                     .filter(entry -> entry.getMetadata().getId().equals(selectedModId))
                     .findFirst().orElse(null);
             if (mod != null) {
-                graphics.drawString(font, mod.getMetadata().getName(), contentX(), 66, 0xFFE8EAF0);
+                drawRoundedCard(graphics, contentX() - 8, 58, contentWidth() + 8, 62,
+                        0xFF1A202B, 12);
+                drawRoundedCard(graphics, contentX() + 2, 68, 42, 42, 0xFF252F40, 10);
+                Identifier detailIcon = modIconTextures.get(selectedModId);
+                if (detailIcon != null) {
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, detailIcon, contentX() + 4, 70,
+                            0.0f, 0.0f, 38, 38, 38, 38);
+                } else {
+                    String initial = mod.getMetadata().getName().isBlank() ? "?"
+                            : mod.getMetadata().getName().substring(0, 1).toUpperCase(Locale.ROOT);
+                    graphics.drawCenteredString(font, initial, contentX() + 23, 84, accent);
+                }
+                graphics.drawString(font, font.plainSubstrByWidth(
+                        mod.getMetadata().getName(), contentWidth() - 72),
+                        contentX() + 54, 68, 0xFFF0F3F9);
                 drawWrappedText(graphics, mod.getMetadata().getId() + "  •  " +
-                        mod.getMetadata().getVersion().getFriendlyString(), contentX(), 86,
-                        contentWidth() - 12, 0xFF9296A3, 1);
+                        mod.getMetadata().getVersion().getFriendlyString(), contentX() + 54, 84,
+                        contentWidth() - 72, 0xFF9296A3, 1);
                 ModDescriptor descriptor = integrations.stream()
                         .filter(entry -> entry.id().equals(selectedModId)).findFirst().orElse(null);
                 String description = descriptor != null ? descriptor.description() : mod.getMetadata().getDescription();
                 if (preferences.showDescriptions && description != null && !description.isBlank()) {
-                    drawWrappedText(graphics, description, contentX(), 105,
-                            contentWidth() - 12, 0xFF858A98, 2);
+                    drawWrappedText(graphics, description, contentX() + 54, 99,
+                            contentWidth() - 72, 0xFF858A98, 1);
                 }
                 if (descriptor == null) {
                     boolean hasDiscoveredSettings = discoveredConfigFactories.containsKey(selectedModId);
