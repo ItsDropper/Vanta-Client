@@ -429,12 +429,20 @@ public final class VantaUiNode {
 
     void tick(VantaUiTheme theme) {
         float hoverTarget = hovered ? 1.0f : 0.0f;
-        hoverAmount += (hoverTarget - hoverAmount) * 0.30f;
-        if (Math.abs(hoverTarget - hoverAmount) < 0.01f) hoverAmount = hoverTarget;
+        if (!theme.animationsEnabled()) {
+            hoverAmount = hoverTarget;
+        } else {
+            hoverAmount += (hoverTarget - hoverAmount) * 0.30f;
+            if (Math.abs(hoverTarget - hoverAmount) < 0.01f) hoverAmount = hoverTarget;
+        }
         if (kind == Kind.TOGGLE && toggleValue != null) {
             float target = toggleValue.getAsBoolean() ? 1.0f : 0.0f;
-            animatedToggle += (target - animatedToggle) * 0.28f;
-            if (Math.abs(target - animatedToggle) < 0.01f) animatedToggle = target;
+            if (!theme.animationsEnabled()) {
+                animatedToggle = target;
+            } else {
+                animatedToggle += (target - animatedToggle) * 0.28f;
+                if (Math.abs(target - animatedToggle) < 0.01f) animatedToggle = target;
+            }
         }
         for (VantaUiNode child : children) child.tick(theme);
     }
