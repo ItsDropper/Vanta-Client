@@ -774,7 +774,7 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
         drawVantaBrandMark(graphics, 34, 28, accent);
-        graphics.drawString(font, "VANTA CLIENT", 72, 31, 0xFFF2F5FC);
+        graphics.drawString(font, "VANTA CLIENT", 72, 31, accent);
         graphics.drawString(font, "FABRIC CLIENT", 72, 46, 0xFF7F8CA1);
         graphics.drawString(font, "MODS & OPTIONS", 34, 63, 0xFF858A98);
         graphics.drawString(font, "PERSONALIZATION", 34, 117, 0xFF858A98);
@@ -785,6 +785,13 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "BUILT-IN", 34, 166, 0xFF858A98);
             graphics.drawString(font, "INSTALLED MODS", 34, 302, 0xFF858A98);
         }
+        drawRoundedCard(graphics, 34, 454, 184, 42, 0xFF202A38, 11);
+        drawRoundedCard(graphics, 42, 461, 28, 28, mixColor(0xFF26364C, accent, 0.24f), 9);
+        drawRoundedCard(graphics, 43, 462, 26, 26, 0xFF151E2A, 8);
+        graphics.drawCenteredString(font, "V", 56, 471, accent);
+        graphics.drawString(font, "Vanta Client", 78, 462, 0xFFE8EDF6);
+        graphics.drawString(font, "Fabric Edition", 78, 476, 0xFF7F8CA1);
+
         graphics.drawString(font, section == Section.SETTINGS ? "Settings" : "Mods",
                 contentX(), 27, 0xFFF2F4F9);
         graphics.drawString(font, section == Section.SETTINGS
