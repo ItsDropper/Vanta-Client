@@ -20,10 +20,17 @@ public final class VantaPanelButton extends AbstractWidget {
     private final IntSupplier accent;
     private String label;
     private float hoverAmount;
+    private final boolean accentSurface;
 
     public VantaPanelButton(int x, int y, int width, int height, String label,
                             Runnable action, BooleanSupplier selected, IntSupplier accent) {
-        this(x, y, width, height, label, button -> action.run(), selected, accent);
+        this(x, y, width, height, label, button -> action.run(), selected, accent, false);
+    }
+
+    public VantaPanelButton(int x, int y, int width, int height, String label,
+                            Runnable action, BooleanSupplier selected, IntSupplier accent,
+                            boolean accentSurface) {
+        this(x, y, width, height, label, button -> action.run(), selected, accent, accentSurface);
     }
 
     public static float layoutScale() {
@@ -53,12 +60,14 @@ public final class VantaPanelButton extends AbstractWidget {
     public static int unlayoutY(double y) { return Math.round((float) (y - layoutOffsetY()) / layoutScale()); }
 
     private VantaPanelButton(int x, int y, int width, int height, String label,
-                             Consumer<VantaPanelButton> action, BooleanSupplier selected, IntSupplier accent) {
+                             Consumer<VantaPanelButton> action, BooleanSupplier selected, IntSupplier accent,
+                             boolean accentSurface) {
         super(layoutX(x), layoutY(y), layoutSize(width), layoutSize(height), Component.literal(label));
         this.label = label;
         this.action = action;
         this.selected = selected;
         this.accent = accent;
+        this.accentSurface = accentSurface;
     }
 
     public static Builder builder(Component message, Consumer<VantaPanelButton> action) {
@@ -83,9 +92,12 @@ public final class VantaPanelButton extends AbstractWidget {
         hoverAmount += (target - hoverAmount) * 0.24f;
         if (Math.abs(target - hoverAmount) < 0.015f) hoverAmount = target;
 
-        int background = mixColor(0xFF171C26, 0xFF252F40, hoverAmount);
-        if (active) background = mixColor(background, 0xFF1D304D, 0.82f);
-        int border = mixColor(0xFF2A3040, accent.getAsInt(), active ? 0.52f : hoverAmount * 0.36f);
+        int background = accentSurface
+                ? mixColor(accent.getAsInt(), 0xFF6599FF, hoverAmount * 0.22f)
+                : mixColor(0xFF171C26, 0xFF252F40, hoverAmount);
+        if (active && !accentSurface) background = mixColor(background, 0xFF1D304D, 0.82f);
+        int border = accentSurface ? mixColor(accent.getAsInt(), 0xFF8DB2FF, hoverAmount * 0.35f)
+                : mixColor(0xFF2A3040, accent.getAsInt(), active ? 0.52f : hoverAmount * 0.36f);
         fillRounded(graphics, getX(), getY(), width, height, 8, border);
         fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 7, background);
 
@@ -99,8 +111,11 @@ public final class VantaPanelButton extends AbstractWidget {
 
         int textColor = active ? 0xFFF7F9FF : hovered ? 0xFFF0F4FC : 0xFFAAB4C5;
         String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
+        int textX = accentSurface
+                ? getX() + (width - Minecraft.getInstance().font.width(visibleLabel)) / 2
+                : getX() + 10;
         graphics.drawString(Minecraft.getInstance().font, visibleLabel,
-                getX() + 10, getY() + (height - 8) / 2, textColor);
+                textX, getY() + (height - 8) / 2, accentSurface ? 0xFFFFFFFF : textColor);
     }
 
     private static void fillRounded(GuiGraphics graphics, int x, int y, int width,
@@ -164,7 +179,7 @@ public final class VantaPanelButton extends AbstractWidget {
 
         public VantaPanelButton build() {
             return new VantaPanelButton(x, y, width, height, message.getString(), action,
-                    () -> false, () -> VantaClientPreferences.get().accent.color());
+                    () -> false, () -> VantaClientPreferences.get().accent.color(), false);
         }
     }
 }
