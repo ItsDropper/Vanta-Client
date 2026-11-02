@@ -3,6 +3,7 @@ package name.vantaclient.client.gui.framework;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
@@ -1117,7 +1118,7 @@ public final class VantaUiNode {
     }
 
     static Component styledText(String value, Identifier fontId) {
-        return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(fontId == null ? UI_FONT : fontId));
+        return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(new FontDescription.Resource(fontId == null ? UI_FONT : fontId)));
     }
     static int textWidth(Font font, String value, Identifier fontId) { return font.width(styledText(value, fontId)); }
     static String fitText(Font font, String value, int maximumWidth, Identifier fontId) {
