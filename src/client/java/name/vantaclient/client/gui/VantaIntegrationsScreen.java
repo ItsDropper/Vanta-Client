@@ -773,10 +773,9 @@ public class VantaIntegrationsScreen extends Screen {
                 bottom - top - 74, 0xFF121720, 14);
         graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
-        graphics.fill(34, 31, 37, 44, accent);
-        graphics.drawString(font, "VANTA", 45, 28, 0xFFF4F6FC);
-        graphics.drawString(font, "CLIENT", 90, 28, 0xFF9AA4B6);
-        graphics.drawString(font, "MINECRAFT MOD", 34, 47, 0xFF727D90);
+        drawVantaBrandMark(graphics, 34, 28, accent);
+        graphics.drawString(font, "VANTA CLIENT", 72, 31, 0xFFF2F5FC);
+        graphics.drawString(font, "FABRIC CLIENT", 72, 46, 0xFF7F8CA1);
         graphics.drawString(font, "MODS & OPTIONS", 34, 63, 0xFF858A98);
         graphics.drawString(font, "PERSONALIZATION", 34, 117, 0xFF858A98);
         if (section == Section.SETTINGS) {
@@ -925,10 +924,17 @@ public class VantaIntegrationsScreen extends Screen {
             Set<String> hotLoadedIds = new HashSet<>();
             ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
             if (mods.isEmpty()) {
-                graphics.drawString(font, "No third-party mod JARs found in the active instance mods folder.",
-                        contentX() + 8, startY + 18, 0xFF9296A3);
-                graphics.drawString(font, "Add Fabric mods, then reopen this screen to refresh the list.",
-                        contentX() + 8, startY + 34, 0xFF727D90);
+                drawRoundedCard(graphics, contentX(), startY + 8, contentWidth(), 116,
+                        0xFF1A222E, 14);
+                drawRoundedCard(graphics, contentX() + 16, startY + 25, 38, 38,
+                        0xFF27364A, 11);
+                graphics.drawCenteredString(font, "＋", contentX() + 35, startY + 37, accent);
+                graphics.drawString(font, "Your mod library is empty", contentX() + 66,
+                        startY + 28, 0xFFE8EDF6);
+                graphics.drawString(font, "Add Fabric mod JARs to this instance, then reopen Vanta Client.",
+                        contentX() + 66, startY + 45, 0xFF8E9AAF);
+                graphics.drawString(font, "Installed mods appear here with their original icons and settings links.",
+                        contentX() + 66, startY + 61, 0xFF748197);
             }
             int logicalMouseX = VantaPanelButton.unlayoutX(mouseX);
             int logicalMouseY = VantaPanelButton.unlayoutY(mouseY);
@@ -944,16 +950,18 @@ public class VantaIntegrationsScreen extends Screen {
                 hover += ((hovered ? 1.0f : 0.0f) - hover) * 0.22f;
                 if (Math.abs((hovered ? 1.0f : 0.0f) - hover) < 0.015f) hover = hovered ? 1.0f : 0.0f;
                 modCardHover.put(mod.id(), hover);
+                drawRoundedCard(graphics, x + 2, y + 4, cardWidth, cardHeight,
+                        0x44000000, 13);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
-                        withAlpha(accent, 0.22f + hover * 0.34f), 12);
+                        mixColor(0xFF303A49, accent, 0.10f + hover * 0.22f), 13);
                 drawRoundedCard(graphics, x + 1, y + 1, cardWidth - 2, cardHeight - 2,
-                        mixColor(0xFF1B222E, 0xFF263449, hover), 11);
-                drawRoundedCard(graphics, x + 8, y + 7, cardWidth - 16, cardHeight - 44,
-                        0xFF202A38, 10);
+                        mixColor(0xFF1B222E, 0xFF27364B, hover), 12);
+                drawRoundedCard(graphics, x + 8, y + 7, cardWidth - 16, 58,
+                        mixColor(0xFF202A38, 0xFF29384C, hover), 10);
                 Identifier iconTexture = modIconTextures.get(mod.id());
-                int iconSize = 38;
+                int iconSize = 40;
                 int iconX = x + (cardWidth - iconSize) / 2;
-                int iconY = y + 18;
+                int iconY = y + 16;
                 if (iconTexture != null) {
                     graphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, iconX, iconY,
                             0.0f, 0.0f, iconSize, iconSize, iconSize, iconSize);
@@ -994,6 +1002,25 @@ public class VantaIntegrationsScreen extends Screen {
         }
         graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void drawVantaBrandMark(GuiGraphics graphics, int x, int y, int accent) {
+        drawRoundedCard(graphics, x + 2, y + 3, 30, 30, 0x55000000, 10);
+        drawRoundedCard(graphics, x, y, 30, 30, mixColor(0xFF25344A, accent, 0.28f), 10);
+        drawRoundedCard(graphics, x + 1, y + 1, 28, 28, 0xFF151E2B, 9);
+        String[] mark = {"10001", "10001", "01010", "01010", "00100"};
+        int cell = 3;
+        int gap = 1;
+        int startX = x + 6;
+        int startY = y + 6;
+        for (int row = 0; row < mark.length; row++) {
+            for (int column = 0; column < mark[row].length(); column++) {
+                if (mark[row].charAt(column) == '1') {
+                    drawRoundedCard(graphics, startX + column * (cell + gap),
+                            startY + row * (cell + gap), cell, cell, accent, 1);
+                }
+            }
+        }
     }
 
     private int mixColor(int from, int to, float amount) {
