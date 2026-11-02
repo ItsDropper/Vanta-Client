@@ -58,7 +58,7 @@ public class Events {
 
 
             if (Keybinds.guiKey.consumeClick()) {
-                client.setScreen(new VantaIntegrationsScreen(null));
+                client.setScreen(new VantaSettingsScreen(null));
             }
 
 
