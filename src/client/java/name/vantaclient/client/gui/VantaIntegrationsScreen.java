@@ -427,7 +427,7 @@ public class VantaIntegrationsScreen extends Screen {
     private VantaPanelButton addPanelButton(String label, int x, int y, int buttonWidth, int buttonHeight,
                                             Runnable action, java.util.function.BooleanSupplier selected) {
         VantaPanelButton button = new VantaPanelButton(x, y, buttonWidth, buttonHeight, label,
-                action, selected, this::accentColor);
+                action, selected, this::accentColor, false, true);
         return addRenderableWidget(button);
     }
 
