@@ -75,7 +75,7 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS) {
             addModNavigation();
             if (selection == Selection.NONE) {
-                addPanelButton("Try hot-load new mods", contentX(), CONTENT_TOP + 54, 230, 24, () -> {
+                addPanelButton("Scan for experimental hot-loads", contentX(), CONTENT_TOP + 42, 220, 26, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
                     List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
@@ -88,7 +88,10 @@ public class VantaIntegrationsScreen extends Screen {
                                 .collect(java.util.stream.Collectors.joining(", "));
                         hotLoadStatus += " Session mods: " + names + ".";
                     }
+                    refreshModList();
+                    rebuildWidgets();
                 });
+                addInstalledModGrid();
             }
             if (selection == Selection.BUILTIN_CATEGORY) {
                 addBuiltInFeatures();
@@ -137,17 +140,31 @@ public class VantaIntegrationsScreen extends Screen {
                 () -> selectCategory(Category.MISC),
                 () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
 
-        y += 54;
-        int available = Math.max(0, (504 - y - 38) / 25);
-        int startIndex = Math.min(sidebarScroll, Math.max(0, installedMods.size() - available));
-        int endIndex = Math.min(installedMods.size(), startIndex + available);
-        for (int index = startIndex; index < endIndex; index++) {
+        // Installed mods are shown as a three-column card grid in the main content area.
+    }
+
+    private void addInstalledModGrid() {
+        int columns = 3;
+        int gap = 12;
+        int cardWidth = Math.max(150, (contentWidth() - gap * (columns - 1)) / columns);
+        int cardHeight = 104;
+        int startY = CONTENT_TOP + 88;
+        int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
+        int start = Math.min(sidebarScroll, Math.max(0, installedMods.size() - visibleRows * columns));
+        int end = Math.min(installedMods.size(), start + visibleRows * columns);
+        for (int index = start; index < end; index++) {
             ModContainer mod = installedMods.get(index);
             String id = mod.getMetadata().getId();
-            addPanelButton(mod.getMetadata().getName(), 34, y, SIDEBAR_WIDTH - 24, 22,
-                    () -> selectInstalledMod(id),
-                    () -> selection == Selection.INSTALLED_MOD && id.equals(selectedModId));
-            y += 25;
+            int column = (index - start) % columns;
+            int row = (index - start) / columns;
+            int x = contentX() + column * (cardWidth + gap);
+            int y = startY + row * (cardHeight + gap);
+            int buttonY = y + 70;
+            addPanelButton("Settings", x + 8, buttonY, Math.max(56, cardWidth - 74), 24,
+                    () -> selectInstalledMod(id));
+            addPanelButton("Loaded", x + cardWidth - 62, buttonY, 54, 24,
+                    () -> hotLoadStatus = mod.getMetadata().getName()
+                            + " is already loaded by Fabric. Runtime disabling is not supported.");
         }
     }
 
@@ -567,11 +584,11 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.SETTINGS) {
             int cardX = contentX() - 8;
             int cardWidth = contentWidth() + 8;
-            drawCard(graphics, cardX, CONTENT_TOP, cardWidth, 38, 0xFF171D27);
-            drawCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 38, 0xFF151A23);
-            drawCard(graphics, cardX, CONTENT_TOP + 86, cardWidth, 38, 0xFF171D27);
-            drawCard(graphics, cardX, CONTENT_TOP + 128, cardWidth, 38, 0xFF151A23);
-            drawCard(graphics, cardX, CONTENT_TOP + 174, cardWidth, 38, 0xFF171D27);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 38, 0xFF171D27, 9);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 38, 0xFF151A23, 9);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 86, cardWidth, 38, 0xFF171D27, 9);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 128, cardWidth, 38, 0xFF151A23, 9);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 174, cardWidth, 38, 0xFF171D27, 9);
             graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 14, 0xFFE8ECF4);
             graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 58, 0xFFE8ECF4);
             graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 100, 0xFFE8ECF4);
@@ -655,16 +672,63 @@ public class VantaIntegrationsScreen extends Screen {
             }
         } else {
             graphics.drawString(font, "Installed mods", contentX(), 66, 0xFFE8EAF0);
-            graphics.drawString(font, installedMods.size() + " loaded mods detected by Fabric Loader",
+            graphics.drawString(font, installedMods.size() + " mods loaded by Fabric",
                     contentX(), 86, 0xFF9296A3);
-            graphics.drawString(font, "Select a mod in the sidebar to view its details and available settings.",
-                    contentX(), CONTENT_TOP + 20, 0xFFB3B6C0);
-            drawWrappedText(graphics, hotLoadStatus, contentX(), CONTENT_TOP + 92,
-                    contentWidth() - 12, 0xFFB3B6C0, 18);
+            graphics.drawString(font, "Three-column library · settings per mod · hot-loading is experimental",
+                    contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
+            int columns = 3;
+            int gap = 12;
+            int cardWidth = Math.max(150, (contentWidth() - gap * (columns - 1)) / columns);
+            int cardHeight = 104;
+            int startY = CONTENT_TOP + 88;
+            int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
+            int start = Math.min(sidebarScroll, Math.max(0, installedMods.size() - visibleRows * columns));
+            int end = Math.min(installedMods.size(), start + visibleRows * columns);
+            for (int index = start; index < end; index++) {
+                ModContainer mod = installedMods.get(index);
+                int column = (index - start) % columns;
+                int row = (index - start) / columns;
+                int x = contentX() + column * (cardWidth + gap);
+                int y = startY + row * (cardHeight + gap);
+                drawRoundedCard(graphics, x, y, cardWidth, cardHeight, 0xFF171D27, 10);
+                drawRoundedCard(graphics, x + 10, y + 12, 34, 34, accent & 0x553F3F3F | 0xFF202A3A, 9);
+                String iconLetter = mod.getMetadata().getName().isBlank() ? "?" :
+                        mod.getMetadata().getName().substring(0, 1).toUpperCase(Locale.ROOT);
+                graphics.drawString(font, iconLetter, x + 22, y + 24, accent);
+                graphics.drawString(font, font.plainSubstrByWidth(mod.getMetadata().getName(),
+                        cardWidth - 60), x + 52, y + 15, 0xFFF0F2F8);
+                graphics.drawString(font, font.plainSubstrByWidth(mod.getMetadata().getId(),
+                        cardWidth - 60), x + 52, y + 29, 0xFF8994A7);
+                graphics.drawString(font, font.plainSubstrByWidth(
+                        mod.getMetadata().getVersion().getFriendlyString(), cardWidth - 18),
+                        x + 12, y + 53, 0xFF7F8A9C);
+                graphics.drawString(font, "Fabric loaded", x + 12, y + 82, 0xFF79B89A);
+            }
+            drawWrappedText(graphics, hotLoadStatus, contentX(), 486,
+                    contentWidth() - 12, 0xFFB3B6C0, 2);
         }
 
         graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void drawRoundedCard(GuiGraphics graphics, int x, int y, int width,
+                                  int height, int color, int radius) {
+        int safeRadius = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
+        for (int offset = 0; offset < height; offset++) {
+            int inset = 0;
+            if (offset < safeRadius) {
+                double dy = safeRadius - offset - 0.5;
+                inset = safeRadius - (int) Math.floor(Math.sqrt(
+                        Math.max(0.0, safeRadius * safeRadius - dy * dy)));
+            } else if (offset >= height - safeRadius) {
+                double dy = offset - (height - safeRadius) + 0.5;
+                inset = safeRadius - (int) Math.floor(Math.sqrt(
+                        Math.max(0.0, safeRadius * safeRadius - dy * dy)));
+            }
+            graphics.fill(x + inset, y + offset, x + width - inset, y + offset + 1, color);
+        }
+        graphics.fill(x + safeRadius, y, x + width - safeRadius, y + 1, 0x223C4657);
     }
 
     private void drawCard(GuiGraphics graphics, int x, int y, int width, int height, int color) {
@@ -703,11 +767,15 @@ public class VantaIntegrationsScreen extends Screen {
         double rawMouseY = mouseY;
         mouseX = VantaPanelButton.unlayoutX(mouseX);
         mouseY = VantaPanelButton.unlayoutY(mouseY);
-        if (section == Section.MODS && mouseX < 34 + SIDEBAR_WIDTH + 12) {
-            int available = Math.max(0, (504 - 143 - 4 * 27 - 54 - 38) / 25);
-            int maxScroll = Math.max(0, installedMods.size() - available);
+        if (section == Section.MODS && selection == Selection.NONE
+                && mouseX >= contentX() && mouseY >= CONTENT_TOP + 88) {
+            int columns = 3;
+            int cardHeight = 104;
+            int gap = 12;
+            int visibleRows = Math.max(1, (504 - (CONTENT_TOP + 88) - 24) / (cardHeight + gap));
+            int maxScroll = Math.max(0, installedMods.size() - visibleRows * columns);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
-                    sidebarScroll - (int) Math.signum(scrollY)));
+                    sidebarScroll - (int) Math.signum(scrollY) * columns));
             rebuildWidgets();
             return true;
         }
