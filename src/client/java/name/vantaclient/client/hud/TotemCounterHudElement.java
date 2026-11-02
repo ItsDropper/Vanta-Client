@@ -55,16 +55,6 @@ public class TotemCounterHudElement extends HudElement {
                 5,
                 0xFF00FF00
         );
-
-        if (HudEditorFeature.INSTANCE.isEnabled()) {
-            graphics.fill(
-                    -2,
-                    -2,
-                    getWidth(),
-                    getHeight(),
-                    0x55FFFFFF
-            );
-        }
     }
 
     @Override
