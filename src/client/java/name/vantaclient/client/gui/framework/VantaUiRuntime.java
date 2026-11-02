@@ -17,6 +17,8 @@ public final class VantaUiRuntime {
     private VantaUiNode pendingFocusReveal;
     private int lastWidth = -1;
     private int lastHeight = -1;
+    private int viewportWidth = -1;
+    private int viewportHeight = -1;
     private long lastFrameNanos;
     private long lastUiRenderNanos;
     private long averageUiRenderNanos;
@@ -44,6 +46,8 @@ public final class VantaUiRuntime {
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
         lastWidth = screenWidth;
         lastHeight = screenHeight;
+        viewportWidth = screenWidth;
+        viewportHeight = screenHeight;
         int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
         int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
         root.arrange(22, 22, Math.max(0, layoutWidth - 44),
@@ -116,8 +120,8 @@ public final class VantaUiRuntime {
 
     public boolean mouseClicked(double mouseX, double mouseY, int button, Font font) {
         if (button != 0) return false;
-        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
-        double offsetY = lastHeight * 0.5 * (1.0 - uiScale);
+        double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
+        double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
         mouseX = (mouseX - offsetX) / uiScale;
         mouseY = (mouseY - offsetY) / uiScale;
         VantaUiNode target = root.hitTest(mouseX, mouseY);
@@ -144,7 +148,7 @@ public final class VantaUiRuntime {
 
     public boolean mouseDragged(double mouseX, double mouseY, int button) {
         if (activeSlider == null || button != 0) return false;
-        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
+        double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
         activeSlider.drag((mouseX - offsetX) / uiScale);
         return true;
     }
