@@ -21,6 +21,8 @@ import java.util.function.Supplier;
 public final class VantaUiNode {
     public enum Kind { CONTAINER, TEXT, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN }
     public enum Direction { ROW, COLUMN, STACK }
+    public enum Alignment { START, CENTER, END, STRETCH }
+    public enum Justification { START, CENTER, END, SPACE_BETWEEN }
 
     private final Kind kind;
     private final Direction direction;
@@ -41,6 +43,9 @@ public final class VantaUiNode {
     private int gap;
     private float flex;
     private boolean scrollable;
+    private boolean clipChildren;
+    private Alignment alignment = Alignment.STRETCH;
+    private Justification justification = Justification.START;
     private boolean visible = true;
     private boolean enabled = true;
     private boolean hovered;
@@ -189,7 +194,20 @@ public final class VantaUiNode {
         return this;
     }
     public VantaUiNode flex(float value) { flex = Math.max(0.0f, value); return this; }
-    public VantaUiNode scrollable() { scrollable = true; return this; }
+    public VantaUiNode align(Alignment value) {
+        alignment = value == null ? Alignment.STRETCH : value;
+        return this;
+    }
+    public VantaUiNode justify(Justification value) {
+        justification = value == null ? Justification.START : value;
+        return this;
+    }
+    public VantaUiNode clipToBounds() { clipChildren = true; return this; }
+    public VantaUiNode scrollable() {
+        scrollable = true;
+        clipChildren = true;
+        return this;
+    }
     public VantaUiNode tooltip(String value) { tooltip = value == null ? "" : value; return this; }
     public VantaUiNode textColor(int color) { textColor = color; return this; }
     public VantaUiNode enabled(boolean value) { enabled = value; return this; }
@@ -268,11 +286,15 @@ public final class VantaUiNode {
         if (direction == Direction.STACK) {
             for (VantaUiNode child : children) {
                 int childWidth = child.preferredWidth >= 0
-                        ? Math.min(innerWidth, child.preferredWidth) : innerWidth;
+                        ? Math.min(innerWidth, child.preferredWidth)
+                        : child.alignment == Alignment.STRETCH ? innerWidth
+                        : Math.min(innerWidth, child.intrinsicWidth(font));
                 int childHeight = child.preferredHeight >= 0
-                        ? Math.min(innerHeight, child.preferredHeight) : innerHeight;
-                int childX = innerX + (innerWidth - childWidth) / 2;
-                int childY = innerY + (innerHeight - childHeight) / 2;
+                        ? Math.min(innerHeight, child.preferredHeight)
+                        : child.alignment == Alignment.STRETCH ? innerHeight
+                        : Math.min(innerHeight, child.intrinsicHeight(font));
+                int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
+                int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
                 child.arrange(childX, childY, childWidth, childHeight, font);
             }
             return;
@@ -289,40 +311,83 @@ public final class VantaUiNode {
 
         int availablePrimary = Math.max(0,
                 (direction == Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
-        int cursor = direction == Direction.COLUMN ? innerY - (scrollable ? scrollOffset : 0) : innerX;
+        int[] primarySizes = new int[children.size()];
         int measuredContent = childGap;
+        for (int i = 0; i < children.size(); i++) {
+            VantaUiNode child = children.get(i);
+            int primary = child.flex > 0.0f && totalFlex > 0.0f
+                    ? Math.round(availablePrimary * child.flex / totalFlex)
+                    : direction == Direction.COLUMN ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
+            primarySizes[i] = primary;
+            measuredContent += primary;
+        }
 
-        for (VantaUiNode child : children) {
-            int primary;
-            if (child.flex > 0.0f && totalFlex > 0.0f) {
-                primary = Math.round(availablePrimary * child.flex / totalFlex);
-            } else {
-                primary = direction == Direction.COLUMN
-                        ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
-            }
-
-            if (direction == Direction.COLUMN) {
-                int childWidth = child.preferredWidth >= 0
-                        ? Math.min(innerWidth, child.preferredWidth) : innerWidth;
-                child.arrange(innerX, cursor, childWidth, primary, font);
-                cursor += primary + gap;
-                measuredContent += primary;
-            } else {
-                int childHeight = child.preferredHeight >= 0
-                        ? Math.min(innerHeight, child.preferredHeight) : innerHeight;
-                child.arrange(cursor, innerY, primary, childHeight, font);
-                cursor += primary + gap;
-                measuredContent += primary;
+        int availableSize = direction == Direction.COLUMN ? innerHeight : innerWidth;
+        int freeSpace = Math.max(0, availableSize - measuredContent);
+        int leadingSpace = 0;
+        int distributedGap = 0;
+        if (totalFlex == 0.0f && !(direction == Direction.COLUMN && scrollable)) {
+            switch (justification) {
+                case CENTER -> leadingSpace = freeSpace / 2;
+                case END -> leadingSpace = freeSpace;
+                case SPACE_BETWEEN -> {
+                    if (children.size() > 1) distributedGap = freeSpace / (children.size() - 1);
+                }
+                case START -> { }
             }
         }
 
         if (direction == Direction.COLUMN) {
             contentHeight = measuredContent;
             int maxScroll = Math.max(0, contentHeight - innerHeight);
-            scrollOffset = clamp(scrollOffset, 0, maxScroll);
+            scrollOffset = scrollable ? clamp(scrollOffset, 0, maxScroll) : 0;
         } else {
             contentHeight = 0;
         }
+
+        int cursor = direction == Direction.COLUMN
+                ? innerY + leadingSpace - (scrollable ? scrollOffset : 0)
+                : innerX + leadingSpace;
+        for (int i = 0; i < children.size(); i++) {
+            VantaUiNode child = children.get(i);
+            int primary = primarySizes[i];
+
+            if (direction == Direction.COLUMN) {
+                int childWidth = child.preferredWidth >= 0
+                        ? Math.min(innerWidth, child.preferredWidth)
+                        : child.alignment == Alignment.STRETCH ? innerWidth
+                        : Math.min(innerWidth, child.intrinsicWidth(font));
+                int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
+                child.arrange(childX, cursor, childWidth, primary, font);
+                cursor += primary + gap + distributedGap;
+            } else {
+                int childHeight = child.preferredHeight >= 0
+                        ? Math.min(innerHeight, child.preferredHeight)
+                        : child.alignment == Alignment.STRETCH ? innerHeight
+                        : Math.min(innerHeight, child.intrinsicHeight(font));
+                int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
+                child.arrange(cursor, childY, primary, childHeight, font);
+                cursor += primary + gap + distributedGap;
+            }
+        }
+    }
+
+    private static int alignedOffset(int start, int available, int size, Alignment alignment) {
+        return switch (alignment) {
+            case CENTER -> start + (available - size) / 2;
+            case END -> start + available - size;
+            case START, STRETCH -> start;
+        };
+    }
+
+    private boolean containsClip(double mouseX, double mouseY) {
+        if (!clipChildren && !scrollable) return true;
+        int clipX = x + (scrollable ? padding : 0);
+        int clipY = y + (scrollable ? padding : 0);
+        int clipWidth = width - (scrollable ? padding * 2 : 0);
+        int clipHeight = height - (scrollable ? padding * 2 : 0);
+        return mouseX >= clipX && mouseX < clipX + clipWidth
+                && mouseY >= clipY && mouseY < clipY + clipHeight;
     }
 
     void render(GuiGraphics graphics, Font font, VantaUiTheme theme,
@@ -335,17 +400,21 @@ public final class VantaUiNode {
         }
 
         if (kind == Kind.CONTAINER) {
-            if (scrollable) {
-                graphics.enableScissor(x + padding, y + padding,
-                        x + width - padding, y + height - padding);
+            if (clipChildren || scrollable) {
+                int clipX = x + (scrollable ? padding : 0);
+                int clipY = y + (scrollable ? padding : 0);
+                int clipRight = x + width - (scrollable ? padding : 0);
+                int clipBottom = y + height - (scrollable ? padding : 0);
+                graphics.enableScissor(clipX, clipY, clipRight, clipBottom);
             }
-            for (VantaUiNode child : children) {
-                child.render(graphics, font, theme, mouseX, mouseY);
+            try {
+                for (VantaUiNode child : children) {
+                    child.render(graphics, font, theme, mouseX, mouseY);
+                }
+            } finally {
+                if (clipChildren || scrollable) graphics.disableScissor();
             }
-            if (scrollable) {
-                graphics.disableScissor();
-                renderScrollbar(graphics);
-            }
+            if (scrollable) renderScrollbar(graphics);
             return;
         }
 
@@ -454,6 +523,9 @@ public final class VantaUiNode {
 
     VantaUiNode hitTest(double mouseX, double mouseY) {
         if (!visible || !contains(mouseX, mouseY)) return null;
+        if (kind == Kind.CONTAINER && !containsClip(mouseX, mouseY)) {
+            return isInteractive() && enabled ? this : null;
+        }
         for (int i = children.size() - 1; i >= 0; i--) {
             VantaUiNode hit = children.get(i).hitTest(mouseX, mouseY);
             if (hit != null) return hit;
@@ -508,7 +580,7 @@ public final class VantaUiNode {
     }
 
     boolean scrollAt(double mouseX, double mouseY, double amount) {
-        if (!visible || !contains(mouseX, mouseY)) return false;
+        if (!visible || !contains(mouseX, mouseY) || !containsClip(mouseX, mouseY)) return false;
         for (int i = children.size() - 1; i >= 0; i--) {
             if (children.get(i).scrollAt(mouseX, mouseY, amount)) return true;
         }
