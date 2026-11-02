@@ -47,8 +47,10 @@ public class HudEditorScreen extends Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(84).tooltip("Snap moved elements to the alignment grid")\n                .align(VantaUiNode.Alignment.CENTER));
-        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30)\n                .align(VantaUiNode.Alignment.CENTER));
+                }).width(84).tooltip("Snap moved elements to the alignment grid")
+                .align(VantaUiNode.Alignment.CENTER));
+        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30)
+                .align(VantaUiNode.Alignment.CENTER));
         root.add(toolbar);
         root.add(VantaUiNode.spacer(1).flex(1));
         toolbarRuntime = new VantaUiRuntime(root);
