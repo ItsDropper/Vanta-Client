@@ -68,8 +68,13 @@ public class VantaIntegrationsScreen extends Screen {
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
     public VantaIntegrationsScreen(Screen parent) {
+        this(parent, false);
+    }
+
+    public VantaIntegrationsScreen(Screen parent, boolean openMods) {
         super(Component.literal("Vanta Client"));
         this.parent = parent;
+        if (openMods) this.section = Section.MODS;
     }
 
     @Override
@@ -99,11 +104,8 @@ public class VantaIntegrationsScreen extends Screen {
         }
 
         addPanelButton("Settings", 34, 132, SIDEBAR_WIDTH - 24, 25,
-                () -> {
-                    section = Section.SETTINGS;
-                    selection = Selection.NONE;
-                    rebuildWidgets();
-                }, () -> section == Section.SETTINGS);
+                () -> minecraft.setScreen(new VantaSettingsScreen(this)),
+                () -> section == Section.SETTINGS);
         addPanelButton("Mods", 34, 78, SIDEBAR_WIDTH - 24, 25,
                 () -> {
                     section = Section.MODS;
