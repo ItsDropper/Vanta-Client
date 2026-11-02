@@ -85,7 +85,7 @@ public final class VantaSettingsScreen extends Screen {
                     VantaUiTheme.TEXT_MUTED));
         } else {
             header.add(VantaUiNode.button("MODS", () -> Minecraft.getInstance().setScreen(
-                    new VantaIntegrationsScreen(this, true))).height(30));
+                    new VantaIntegrationsScreen(this))).height(30));
         }
         header.add(VantaUiNode.button("CLOSE", this::onClose)
                 .height(30).tooltip("Close settings"));
