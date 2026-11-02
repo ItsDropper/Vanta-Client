@@ -213,7 +213,7 @@ public class HudEditorScreen extends Screen {
                                 boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
-        if (HudSettingsPanel.mouseClicked(mouseX, mouseY)) {
+        if (HudSettingsPanel.mouseClicked(mouseX, mouseY, event.button())) {
             panelPointer = true;
             return true;
         }
