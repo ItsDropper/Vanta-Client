@@ -9,20 +9,20 @@ import name.vantaclient.client.config.VantaClientPreferences;
  * without rebuilding the screen tree.
  */
 public final class VantaUiTheme {
-    public static final int CANVAS = 0xFF0B0F16;
-    public static final int PANEL = 0xFF111823;
-    public static final int PANEL_RAISED = 0xFF151E2B;
-    public static final int SURFACE = 0xFF192332;
-    public static final int SURFACE_HOVER = 0xFF202E40;
-    public static final int SURFACE_SELECTED = 0xFF1D304D;
-    public static final int BORDER = 0xFF2A394C;
-    public static final int BORDER_SUBTLE = 0xFF202B3A;
-    public static final int TEXT_PRIMARY = 0xFFEAF0F8;
-    public static final int TEXT_SECONDARY = 0xFF9AA8BA;
-    public static final int TEXT_MUTED = 0xFF68788D;
-    public static final int TRACK = 0xFF303D50;
-    public static final int INPUT_SURFACE = 0xFF0E1621;
-    public static final int INPUT_FOCUS_SURFACE = 0xFF111B29;
+    public static final int CANVAS = 0xFF090B10;
+    public static final int PANEL = 0xFF11151E;
+    public static final int PANEL_RAISED = 0xFF191F2B;
+    public static final int SURFACE = 0xFF202735;
+    public static final int SURFACE_HOVER = 0xFF2A3446;
+    public static final int SURFACE_SELECTED = 0xFF263653;
+    public static final int BORDER = 0xFF343E50;
+    public static final int BORDER_SUBTLE = 0xFF252D3B;
+    public static final int TEXT_PRIMARY = 0xFFF3F5FA;
+    public static final int TEXT_SECONDARY = 0xFFAAB4C5;
+    public static final int TEXT_MUTED = 0xFF78849A;
+    public static final int TRACK = 0xFF394457;
+    public static final int INPUT_SURFACE = 0xFF101722;
+    public static final int INPUT_FOCUS_SURFACE = 0xFF171F2D;
     public static final int TOOLTIP_SURFACE = 0xF00A1019;
     public static final int WHITE = 0xFFFFFFFF;
 
@@ -37,9 +37,9 @@ public final class VantaUiTheme {
     public static final int ROW_HEIGHT = 42;
     public static final int SLIDER_HEIGHT = 46;
 
-    public static final int RADIUS_SMALL = 3;
-    public static final int RADIUS_MEDIUM = 6;
-    public static final int RADIUS_LARGE = 10;
+    public static final int RADIUS_SMALL = 5;
+    public static final int RADIUS_MEDIUM = 8;
+    public static final int RADIUS_LARGE = 11;
 
     public static final int TEXT_LINE_HEIGHT = 9;
     public static final int CARET_BLINK_TICKS = 10;
