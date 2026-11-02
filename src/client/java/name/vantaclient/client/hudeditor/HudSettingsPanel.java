@@ -67,7 +67,9 @@ public final class HudSettingsPanel {
         if (selected == null) return;
 
         float target = open ? 1.0f : 0.0f;
-        openProgress += (target - openProgress) * 0.24f;
+        boolean animations = VantaClientPreferences.get().animations;
+        if (!animations) openProgress = target;
+        else openProgress += (target - openProgress) * 0.24f;
         if (Math.abs(target - openProgress) < 0.012f) openProgress = target;
         if (!open && openProgress <= 0.012f) {
             selected = null;
@@ -118,8 +120,13 @@ public final class HudSettingsPanel {
         float gridTarget = VantaClientPreferences.get().hudShowGrid ? 1.0f : 0.0f;
         if (snapProgress < 0.0f) snapProgress = snapTarget;
         if (gridProgress < 0.0f) gridProgress = gridTarget;
-        snapProgress += (snapTarget - snapProgress) * 0.24f;
-        gridProgress += (gridTarget - gridProgress) * 0.24f;
+        if (!animations) {
+            snapProgress = snapTarget;
+            gridProgress = gridTarget;
+        } else {
+            snapProgress += (snapTarget - snapProgress) * 0.24f;
+            gridProgress += (gridTarget - gridProgress) * 0.24f;
+        }
         fillRounded(graphics, x + 12, controlsY - 10, PANEL_WIDTH - 24, 1, 1,
                 withAlpha(BORDER, alpha));
         sectionLabel(graphics, mc, "ALIGNMENT", x + 16, controlsY, alpha);
