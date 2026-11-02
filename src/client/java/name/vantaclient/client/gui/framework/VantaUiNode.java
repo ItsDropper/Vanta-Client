@@ -543,11 +543,16 @@ public final class VantaUiNode {
                     graphics.fill(x, menuTop, x + width, menuTop + visibleOptions * 22,
                             VantaUiTheme.PANEL_RAISED);
                     graphics.fill(x, menuTop, x + width, menuTop + 1, VantaUiTheme.BORDER);
+                    int hoveredOption = -1;
+                    if (over && mouseY >= menuTop) {
+                        int candidate = (mouseY - menuTop) / 22;
+                        if (candidate < visibleOptions) hoveredOption = candidate;
+                    }
                     for (int i = 0; i < visibleOptions; i++) {
                         int optionY = menuTop + i * 22;
                         String option = dropdownOptions.get(i);
-                        boolean highlighted = i == dropdownHighlight
-                                || (over && mouseY >= optionY && mouseY < optionY + 22);
+                        boolean highlighted = hoveredOption >= 0
+                                ? i == hoveredOption : i == dropdownHighlight;
                         if (highlighted) {
                             graphics.fill(x + 1, optionY, x + width - 1, optionY + 22,
                                     VantaUiTheme.withAlpha(accent, 48));
