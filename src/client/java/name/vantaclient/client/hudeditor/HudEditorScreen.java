@@ -10,9 +10,11 @@ public class HudEditorScreen extends Screen {
     private float entrance = 0.0f;
     private float selectionPulse = 0.0f;
     private boolean panelPointer;
+    private final net.minecraft.client.gui.screens.Screen parent;
 
-    public HudEditorScreen() {
+    public HudEditorScreen(net.minecraft.client.gui.screens.Screen parent) {
         super(Component.literal("HUD Editor"));
+        this.parent = parent;
     }
 
     @Override
@@ -28,6 +30,7 @@ public class HudEditorScreen extends Screen {
 
         HudMouseHandler.updateHover(mouseX, mouseY);
         HudManager.render(graphics);
+        drawElementHitboxes(graphics, preferences.accent.color());
 
         HudElement focused = HudSettingsPanel.getSelected();
         if (focused == null) focused = HudMouseHandler.getHovered();
@@ -58,11 +61,11 @@ public class HudEditorScreen extends Screen {
     private void drawToolbar(GuiGraphics graphics, Minecraft mc,
                              VantaClientPreferences preferences, float opacity) {
         int accent = preferences.accent.color();
-        int x = (width - 390) / 2;
+        int x = (width - 430) / 2;
         int y = 18 - Math.round((1.0f - opacity) * 10.0f);
-        fillRounded(graphics, x + 3, y + 4, 390, 52, 15, 0x66000000);
-        fillRounded(graphics, x, y, 390, 52, 14, 0xFF303A49);
-        fillRounded(graphics, x + 1, y + 1, 388, 50, 13, 0xF0161D28);
+        fillRounded(graphics, x + 3, y + 4, 430, 52, 15, 0x66000000);
+        fillRounded(graphics, x, y, 430, 52, 14, 0xFF303A49);
+        fillRounded(graphics, x + 1, y + 1, 428, 50, 13, 0xF0161D28);
         fillRounded(graphics, x + 12, y + 10, 32, 32, 9, accent);
         graphics.drawCenteredString(mc.font, "V", x + 28, y + 22, 0xFFFFFFFF);
         graphics.drawString(mc.font, "HUD Editor", x + 54, y + 11, 0xFFF0F3FA);
@@ -71,10 +74,32 @@ public class HudEditorScreen extends Screen {
 
         String snap = preferences.hudSnapToGrid ? "SNAP ON" : "SNAP OFF";
         int snapWidth = mc.font.width(snap) + 18;
-        fillRounded(graphics, x + 390 - snapWidth - 12, y + 15, snapWidth, 22, 8,
+        fillRounded(graphics, x + 430 - snapWidth - 12, y + 15, snapWidth, 22, 8,
                 preferences.hudSnapToGrid ? accent : 0xFF303A49);
         graphics.drawCenteredString(mc.font, snap,
-                x + 390 - snapWidth / 2 - 12, y + 22, 0xFFFFFFFF);
+                x + 430 - snapWidth / 2 - 12, y + 22, 0xFFFFFFFF);
+    }
+
+    private void drawElementHitboxes(GuiGraphics graphics, int accent) {
+        for (HudElement element : HudManager.getElements()) {
+            int x = element.getX() - 3;
+            int y = element.getY() - 3;
+            int w = Math.max(8, element.getScaledWidth() + 6);
+            int h = Math.max(8, element.getScaledHeight() + 6);
+            boolean selected = element == HudSettingsPanel.getSelected();
+            int fill = selected ? 0x263F8DFF : 0x182A3A50;
+            int border = selected ? accent : 0xA8798CA8;
+            fillRounded(graphics, x, y, w, h, 5, fill);
+            drawRoundedOutline(graphics, x, y, w, h, 5, border, selected ? 2 : 1);
+            if (!selected) {
+                String name = element.getClass().getSimpleName()
+                        .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
+                graphics.fill(x, y - 13, x + Minecraft.getInstance().font.width(name) + 10,
+                        y - 2, 0xCC111A27);
+                graphics.drawString(Minecraft.getInstance().font, name, x + 5, y - 11,
+                        0xFFDCE6F5, false);
+            }
+        }
     }
 
     private void drawSelection(GuiGraphics graphics, HudElement element,
@@ -197,7 +222,8 @@ public class HudEditorScreen extends Screen {
         HudMouseHandler.release();
         panelPointer = false;
         HudSettingsPanel.clear();
-        super.onClose();
+        if (parent != null) Minecraft.getInstance().setScreen(parent);
+        else super.onClose();
     }
 
     @Override
