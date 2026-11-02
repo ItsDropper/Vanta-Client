@@ -28,6 +28,16 @@ loom {
 	}
 }
 
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "vanta-ui-screenshot-tests"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = false
+	}
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -38,7 +48,15 @@ dependencies {
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
-	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+\tmodCompileOnly "com.terraformersmc:modmenu:\${project.modmenu_version}"
+
+\t// The production client-test launcher needs Fabric API in its runtime installation.
+\tproductionRuntimeMods "net.fabricmc.fabric-api:fabric-api:\${project.fabric_api_version}"
+}
+
+tasks.register("runProductionClientGameTest", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+\tjvmArgs.add("-Dfabric.client.gametest")
+\tuseXVFB = true
 }
 
 base {
