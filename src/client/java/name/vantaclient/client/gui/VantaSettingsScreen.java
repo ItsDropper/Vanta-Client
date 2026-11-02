@@ -55,10 +55,18 @@ public final class VantaSettingsScreen extends Screen {
         page = switch (targetPage) {
             case 0 -> Page.OVERVIEW;
             case 1 -> Page.HUD;
-            case 2 -> Page.APPEARANCE;
+            case 2 -> Page.VISUAL;
+            case 3 -> Page.COMBAT;
+            case 4 -> Page.MISC;
+            case 5 -> Page.APPEARANCE;
+            case 6 -> Page.VISUAL;
             default -> throw new IllegalArgumentException("Unknown settings page: " + targetPage);
         };
-        selectedFeature = null;
+        selectedFeature = targetPage == 6
+                ? FeatureRegistry.FEATURES.stream()
+                        .filter(feature -> !SettingRegistry.getSettings(feature).isEmpty())
+                        .findFirst().orElse(null)
+                : null;
         searchQuery = "";
         pendingSearch = "";
         rebuildUi();
