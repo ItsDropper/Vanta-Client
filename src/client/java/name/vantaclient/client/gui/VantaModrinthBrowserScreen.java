@@ -279,7 +279,9 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 image.close();
                 return;
             }
-            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "modrinth/" + projectId);
+            String textureKey = java.util.UUID.nameUUIDFromBytes(
+                    projectId.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString().replace("-", "");
+            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "modrinth/" + textureKey);
             minecraft.getTextureManager().register(texture,
                     new DynamicTexture(() -> "Vanta Modrinth icon " + projectId, image));
             projectIconTextures.put(projectId, texture);
