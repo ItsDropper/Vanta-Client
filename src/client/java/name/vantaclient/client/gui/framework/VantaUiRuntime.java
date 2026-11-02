@@ -23,6 +23,11 @@ public final class VantaUiRuntime {
         this.root = root;
     }
 
+    /** Marks measurements and placement dirty after content or size constraints change. */
+    public void invalidateLayout() {
+        lastWidth = -1;
+    }
+
     public void layout(Font font, int screenWidth, int screenHeight) {
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
         lastWidth = screenWidth;
