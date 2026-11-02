@@ -19,7 +19,11 @@ import java.nio.file.Path;
 public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static final int PAGE_OVERVIEW = 0;
     private static final int PAGE_HUD = 1;
-    private static final int PAGE_APPEARANCE = 2;
+    private static final int PAGE_VISUAL = 2;
+    private static final int PAGE_COMBAT = 3;
+    private static final int PAGE_MISC = 4;
+    private static final int PAGE_APPEARANCE = 5;
+    private static final int PAGE_FEATURE_SETTINGS = 6;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -96,8 +100,16 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 "vanta-ui-" + viewportLabel + "-overview");
         capturePage(context, screen, PAGE_HUD,
                 "vanta-ui-" + viewportLabel + "-hud");
+        capturePage(context, screen, PAGE_VISUAL,
+                "vanta-ui-" + viewportLabel + "-visual");
+        capturePage(context, screen, PAGE_COMBAT,
+                "vanta-ui-" + viewportLabel + "-combat");
+        capturePage(context, screen, PAGE_MISC,
+                "vanta-ui-" + viewportLabel + "-misc");
         capturePage(context, screen, PAGE_APPEARANCE,
                 "vanta-ui-" + viewportLabel + "-appearance");
+        capturePage(context, screen, PAGE_FEATURE_SETTINGS,
+                "vanta-ui-" + viewportLabel + "-feature-settings");
     }
 
     private static void capturePage(ClientGameTestContext context,
