@@ -153,10 +153,10 @@ public final class HudSettingsPanel {
                 mc.getWindow().getGuiScaledHeight(), mouseX, mouseY);
     }
 
-    public static boolean mouseClicked(double mouseX, double mouseY) {
+    public static boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (runtime == null) return false;
         layout();
-        return runtime.mouseClicked(mouseX, mouseY, 0, Minecraft.getInstance().font);
+        return runtime.mouseClicked(mouseX, mouseY, button, Minecraft.getInstance().font);
     }
 
     public static boolean mouseDragged(double mouseX, double mouseY) {
