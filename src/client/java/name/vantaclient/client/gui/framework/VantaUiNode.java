@@ -2,6 +2,7 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.Style;
@@ -23,7 +24,7 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    public enum Kind { CONTAINER, TEXT, ICON, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
+    public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
     public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
@@ -38,6 +39,7 @@ public final class VantaUiNode {
 
     private String label = "";
     private Icon icon;
+    private Identifier texture;
     private Identifier textFont = UI_FONT;
     private Supplier<String> textSupplier;
     private String tooltip = "";
@@ -155,6 +157,13 @@ public final class VantaUiNode {
         if (icon == null) throw new IllegalArgumentException("Icon cannot be null.");
         VantaUiNode node = new VantaUiNode(Kind.ICON, null);
         node.icon = icon; node.textColor = VantaUiTheme.TEXT_SECONDARY; node.size(16, 16); return node;
+    }
+    public static VantaUiNode image(Identifier texture) {
+        if (texture == null) throw new IllegalArgumentException("Image texture cannot be null.");
+        VantaUiNode node = new VantaUiNode(Kind.IMAGE, null);
+        node.texture = texture;
+        node.size(24, 24);
+        return node;
     }
     public static VantaUiNode paragraph(String value, int color, int maximumLines) {
         VantaUiNode node = text(value, color);
@@ -314,7 +323,7 @@ public final class VantaUiNode {
         if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
         int measured = switch (kind) {
             case TEXT -> textWidth(font, currentText(), textFont);
-            case ICON -> 16;
+            case ICON, IMAGE -> 16;
             case SPACER -> 1;
             case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
             case CONTAINER -> {
@@ -346,7 +355,7 @@ public final class VantaUiNode {
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
         int measured = switch (kind) {
             case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
-            case ICON -> 16;
+            case ICON, IMAGE -> 16;
             case SPACER -> 0;
             case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
@@ -563,6 +572,8 @@ public final class VantaUiNode {
                 }
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
+            case IMAGE -> graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
+                    0.0f, 0.0f, width, height, 1010, 702);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);

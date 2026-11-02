@@ -19,6 +19,7 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
@@ -80,8 +81,8 @@ public final class VantaSettingsScreen extends Screen {
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode brand = VantaUiNode.row(9, 0).align(VantaUiNode.Alignment.CENTER);
-        brand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(24, 24)
-                .iconColor(VantaUiTheme.TEXT_PRIMARY));
+        brand.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
+                "dropperutils", "textures/gui/vanta_logo_transparent")).size(34, 24));
         VantaUiNode brandLabels = VantaUiNode.column(1, 0);
         brandLabels.add(VantaUiNode.title("VANTA"));
         brandLabels.add(VantaUiNode.eyebrow("CLIENT SETTINGS"));
