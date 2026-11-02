@@ -36,7 +36,7 @@ import java.util.jar.JarFile;
 
 /** Unified Vanta Client settings and installed-mod browser. */
 public class VantaIntegrationsScreen extends Screen {
-    private static final int SIDEBAR_WIDTH = 190;
+    private static final int SIDEBAR_WIDTH = 220;
     private static final int ROW_HEIGHT = 38;
     private static final int CONTENT_TOP = 118;
 
@@ -61,6 +61,7 @@ public class VantaIntegrationsScreen extends Screen {
     private String modSearchQuery = "";
     private boolean favoritesOnly;
     private boolean studioOpen;
+    private boolean modListInitialized;
     private final Map<String, Float> modCardHover = new HashMap<>();
     private VantaClientPreferences preferences;
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
@@ -74,7 +75,10 @@ public class VantaIntegrationsScreen extends Screen {
     protected void init() {
         preferences = VantaClientPreferences.get();
         openProgress = preferences.animations ? 0.0f : 1.0f;
-        refreshModList();
+        if (!modListInitialized) {
+            refreshModList();
+            modListInitialized = true;
+        }
         if (section == Section.MODS && selection == Selection.NONE) {
             modSearch = new EditBox(font, VantaPanelButton.layoutX(650),
                     VantaPanelButton.layoutY(25), VantaPanelButton.layoutSize(196),
@@ -741,7 +745,9 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.drawString(font, "VANTA", 45, 28, 0xFFF4F6FC);
         graphics.drawString(font, "CLIENT", 90, 28, 0xFF9AA4B6);
         graphics.drawString(font, "MINECRAFT MOD", 34, 47, 0xFF727D90);
-        graphics.drawString(font, "LOCAL CONFIGURATION", 810, 34, 0xFF778296);
+        if (section == Section.SETTINGS) {
+            graphics.drawString(font, "LOCAL CONFIGURATION", 810, 34, 0xFF778296);
+        }
         if (section == Section.MODS) {
             graphics.drawString(font, "BUILT-IN", 34, 132, 0xFF858A98);
             graphics.drawString(font, "INSTALLED MODS", 34, 266, 0xFF858A98);
