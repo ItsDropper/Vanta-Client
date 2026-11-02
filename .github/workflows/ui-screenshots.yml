@@ -45,8 +45,8 @@ jobs:
 
       - name: Verify screenshot count
         run: |
-          find build/ui-screenshots -type f -name '*.png' -maxdepth 1 -print
-          count=$(find build/ui-screenshots -maxdepth 1 -type f -name '*.png' | wc -l)
+          find build/run/clientGameTest/screenshots -type f -name '*.png' -maxdepth 1 -print
+          count=$(find build/run/clientGameTest/screenshots -maxdepth 1 -type f -name '*.png' | wc -l)
           echo "Captured screenshot count: $count"
           test "$count" -eq 12
 
@@ -55,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: vanta-ui-screenshots
-          path: build/ui-screenshots/
+          path: build/run/clientGameTest/screenshots/
           if-no-files-found: warn
           retention-days: 14
 
@@ -66,7 +66,7 @@ jobs:
           name: vanta-ui-test-diagnostics
           path: |
             build/run/
-            build/ui-screenshots/
+            build/run/clientGameTest/screenshots/
             build/reports/
           if-no-files-found: warn
           retention-days: 7
