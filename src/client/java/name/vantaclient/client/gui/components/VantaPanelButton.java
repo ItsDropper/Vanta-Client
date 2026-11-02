@@ -98,13 +98,13 @@ public final class VantaPanelButton extends AbstractWidget {
         if (active && !accentSurface) background = mixColor(background, 0xFF1D304D, 0.82f);
         int border = accentSurface ? mixColor(accent.getAsInt(), 0xFF8DB2FF, hoverAmount * 0.35f)
                 : mixColor(0xFF2A3040, accent.getAsInt(), active ? 0.52f : hoverAmount * 0.36f);
-        fillRounded(graphics, getX(), getY(), width, height, 8, border);
-        fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 7, background);
+        fillRounded(graphics, getX(), getY(), width, height, 10, border);
+        fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 9, background);
 
         int accentColor = accent.getAsInt();
-        if (active) {
+        if (active && !accentSurface) {
             fillRounded(graphics, getX() + 2, getY() + 3, 3, height - 6, 2, accentColor);
-        } else if (hoverAmount > 0.08f) {
+        } else if (!accentSurface && hoverAmount > 0.08f) {
             fillRounded(graphics, getX() + 2, getY() + 5, 2, height - 10, 1,
                     mixColor(0xFF252D3B, accentColor, hoverAmount * 0.7f));
         }
