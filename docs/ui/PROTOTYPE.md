@@ -56,7 +56,7 @@ The overview's UI CPU value measures Java-side component drawing and tooltip com
 ## Verification status
 
 - Source implementation: committed.
-- Latest integrated code build passed: commit `851dcd27746296b34d60c81aee879861fe38f0a6`, [GitHub Actions run 41516894258](https://github.com/ItsDropper/Vanta-Client/actions/runs/41516894258), JDK 21 Gradle build.
+- Latest completed code build passed: commit `16cad58284a03b47003d904163d8aa4b37514fd7`, [GitHub Actions run 41517379113](https://github.com/ItsDropper/Vanta-Client/actions/runs/41517379113), JDK 21 Gradle build. Subsequent dropdown keyboard-reveal and disabled-control/range guards are newer than that verified build and awaiting their own completed runs.
 - In-game input/render/scale checks: pending local Minecraft execution.
 - Screenshot review: pending actual in-game screenshots.
 - Rendering overhead measurement: not yet measured.
