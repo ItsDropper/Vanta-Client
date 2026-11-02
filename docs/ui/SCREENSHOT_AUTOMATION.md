@@ -2,29 +2,25 @@
 
 ## Purpose
 
-The screenshot pipeline launches the actual Minecraft 1.21.11 client with Vanta Client loaded. It does not generate a web mockup or a synthetic rendering of the GUI.
+The workflow launches the actual Minecraft 1.21.11 client with Vanta Client loaded. It captures the real GUI through Fabric's client GameTest API under Xvfb on GitHub Actions; it does not render a mockup.
 
-It uses Fabric's client GameTest API and Loom's production client GameTest runner under Xvfb on GitHub Actions.
+## Running it
 
-## How to run
+Workflow: `.github/workflows/ui-screenshots.yml`
 
-The workflow is \`.github/workflows/ui-screenshots.yml\`.
+It runs on relevant UI/GameTest/Gradle changes and can also be started manually from GitHub Actions using **Vanta UI screenshots → Run workflow**.
 
-It runs automatically when relevant UI, GameTest or Gradle files change. It can also be started manually from GitHub Actions using **Vanta UI screenshots → Run workflow**.
-
-No local Minecraft installation, multiplayer server or manual mouse interaction is part of the capture process. The test does not create a world or connect to a server.
-
-The Fabric test configuration deliberately has \`eula = false\`. This repository does not silently accept the Minecraft EULA. If the installed test runner requires acceptance even for screen-only client tests, that is a blocker which must be resolved transparently rather than changing this setting without authorization.
+No local Minecraft installation, manual mouse interaction, multiplayer server, or authenticated Minecraft account is required. The test does not create a world or connect to a server.
 
 ## Capture matrix
 
-The \`VantaUiScreenshotGameTest\` test opens the real \`VantaUiPrototypeScreen\` and captures its three pages:
+The `VantaUiScreenshotGameTest` opens the real `VantaUiPrototypeScreen` and captures three pages:
 
 - Overview
 - Visuals
 - Controls
 
-At each of these window/GUI-scale combinations:
+Each page is captured at four configurations:
 
 | Window size | GUI scale |
 |---|---:|
@@ -33,26 +29,23 @@ At each of these window/GUI-scale combinations:
 | 960 × 540 | 1 |
 | 960 × 540 | 2 |
 
-Expected output: 12 PNG files per successful run.
+Expected output: 12 PNG files.
 
-The test verifies each screenshot exists and is at least 1 KiB. This detects missing/empty captures, but it does not automatically prove that every component is visually correct.
+Each screenshot is checked for existence and a minimum size of 1 KiB. The workflow independently asserts that exactly 12 PNGs exist.
 
 ## Artifacts
 
-The workflow uploads:
-- \`vanta-ui-screenshots\`: PNG screenshots, retained for 14 days.
-- \`vanta-ui-test-diagnostics\`: client test logs/reports after failure, retained for 7 days.
+- `vanta-ui-screenshots`: PNGs, retained for 14 days.
+- `vanta-ui-test-diagnostics`: logs/reports on failure, retained for 7 days.
 
-The configured output directory is \`build/run/clientGameTest/screenshots/\`. If the selected Loom version emits screenshots elsewhere, update the upload path after inspecting the run output; do not claim captures succeeded solely because the artifact upload step ran.
+Fabric writes screenshots to `build/run/clientGameTest/screenshots/`. The workflow verifies and uploads that exact directory.
 
 ## Current validation status
 
-The main Gradle build passed after the GameTest source set and corrected Gradle configuration were added.
-
-The first headless client screenshot workflow is currently the decisive integration check. Until it completes and its artifacts are inspected, do not claim that automatic screenshots have been successfully captured or visually reviewed.
+The first correctly discovered client GameTest run successfully launched Minecraft and logged all 12 expected captures. The workflow then failed because its verification/upload steps looked in a different directory. The path mismatch has been corrected; a subsequent successful artifact upload and inspection is still required before marking the pipeline fully validated.
 
 ## Limits
 
-- This tests real Minecraft GUI rendering and Screen lifecycle, not GPU performance under a representative gameplay world.
-- The current test captures static page states. It does not synthesize all mouse/keyboard interactions or automatically judge visual quality.
-- Screenshot automation removes repeated manual screenshot capture. It does not eliminate all human acceptance testing, especially for subjective product quality and real input feel.
+- This validates real Minecraft GUI rendering and Screen lifecycle, not GPU performance in a representative gameplay world.
+- Captures are static page states. They do not exercise every mouse/keyboard interaction or automatically judge visual quality.
+- Automation removes repeated manual screenshot capture, but subjective design acceptance and real input feel still benefit from human review.
