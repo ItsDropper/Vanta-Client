@@ -58,6 +58,14 @@ public final class VantaUiPrototypeScreen extends Screen {
         runtime.layout(font, width, height);
     }
 
+    void setPageForScreenshot(int targetPage) {
+        if (targetPage < PAGE_OVERVIEW || targetPage > PAGE_CONTROLS) {
+            throw new IllegalArgumentException("Unknown prototype page: " + targetPage);
+        }
+        page = targetPage;
+        rebuildUi();
+    }
+
     private VantaUiNode buildRoot() {
         boolean compact = width < 760;
         VantaUiNode root = VantaUiNode.column(12, 16)
