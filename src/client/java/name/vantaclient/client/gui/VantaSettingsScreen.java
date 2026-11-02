@@ -1,0 +1,463 @@
+package name.vantaclient.client.gui;
+
+import name.vantaclient.client.config.DropperUtilsConfig;
+import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.feature.Category;
+import name.vantaclient.client.feature.Feature;
+import name.vantaclient.client.feature.FeatureRegistry;
+import name.vantaclient.client.gui.components.settings.BooleanSetting;
+import name.vantaclient.client.gui.components.settings.Setting;
+import name.vantaclient.client.gui.components.settings.SettingRegistry;
+import name.vantaclient.client.gui.components.settings.SliderSetting;
+import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
+
+import java.util.List;
+import java.util.Locale;
+
+/** The live, retained-mode settings workspace for Vanta Client. */
+public final class VantaSettingsScreen extends Screen {
+    private enum Page { OVERVIEW, HUD, VISUAL, COMBAT, MISC, APPEARANCE }
+
+    private final Screen parent;
+    private VantaUiRuntime runtime;
+    private Page page = Page.OVERVIEW;
+    private Feature selectedFeature;
+    private String searchQuery = "";
+    private String pendingSearch = "";
+
+    public VantaSettingsScreen(Screen parent) {
+        super(Component.literal("Vanta Client Settings"));
+        this.parent = parent;
+    }
+
+    @Override
+    protected void init() {
+        rebuildUi();
+    }
+
+    private void rebuildUi() {
+        if (runtime != null) runtime.dispose();
+        runtime = new VantaUiRuntime(buildRoot());
+        runtime.layout(font, width, height);
+    }
+
+    private VantaUiNode buildRoot() {
+        boolean compact = width < 760;
+        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
+        VantaUiNode header = VantaUiNode.row(12, 12)
+                .height(compact ? 42 : 48)
+                .background(VantaUiTheme.PANEL)
+                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode brand = VantaUiNode.row(9, 0).align(VantaUiNode.Alignment.CENTER);
+        brand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(24, 24)
+                .iconColor(VantaUiTheme.TEXT_PRIMARY));
+        VantaUiNode brandLabels = VantaUiNode.column(1, 0);
+        brandLabels.add(VantaUiNode.title("VANTA"));
+        brandLabels.add(VantaUiNode.eyebrow("CLIENT SETTINGS"));
+        brand.add(brandLabels);
+        header.add(brand);
+        header.add(VantaUiNode.spacer(1).flex(1));
+        header.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
+                VantaUiTheme.TEXT_MUTED));
+        header.add(VantaUiNode.button("CLOSE", this::onClose, this::onClose)
+                .height(30).tooltip("Close settings"));
+        root.add(header);
+
+        VantaUiNode body = compact
+                ? VantaUiNode.column(8, 0).flex(1)
+                : VantaUiNode.row(12, 0).flex(1);
+        VantaUiNode navigation;
+        if (compact) {
+            navigation = VantaUiNode.row(4, 4).height(38).background(VantaUiTheme.PANEL);
+            navigation.add(nav("Home", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW).flex(1));
+            navigation.add(nav("HUD", Page.HUD, VantaUiNode.Icon.HUD).flex(1));
+            navigation.add(nav("Visual", Page.VISUAL, VantaUiNode.Icon.VISUALS).flex(1));
+            navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR).flex(1));
+            navigation.add(nav("Misc", Page.MISC, VantaUiNode.Icon.SPARK).flex(1));
+            navigation.add(nav("UI", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY).flex(1));
+        } else {
+            navigation = VantaUiNode.column(5, 10).width(154).background(VantaUiTheme.PANEL);
+            navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
+            navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
+            navigation.add(nav("HUD", Page.HUD, VantaUiNode.Icon.HUD));
+            navigation.add(nav("Visual", Page.VISUAL, VantaUiNode.Icon.VISUALS));
+            navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
+            navigation.add(nav("Miscellaneous", Page.MISC, VantaUiNode.Icon.SPARK));
+            navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
+            navigation.add(VantaUiNode.spacer(1).flex(1));
+            navigation.add(VantaUiNode.eyebrow("TOOLS"));
+            navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
+                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
+                    .height(34).tooltip("Open installed mods and integrations"));
+            navigation.add(VantaUiNode.text("LOCAL CONFIGURATION", VantaUiTheme.TEXT_MUTED));
+        }
+
+        VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 18)
+                .flex(1).background(VantaUiTheme.PANEL).scrollable();
+        addPageContent(content);
+        body.add(navigation);
+        body.add(content);
+        root.add(body);
+        return root;
+    }
+
+    private VantaUiNode nav(String label, Page target, VantaUiNode.Icon icon) {
+        return VantaUiNode.button(label, icon, () -> {
+            page = target;
+            selectedFeature = null;
+            rebuildUi();
+        }).height(34).selected(page == target)
+                .tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
+    }
+
+    private void addPageContent(VantaUiNode content) {
+        if (selectedFeature != null) {
+            addFeatureSettings(content, selectedFeature);
+            return;
+        }
+        switch (page) {
+            case OVERVIEW -> addOverview(content);
+            case APPEARANCE -> addAppearance(content);
+            case HUD, VISUAL, COMBAT, MISC -> addFeatureCategory(content);
+        }
+    }
+
+    private void addOverview(VantaUiNode content) {
+        content.add(VantaUiNode.eyebrow("VANTA CLIENT / WORKSPACE"));
+        content.add(VantaUiNode.title("Settings"));
+        content.add(VantaUiNode.paragraph(
+                "A focused control center for your client features, HUD and interface preferences.",
+                VantaUiTheme.TEXT_SECONDARY, 2));
+
+        VantaUiNode summary = VantaUiNode.row(10, 14).background(VantaUiTheme.PANEL_RAISED);
+        summary.add(metric("FEATURES", () -> Integer.toString(FeatureRegistry.FEATURES.size())));
+        summary.add(metric("ENABLED", () -> Long.toString(FeatureRegistry.FEATURES.stream()
+                .filter(Feature::isEnabled).count())));
+        summary.add(metric("ACCENT", () -> VantaClientPreferences.get().accent.name()));
+        content.add(summary);
+
+        content.add(sectionTitle(VantaUiNode.Icon.HUD, "Feature categories",
+                "Choose a category to configure its modules"));
+        VantaUiNode categories = VantaUiNode.column(4, 8).background(VantaUiTheme.PANEL_RAISED);
+        categories.add(categoryShortcut("HUD", "Overlays and on-screen information", Page.HUD,
+                VantaUiNode.Icon.HUD));
+        categories.add(divider());
+        categories.add(categoryShortcut("Visual", "Rendering and visual effects", Page.VISUAL,
+                VantaUiNode.Icon.VISUALS));
+        categories.add(divider());
+        categories.add(categoryShortcut("Combat", "Combat-related utilities", Page.COMBAT,
+                VantaUiNode.Icon.CROSSHAIR));
+        categories.add(divider());
+        categories.add(categoryShortcut("Miscellaneous", "Other client features", Page.MISC,
+                VantaUiNode.Icon.SPARK));
+        content.add(categories);
+
+        content.add(sectionTitle(VantaUiNode.Icon.DISPLAY, "Interface", "Appearance and accessibility"));
+        VantaUiNode appearance = VantaUiNode.row(8, 10).background(VantaUiTheme.PANEL_RAISED)
+                .align(VantaUiNode.Alignment.CENTER);
+        appearance.add(VantaUiNode.text("Customize colors, spacing and motion", VantaUiTheme.TEXT_SECONDARY)
+                .flex(1));
+        appearance.add(VantaUiNode.button("Customize", VantaUiNode.Icon.DISPLAY, () -> {
+            page = Page.APPEARANCE;
+            rebuildUi();
+        }));
+        content.add(appearance);
+    }
+
+    private VantaUiNode metric(String label, java.util.function.Supplier<String> value) {
+        VantaUiNode item = VantaUiNode.column(4, 0).flex(1);
+        item.add(VantaUiNode.eyebrow(label));
+        item.add(VantaUiNode.dynamicText(value, VantaUiTheme.TEXT_PRIMARY));
+        return item;
+    }
+
+    private VantaUiNode categoryShortcut(String label, String detail, Page target,
+                                         VantaUiNode.Icon icon) {
+        VantaUiNode row = VantaUiNode.row(10, 5).align(VantaUiNode.Alignment.CENTER);
+        row.add(VantaUiNode.icon(icon).iconColor(VantaUiTheme.TEXT_SECONDARY));
+        VantaUiNode labels = VantaUiNode.column(2, 0).flex(1);
+        labels.add(VantaUiNode.text(label));
+        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
+        row.add(labels);
+        row.add(VantaUiNode.button("Open", () -> {
+            page = target;
+            rebuildUi();
+        }).height(28));
+        return row;
+    }
+
+    private void addFeatureCategory(VantaUiNode content) {
+        Category category = toCategory(page);
+        List<Feature> features = FeatureRegistry.FEATURES.stream()
+                .filter(feature -> feature.getCategory() == category)
+                .filter(feature -> matchesSearch(feature))
+                .toList();
+        content.add(VantaUiNode.eyebrow("FEATURES / " + category.name()));
+        content.add(VantaUiNode.title(categoryTitle(category)));
+        content.add(VantaUiNode.paragraph(categoryDescription(category),
+                VantaUiTheme.TEXT_SECONDARY, 2));
+
+        VantaUiNode search = VantaUiNode.row(8, 8).height(40)
+                .background(VantaUiTheme.PANEL_RAISED).align(VantaUiNode.Alignment.CENTER);
+        search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
+        search.add(VantaUiNode.textField("Filter features...", () -> pendingSearch,
+                value -> pendingSearch = value, 64).flex(1));
+        search.add(VantaUiNode.button("Apply", VantaUiNode.Icon.SEARCH, () -> {
+            searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
+            rebuildUi();
+        }).height(28));
+        content.add(search);
+
+        if (features.isEmpty()) {
+            content.add(VantaUiNode.paragraph("No features match this filter.",
+                    VantaUiTheme.TEXT_MUTED, 1));
+            return;
+        }
+        VantaUiNode list = VantaUiNode.column(1, 8).background(VantaUiTheme.PANEL_RAISED);
+        for (Feature feature : features) {
+            VantaUiNode row = VantaUiNode.row(10, 7).align(VantaUiNode.Alignment.CENTER);
+            VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+            labels.add(VantaUiNode.text(feature.getName()));
+            if (VantaClientPreferences.get().showDescriptions
+                    && feature.getDescription() != null && !feature.getDescription().isBlank()) {
+                labels.add(VantaUiNode.paragraph(feature.getDescription(),
+                        VantaUiTheme.TEXT_MUTED, 2));
+            }
+            row.add(labels);
+            if (!SettingRegistry.getSettings(feature).isEmpty()) {
+                row.add(VantaUiNode.button("Options", () -> {
+                    selectedFeature = feature;
+                    rebuildUi();
+                }).height(28).tooltip("Configure " + feature.getName()));
+            }
+            row.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
+                if (feature.isEnabled() != enabled) feature.toggle();
+                feature.saveConfig();
+                DropperUtilsConfig.save();
+            }).width(48).tooltip("Enable or disable " + feature.getName()));
+            list.add(row);
+            list.add(divider());
+        }
+        content.add(list);
+        content.add(VantaUiNode.text(features.size() + " feature(s)", VantaUiTheme.TEXT_MUTED));
+    }
+
+    private boolean matchesSearch(Feature feature) {
+        if (searchQuery.isBlank()) return true;
+        return feature.getName().toLowerCase(Locale.ROOT).contains(searchQuery)
+                || (feature.getDescription() != null
+                && feature.getDescription().toLowerCase(Locale.ROOT).contains(searchQuery));
+    }
+
+    private void addFeatureSettings(VantaUiNode content, Feature feature) {
+        content.add(VantaUiNode.button("Back to " + categoryTitle(feature.getCategory()),
+                VantaUiNode.Icon.OVERVIEW, () -> {
+                    selectedFeature = null;
+                    rebuildUi();
+                }).height(30));
+        content.add(VantaUiNode.eyebrow("FEATURE / " + feature.getCategory().name()));
+        content.add(VantaUiNode.title(feature.getName()));
+        if (VantaClientPreferences.get().showDescriptions) {
+            content.add(VantaUiNode.paragraph(feature.getDescription(),
+                    VantaUiTheme.TEXT_SECONDARY, 2));
+        }
+        content.add(VantaUiNode.toggle("Enabled", feature::isEnabled, enabled -> {
+            if (feature.isEnabled() != enabled) feature.toggle();
+            feature.saveConfig();
+            DropperUtilsConfig.save();
+        }));
+        List<Setting> settings = SettingRegistry.getSettings(feature);
+        if (settings.isEmpty()) {
+            content.add(VantaUiNode.text("This feature has no additional options.",
+                    VantaUiTheme.TEXT_MUTED));
+            return;
+        }
+        VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
+        for (Setting setting : settings) {
+            if (setting instanceof SliderSetting slider) {
+                panel.add(VantaUiNode.slider(slider.getName(), slider.getMin(), slider.getMax(),
+                        Math.max(0.0, (slider.getMax() - slider.getMin()) / 100.0),
+                        () -> safeNumber(slider), slider.getSetter()::accept));
+            } else if (setting instanceof BooleanSetting toggle) {
+                panel.add(VantaUiNode.toggle(toggle.getName(),
+                        () -> safeBoolean(toggle), toggle.getSetter()::accept));
+            }
+        }
+        content.add(panel);
+    }
+
+    private double safeNumber(SliderSetting setting) {
+        try {
+            Double value = setting.getGetter().get();
+            return value == null || !Double.isFinite(value) ? setting.getMin() : value;
+        } catch (RuntimeException exception) {
+            return setting.getMin();
+        }
+    }
+
+    private boolean safeBoolean(BooleanSetting setting) {
+        try {
+            return Boolean.TRUE.equals(setting.getGetter().get());
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private void addAppearance(VantaUiNode content) {
+        VantaClientPreferences preferences = VantaClientPreferences.get();
+        content.add(VantaUiNode.eyebrow("PREFERENCES / INTERFACE"));
+        content.add(VantaUiNode.title("Appearance"));
+        content.add(VantaUiNode.paragraph(
+                "A restrained visual system shared by settings and the HUD editor.",
+                VantaUiTheme.TEXT_SECONDARY, 2));
+
+        VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
+        panel.add(VantaUiNode.dropdown("Accent color",
+                List.of("BLUE", "VIOLET", "EMERALD", "CYAN"),
+                () -> VantaClientPreferences.get().accent.name(), value -> {
+                    VantaClientPreferences.get().accent = VantaClientPreferences.Accent.valueOf(value);
+                    VantaClientPreferences.save();
+                }));
+        panel.add(divider());
+        panel.add(VantaUiNode.toggle("Interface animations", () -> VantaClientPreferences.get().animations,
+                value -> { VantaClientPreferences.get().animations = value; VantaClientPreferences.save(); }));
+        panel.add(divider());
+        panel.add(VantaUiNode.toggle("Compact layout", () -> VantaClientPreferences.get().compactMode,
+                value -> { VantaClientPreferences.get().compactMode = value; VantaClientPreferences.save(); }));
+        panel.add(divider());
+        panel.add(VantaUiNode.toggle("Setting descriptions", () -> VantaClientPreferences.get().showDescriptions,
+                value -> { VantaClientPreferences.get().showDescriptions = value; VantaClientPreferences.save(); }));
+        panel.add(divider());
+        panel.add(VantaUiNode.slider("Interface scale", 0.8, 1.2, 0.05,
+                () -> VantaClientPreferences.get().uiScale,
+                value -> { VantaClientPreferences.get().uiScale = value; VantaClientPreferences.save(); }));
+        panel.add(divider());
+        panel.add(VantaUiNode.slider("Panel opacity", 0.72, 0.98, 0.02,
+                () -> VantaClientPreferences.get().panelOpacity,
+                value -> { VantaClientPreferences.get().panelOpacity = value; VantaClientPreferences.save(); }));
+        content.add(panel);
+        content.add(VantaUiNode.text("Changes are saved to config/vanta-client.json.",
+                VantaUiTheme.TEXT_MUTED));
+    }
+
+    private void addPageContentHud(VantaUiNode content) {
+        content.add(VantaUiNode.title("HUD"));
+    }
+
+    private VantaUiNode sectionTitle(VantaUiNode.Icon icon, String title, String detail) {
+        VantaUiNode row = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+        row.add(VantaUiNode.icon(icon));
+        VantaUiNode labels = VantaUiNode.column(2, 0);
+        labels.add(VantaUiNode.text(title));
+        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
+        row.add(labels);
+        return row;
+    }
+
+    private VantaUiNode divider() {
+        return VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE);
+    }
+
+    private static Category toCategory(Page page) {
+        return switch (page) {
+            case HUD -> Category.HUD;
+            case VISUAL -> Category.VISUAL;
+            case COMBAT -> Category.COMBAT;
+            default -> Category.MISC;
+        };
+    }
+
+    private static String categoryTitle(Category category) {
+        return switch (category) {
+            case HUD -> "HUD features";
+            case VISUAL -> "Visual features";
+            case COMBAT -> "Combat features";
+            case MISC -> "Miscellaneous features";
+        };
+    }
+
+    private static String categoryDescription(Category category) {
+        return switch (category) {
+            case HUD -> "Configure overlays and information displayed in-game.";
+            case VISUAL -> "Control rendering effects and visual adjustments.";
+            case COMBAT -> "Configure combat utilities and related behavior.";
+            case MISC -> "Additional client features and utilities.";
+        };
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (runtime != null) runtime.tick();
+    }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.fill(0, 0, width, height, 0xE6090C10);
+        if (runtime != null) runtime.render(graphics, font, width, height, mouseX, mouseY);
+        super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button(), font)) return true;
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        boolean handled = runtime != null && runtime.mouseReleased(event.button());
+        return handled || super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (runtime != null && runtime.mouseDragged(event.x(), event.y(), event.button())) return true;
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (runtime != null && runtime.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        boolean shiftDown = (event.modifiers() & 1) != 0;
+        if (runtime != null && runtime.keyPressed(event.key(), shiftDown)) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (runtime != null && runtime.charTyped(event.codepoint())) return true;
+        return super.charTyped(event);
+    }
+
+    @Override
+    public void removed() {
+        if (runtime != null) runtime.dispose();
+        super.removed();
+    }
+
+    @Override
+    public void onClose() {
+        if (minecraft != null) minecraft.setScreen(parent);
+        else super.onClose();
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+}
