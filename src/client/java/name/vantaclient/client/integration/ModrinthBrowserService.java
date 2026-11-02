@@ -46,10 +46,15 @@ public final class ModrinthBrowserService {
         String minecraft = FabricLoader.getInstance().getModContainer("minecraft")
                 .orElseThrow(() -> new IOException("Could not determine Minecraft version."))
                 .getMetadata().getVersion().getFriendlyString();
-        String encoded = URLEncoder.encode(query == null ? "" : query.trim(), StandardCharsets.UTF_8);
+        String normalizedQuery = query == null ? "" : query.trim();
         String facets = URLEncoder.encode("[[\"project_type:mod\"],[\"categories:fabric\"],[\"versions:"
                 + minecraft + "\"]]", StandardCharsets.UTF_8);
-        JsonObject root = getJson(API + "/search?query=" + encoded + "&facets=" + facets + "&limit=30&index=relevance");
+        String endpoint = API + "/search?facets=" + facets + "&limit=30&index="
+                + (normalizedQuery.isEmpty() ? "downloads" : "relevance");
+        if (!normalizedQuery.isEmpty()) {
+            endpoint += "&query=" + URLEncoder.encode(normalizedQuery, StandardCharsets.UTF_8);
+        }
+        JsonObject root = getJson(endpoint);
         JsonArray hits = root.getAsJsonArray("hits");
         List<Project> projects = new ArrayList<>();
         if (hits == null) return List.of();
@@ -84,14 +89,6 @@ public final class ModrinthBrowserService {
                                          Set<String> visiting, List<Path> installed)
             throws IOException, InterruptedException {
         if (!visiting.add(projectId)) return;
-        try {
-            JsonArray versions = getJson(API + "/project/" + projectId + "/version?loaders="
-                    + URLEncoder.encode("[\"fabric\"]", StandardCharsets.UTF_8)
-                    + "&game_versions=" + URLEncoder.encode("[\"" + minecraft + "\"]", StandardCharsets.UTF_8))
-                    .getAsJsonArray("unused");
-        } catch (UnsupportedOperationException ignored) {
-            // No-op; the actual version response is an array and is parsed below.
-        }
         JsonArray versions = getArray(API + "/project/" + projectId + "/version?loaders="
                 + URLEncoder.encode("[\"fabric\"]", StandardCharsets.UTF_8)
                 + "&game_versions=" + URLEncoder.encode("[\"" + minecraft + "\"]", StandardCharsets.UTF_8));
