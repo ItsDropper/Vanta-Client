@@ -23,7 +23,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
 
-        VantaUiPrototypeScreen screen = new VantaUiPrototypeScreen(null);
+        VantaUiPrototypeScreen screen = context.computeOnClient(
+                client -> new VantaUiPrototypeScreen(null));
 
         configureViewport(context, 1280, 720, 1);
         context.setScreen(() -> screen);
