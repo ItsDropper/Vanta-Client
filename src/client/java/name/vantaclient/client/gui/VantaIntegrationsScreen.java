@@ -1067,7 +1067,7 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS && selection == Selection.NONE
                 && mouseX >= contentX() && mouseY >= CONTENT_TOP + 88) {
             int columns = 4;
-            int cardHeight = 112;
+            int cardHeight = 120;
             int gap = 10;
             int visibleRows = Math.max(1, (504 - (CONTENT_TOP + 88) - 24) / (cardHeight + gap));
             int maxScroll = Math.max(0, filteredMods().size() - visibleRows * columns);
