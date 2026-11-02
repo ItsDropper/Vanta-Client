@@ -4,7 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +31,13 @@ public final class VantaUiNode {
     private final Kind kind;
     private final Direction direction;
     private final List<VantaUiNode> children = new ArrayList<>();
-    static final ResourceLocation UI_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "ui");
-    private static final ResourceLocation TITLE_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "title");
-    private static final ResourceLocation CAPTION_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "caption");
+    static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
+    private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
+    private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
 
     private String label = "";
     private Icon icon;
-    private ResourceLocation textFont = UI_FONT;
+    private Identifier textFont = UI_FONT;
     private Supplier<String> textSupplier;
     private String tooltip = "";
     private String placeholder = "";
@@ -1116,18 +1116,18 @@ public final class VantaUiNode {
         return value == null ? "" : value;
     }
 
-    static Component styledText(String value, ResourceLocation fontId) {
+    static Component styledText(String value, Identifier fontId) {
         return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(fontId == null ? UI_FONT : fontId));
     }
-    static int textWidth(Font font, String value, ResourceLocation fontId) { return font.width(styledText(value, fontId)); }
-    static String fitText(Font font, String value, int maximumWidth, ResourceLocation fontId) {
+    static int textWidth(Font font, String value, Identifier fontId) { return font.width(styledText(value, fontId)); }
+    static String fitText(Font font, String value, int maximumWidth, Identifier fontId) {
         if (value == null || value.isEmpty() || maximumWidth <= 0) return "";
         int end = value.length();
         while (end > 0 && textWidth(font, value.substring(0, end), fontId) > maximumWidth)
             end = value.offsetByCodePoints(end, -1);
         return value.substring(0, end);
     }
-    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines, ResourceLocation fontId) {
+    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines, Identifier fontId) {
         if (value == null || value.isBlank()) return List.of("");
         List<String> lines = new ArrayList<>();
         StringBuilder line = new StringBuilder();
