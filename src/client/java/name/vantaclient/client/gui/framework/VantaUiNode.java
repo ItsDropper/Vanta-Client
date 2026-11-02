@@ -586,7 +586,7 @@ public final class VantaUiNode {
         graphics.fill(trackX, thumbY, trackX + 2, thumbY + thumbHeight, VantaUiTheme.TEXT_MUTED);
     }
 
-    void tick(VantaUiTheme theme) {
+    void tick() {
         if (kind == Kind.TEXT_FIELD && focused) {
             caretTicks++;
             if (caretTicks >= VantaUiTheme.CARET_BLINK_TICKS) {
@@ -597,24 +597,29 @@ public final class VantaUiNode {
             caretTicks = 0;
             caretVisible = true;
         }
+        for (VantaUiNode child : children) child.tick();
+    }
 
+    void animate(VantaUiTheme theme, float deltaSeconds) {
         float hoverTarget = hovered ? 1.0f : 0.0f;
         if (!theme.animationsEnabled()) {
             hoverAmount = hoverTarget;
         } else {
-            hoverAmount += (hoverTarget - hoverAmount) * VantaUiTheme.HOVER_EASING;
-            if (Math.abs(hoverTarget - hoverAmount) < 0.01f) hoverAmount = hoverTarget;
+            float hoverFactor = 1.0f - (float) Math.exp(-16.0f * deltaSeconds);
+            hoverAmount += (hoverTarget - hoverAmount) * hoverFactor;
+            if (Math.abs(hoverTarget - hoverAmount) < 0.002f) hoverAmount = hoverTarget;
         }
         if (kind == Kind.TOGGLE && toggleValue != null) {
             float target = toggleValue.getAsBoolean() ? 1.0f : 0.0f;
             if (!theme.animationsEnabled()) {
                 animatedToggle = target;
             } else {
-                animatedToggle += (target - animatedToggle) * VantaUiTheme.TOGGLE_EASING;
-                if (Math.abs(target - animatedToggle) < 0.01f) animatedToggle = target;
+                float toggleFactor = 1.0f - (float) Math.exp(-14.0f * deltaSeconds);
+                animatedToggle += (target - animatedToggle) * toggleFactor;
+                if (Math.abs(target - animatedToggle) < 0.002f) animatedToggle = target;
             }
         }
-        for (VantaUiNode child : children) child.tick(theme);
+        for (VantaUiNode child : children) child.animate(theme, deltaSeconds);
     }
 
     void clearHover() {
