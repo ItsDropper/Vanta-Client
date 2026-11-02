@@ -42,8 +42,8 @@ public final class VantaUiTheme {
 
     public static final int TEXT_LINE_HEIGHT = 9;
     public static final int CARET_BLINK_TICKS = 10;
-    public static final float HOVER_EASING = 0.30f;
-    public static final float TOGGLE_EASING = 0.28f;
+    public static final float HOVER_RATE = 16.0f;
+    public static final float TOGGLE_RATE = 14.0f;
 
     public int accent() {
         return VantaClientPreferences.get().accent.color();
