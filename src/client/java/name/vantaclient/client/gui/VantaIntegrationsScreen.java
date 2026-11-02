@@ -45,7 +45,7 @@ public class VantaIntegrationsScreen extends Screen {
     private enum Selection { NONE, BUILTIN_CATEGORY, BUILTIN_SETTINGS, INSTALLED_MOD }
 
     private final Screen parent;
-    private Section section = Section.SETTINGS;
+    private Section section = Section.MODS;
     private Selection selection = Selection.NONE;
     private Category selectedCategory = Category.HUD;
     private Feature selectedFeature;
@@ -68,13 +68,8 @@ public class VantaIntegrationsScreen extends Screen {
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
     public VantaIntegrationsScreen(Screen parent) {
-        this(parent, true);
-    }
-
-    public VantaIntegrationsScreen(Screen parent, boolean openMods) {
         super(Component.literal("Vanta Client"));
         this.parent = parent;
-        if (openMods) this.section = Section.MODS;
     }
 
     @Override
@@ -404,8 +399,6 @@ public class VantaIntegrationsScreen extends Screen {
             rebuildWidgets();
         }).bounds(x + 142, y, 28, 22).build());
 
-        addPanelButton("Open UI Prototype", x, CONTENT_TOP + 238, 170, 26,
-                () -> minecraft.setScreen(new VantaUiPrototypeScreen(this)));
     }
 
     private void addPreferenceToggle(String name, boolean current, java.util.function.Consumer<Boolean> setter,
