@@ -52,6 +52,7 @@ public class HudEditorScreen extends Screen {
         root.add(toolbar);
         root.add(VantaUiNode.spacer(1).flex(1));
         toolbarRuntime = new VantaUiRuntime(root);
+        toolbarRuntime.setScale((float) VantaClientPreferences.get().uiScale);
         toolbarRuntime.layout(font, width, height);
     }
 
@@ -83,6 +84,7 @@ public class HudEditorScreen extends Screen {
         }
 
         if (toolbarRuntime != null) {
+            toolbarRuntime.setScale((float) preferences.uiScale);
             toolbarRuntime.render(graphics, font, width, height, mouseX, mouseY);
         }
         HudSettingsPanel.render(graphics, mouseX, mouseY);
