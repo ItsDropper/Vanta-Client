@@ -16,7 +16,7 @@ The prototype is a separate Minecraft \`Screen\`. It does not replace the active
 - Mouse click, slider drag/capture/release and wheel input.
 - Keyboard Tab/Shift+Tab focus traversal, Enter/Space activation, directional adjustment, Escape dismissal and pointer-positioned text editing.
 - Tooltips and focus feedback.
-- Live FPS readout.
+- Live FPS readout and smoothed UI CPU command-submission timing (not GPU time).
 - Appearance accent selection and global animation preference.
 
 ## State ownership
@@ -43,10 +43,15 @@ No in-game test is marked as passed by this repository change. Run these checks 
 | Clip | Scroll content until rows and dropdown options pass viewport edges | Offscreen content is neither drawn nor interactive; all options remain reachable through the content scroll viewport |
 | Tooltip | Hover each control near window edges | Tooltip stays within window bounds |
 | Accent | Change accent in prototype | Accent/selection/focus controls update consistently |
+| Disabled state | Disable a control/container in a temporary test tree | It renders muted and no descendant pointer/scroll interaction is accepted |
 | Animation | Toggle global animations | Motion snaps when disabled |
 | GUI scale | Test all practical GUI scale values | Pointer and visuals stay aligned |
 | Resolution | Resize window and change aspect ratio | Layout remeasures without overlap or stale hitboxes |
 | Lifecycle | Close while dragging slider, reopen | No stuck pointer capture or stale focus |
+
+## Performance metric boundary
+
+The overview's UI CPU value measures Java-side component drawing and tooltip command submission. It excludes GPU execution, synchronization, and the rest of Minecraft's frame. It is a diagnostic signal for comparing UI changes, not a full gameplay performance benchmark.
 
 ## Verification status
 
