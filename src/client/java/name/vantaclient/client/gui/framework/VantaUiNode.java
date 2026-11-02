@@ -269,6 +269,7 @@ public final class VantaUiNode {
                 || kind == Kind.SLIDER || kind == Kind.DROPDOWN || kind == Kind.TEXT_FIELD;
     }
     public boolean isVisible() { return visible; }
+    boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
     int intrinsicWidth(Font font) {
         if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
@@ -922,6 +923,35 @@ public final class VantaUiNode {
                 cycleDropdown(direction);
             }
         }
+    }
+
+    boolean revealDescendant(VantaUiNode target, int requiredHeight) {
+        if (this == target) return true;
+        boolean found = false;
+        for (VantaUiNode child : children) {
+            if (child.revealDescendant(target, requiredHeight)) {
+                found = true;
+                break;
+            }
+        }
+        if (found && scrollable) {
+            int viewportTop = y + padding;
+            int viewportBottom = y + height - padding;
+            int targetTop = target.y;
+            int targetBottom = target.y + requiredHeight;
+
+            if (targetBottom > viewportBottom) {
+                scrollOffset += targetBottom - viewportBottom;
+            }
+            if (targetTop < viewportTop) {
+                scrollOffset -= viewportTop - targetTop;
+            }
+
+            int viewportHeight = Math.max(1, height - padding * 2);
+            int maxScroll = Math.max(0, contentHeight - viewportHeight);
+            scrollOffset = clamp(scrollOffset, 0, maxScroll);
+        }
+        return found;
     }
 
     boolean scrollAt(double mouseX, double mouseY, double amount) {
