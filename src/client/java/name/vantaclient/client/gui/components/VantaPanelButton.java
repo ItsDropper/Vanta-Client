@@ -83,17 +83,15 @@ public final class VantaPanelButton extends AbstractWidget {
         hoverAmount += (target - hoverAmount) * 0.24f;
         if (Math.abs(target - hoverAmount) < 0.015f) hoverAmount = target;
 
-        int background = mixColor(0xFF171B23, 0xFF252D3B, hoverAmount);
-        if (active) background = mixColor(background, 0xFF293244, 0.72f);
-        graphics.fill(getX(), getY(), getX() + width, getY() + height, background);
+        int background = mixColor(0xFF191E28, 0xFF293244, hoverAmount);
+        if (active) background = mixColor(background, 0xFF303C52, 0.72f);
+        fillRounded(graphics, getX(), getY(), width, height, 7, background);
 
         int accentColor = accent.getAsInt();
         if (active) {
-            graphics.fill(getX(), getY() + 3, getX() + 3, getY() + height - 3, accentColor);
-            graphics.fill(getX() + 3, getY(), getX() + width, getY() + 1,
-                    (accentColor & 0x00FFFFFF) | 0x33000000);
+            fillRounded(graphics, getX() + 2, getY() + 3, 3, height - 6, 2, accentColor);
         } else if (hoverAmount > 0.08f) {
-            graphics.fill(getX(), getY() + 5, getX() + 1, getY() + height - 5,
+            fillRounded(graphics, getX() + 2, getY() + 5, 2, height - 10, 1,
                     mixColor(0xFF252D3B, accentColor, hoverAmount * 0.7f));
         }
 
@@ -101,6 +99,22 @@ public final class VantaPanelButton extends AbstractWidget {
         String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
         graphics.drawString(Minecraft.getInstance().font, visibleLabel,
                 getX() + 10, getY() + (height - 8) / 2, textColor);
+    }
+
+    private static void fillRounded(GuiGraphics graphics, int x, int y, int width,
+                                    int height, int radius, int color) {
+        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
+        for (int row = 0; row < height; row++) {
+            int inset = 0;
+            if (row < r) {
+                double dy = r - row - 0.5;
+                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
+            } else if (row >= height - r) {
+                double dy = row - (height - r) + 0.5;
+                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
+            }
+            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
+        }
     }
 
     private static int mixColor(int from, int to, float amount) {
