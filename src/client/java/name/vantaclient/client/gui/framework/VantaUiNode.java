@@ -1120,7 +1120,7 @@ public final class VantaUiNode {
         return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(fontId == null ? UI_FONT : fontId));
     }
     static int textWidth(Font font, String value, ResourceLocation fontId) { return font.width(styledText(value, fontId)); }
-    private static String fitText(Font font, String value, int maximumWidth, ResourceLocation fontId) {
+    static String fitText(Font font, String value, int maximumWidth, ResourceLocation fontId) {
         if (value == null || value.isEmpty() || maximumWidth <= 0) return "";
         int end = value.length();
         while (end > 0 && textWidth(font, value.substring(0, end), fontId) > maximumWidth)
