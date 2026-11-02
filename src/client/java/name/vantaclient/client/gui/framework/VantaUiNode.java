@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    public enum Kind { CONTAINER, TEXT, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN }
+    public enum Kind { CONTAINER, TEXT, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
     public enum Justification { START, CENTER, END, SPACE_BETWEEN }
@@ -31,6 +31,11 @@ public final class VantaUiNode {
     private String label = "";
     private Supplier<String> textSupplier;
     private String tooltip = "";
+    private String placeholder = "";
+    private Supplier<String> inputValue;
+    private Consumer<String> inputSetter;
+    private int inputMaximumLength = 128;
+    private int inputCursor;
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
     private int background;
     private int preferredWidth = -1;
@@ -59,6 +64,8 @@ public final class VantaUiNode {
     private int height;
     private float hoverAmount;
     private float animatedToggle;
+    private int caretTicks;
+    private boolean caretVisible = true;
 
     private Runnable action;
     private BooleanSupplier toggleValue;
@@ -150,6 +157,20 @@ public final class VantaUiNode {
         return node;
     }
 
+    public static VantaUiNode textField(String placeholder, Supplier<String> value,
+                                        Consumer<String> setter, int maximumLength) {
+        if (value == null || setter == null) {
+            throw new IllegalArgumentException("Text field requires value and setter bindings.");
+        }
+        VantaUiNode node = new VantaUiNode(Kind.TEXT_FIELD, null);
+        node.placeholder = placeholder == null ? "" : placeholder;
+        node.inputValue = value;
+        node.inputSetter = setter;
+        node.inputMaximumLength = Math.max(1, maximumLength);
+        node.preferredHeight = VantaUiTheme.CONTROL_HEIGHT;
+        return node;
+    }
+
     public static VantaUiNode dropdown(String label, List<String> options,
                                        Supplier<String> value, Consumer<String> setter) {
         if (options == null || options.isEmpty()) {
@@ -221,7 +242,7 @@ public final class VantaUiNode {
     public int height() { return height; }
     public boolean isInteractive() {
         return kind == Kind.BUTTON || kind == Kind.TOGGLE
-                || kind == Kind.SLIDER || kind == Kind.DROPDOWN;
+                || kind == Kind.SLIDER || kind == Kind.DROPDOWN || kind == Kind.TEXT_FIELD;
     }
     public boolean isVisible() { return visible; }
 
@@ -230,7 +251,7 @@ public final class VantaUiNode {
         return switch (kind) {
             case TEXT -> font.width(currentText());
             case SPACER -> 1;
-            case BUTTON, TOGGLE, SLIDER, DROPDOWN -> 160;
+            case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
             case CONTAINER -> {
                 int measured = 0;
                 for (VantaUiNode child : children) {
@@ -252,7 +273,7 @@ public final class VantaUiNode {
         return switch (kind) {
             case TEXT -> 14;
             case SPACER -> 0;
-            case BUTTON, TOGGLE, DROPDOWN -> VantaUiTheme.CONTROL_HEIGHT;
+            case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
             case CONTAINER -> {
                 int measured = 0;
@@ -477,9 +498,39 @@ public final class VantaUiNode {
                         VantaUiTheme.TEXT_SECONDARY);
                 if (focused) graphics.fill(boxX, y + height - 2, x + width, y + height, accent);
             }
+            case TEXT_FIELD -> {
+                int fieldBackground = focused ? 0xFF111B29 : 0xFF0E1621;
+                graphics.fill(x, y, x + width, y + height, fieldBackground);
+                graphics.fill(x, y, x + width, 1 + y, focused ? accent : VantaUiTheme.BORDER);
+                graphics.fill(x, y + height - 1, x + width, y + height,
+                        focused ? accent : VantaUiTheme.BORDER_SUBTLE);
+
+                String value = currentInput();
+                int availableWidth = Math.max(0, width - 18);
+                String shown = value;
+                while (!shown.isEmpty() && font.width(shown) > availableWidth) {
+                    shown = shown.substring(1);
+                }
+                int textColor = value.isEmpty()
+                        ? VantaUiTheme.TEXT_MUTED : VantaUiTheme.TEXT_PRIMARY;
+                String display = value.isEmpty() ? placeholder : shown;
+                graphics.drawString(font, display, x + 8, y + (height - 9) / 2, textColor);
+
+                if (focused && caretVisible && width > 12) {
+                    int cursor = Math.max(0, Math.min(inputCursor, value.length()));
+                    String prefix = value.substring(0, cursor);
+                    while (!prefix.isEmpty() && font.width(prefix) > availableWidth) {
+                        prefix = prefix.substring(1);
+                    }
+                    int caretX = Math.min(x + width - 5, x + 8 + font.width(prefix));
+                    int caretY = y + (height - 12) / 2;
+                    graphics.fill(caretX, caretY, caretX + 1, caretY + 12, accent);
+                }
+            }
         }
 
-        if (focused && kind != Kind.SLIDER && kind != Kind.TOGGLE && kind != Kind.DROPDOWN) {
+        if (focused && kind != Kind.SLIDER && kind != Kind.TOGGLE
+                && kind != Kind.DROPDOWN && kind != Kind.TEXT_FIELD) {
             graphics.fill(x, y + height - 1, x + width, y + height, accent);
         }
     }
@@ -497,6 +548,17 @@ public final class VantaUiNode {
     }
 
     void tick(VantaUiTheme theme) {
+        if (kind == Kind.TEXT_FIELD && focused) {
+            caretTicks++;
+            if (caretTicks >= 10) {
+                caretTicks = 0;
+                caretVisible = !caretVisible;
+            }
+        } else {
+            caretTicks = 0;
+            caretVisible = true;
+        }
+
         float hoverTarget = hovered ? 1.0f : 0.0f;
         if (!theme.animationsEnabled()) {
             hoverAmount = hoverTarget;
@@ -535,7 +597,14 @@ public final class VantaUiNode {
     }
 
     void setHovered(boolean value) { hovered = value; }
-    void setFocused(boolean value) { focused = value; }
+    void setFocused(boolean value) {
+        focused = value;
+        if (focused && kind == Kind.TEXT_FIELD) {
+            inputCursor = currentInput().length();
+            caretVisible = true;
+            caretTicks = 0;
+        }
+    }
 
     void click(double mouseX, int button) {
         if (!enabled || button != 0) return;
@@ -548,8 +617,55 @@ public final class VantaUiNode {
             }
             case SLIDER -> updateSlider(mouseX);
             case DROPDOWN -> cycleDropdown(1);
+            case TEXT_FIELD -> inputCursor = currentInput().length();
             default -> { }
         }
+    }
+
+    boolean charTyped(int codepoint) {
+        if (kind != Kind.TEXT_FIELD || !focused || !Character.isValidCodePoint(codepoint)
+                || Character.isISOControl(codepoint)) return false;
+        String current = currentInput();
+        String insertion = new String(Character.toChars(codepoint));
+        if (current.length() + insertion.length() > inputMaximumLength) return true;
+        String next = current.substring(0, inputCursor) + insertion + current.substring(inputCursor);
+        inputCursor += insertion.length();
+        inputSetter.accept(next);
+        caretVisible = true;
+        caretTicks = 0;
+        return true;
+    }
+
+    boolean editKey(int keyCode) {
+        if (kind != Kind.TEXT_FIELD || !focused) return false;
+        String current = currentInput();
+        switch (keyCode) {
+            case 259 -> {
+                if (inputCursor > 0) {
+                    int start = current.offsetByCodePoints(inputCursor, -1);
+                    inputSetter.accept(current.substring(0, start) + current.substring(inputCursor));
+                    inputCursor = start;
+                }
+            }
+            case 261 -> {
+                if (inputCursor < current.length()) {
+                    int end = current.offsetByCodePoints(inputCursor, 1);
+                    inputSetter.accept(current.substring(0, inputCursor) + current.substring(end));
+                }
+            }
+            case 263 -> {
+                if (inputCursor > 0) inputCursor = current.offsetByCodePoints(inputCursor, -1);
+            }
+            case 262 -> {
+                if (inputCursor < current.length()) inputCursor = current.offsetByCodePoints(inputCursor, 1);
+            }
+            case 268 -> inputCursor = 0;
+            case 269 -> inputCursor = current.length();
+            default -> { return false; }
+        }
+        caretVisible = true;
+        caretTicks = 0;
+        return true;
     }
 
     void drag(double mouseX) {
@@ -565,6 +681,7 @@ public final class VantaUiNode {
                 }
             }
             case DROPDOWN -> cycleDropdown(1);
+            case TEXT_FIELD -> { }
             default -> { }
         }
     }
@@ -621,6 +738,11 @@ public final class VantaUiNode {
         if (!visible || !enabled) return;
         if (isInteractive()) result.add(this);
         for (VantaUiNode child : children) child.collectFocusable(result);
+    }
+
+    private String currentInput() {
+        String value = inputValue == null ? "" : inputValue.get();
+        return value == null ? "" : value;
     }
 
     private String currentText() {
