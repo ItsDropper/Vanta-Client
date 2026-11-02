@@ -20,10 +20,19 @@ public final class VantaUiRuntime {
     private long lastFrameNanos;
     private long lastUiRenderNanos;
     private long averageUiRenderNanos;
+    private float uiScale = 1.0f;
 
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
         this.root = root;
+    }
+
+    /** Applies the user's shared interface scale and invalidates placement when it changes. */
+    public void setScale(float scale) {
+        float bounded = Math.max(0.8f, Math.min(1.2f, scale));
+        if (Float.compare(uiScale, bounded) == 0) return;
+        uiScale = bounded;
+        invalidateLayout();
     }
 
     /** Marks measurements and placement dirty after content or size constraints change. */
@@ -35,8 +44,10 @@ public final class VantaUiRuntime {
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
         lastWidth = screenWidth;
         lastHeight = screenHeight;
-        root.arrange(22, 22, Math.max(0, screenWidth - 44),
-                Math.max(0, screenHeight - 44), font);
+        int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
+        int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
+        root.arrange(22, 22, Math.max(0, layoutWidth - 44),
+                Math.max(0, layoutHeight - 44), font);
         clearFocusIfDetached();
     }
 
@@ -54,8 +65,15 @@ public final class VantaUiRuntime {
                 ? 1.0f / 60.0f
                 : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
         lastFrameNanos = now;
+        float offsetX = screenWidth * 0.5f * (1.0f - uiScale);
+        float offsetY = screenHeight * 0.5f * (1.0f - uiScale);
+        int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
+        int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
+        int logicalMouseX = Math.round((mouseX - offsetX) / uiScale);
+        int logicalMouseY = Math.round((mouseY - offsetY) / uiScale);
+
         root.clearHover();
-        hovered = root.hitTest(mouseX, mouseY);
+        hovered = root.hitTest(logicalMouseX, logicalMouseY);
         if (hovered != null) hovered.setHovered(true);
         boolean animationsEnabled = theme.animationsEnabled();
         float hoverFactor = 1.0f;
@@ -67,8 +85,15 @@ public final class VantaUiRuntime {
         root.animate(animationsEnabled, hoverFactor, toggleFactor);
 
         long renderStart = System.nanoTime();
-        root.render(graphics, font, theme, mouseX, mouseY);
-        renderTooltip(graphics, font, screenWidth, screenHeight);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(offsetX, offsetY);
+        graphics.pose().scale(uiScale, uiScale);
+        try {
+            root.render(graphics, font, theme, logicalMouseX, logicalMouseY);
+            renderTooltip(graphics, font, layoutWidth, layoutHeight);
+        } finally {
+            graphics.pose().popMatrix();
+        }
         lastUiRenderNanos = Math.max(0L, System.nanoTime() - renderStart);
         averageUiRenderNanos = averageUiRenderNanos == 0L
                 ? lastUiRenderNanos
@@ -91,6 +116,10 @@ public final class VantaUiRuntime {
 
     public boolean mouseClicked(double mouseX, double mouseY, int button, Font font) {
         if (button != 0) return false;
+        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
+        double offsetY = lastHeight * 0.5 * (1.0 - uiScale);
+        mouseX = (mouseX - offsetX) / uiScale;
+        mouseY = (mouseY - offsetY) / uiScale;
         VantaUiNode target = root.hitTest(mouseX, mouseY);
         boolean dropdownClosed = root.closeDropdownsExcept(target);
         setFocused(target);
@@ -115,7 +144,8 @@ public final class VantaUiRuntime {
 
     public boolean mouseDragged(double mouseX, double mouseY, int button) {
         if (activeSlider == null || button != 0) return false;
-        activeSlider.drag(mouseX);
+        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
+        activeSlider.drag((mouseX - offsetX) / uiScale);
         return true;
     }
 
@@ -126,7 +156,10 @@ public final class VantaUiRuntime {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        boolean handled = root.scrollAt(mouseX, mouseY, amount);
+        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
+        double offsetY = lastHeight * 0.5 * (1.0 - uiScale);
+        boolean handled = root.scrollAt((mouseX - offsetX) / uiScale,
+                (mouseY - offsetY) / uiScale, amount);
         if (handled) lastWidth = -1;
         return handled;
     }
