@@ -310,6 +310,17 @@ public class VantaIntegrationsScreen extends Screen {
                 () -> selectCategory(Category.MISC),
                 () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
 
+        // Keep the library entry in the sidebar instead of making users discover it
+        // through the main content area or the small "Mods" section switch.
+        addPanelButton("Browse library", 34, 326, SIDEBAR_WIDTH - 24, 25, () -> {
+            section = Section.MODS;
+            selection = Selection.NONE;
+            favoritesOnly = false;
+            sidebarScroll = 0;
+            firstSetting = 0;
+            rebuildWidgets();
+        }, () -> section == Section.MODS && selection == Selection.NONE && !favoritesOnly);
+
         // Installed mods use a four-column tile grid in the main content area.
     }
 
@@ -963,12 +974,16 @@ public class VantaIntegrationsScreen extends Screen {
                         mixColor(0xFF303A49, accent, 0.10f + hover * 0.22f), 13);
                 drawRoundedCard(graphics, x + 1, y + 1, cardWidth - 2, cardHeight - 2,
                         mixColor(0xFF1B222E, 0xFF27364B, hover), 12);
-                drawRoundedCard(graphics, x + 8, y + 7, cardWidth - 16, 58,
-                        mixColor(0xFF202A38, 0xFF29384C, hover), 10);
+                drawRoundedCard(graphics, x + 7, y + 7, cardWidth - 14, 62,
+                        mixColor(0xFF202A38, 0xFF29384C, hover), 11);
+                // A restrained accent rail gives each tile the same strong bottom
+                // edge as the reference without turning the whole card into a button.
+                drawRoundedCard(graphics, x + 8, y + cardHeight - 5, cardWidth - 16, 3,
+                        withAlpha(accent, 0.72f + hover * 0.28f), 2);
                 Identifier iconTexture = modIconTextures.get(mod.id());
-                int iconSize = 40;
+                int iconSize = 42;
                 int iconX = x + (cardWidth - iconSize) / 2;
-                int iconY = y + 16;
+                int iconY = y + 15;
                 if (iconTexture != null) {
                     graphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, iconX, iconY,
                             0.0f, 0.0f, iconSize, iconSize, iconSize, iconSize);
