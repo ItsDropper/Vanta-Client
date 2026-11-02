@@ -2,6 +2,9 @@ package name.vantaclient.client.gui;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import name.vantaclient.client.hudeditor.HudEditorScreen;
+import name.vantaclient.client.hudeditor.HudManager;
+import name.vantaclient.client.hudeditor.HudSettingsPanel;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,18 +32,52 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.setScreen(() -> screen);
         context.waitForScreen(VantaSettingsScreen.class);
         capturePages(context, screen, "1280x720-gui1");
+        captureHudEditor(context, screen, "1280x720-gui1");
 
         configureViewport(context, 1280, 720, 2);
         capturePages(context, screen, "1280x720-gui2");
+        captureHudEditor(context, screen, "1280x720-gui2");
 
         configureViewport(context, 960, 540, 1);
         capturePages(context, screen, "960x540-gui1");
+        captureHudEditor(context, screen, "960x540-gui1");
 
         configureViewport(context, 960, 540, 2);
         capturePages(context, screen, "960x540-gui2");
+        captureHudEditor(context, screen, "960x540-gui2");
 
         context.setScreen(() -> null);
         context.waitTicks(1);
+    }
+
+    private static void captureHudEditor(ClientGameTestContext context,
+                                         VantaSettingsScreen settingsScreen,
+                                         String viewportLabel) {
+        HudEditorScreen editor = context.computeOnClient(client -> new HudEditorScreen(null));
+        context.setScreen(() -> editor);
+        context.waitForScreen(HudEditorScreen.class);
+        context.runOnClient(client -> {
+            HudManager.init();
+            if (!HudManager.getElements().isEmpty()) {
+                HudSettingsPanel.setSelected(HudManager.getElements().get(0));
+            }
+        });
+        context.waitTicks(2);
+
+        Path screenshot = context.takeScreenshot("vanta-hud-editor-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce HUD editor screenshot: " + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("HUD editor screenshot is unexpectedly small: " + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify HUD editor screenshot: " + screenshot, exception);
+        }
+
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
     }
 
     private static void configureViewport(ClientGameTestContext context,
