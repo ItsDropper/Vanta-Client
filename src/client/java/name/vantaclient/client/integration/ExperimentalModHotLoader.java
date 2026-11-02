@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -170,6 +171,8 @@ public final class ExperimentalModHotLoader {
             details.add("Could not scan mods directory: " + safeMessage(exception));
             return result(0, skipped, failed, details);
         }
+
+        skipped += rejectDuplicateClasses(candidates, details);
 
         Map<String, Version> loadedVersions = new LinkedHashMap<>();
         FabricLoader.getInstance().getAllMods().forEach(mod ->
@@ -378,6 +381,44 @@ public final class ExperimentalModHotLoader {
             result.add(value);
         }
         return List.copyOf(result);
+    }
+
+    private static int rejectDuplicateClasses(Map<String, Candidate> candidates,
+            List<String> details) {
+        Map<String, String> classOwners = new HashMap<>();
+        Set<String> conflictedIds = new LinkedHashSet<>();
+
+        for (Candidate candidate : candidates.values()) {
+            try (JarFile archive = new JarFile(candidate.path().toFile())) {
+                var entries = archive.entries();
+                while (entries.hasMoreElements()) {
+                    String name = entries.nextElement().getName();
+                    if (!name.endsWith(".class") || name.startsWith("META-INF/versions/")
+                            || name.equals("module-info.class")) {
+                        continue;
+                    }
+                    String previousOwner = classOwners.putIfAbsent(name, candidate.id());
+                    if (previousOwner != null && !previousOwner.equals(candidate.id())) {
+                        conflictedIds.add(previousOwner);
+                        conflictedIds.add(candidate.id());
+                    }
+                }
+            } catch (IOException exception) {
+                conflictedIds.add(candidate.id());
+                details.add(candidate.id() + ": could not inspect class entries — "
+                        + safeMessage(exception));
+            }
+        }
+
+        for (String id : conflictedIds) {
+            Candidate removed = candidates.remove(id);
+            if (removed != null) {
+                ATTEMPTED.add(removed.identity());
+                details.add(id + ": skipped because its JAR contains a class also supplied "
+                        + "by another candidate JAR");
+            }
+        }
+        return conflictedIds.size();
     }
 
     private static Map<String, List<String>> dependencyRequirements(JsonObject metadata)
