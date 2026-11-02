@@ -81,7 +81,7 @@ public class VantaIntegrationsScreen extends Screen {
         }
         if (section == Section.MODS && selection == Selection.NONE) {
             modSearch = new EditBox(font, VantaPanelButton.layoutX(650),
-                    VantaPanelButton.layoutY(25), VantaPanelButton.layoutSize(196),
+                    VantaPanelButton.layoutY(25), VantaPanelButton.layoutSize(190),
                     VantaPanelButton.layoutSize(24), Component.literal("Search mods"));
             modSearch.setMaxLength(64);
             modSearch.setValue(modSearchQuery);
@@ -151,12 +151,13 @@ public class VantaIntegrationsScreen extends Screen {
             addClientSettings();
         }
         if (section == Section.MODS) {
-            addPanelButton("Studio", 866, 25, 64, 24, () -> {
+            addPanelButton("Studio", 846, 25, 56, 24, () -> {
                 studioOpen = !studioOpen;
                 rebuildWidgets();
             }, () -> studioOpen);
             if (studioOpen) addStudioControls();
         }
+        addPanelButton("×", 906, 25, 24, 24, this::onClose);
     }
 
     private void addStudioControls() {
