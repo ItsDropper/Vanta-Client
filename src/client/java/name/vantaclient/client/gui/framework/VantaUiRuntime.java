@@ -16,6 +16,7 @@ public final class VantaUiRuntime {
     private VantaUiNode hovered;
     private int lastWidth = -1;
     private int lastHeight = -1;
+    private long lastFrameNanos;
 
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
@@ -34,6 +35,12 @@ public final class VantaUiRuntime {
     public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight,
                        int mouseX, int mouseY) {
         layout(font, screenWidth, screenHeight);
+        long now = System.nanoTime();
+        float deltaSeconds = lastFrameNanos == 0L
+                ? 1.0f / 60.0f
+                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        lastFrameNanos = now;
+        root.animate(theme, deltaSeconds);
         root.clearHover();
         hovered = root.hitTest(mouseX, mouseY);
         if (hovered != null) hovered.setHovered(true);
@@ -43,7 +50,7 @@ public final class VantaUiRuntime {
     }
 
     public void tick() {
-        root.tick(theme);
+        root.tick();
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -101,6 +108,7 @@ public final class VantaUiRuntime {
         activeSlider = null;
         focused = null;
         hovered = null;
+        lastFrameNanos = 0L;
     }
 
     private void setFocused(VantaUiNode node) {
