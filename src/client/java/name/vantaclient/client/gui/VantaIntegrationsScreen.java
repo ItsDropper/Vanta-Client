@@ -767,6 +767,12 @@ public class VantaIntegrationsScreen extends Screen {
             int end = Math.min(availableMods.size(), start + visibleRows * columns);
             Set<String> hotLoadedIds = new HashSet<>();
             ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
+            if (availableMods.isEmpty()) {
+                graphics.drawString(font, "No third-party mod JARs found in the active instance mods folder.",
+                        contentX() + 8, startY + 18, 0xFF9296A3);
+                graphics.drawString(font, "Add Fabric mods, then reopen this screen to refresh the list.",
+                        contentX() + 8, startY + 34, 0xFF727D90);
+            }
             for (int index = start; index < end; index++) {
                 ExperimentalModHotLoader.AvailableMod mod = availableMods.get(index);
                 int column = (index - start) % columns;
