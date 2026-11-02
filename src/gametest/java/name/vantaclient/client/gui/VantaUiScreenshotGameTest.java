@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * Launches the actual Minecraft client and captures the Vanta UI prototype.
@@ -39,7 +40,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         capturePages(context, screen, "960x540-gui2");
 
         context.setScreen(() -> null);
-        context.waitForScreen(null);
+        context.waitTicks(1);
     }
 
     private static void configureViewport(ClientGameTestContext context,
@@ -81,6 +82,15 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             throw new AssertionError("Could not verify screenshot: " + screenshot, exception);
         }
 
-        System.out.println("[Vanta UI] Captured " + screenshotName + " -> " + screenshot);
+        try {
+            Path artifactDirectory = Path.of("build", "ui-screenshots");
+            Files.createDirectories(artifactDirectory);
+            Path artifactPath = artifactDirectory.resolve(screenshot.getFileName());
+            Files.copy(screenshot, artifactPath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("[Vanta UI] Captured " + screenshotName
+                    + " -> " + screenshot + " (artifact: " + artifactPath + ")");
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not stage screenshot artifact: " + screenshotName, exception);
+        }
     }
 }
