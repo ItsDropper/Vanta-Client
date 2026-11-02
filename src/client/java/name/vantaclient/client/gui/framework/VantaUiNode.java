@@ -605,7 +605,7 @@ public final class VantaUiNode {
         if (!theme.animationsEnabled()) {
             hoverAmount = hoverTarget;
         } else {
-            float hoverFactor = 1.0f - (float) Math.exp(-16.0f * deltaSeconds);
+            float hoverFactor = 1.0f - (float) Math.exp(-VantaUiTheme.HOVER_RATE * deltaSeconds);
             hoverAmount += (hoverTarget - hoverAmount) * hoverFactor;
             if (Math.abs(hoverTarget - hoverAmount) < 0.002f) hoverAmount = hoverTarget;
         }
@@ -614,7 +614,7 @@ public final class VantaUiNode {
             if (!theme.animationsEnabled()) {
                 animatedToggle = target;
             } else {
-                float toggleFactor = 1.0f - (float) Math.exp(-14.0f * deltaSeconds);
+                float toggleFactor = 1.0f - (float) Math.exp(-VantaUiTheme.TOGGLE_RATE * deltaSeconds);
                 animatedToggle += (target - animatedToggle) * toggleFactor;
                 if (Math.abs(target - animatedToggle) < 0.002f) animatedToggle = target;
             }
