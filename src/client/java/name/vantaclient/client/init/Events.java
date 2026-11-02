@@ -10,7 +10,6 @@ import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ExplosionEffects;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
-import name.vantaclient.client.hudeditor.HudEditorScreen;
 
 public class Events {
 
@@ -62,10 +61,6 @@ public class Events {
                 client.setScreen(new VantaIntegrationsScreen(null));
             }
 
-
-            if (Keybinds.hudEditorKey.consumeClick()) {
-                client.setScreen(new HudEditorScreen());
-            }
 
             ZoomFeature.INSTANCE.tick(Keybinds.zoomKey);
 
