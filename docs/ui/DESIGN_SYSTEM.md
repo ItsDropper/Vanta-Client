@@ -1,6 +1,6 @@
 # Vanta UI Design System
 
-**Status:** initial framework token set; not yet visually approved in a live Minecraft session.
+**Status:** redesigned prototype implemented; screenshot review and in-game interaction validation remain open.
 
 This document defines the design contract for new framework components. Components must consume these tokens and rules rather than inventing per-screen colors, dimensions or animations.
 
@@ -12,10 +12,10 @@ Design priorities, in order:
 
 1. Information hierarchy and scan speed.
 2. Precise alignment and consistent control geometry.
-3. Legible typography using Minecraft's native font renderer.
-4. Restrained accent use for selection, progress and action.
+3. Legible typography using the bundled IBM Plex Sans family through Minecraft's font provider.
+4. A restrained accent used for selection, progress and action.
 5. Deliberate depth through surface contrast, not excessive borders/glow.
-6. Motion that communicates state without delaying input.
+6. A consistent vector-style icon language and motion that communicates state without delaying input.
 
 Do not solve poor composition by adding more cards, gradients, blur or corner radius.
 
@@ -66,10 +66,20 @@ These are logical Minecraft GUI coordinates. They must not be multiplied by phys
 
 ## 4. Typography
 
-Use Minecraft's active \`Font\` renderer. Do not introduce an unrelated font runtime during the prototype.
+Text remains rendered and measured by Minecraft's active `Font` renderer, but uses a bundled IBM Plex Sans variable TTF through Minecraft's normal font-provider system. The font is distributed under the SIL Open Font License 1.1; the license is included next to the asset.
 
-Hierarchy:
-- Page title: primary text, short and clear.
+- `vanta:ui`: 9 px, standard controls and body text.
+- `vanta:title`: 14 px, page titles.
+- `vanta:caption`: 8 px, eyebrow labels and metadata.
+
+All text measurement, truncation and wrapping must use the same styled `Component` font as drawing. A default-font measurement paired with a custom-font draw is a layout bug.
+
+### Iconography
+
+Use the framework's vector-style icon set for navigation, section identity and common actions. Icons are drawn with `GuiGraphics` primitives at logical GUI scale; do not use Unicode symbols, emoji or platform-dependent glyph substitutions as UI icons. New icons must share a consistent stroke weight, geometry and 16 px base grid.
+
+### Text hierarchy
+- Page title: display text, short and clear.
 - Section heading: primary text, separated by spacing rather than a heavy card.
 - Control label: primary text.
 - Description: secondary text, optional and concise.
@@ -129,7 +139,8 @@ The first prototype uses short interpolated hover and switch transitions. Motion
 
 ## 9. Component responsibilities
 
-- **Text:** render text; no input handling.
+- **Text:** render and measure styled text; no input handling.
+- **Icon:** draw a named vector glyph from the shared icon set; no input handling.
 - **Button:** activate a command; does not own persistent settings.
 - **Toggle:** read and write a boolean via supplier/setter.
 - **Slider:** map pointer/key input to validated numeric range and step.
