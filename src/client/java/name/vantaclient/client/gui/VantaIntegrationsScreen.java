@@ -312,14 +312,9 @@ public class VantaIntegrationsScreen extends Screen {
 
         // Keep the library entry in the sidebar instead of making users discover it
         // through the main content area or the small "Mods" section switch.
-        addPanelButton("Browse library", 34, 326, SIDEBAR_WIDTH - 24, 25, () -> {
-            section = Section.MODS;
-            selection = Selection.NONE;
-            favoritesOnly = false;
-            sidebarScroll = 0;
-            firstSetting = 0;
-            rebuildWidgets();
-        }, () -> section == Section.MODS && selection == Selection.NONE && !favoritesOnly);
+        addPanelButton("Browse Modrinth", 34, 326, SIDEBAR_WIDTH - 24, 25, () -> {
+            minecraft.setScreen(new VantaModrinthBrowserScreen(this));
+        });
 
         // Installed mods use a four-column tile grid in the main content area.
     }
