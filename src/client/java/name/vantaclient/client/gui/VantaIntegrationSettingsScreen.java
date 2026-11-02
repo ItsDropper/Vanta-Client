@@ -92,8 +92,13 @@ public final class VantaIntegrationSettingsScreen extends Screen {
                         () -> {
                             Object value = readValue(setting);
                             return value instanceof Number number ? number.doubleValue() : minimum;
-                        }, value -> writeValue(setting, setting.type() == SettingDefinition.Type.INTEGER
-                                ? (int) Math.round(value) : value)));
+                        }, value -> {
+                            if (setting.type() == SettingDefinition.Type.INTEGER) {
+                                writeValue(setting, Integer.valueOf((int) Math.round(value)));
+                            } else {
+                                writeValue(setting, Double.valueOf(value));
+                            }
+                        }));
             }
             case ENUM -> {
                 List<String> options = setting.options();
