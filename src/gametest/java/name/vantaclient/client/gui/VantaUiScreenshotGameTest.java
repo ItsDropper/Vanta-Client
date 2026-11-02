@@ -15,14 +15,14 @@ import java.nio.file.Path;
 @SuppressWarnings("UnstableApiUsage")
 public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static final int PAGE_OVERVIEW = 0;
-    private static final int PAGE_VISUALS = 1;
-    private static final int PAGE_CONTROLS = 2;
+    private static final int PAGE_HUD = 1;
+    private static final int PAGE_APPEARANCE = 2;
 
     @Override
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
 
-        VantaUiPrototypeScreen screen = context.computeOnClient(
+        VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaUiPrototypeScreen(null));
 
         configureViewport(context, 1280, 720, 1);
@@ -58,9 +58,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         capturePage(context, screen, PAGE_OVERVIEW,
                 "vanta-ui-" + viewportLabel + "-overview");
         capturePage(context, screen, PAGE_VISUALS,
-                "vanta-ui-" + viewportLabel + "-visuals");
+                "vanta-ui-" + viewportLabel + "-hud");
         capturePage(context, screen, PAGE_CONTROLS,
-                "vanta-ui-" + viewportLabel + "-controls");
+                "vanta-ui-" + viewportLabel + "-appearance");
     }
 
     private static void capturePage(ClientGameTestContext context,
