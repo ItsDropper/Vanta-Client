@@ -782,9 +782,9 @@ public final class VantaUiNode {
             }
             case DROPDOWN -> {
                 if (dropdownOpen) {
-                    int selectedIndex = selectedDropdownIndex();
-                    if (selectedIndex >= 0) dropdownHighlight = selectedIndex;
-                    else dropdownHighlight = 0;
+                    if (dropdownHighlight >= 0 && dropdownHighlight < Math.min(5, dropdownOptions.size())) {
+                        dropdownSetter.accept(dropdownOptions.get(dropdownHighlight));
+                    }
                     dropdownOpen = false;
                 } else {
                     dropdownHighlight = selectedDropdownIndex();
