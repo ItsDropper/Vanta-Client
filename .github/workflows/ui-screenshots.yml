@@ -7,6 +7,7 @@ on:
       - "build.gradle"
       - "gradle.properties"
       - "src/client/java/name/vantaclient/client/gui/**"
+      - "src/client/java/name/vantaclient/client/hudeditor/**"
       - "src/client/resources/**"
       - "src/gametest/**"
       - ".github/workflows/ui-screenshots.yml"
