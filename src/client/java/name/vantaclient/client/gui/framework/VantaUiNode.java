@@ -27,6 +27,7 @@ public final class VantaUiNode {
     private final List<VantaUiNode> children = new ArrayList<>();
 
     private String label = "";
+    private Supplier<String> textSupplier;
     private String tooltip = "";
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
     private int background;
@@ -93,6 +94,13 @@ public final class VantaUiNode {
     public static VantaUiNode text(String value, int color) {
         VantaUiNode node = new VantaUiNode(Kind.TEXT, null);
         node.label = value == null ? "" : value;
+        node.textColor = color;
+        return node;
+    }
+
+    public static VantaUiNode dynamicText(Supplier<String> value, int color) {
+        VantaUiNode node = new VantaUiNode(Kind.TEXT, null);
+        node.textSupplier = value;
         node.textColor = color;
         return node;
     }
@@ -202,7 +210,7 @@ public final class VantaUiNode {
     int intrinsicWidth(Font font) {
         if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
         return switch (kind) {
-            case TEXT -> font.width(label);
+            case TEXT -> font.width(currentText());
             case SPACER -> 1;
             case BUTTON, TOGGLE, SLIDER, DROPDOWN -> 160;
             case CONTAINER -> {
@@ -344,10 +352,11 @@ public final class VantaUiNode {
         boolean over = contains(mouseX, mouseY);
         int accent = theme.accent();
         switch (kind) {
-            case TEXT -> graphics.drawString(font, label, x, y + Math.max(0, (height - 9) / 2), textColor);
+            case TEXT -> graphics.drawString(font, currentText(), x,
+                    y + Math.max(0, (height - 9) / 2), textColor);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
-                int surface = over ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.SURFACE;
+                int surface = mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
                 graphics.fill(x, y, x + width, y + height, surface);
                 graphics.fill(x, y, x + width, y + 1,
                         focused ? accent : VantaUiTheme.BORDER);
@@ -390,7 +399,7 @@ public final class VantaUiNode {
                 int boxWidth = Math.min(150, Math.max(92, width / 2));
                 int boxX = x + width - boxWidth;
                 graphics.fill(boxX, y + 2, x + width, y + height - 2,
-                        over ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.SURFACE);
+                        mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount));
                 String selected = dropdownValue == null ? "" : dropdownValue.get();
                 String shown = font.plainSubstrByWidth(selected == null ? "" : selected, boxWidth - 24);
                 graphics.drawString(font, shown, boxX + 8, y + (height - 9) / 2,
@@ -532,6 +541,21 @@ public final class VantaUiNode {
         if (!visible || !enabled) return;
         if (isInteractive()) result.add(this);
         for (VantaUiNode child : children) child.collectFocusable(result);
+    }
+
+    private String currentText() {
+        if (textSupplier == null) return label;
+        String value = textSupplier.get();
+        return value == null ? "" : value;
+    }
+
+    private static int mixColor(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private boolean contains(double mouseX, double mouseY) {
