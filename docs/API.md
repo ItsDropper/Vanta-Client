@@ -108,14 +108,14 @@ Mod Menu is an optional compile-time API dependency and runtime suggestion, not 
 
 The Mods landing page includes **Try hot-load new mods**. It scans the active instance's `mods` directory for JARs that Fabric did not load and attempts to invoke their plain string-based `entrypoints.client` classes as `ClientModInitializer` instances.
 
-This is an opt-in experiment, not a second Fabric Loader. It does not register discovered JARs as Fabric mod containers and cannot provide normal Fabric initialization semantics. The current preflight rejects JARs that declare Mixins, access wideners, custom language adapters, nested JARs, non-client environments, or common/server entrypoints. It requires Java client entrypoints with public no-argument constructors, declared either as strings or as objects using the default language adapter. Required dependencies must already be loaded or be included in the same candidate batch; candidates are ordered by their declared required dependencies. Duplicate mod IDs are rejected.
+This is an opt-in experiment, not a second Fabric Loader. It does not register discovered JARs as Fabric mod containers and cannot provide normal Fabric initialization semantics. The current preflight rejects JARs that declare Mixins, access wideners, custom language adapters, nested JARs, non-client environments, or common/server entrypoints. It requires Java client entrypoints with public no-argument constructors, declared either as strings or as objects using the default language adapter. Required dependencies must already be loaded or be included in the same candidate batch; candidates are ordered by their declared required dependencies, and Fabric version predicates (including alternative predicates) are checked against the actual loaded or candidate dependency version. Candidates whose dependency version cannot be verified are skipped. Duplicate mod IDs and duplicate fully-qualified class names across candidate JARs are rejected.
 
 Candidate JARs in one scan share a classloader so they can resolve classes from one another. This is still not equivalent to Fabric's Knot classloading or mod resolution. The classloader uses Vanta Client's classloader as its parent, and parent-loaded classes take precedence.
 
 Important limitations:
 
 - It cannot apply Mixins or access wideners after startup.
-- It does not resolve dependency versions, load nested JARs, support custom entrypoint adapters, or register the JAR with Fabric Loader.
+- It does not load nested JARs, support custom entrypoint adapters, or register the JAR with Fabric Loader. Dependency version predicates are checked, but this is not a full Fabric mod-resolution pass: optional recommendations, conflicts, breaks, provides/aliases, and dependency overrides are not resolved.
 - `FabricLoader.isModLoaded(id)` remains false for a hot-loaded JAR, and Fabric metadata/resource APIs will not treat it as a normal loaded mod.
 - A mod initializer can mutate global state, start threads, or register callbacks that Vanta cannot undo. A failed attempt may leave partial side effects; restart Minecraft to return to a clean state.
 - A successful invocation only means the declared client initializer returned without throwing. It is not proof that the mod is fully functional or that later resource lookups will work.
