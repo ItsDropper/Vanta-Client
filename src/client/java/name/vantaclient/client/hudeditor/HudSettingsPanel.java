@@ -10,6 +10,8 @@ public final class HudSettingsPanel {
     private static boolean open;
     private static boolean draggingSlider;
     private static float openProgress;
+    private static float snapProgress = -1.0f;
+    private static float gridProgress = -1.0f;
 
     private static final int PANEL_WIDTH = 250;
     private static final int PANEL_HEIGHT = 340;
@@ -112,14 +114,18 @@ public final class HudSettingsPanel {
                 accent, alpha);
 
         int controlsY = y + (selected instanceof ArmorHudElement ? 173 : 137);
+        float snapTarget = VantaClientPreferences.get().hudSnapToGrid ? 1.0f : 0.0f;
+        float gridTarget = VantaClientPreferences.get().hudShowGrid ? 1.0f : 0.0f;
+        if (snapProgress < 0.0f) snapProgress = snapTarget;
+        if (gridProgress < 0.0f) gridProgress = gridTarget;
+        snapProgress += (snapTarget - snapProgress) * 0.24f;
+        gridProgress += (gridTarget - gridProgress) * 0.24f;
         fillRounded(graphics, x + 12, controlsY - 10, PANEL_WIDTH - 24, 1, 1,
                 withAlpha(BORDER, alpha));
         sectionLabel(graphics, mc, "ALIGNMENT", x + 16, controlsY, alpha);
-        drawPreferenceRow(graphics, mc, "Snap to grid",
-                VantaClientPreferences.get().hudSnapToGrid,
+        drawPreferenceRow(graphics, mc, "Snap to grid", snapProgress,
                 x + 14, controlsY + 17, mouseX, mouseY, accent, alpha);
-        drawPreferenceRow(graphics, mc, "Show grid",
-                VantaClientPreferences.get().hudShowGrid,
+        drawPreferenceRow(graphics, mc, "Show grid", gridProgress,
                 x + 14, controlsY + 48, mouseX, mouseY, accent, alpha);
 
         sectionLabel(graphics, mc, "GRID SPACING", x + 16, controlsY + 84, alpha);
@@ -143,7 +149,7 @@ public final class HudSettingsPanel {
     }
 
     private static void drawPreferenceRow(GuiGraphics graphics, Minecraft mc, String label,
-                                          boolean enabled, int x, int y, int mouseX,
+                                          float progress, int x, int y, int mouseX,
                                           int mouseY, int accent, int alpha) {
         boolean hovered = inside(mouseX, mouseY, x, y, PANEL_WIDTH - 28, 27);
         fillRounded(graphics, x, y, PANEL_WIDTH - 28, 27, 8,
@@ -151,8 +157,8 @@ public final class HudSettingsPanel {
         drawText(graphics, mc, label, x + 10, y + 9, TEXT, alpha);
         int sx = x + PANEL_WIDTH - 28 - 43;
         fillRounded(graphics, sx, y + 5, 34, 17, 9,
-                withAlpha(enabled ? accent : 0xFF3A4554, alpha));
-        fillRounded(graphics, sx + (enabled ? 19 : 3), y + 8, 11, 11, 6,
+                withAlpha(mixColor(0xFF3A4554, accent, progress), alpha));
+        fillRounded(graphics, sx + 3 + Math.round(16.0f * progress), y + 8, 11, 11, 6,
                 withAlpha(0xFFFFFFFF, alpha));
     }
 
@@ -261,6 +267,15 @@ public final class HudSettingsPanel {
                                   int x, int y, int width, int height) {
         return mouseX >= x && mouseX <= x + width
                 && mouseY >= y && mouseY <= y + height;
+    }
+
+    private static int mixColor(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private static int withAlpha(int color, int alpha) {
