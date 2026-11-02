@@ -1,6 +1,6 @@
 # Vanta UI Design System
 
-**Status:** redesigned prototype implemented; screenshot review and in-game interaction validation remain open.
+**Status:** shared framework and production settings/HUD migrations implemented; final visual and manual interaction acceptance remain open.
 
 This document defines the design contract for new framework components. Components must consume these tokens and rules rather than inventing per-screen colors, dimensions or animations.
 
@@ -122,7 +122,7 @@ The global \`animations\` Appearance preference is the motion authority.
 - With animations disabled, controls should snap directly to the target state.
 - Never delay a click or make an input target move away from the pointer.
 
-The first prototype uses short interpolated hover and switch transitions. Motion curves/durations remain provisional until in-game review.
+The shared runtime uses short interpolated hover and switch transitions. Motion curves/durations remain provisional until manual in-game interaction review.
 
 ## 8. Layout and input contract
 
