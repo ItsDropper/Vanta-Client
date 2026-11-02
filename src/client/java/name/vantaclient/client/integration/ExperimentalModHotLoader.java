@@ -177,6 +177,12 @@ public final class ExperimentalModHotLoader {
         Map<String, Version> loadedVersions = new LinkedHashMap<>();
         FabricLoader.getInstance().getAllMods().forEach(mod ->
                 loadedVersions.put(mod.getMetadata().getId(), mod.getMetadata().getVersion()));
+        try {
+            loadedVersions.putIfAbsent("java",
+                    Version.parse(Integer.toString(Runtime.version().feature())));
+        } catch (VersionParsingException ignored) {
+            // The running JVM feature version is expected to be parseable.
+        }
         for (HotLoadedMod mod : HOT_LOADED_MODS.values()) {
             try {
                 loadedVersions.putIfAbsent(mod.id(), Version.parse(mod.version()));
