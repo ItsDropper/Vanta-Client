@@ -297,9 +297,16 @@ public final class VantaSettingsScreen extends Screen {
 
     private boolean matchesSearch(Feature feature) {
         if (searchQuery.isBlank()) return true;
-        return feature.getName().toLowerCase(Locale.ROOT).contains(searchQuery)
+        if (feature.getName().toLowerCase(Locale.ROOT).contains(searchQuery)
                 || (feature.getDescription() != null
-                && feature.getDescription().toLowerCase(Locale.ROOT).contains(searchQuery));
+                && feature.getDescription().toLowerCase(Locale.ROOT).contains(searchQuery))) {
+            return true;
+        }
+        return SettingRegistry.getSettings(feature).stream().anyMatch(setting -> {
+            String name = setting instanceof SliderSetting slider ? slider.getName()
+                    : setting instanceof BooleanSetting toggle ? toggle.getName() : "";
+            return name.toLowerCase(Locale.ROOT).contains(searchQuery);
+        });
     }
 
     private void addFeatureSettings(VantaUiNode content, Feature feature) {
