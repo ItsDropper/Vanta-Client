@@ -72,13 +72,6 @@ public final class VantaPanelButton extends AbstractWidget {
     public static int unlayoutX(double x) { return Math.round((float) (x - layoutOffsetX()) / layoutScale()); }
     public static int unlayoutY(double y) { return Math.round((float) (y - layoutOffsetY()) / layoutScale()); }
 
-    public VantaPanelButton(int x, int y, int width, int height, String label,
-                            Runnable action, BooleanSupplier selected, IntSupplier accent,
-                            boolean accentSurface, boolean accentWhenSelected) {
-        this(x, y, width, height, label, button -> action.run(), selected, accent,
-                accentSurface, accentWhenSelected);
-    }
-
     private VantaPanelButton(int x, int y, int width, int height, String label,
                              Consumer<VantaPanelButton> action, BooleanSupplier selected, IntSupplier accent,
                              boolean accentSurface, boolean accentWhenSelected) {
