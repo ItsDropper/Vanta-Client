@@ -43,25 +43,34 @@ public final class VantaModrinthBrowserScreen extends Screen {
         searchBox.setTextColor(0xFFE6EDF8);
         addRenderableWidget(searchBox);
         addPanelButton("Search", 694, 76, 94, 30, this::search, true);
+        addPanelButton("Clear", 796, 76, 44, 30, this::clearSearch, false);
         addPanelButton("Discover", 34, 132, 184, 30, this::loadPopular, true);
         addPanelButton("Installed mods", 34, 170, 184, 30, this::onClose, false);
         addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
-        addPanelButton("‹", 252, 492, 34, 26, () -> {
+        addPanelButton("Previous", 252, 492, 66, 26, () -> {
             page = Math.max(0, page - 1);
             rebuildCards();
         }, false);
-        addPanelButton("›", 294, 492, 34, 26, () -> {
+        addPanelButton("Next", 324, 492, 58, 26, () -> {
             page = Math.min(Math.max(0, (projects.size() - 1) / 6), page + 1);
             rebuildCards();
         }, false);
-        addPanelButton("Installed mods", 744, 492, 154, 26,
-                () -> status = "Installed JARs are visible in the Mods section after returning.", false);
         rebuildCards();
         search();
     }
 
     private void loadPopular() {
         if (searchBox != null) searchBox.setValue("");
+        page = 0;
+        search();
+    }
+
+    private void clearSearch() {
+        if (searchBox != null) {
+            searchBox.setValue("");
+            searchBox.setFocused(true);
+        }
+        page = 0;
         search();
     }
 
@@ -200,8 +209,21 @@ public final class VantaModrinthBrowserScreen extends Screen {
             rounded(graphics, sx + VantaPanelButton.layoutSize(10), sy + sh - VantaPanelButton.layoutSize(4),
                     sw - VantaPanelButton.layoutSize(20), VantaPanelButton.layoutSize(2), 1, 0xFF438BFF);
         }
+        if (projects.isEmpty() && !busy) {
+            rounded(graphics, VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(132),
+                    VantaPanelButton.layoutSize(636), VantaPanelButton.layoutSize(324), 14, 0xFF192231);
+            graphics.drawCenteredString(font, status.startsWith("Search failed")
+                            ? "Could not load Modrinth results" : "No matching mods found",
+                    VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(270), 0xFFE6EDF8);
+            graphics.drawCenteredString(font, status.startsWith("Search failed")
+                            ? trim(status, 90) : "Try another search, or clear the search to browse popular mods.",
+                    VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(292), 0xFF8998AD);
+        }
+        int pageCount = Math.max(1, (projects.size() + 5) / 6);
+        graphics.drawString(font, "Page " + (page + 1) + " / " + pageCount,
+                VantaPanelButton.layoutX(394), VantaPanelButton.layoutY(501), 0xFF71839C, false);
         graphics.drawString(font, busy ? "Working…" : status,
-                VantaPanelButton.layoutX(344), VantaPanelButton.layoutY(501), 0xFF9EACC0, false);
+                VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(522), 0xFF9EACC0, false);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
