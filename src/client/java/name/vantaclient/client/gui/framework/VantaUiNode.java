@@ -542,8 +542,9 @@ public final class VantaUiNode {
             }
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
+                int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.20f);
                 int surface = selected
-                        ? mixColor(VantaUiTheme.SURFACE_SELECTED,
+                        ? mixColor(selectedSurface,
                                 VantaUiTheme.SURFACE_HOVER, hoverAmount * 0.35f)
                         : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
                 fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, surface);
