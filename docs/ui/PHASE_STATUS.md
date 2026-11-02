@@ -29,9 +29,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 <badge>Real screenshots captured and inspected</badge>
 
-The GitHub Actions screenshot workflow launches Minecraft 1.21.11 and captures 16 images: three live settings states plus the HUD editor/inspector at four window/GUI-scale combinations. The 16-image capture and count assertion passed on commit `2f71bb6`.
-
-Visual review found a toolbar/inspector overlap at compact GUI scales. The inspector was moved below the toolbar, then the toolbar was anchored to the top edge. A newer screenshot run is required to verify that final alignment.
+The GitHub Actions screenshot workflow launches Minecraft 1.21.11. Commit `601f804` passed the 16-image capture and count assertion, and visual review verified the compact HUD inspector below the toolbar at GUI scales 1 and 2. The test matrix has now been expanded to 32 images: all built-in categories, Appearance, a feature settings subpage and the HUD editor/inspector across four window/GUI-scale combinations. The expanded run is pending.
 
 ## Remaining work / acceptance gates
 
