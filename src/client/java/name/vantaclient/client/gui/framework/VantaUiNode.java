@@ -33,6 +33,10 @@ public final class VantaUiNode {
     private String tooltip = "";
     private String placeholder = "";
     private String cachedDynamicText;
+    private String cachedTextLayoutValue;
+    private List<String> cachedTextLines = List.of();
+    private int textMaximumLines = 1;
+    private int cachedTextLayoutWidth = -1;
     private String cachedInputValue;
     private String cachedInputVisibleText = "";
     private int cachedInputAvailableWidth = -1;
@@ -117,6 +121,13 @@ public final class VantaUiNode {
         VantaUiNode node = new VantaUiNode(Kind.TEXT, null);
         node.label = value == null ? "" : value;
         node.textColor = color;
+        return node;
+    }
+
+    public static VantaUiNode paragraph(String value, int color, int maximumLines) {
+        VantaUiNode node = text(value, color);
+        node.textMaximumLines = Math.max(1, maximumLines);
+        node.preferredHeight = node.textMaximumLines * 14;
         return node;
     }
 
@@ -313,6 +324,16 @@ public final class VantaUiNode {
         this.width = clamp(width, minWidth, maxWidth);
         this.height = clamp(height, minHeight, maxHeight);
 
+        if (kind == Kind.TEXT && textMaximumLines > 1) {
+            String value = currentText();
+            if (!value.equals(cachedTextLayoutValue) || this.width != cachedTextLayoutWidth) {
+                cachedTextLayoutValue = value;
+                cachedTextLayoutWidth = this.width;
+                cachedTextLines = wrapText(value, font, Math.max(1, this.width), textMaximumLines);
+            }
+            return;
+        }
+
         if (kind != Kind.CONTAINER || children.isEmpty()) return;
 
         int innerX = this.x + padding;
@@ -462,8 +483,17 @@ public final class VantaUiNode {
         boolean over = contains(mouseX, mouseY);
         int accent = theme.accent();
         switch (kind) {
-            case TEXT -> graphics.drawString(font, currentText(), x,
-                    y + Math.max(0, (height - 9) / 2), textColor);
+            case TEXT -> {
+                if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
+                    for (int i = 0; i < cachedTextLines.size(); i++) {
+                        graphics.drawString(font, cachedTextLines.get(i),
+                                x, y + i * 14, textColor);
+                    }
+                } else {
+                    graphics.drawString(font, currentText(), x,
+                            y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2), textColor);
+                }
+            }
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 int surface = mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
@@ -890,6 +920,47 @@ public final class VantaUiNode {
     private String currentInput() {
         String value = inputValue == null ? "" : inputValue.get();
         return value == null ? "" : value;
+    }
+
+    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines) {
+        if (value == null || value.isBlank()) return List.of("");
+        List<String> lines = new ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        String[] words = value.trim().split("\\s+");
+        boolean truncated = false;
+
+        for (String word : words) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (font.width(candidate) > maximumWidth && !line.isEmpty()) {
+                lines.add(line.toString());
+                line.setLength(0);
+                if (lines.size() >= maximumLines) {
+                    truncated = true;
+                    break;
+                }
+            }
+
+            if (font.width(word) > maximumWidth) {
+                word = font.plainSubstrByWidth(word, maximumWidth);
+                truncated = true;
+            }
+            if (!line.isEmpty()) line.append(' ');
+            line.append(word);
+            if (truncated) break;
+        }
+
+        if (!line.isEmpty() && lines.size() < maximumLines) lines.add(line.toString());
+        if (truncated && !lines.isEmpty()) {
+            int lastIndex = lines.size() - 1;
+            String last = lines.get(lastIndex);
+            String ellipsis = "…";
+            while (!last.isEmpty() && font.width(last + ellipsis) > maximumWidth) {
+                last = last.substring(0, last.length() - 1);
+            }
+            lines.set(lastIndex, last + ellipsis);
+        }
+        if (lines.isEmpty()) lines.add(font.plainSubstrByWidth(value, maximumWidth));
+        return List.copyOf(lines);
     }
 
     private String currentText() {
