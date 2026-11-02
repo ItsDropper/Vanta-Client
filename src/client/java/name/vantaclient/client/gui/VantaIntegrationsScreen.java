@@ -747,7 +747,7 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.drawString(font, "CLIENT", 90, 28, 0xFF9AA4B6);
         graphics.drawString(font, "MINECRAFT MOD", 34, 47, 0xFF727D90);
         if (section == Section.SETTINGS) {
-            graphics.drawString(font, "LOCAL CONFIGURATION", 810, 34, 0xFF778296);
+            graphics.drawString(font, "LOCAL CONFIGURATION", 760, 34, 0xFF778296);
         }
         if (section == Section.MODS) {
             graphics.drawString(font, "BUILT-IN", 34, 132, 0xFF858A98);
