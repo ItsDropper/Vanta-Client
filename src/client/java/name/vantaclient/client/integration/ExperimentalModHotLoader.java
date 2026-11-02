@@ -5,6 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.Version;
+import net.fabricmc.loader.api.VersionParsingException;
+import net.fabricmc.loader.api.metadata.version.VersionPredicate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +53,7 @@ public final class ExperimentalModHotLoader {
 
     private record Candidate(
             String id, String name, String version, Path path, String identity,
-            List<String> entrypoints, Set<String> dependencies) {}
+            List<String> entrypoints, Map<String, List<String>> dependencies) {}
 
     public static synchronized List<HotLoadedMod> getHotLoadedMods() {
         return List.copyOf(HOT_LOADED_MODS.values());
@@ -146,7 +149,7 @@ public final class ExperimentalModHotLoader {
                     String name = string(metadata, "name");
                     String version = string(metadata, "version");
                     Candidate candidate = new Candidate(id, name.isBlank() ? id : name,
-                            version, jar, identity, entrypoints, requiredDependencies(metadata));
+                            version, jar, identity, entrypoints, dependencyRequirements(metadata));
                     Candidate previous = candidates.putIfAbsent(id, candidate);
                     if (previous != null) {
                         candidates.remove(id);
@@ -168,9 +171,17 @@ public final class ExperimentalModHotLoader {
             return result(0, skipped, failed, details);
         }
 
-        Set<String> loadedByFabric = new HashSet<>();
-        FabricLoader.getInstance().getAllMods()
-                .forEach(mod -> loadedByFabric.add(mod.getMetadata().getId()));
+        Map<String, Version> loadedVersions = new LinkedHashMap<>();
+        FabricLoader.getInstance().getAllMods().forEach(mod ->
+                loadedVersions.put(mod.getMetadata().getId(), mod.getMetadata().getVersion()));
+        for (HotLoadedMod mod : HOT_LOADED_MODS.values()) {
+            try {
+                loadedVersions.putIfAbsent(mod.id(), Version.parse(mod.version()));
+            } catch (VersionParsingException ignored) {
+                // A hot-loaded dependency with an unparsable version cannot satisfy a versioned requirement.
+            }
+        }
+        Set<String> loadedByFabric = new HashSet<>(loadedVersions.keySet());
         loadedByFabric.addAll(HOT_LOADED_MODS.keySet());
 
         // Remove candidates with unavailable required dependencies, then order the rest.
@@ -180,7 +191,7 @@ public final class ExperimentalModHotLoader {
             var iterator = candidates.entrySet().iterator();
             while (iterator.hasNext()) {
                 Candidate candidate = iterator.next().getValue();
-                String missing = candidate.dependencies().stream()
+                String missing = candidate.dependencies().keySet().stream()
                         .filter(dependency -> !BUILT_IN_DEPENDENCIES.contains(dependency)
                                 && !loadedByFabric.contains(dependency)
                                 && !candidates.containsKey(dependency))
@@ -223,15 +234,12 @@ public final class ExperimentalModHotLoader {
 
             Set<String> successfullyInitialized = new HashSet<>();
             for (Candidate candidate : ordered) {
-                String failedDependency = candidate.dependencies().stream()
-                        .filter(dependency -> candidates.containsKey(dependency)
-                                && !successfullyInitialized.contains(dependency))
-                        .findFirst().orElse(null);
-                if (failedDependency != null) {
+                String dependencyFailure = dependencyFailure(candidate, candidates, loadedVersions,
+                        successfullyInitialized);
+                if (dependencyFailure != null) {
                     skipped++;
                     ATTEMPTED.add(candidate.identity());
-                    details.add(candidate.id() + ": dependency '" + failedDependency
-                            + "' did not initialize successfully");
+                    details.add(candidate.id() + ": " + dependencyFailure);
                     continue;
                 }
 
@@ -372,10 +380,80 @@ public final class ExperimentalModHotLoader {
         return List.copyOf(result);
     }
 
-    private static Set<String> requiredDependencies(JsonObject metadata) {
+    private static Map<String, List<String>> dependencyRequirements(JsonObject metadata)
+            throws IOException {
         JsonElement depends = metadata.get("depends");
-        if (depends == null || !depends.isJsonObject()) return Set.of();
-        return new LinkedHashSet<>(depends.getAsJsonObject().keySet());
+        if (depends == null || depends.isJsonNull()) return Map.of();
+        if (!depends.isJsonObject()) throw new IOException("depends must be a JSON object");
+
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : depends.getAsJsonObject().entrySet()) {
+            JsonElement value = entry.getValue();
+            List<String> predicates = new ArrayList<>();
+            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+                predicates.add(value.getAsString());
+            } else if (value.isJsonArray()) {
+                for (JsonElement alternative : value.getAsJsonArray()) {
+                    if (!alternative.isJsonPrimitive()
+                            || !alternative.getAsJsonPrimitive().isString()) {
+                        throw new IOException("dependency '" + entry.getKey()
+                                + "' has a non-string version predicate");
+                    }
+                    predicates.add(alternative.getAsString());
+                }
+            } else {
+                throw new IOException("dependency '" + entry.getKey()
+                        + "' has an unsupported version declaration");
+            }
+            if (predicates.isEmpty()) throw new IOException("dependency '" + entry.getKey()
+                    + "' has no version predicates");
+            result.put(entry.getKey(), List.copyOf(predicates));
+        }
+        return Map.copyOf(result);
+    }
+
+    private static String dependencyFailure(Candidate candidate,
+            Map<String, Candidate> candidates, Map<String, Version> loadedVersions,
+            Set<String> successfullyInitialized) {
+        for (Map.Entry<String, List<String>> dependency : candidate.dependencies().entrySet()) {
+            String id = dependency.getKey();
+            Version actualVersion = loadedVersions.get(id);
+            if (candidates.containsKey(id)) {
+                if (!successfullyInitialized.contains(id)) {
+                    return "required dependency '" + id + "' did not initialize successfully";
+                }
+                try {
+                    actualVersion = Version.parse(candidates.get(id).version());
+                } catch (VersionParsingException exception) {
+                    return "cannot validate dependency '" + id + "': its declared version is invalid";
+                }
+            }
+
+            if (actualVersion == null) {
+                boolean unconstrained = dependency.getValue().stream()
+                        .allMatch(predicate -> predicate.isBlank() || predicate.equals("*"));
+                if (BUILT_IN_DEPENDENCIES.contains(id) && unconstrained) continue;
+                return "cannot validate required dependency '" + id
+                        + "': its version is unavailable";
+            }
+
+            boolean matched = false;
+            try {
+                for (String predicate : dependency.getValue()) {
+                    if (VersionPredicate.parse(predicate).test(actualVersion)) {
+                        matched = true;
+                        break;
+                    }
+                }
+            } catch (VersionParsingException exception) {
+                return "invalid version requirement for dependency '" + id + "'";
+            }
+            if (!matched) {
+                return "dependency '" + id + "' version " + actualVersion.getFriendlyString()
+                        + " does not satisfy " + String.join(" OR ", dependency.getValue());
+            }
+        }
+        return null;
     }
 
     private static List<Candidate> dependencyOrder(
@@ -389,7 +467,7 @@ public final class ExperimentalModHotLoader {
             boolean progressed = false;
             for (String id : List.copyOf(remaining)) {
                 Candidate candidate = candidates.get(id);
-                if (emitted.containsAll(candidate.dependencies())) {
+                if (emitted.containsAll(candidate.dependencies().keySet())) {
                     result.add(candidate);
                     emitted.add(id);
                     remaining.remove(id);
