@@ -732,7 +732,15 @@ public final class VantaUiNode {
     private static void drawIcon(GuiGraphics g, Icon icon, int x, int y, int w, int h, int color) {
         if(icon==null||w<=0||h<=0)return; float sx=w/16.0f,sy=h/16.0f;
         switch(icon){
-            case BRAND->{line(g,x+3*sx,y+2*sy,x+7*sx,y+13*sy,color,sx,sy);line(g,x+7*sx,y+13*sy,x+13*sx,y+3*sy,color,sx,sy);line(g,x+7*sx,y+10*sy,x+10*sx,y+5*sy,color,sx,sy);}
+            case BRAND -> {
+                // A heavier split-chevron mark: deliberate at both 1x and 2x GUI scale.
+                line(g, x + 2.5f * sx, y + 2.5f * sy,
+                        x + 7.5f * sx, y + 13.5f * sy, color, 1.5f * sx, 1.5f * sy);
+                line(g, x + 7.5f * sx, y + 13.5f * sy,
+                        x + 13.5f * sx, y + 2.5f * sy, color, 1.5f * sx, 1.5f * sy);
+                line(g, x + 8.5f * sx, y + 10.5f * sy,
+                        x + 11.5f * sx, y + 5.0f * sy, color, 1.0f * sx, 1.0f * sy);
+            }
             case OVERVIEW->{rect(g,x+2*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+2*sx,y+9*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+9*sy,5*sx,5*sy,color,sx,sy);}
             case VISUALS->{line(g,x+1*sx,y+8*sy,x+4*sx,y+4*sy,color,sx,sy);line(g,x+4*sx,y+4*sy,x+8*sx,y+2*sy,color,sx,sy);line(g,x+8*sx,y+2*sy,x+12*sx,y+4*sy,color,sx,sy);line(g,x+12*sx,y+4*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+12*sx,y+12*sy,color,sx,sy);line(g,x+12*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+4*sx,y+12*sy,color,sx,sy);line(g,x+4*sx,y+12*sy,x+1*sx,y+8*sy,color,sx,sy);ring(g,x+8*sx,y+8*sy,2*sx,color);}
             case CONTROLS->{for(int i=0;i<3;i++)line(g,x+2*sx,y+(4+i*4)*sy,x+14*sx,y+(4+i*4)*sy,color,sx,sy);ring(g,x+6*sx,y+4*sy,1.8f*sx,color);ring(g,x+11*sx,y+8*sy,1.8f*sx,color);ring(g,x+5*sx,y+12*sy,1.8f*sx,color);}

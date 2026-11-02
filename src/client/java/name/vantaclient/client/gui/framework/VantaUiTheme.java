@@ -18,8 +18,8 @@ public final class VantaUiTheme {
     public static final int BORDER = 0xFF354353;
     public static final int BORDER_SUBTLE = 0xFF252F3B;
     public static final int TEXT_PRIMARY = 0xFFF2F5F7;
-    public static final int TEXT_SECONDARY = 0xFFB0BBC8;
-    public static final int TEXT_MUTED = 0xFF7C8A9B;
+    public static final int TEXT_SECONDARY = 0xFFBAC5D1;
+    public static final int TEXT_MUTED = 0xFF8996A7;
     public static final int TRACK = 0xFF354352;
     public static final int INPUT_SURFACE = 0xFF121922;
     public static final int INPUT_FOCUS_SURFACE = 0xFF1B2632;
@@ -41,7 +41,7 @@ public final class VantaUiTheme {
     public static final int RADIUS_MEDIUM = 8;
     public static final int RADIUS_LARGE = 12;
 
-    public static final int TEXT_LINE_HEIGHT = 10;
+    public static final int TEXT_LINE_HEIGHT = 11;
     public static final int CARET_BLINK_TICKS = 10;
     public static final float HOVER_RATE = 16.0f;
     public static final float TOGGLE_RATE = 14.0f;

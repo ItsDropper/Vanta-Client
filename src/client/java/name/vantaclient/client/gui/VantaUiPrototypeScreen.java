@@ -74,7 +74,8 @@ public final class VantaUiPrototypeScreen extends Screen {
                 .background(VantaUiTheme.PANEL);
         VantaUiNode brand = VantaUiNode.row(8, 0).width(compact ? 116 : 156)
                 .align(VantaUiNode.Alignment.CENTER);
-        brand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).iconColor(accent));
+        brand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(20, 20)
+                .background(0xFF1A2430).iconColor(accent));
         VantaUiNode brandText = VantaUiNode.column(1, 0);
         brandText.add(VantaUiNode.eyebrow("VANTA CLIENT"));
         brandText.add(VantaUiNode.text("IN-GAME WORKSPACE", VantaUiTheme.TEXT_SECONDARY));

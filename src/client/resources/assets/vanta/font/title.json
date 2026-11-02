@@ -2,12 +2,12 @@
   "providers": [
     {
       "type": "ttf",
-      "file": "vanta:ibm_plex_sans.ttf",
+      "file": "vanta:ibm_plex_sans_medium.ttf",
       "shift": [
         0,
         0
       ],
-      "size": 14,
+      "size": 15,
       "oversample": 2
     }
   ]
