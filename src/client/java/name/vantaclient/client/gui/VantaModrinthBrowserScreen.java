@@ -22,6 +22,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private String status = "Search Modrinth for Fabric mods compatible with this Minecraft version.";
     private boolean busy;
     private int page;
+    private final List<Button> cardButtons = new java.util.ArrayList<>();
+    private Button enableButton;
 
     public VantaModrinthBrowserScreen(Screen parent) {
         super(Component.literal("Vanta Modrinth Library"));
@@ -82,6 +84,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     private void rebuildCards() {
+        for (Button button : cardButtons) removeWidget(button);
+        cardButtons.clear();
         int left = (width - PANEL_WIDTH) / 2;
         int top = (height - PANEL_HEIGHT) / 2;
         int start = page * 6;
@@ -91,8 +95,9 @@ public final class VantaModrinthBrowserScreen extends Screen {
             int row = i - start;
             int x = left + 28 + (row % 2) * 352;
             int y = top + 104 + (row / 2) * 104;
-            addRenderableWidget(Button.builder(Component.literal("Install"), button -> install(project))
-                    .bounds(x + 252, y + 57, 76, 24).build());
+            Button installButton = Button.builder(Component.literal("Install"), button -> install(project))
+                    .bounds(x + 252, y + 57, 76, 24).build();
+            cardButtons.add(addRenderableWidget(installButton));
         }
     }
 
@@ -119,10 +124,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     status += " Enable unavailable: " + safeMessage(exception);
                     return;
                 }
-                addRenderableWidget(Button.builder(Component.literal("Enable now*"), button -> {
+                if (enableButton != null) removeWidget(enableButton);
+                enableButton = addRenderableWidget(Button.builder(Component.literal("Enable now*"), button -> {
                     ExperimentalModHotLoader.Result hotLoad = ExperimentalModHotLoader.scanAndLoad(modId);
                     status = hotLoad.summary();
-                    rebuildCards();
                 }).bounds((width - PANEL_WIDTH) / 2 + PANEL_WIDTH - 190,
                         (height - PANEL_HEIGHT) / 2 + PANEL_HEIGHT - 78, 162, 24).build());
                 status += " " + modId + " is ready for an experimental session-load attempt.";
