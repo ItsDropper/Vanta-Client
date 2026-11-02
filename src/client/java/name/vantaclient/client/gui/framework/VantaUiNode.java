@@ -65,6 +65,7 @@ public final class VantaUiNode {
     private Justification justification = Justification.START;
     private boolean visible = true;
     private boolean enabled = true;
+    private boolean selected;
     private boolean hovered;
     private boolean focused;
     private int scrollOffset;
@@ -254,6 +255,7 @@ public final class VantaUiNode {
     public VantaUiNode tooltip(String value) { tooltip = value == null ? "" : value; return this; }
     public VantaUiNode textColor(int color) { textColor = color; return this; }
     public VantaUiNode enabled(boolean value) { enabled = value; return this; }
+    public VantaUiNode selected(boolean value) { selected = value; return this; }
     public VantaUiNode visible(boolean value) { visible = value; return this; }
 
     public Kind kind() { return kind; }
@@ -511,11 +513,18 @@ public final class VantaUiNode {
             }
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
-                int surface = mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
+                int surface = selected
+                        ? mixColor(VantaUiTheme.SURFACE_SELECTED,
+                                VantaUiTheme.SURFACE_HOVER, hoverAmount * 0.35f)
+                        : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
                 graphics.fill(x, y, x + width, y + height, surface);
                 graphics.fill(x, y, x + width, y + 1,
                         focused ? accent : VantaUiTheme.BORDER);
-                if (focused) graphics.fill(x, y + 1, x + 2, y + height - 1, accent);
+                if (selected) {
+                    graphics.fill(x, y + 5, x + 2, y + height - 5, accent);
+                } else if (focused) {
+                    graphics.fill(x, y + height - 2, x + width, y + height, accent);
+                }
                 String shownLabel = font.plainSubstrByWidth(label, Math.max(0, width - 16));
                 graphics.drawString(font, shownLabel,
                         x + Math.max(8, (width - font.width(shownLabel)) / 2),
