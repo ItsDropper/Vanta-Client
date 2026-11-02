@@ -141,6 +141,7 @@ public final class VantaUiNode {
     }
 
     public static VantaUiNode dynamicText(Supplier<String> value, int color) {
+        if (value == null) throw new IllegalArgumentException("Dynamic text requires a value supplier.");
         VantaUiNode node = new VantaUiNode(Kind.TEXT, null);
         node.textSupplier = value;
         node.textColor = color;
@@ -162,6 +163,9 @@ public final class VantaUiNode {
     }
 
     public static VantaUiNode toggle(String label, BooleanSupplier value, Consumer<Boolean> setter) {
+        if (value == null || setter == null) {
+            throw new IllegalArgumentException("Toggle requires value and setter bindings.");
+        }
         VantaUiNode node = new VantaUiNode(Kind.TOGGLE, null);
         node.label = label == null ? "" : label;
         node.toggleValue = value;
@@ -560,7 +564,8 @@ public final class VantaUiNode {
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 boolean value = toggleValue != null && toggleValue.getAsBoolean();
-                int trackColor = value ? accent : VantaUiTheme.TRACK;
+                int trackColor = !enabled ? VantaUiTheme.BORDER_SUBTLE
+                        : value ? accent : VantaUiTheme.TRACK;
                 int trackX = x + width - 42;
                 int trackY = y + (height - 18) / 2;
                 graphics.fill(trackX, trackY, trackX + 38, trackY + 18, trackColor);
@@ -571,6 +576,7 @@ public final class VantaUiNode {
             case SLIDER -> {
                 double value = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
                 if (!Double.isFinite(value)) value = sliderMinimum;
+                value = clamp(value, sliderMinimum, sliderMaximum);
                 double range = sliderMaximum - sliderMinimum;
                 double normalized = range <= 0.0 ? 0.0 : clamp((value - sliderMinimum) / range, 0.0, 1.0);
                 if (Double.compare(value, cachedSliderValue) != 0) {
@@ -580,15 +586,18 @@ public final class VantaUiNode {
                 String valueText = cachedSliderValueText;
                 int valueWidth = font.width(valueText);
                 String sliderLabel = font.plainSubstrByWidth(label, Math.max(0, width - valueWidth - 12));
-                graphics.drawString(font, sliderLabel, x, y + 2, VantaUiTheme.TEXT_PRIMARY);
-                graphics.drawString(font, valueText, x + width - valueWidth, y + 2,
-                        VantaUiTheme.TEXT_SECONDARY);
+                int labelColor = enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED;
+                int valueColor = enabled ? VantaUiTheme.TEXT_SECONDARY : VantaUiTheme.TEXT_MUTED;
+                graphics.drawString(font, sliderLabel, x, y + 2, labelColor);
+                graphics.drawString(font, valueText, x + width - valueWidth, y + 2, valueColor);
                 int trackY = y + 28;
                 int knobX = x + (int) Math.round((width - 8) * normalized);
                 graphics.fill(x, trackY, x + width, trackY + 4, VantaUiTheme.TRACK);
-                graphics.fill(x, trackY, knobX + 4, trackY + 4, accent);
+                graphics.fill(x, trackY, knobX + 4, trackY + 4,
+                        enabled ? accent : VantaUiTheme.TEXT_MUTED);
                 graphics.fill(knobX, trackY - 3, knobX + 8, trackY + 11,
-                        focused || over ? VantaUiTheme.WHITE : 0xFFD5DFEC);
+                        !enabled ? VantaUiTheme.TEXT_MUTED
+                                : focused || over ? VantaUiTheme.WHITE : 0xFFD5DFEC);
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
             }
             case DROPDOWN -> {
@@ -599,19 +608,20 @@ public final class VantaUiNode {
                         Math.max(0, boxX - x - 12));
                 graphics.drawString(font, dropdownLabel, x,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
-                        VantaUiTheme.TEXT_PRIMARY);
+                        enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 graphics.fill(boxX, y + 2, x + width, y + controlHeight - 2,
-                        mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount));
+                        enabled ? mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount)
+                                : VantaUiTheme.INPUT_SURFACE);
                 String selected = dropdownValue == null ? "" : dropdownValue.get();
                 String shown = font.plainSubstrByWidth(selected == null ? "" : selected,
                         Math.max(0, boxWidth - 24));
                 graphics.drawString(font, shown, boxX + 8,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
-                        VantaUiTheme.TEXT_PRIMARY);
+                        enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 graphics.drawString(font, dropdownOpen ? "^" : "v",
                         x + width - 15, y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         VantaUiTheme.TEXT_SECONDARY);
-                if (focused) graphics.fill(boxX, y + controlHeight - 2, x + width,
+                if (focused && enabled) graphics.fill(boxX, y + controlHeight - 2, x + width,
                         y + controlHeight, accent);
 
                 if (dropdownOpen) {
@@ -675,7 +685,7 @@ public final class VantaUiNode {
                     cachedInputCursorWidth = font.width(value.substring(visibleStart, cursor));
                 }
 
-                int textColor = value.isEmpty()
+                int textColor = !enabled || value.isEmpty()
                         ? VantaUiTheme.TEXT_MUTED : VantaUiTheme.TEXT_PRIMARY;
                 String display = value.isEmpty()
                         ? font.plainSubstrByWidth(placeholder, availableWidth)
@@ -754,6 +764,7 @@ public final class VantaUiNode {
 
     VantaUiNode hitTest(double mouseX, double mouseY) {
         if (!visible || !contains(mouseX, mouseY)) return null;
+        if (!enabled) return null;
         if (kind == Kind.CONTAINER && !containsClip(mouseX, mouseY)) {
             return isInteractive() && enabled ? this : null;
         }
@@ -791,7 +802,7 @@ public final class VantaUiNode {
                     if (dropdownOpen) {
                         dropdownOpen = false;
                     } else {
-                        dropdownHighlight = selectedDropdownIndex();
+                        dropdownHighlight = Math.max(0, selectedDropdownIndex());
                         dropdownOpen = true;
                     }
                 } else {
@@ -909,7 +920,7 @@ public final class VantaUiNode {
                     }
                     dropdownOpen = false;
                 } else {
-                    dropdownHighlight = selectedDropdownIndex();
+                    dropdownHighlight = Math.max(0, selectedDropdownIndex());
                     dropdownOpen = true;
                 }
             }
@@ -963,7 +974,7 @@ public final class VantaUiNode {
     }
 
     boolean scrollAt(double mouseX, double mouseY, double amount) {
-        if (!visible || !contains(mouseX, mouseY) || !containsClip(mouseX, mouseY)) return false;
+        if (!visible || !enabled || !contains(mouseX, mouseY) || !containsClip(mouseX, mouseY)) return false;
         for (int i = children.size() - 1; i >= 0; i--) {
             if (children.get(i).scrollAt(mouseX, mouseY, amount)) return true;
         }
@@ -994,14 +1005,15 @@ public final class VantaUiNode {
 
     private int selectedDropdownIndex() {
         String current = dropdownValue == null ? null : dropdownValue.get();
-        int index = dropdownOptions.indexOf(current);
-        return index >= 0 ? index : 0;
+        return dropdownOptions.indexOf(current);
     }
 
     private void cycleDropdown(int direction) {
         if (dropdownSetter == null || dropdownOptions.isEmpty()) return;
         int index = selectedDropdownIndex();
-        int next = Math.floorMod(index + direction, dropdownOptions.size());
+        int next = index < 0
+                ? direction > 0 ? 0 : dropdownOptions.size() - 1
+                : Math.floorMod(index + direction, dropdownOptions.size());
         dropdownSetter.accept(dropdownOptions.get(next));
     }
 
