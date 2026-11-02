@@ -56,7 +56,7 @@ public final class VantaUiRuntime {
         root.tick();
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button, Font font) {
         if (button != 0) return false;
         VantaUiNode target = root.hitTest(mouseX, mouseY);
         boolean dropdownClosed = root.closeDropdownsExcept(target);
@@ -65,7 +65,7 @@ public final class VantaUiRuntime {
             if (dropdownClosed) lastWidth = -1;
             return dropdownClosed;
         }
-        target.click(mouseX, mouseY, button);
+        target.click(mouseX, mouseY, button, font);
         if (target.kind() == VantaUiNode.Kind.SLIDER) activeSlider = target;
         lastWidth = -1;
         return true;
