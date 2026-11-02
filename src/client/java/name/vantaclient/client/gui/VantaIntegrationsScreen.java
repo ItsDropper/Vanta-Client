@@ -434,6 +434,9 @@ public class VantaIntegrationsScreen extends Screen {
             VantaClientPreferences.save();
             rebuildWidgets();
         }).bounds(x + 142, y, 28, 22).build());
+
+        addPanelButton("Open UI Prototype", x, CONTENT_TOP + 238, 170, 26,
+                () -> minecraft.setScreen(new VantaUiPrototypeScreen(this)));
     }
 
     private void addPreferenceToggle(String name, boolean current, java.util.function.Consumer<Boolean> setter,
