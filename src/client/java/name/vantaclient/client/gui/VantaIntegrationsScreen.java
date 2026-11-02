@@ -551,17 +551,22 @@ public class VantaIntegrationsScreen extends Screen {
                 (float) VantaPanelButton.layoutOffsetY());
         graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale());
         int left = 20, top = 18, right = 940, bottom = 522;
-        graphics.fill(left - 6, top - 6, right + 6, bottom + 6, 0x55000000);
-        graphics.fill(left - 2, top - 2, right + 2, bottom + 2, 0x99000000);
-        graphics.fill(left, top, right, bottom, 0xFF0D1016);
-        graphics.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFF10141C);
-        graphics.fill(left, top, right, top + 3, accent);
-        graphics.fill(left, top + 3, right, top + 53, 0xFF141923);
-        graphics.fill(left + 12, top + 12, left + 12 + SIDEBAR_WIDTH + 12, bottom - 12, 0xFF151A23);
-        graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 12,
-                left + 13 + SIDEBAR_WIDTH + 14, bottom - 12, 0xFF292F3A);
-        graphics.fill(left + 12 + SIDEBAR_WIDTH + 20, top + 62,
-                right - 12, bottom - 12, 0xFF11151D);
+        drawRoundedCard(graphics, left - 6, top - 6, right - left + 12,
+                bottom - top + 12, 0x55000000, 18);
+        drawRoundedCard(graphics, left - 2, top - 2, right - left + 4,
+                bottom - top + 4, 0x99000000, 16);
+        drawRoundedCard(graphics, left, top, right - left, bottom - top, 0xFF10141C, 15);
+        drawRoundedCard(graphics, left + 1, top + 1, right - left - 2,
+                bottom - top - 2, 0xFF10141C, 14);
+        drawRoundedCard(graphics, left + 1, top + 1, right - left - 2, 3, accent, 2);
+        drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49, 0xFF151B26, 13);
+        drawRoundedCard(graphics, left + 12, top + 12, SIDEBAR_WIDTH + 12,
+                bottom - top - 24, 0xFF171D27, 11);
+        graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 20,
+                left + 13 + SIDEBAR_WIDTH + 14, bottom - 20, 0xFF2A303C);
+        drawRoundedCard(graphics, left + 12 + SIDEBAR_WIDTH + 20, top + 62,
+                right - (left + 12 + SIDEBAR_WIDTH + 20) - 12,
+                bottom - top - 74, 0xFF121720, 11);
         graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
         graphics.fill(34, 31, 37, 44, accent);
