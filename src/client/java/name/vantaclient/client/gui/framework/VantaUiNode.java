@@ -114,6 +114,14 @@ public final class VantaUiNode {
                 .padding(padding);
     }
 
+    public static VantaUiNode box(int padding) {
+        return stack(padding);
+    }
+
+    public static VantaUiNode overlay(int padding) {
+        return stack(padding);
+    }
+
     public static VantaUiNode text(String value) {
         return text(value, VantaUiTheme.TEXT_PRIMARY);
     }
