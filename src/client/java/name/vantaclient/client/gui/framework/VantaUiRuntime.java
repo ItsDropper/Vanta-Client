@@ -56,12 +56,15 @@ public final class VantaUiRuntime {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
         VantaUiNode target = root.hitTest(mouseX, mouseY);
+        boolean dropdownClosed = root.closeDropdownsExcept(target);
         setFocused(target);
-        if (target == null) return false;
-        target.click(mouseX, button);
-        if (target.kind() == VantaUiNode.Kind.SLIDER && button == 0) {
-            activeSlider = target;
+        if (target == null) {
+            if (dropdownClosed) lastWidth = -1;
+            return dropdownClosed;
         }
+        target.click(mouseX, mouseY, button);
+        if (target.kind() == VantaUiNode.Kind.SLIDER) activeSlider = target;
+        lastWidth = -1;
         return true;
     }
 
@@ -85,10 +88,15 @@ public final class VantaUiRuntime {
 
     public boolean keyPressed(int keyCode, boolean shiftDown) {
         if (keyCode == 258) {
+            if (root.closeDropdownsExcept(null)) lastWidth = -1;
             cycleFocus(shiftDown ? -1 : 1);
             return true;
         }
         if (focused == null) return false;
+        if (keyCode == 256 && focused.closeDropdown()) {
+            lastWidth = -1;
+            return true;
+        }
         if (focused.editKey(keyCode)) return true;
 
         switch (keyCode) {
@@ -97,6 +105,7 @@ public final class VantaUiRuntime {
             case 262, 264 -> focused.adjust(1);
             default -> { return false; }
         }
+        if (focused.kind() == VantaUiNode.Kind.DROPDOWN) lastWidth = -1;
         return true;
     }
 
