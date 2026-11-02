@@ -59,40 +59,57 @@ public final class VantaUiPrototypeScreen extends Screen {
     }
 
     private VantaUiNode buildRoot() {
+        boolean compact = width < 760;
         VantaUiNode root = VantaUiNode.column(12, 16)
                 .background(VantaUiTheme.CANVAS);
 
         VantaUiNode header = VantaUiNode.row(12, 10)
                 .height(48)
                 .background(VantaUiTheme.PANEL);
-        header.add(VantaUiNode.text("VANTA  /  UI LAB", VantaUiTheme.TEXT_PRIMARY));
+        header.add(VantaUiNode.text("VANTA  /  UI LAB", VantaUiTheme.TEXT_PRIMARY).width(116));
         header.add(VantaUiNode.spacer(1).flex(1));
-        header.add(VantaUiNode.dynamicText(
-                () -> "LIVE FPS  " + Minecraft.getInstance().getFps(),
-                VantaUiTheme.TEXT_SECONDARY).width(92));
-        header.add(VantaUiNode.button(
-                "ACCENT  " + VantaClientPreferences.get().accent.name(),
-                this::cycleAccent).width(142)
-                .tooltip("Cycles the same accent preference used by the main Vanta interface."));
-        header.add(VantaUiNode.button("CLOSE", this::onClose).width(76));
+        if (!compact) {
+            header.add(VantaUiNode.dynamicText(
+                    () -> "LIVE FPS  " + Minecraft.getInstance().getFps(),
+                    VantaUiTheme.TEXT_SECONDARY).width(92));
+            header.add(VantaUiNode.button(
+                    "ACCENT  " + VantaClientPreferences.get().accent.name(),
+                    this::cycleAccent).width(142)
+                    .tooltip("Cycles the same accent preference used by the main Vanta interface."));
+        }
+        header.add(VantaUiNode.button("CLOSE", this::onClose).width(72));
         root.add(header);
 
-        VantaUiNode body = VantaUiNode.row(12, 0).flex(1);
-        VantaUiNode navigation = VantaUiNode.column(8, 12)
-                .width(156)
-                .background(VantaUiTheme.PANEL);
-        navigation.add(VantaUiNode.text("WORKSPACE", VantaUiTheme.TEXT_MUTED));
-        navigation.add(navButton("Overview", PAGE_OVERVIEW));
-        navigation.add(navButton("Visuals", PAGE_VISUALS));
-        navigation.add(navButton("Controls", PAGE_CONTROLS));
-        navigation.add(VantaUiNode.spacer(10));
-        navigation.add(VantaUiNode.text("PROTOTYPE", VantaUiTheme.TEXT_MUTED));
-        navigation.add(VantaUiNode.text("Native Minecraft renderer", VantaUiTheme.TEXT_SECONDARY));
-        navigation.add(VantaUiNode.text("Local demo state", VantaUiTheme.TEXT_MUTED));
-        navigation.add(VantaUiNode.spacer(1).flex(1));
-        navigation.add(VantaUiNode.text("TAB  Focus", VantaUiTheme.TEXT_MUTED));
-        navigation.add(VantaUiNode.text("ENTER  Activate", VantaUiTheme.TEXT_MUTED));
-        navigation.add(VantaUiNode.text("ARROWS  Adjust", VantaUiTheme.TEXT_MUTED));
+        VantaUiNode body = compact
+                ? VantaUiNode.column(10, 0).flex(1)
+                : VantaUiNode.row(12, 0).flex(1);
+
+        VantaUiNode navigation;
+        if (compact) {
+            navigation = VantaUiNode.row(8, 8)
+                    .height(44)
+                    .background(VantaUiTheme.PANEL);
+            int tabWidth = Math.max(60, Math.min(116, (width - 120) / 3));
+            navigation.add(navButton("Overview", PAGE_OVERVIEW).width(tabWidth));
+            navigation.add(navButton("Visuals", PAGE_VISUALS).width(tabWidth));
+            navigation.add(navButton("Controls", PAGE_CONTROLS).width(tabWidth));
+        } else {
+            navigation = VantaUiNode.column(8, 12)
+                    .width(156)
+                    .background(VantaUiTheme.PANEL);
+            navigation.add(VantaUiNode.text("WORKSPACE", VantaUiTheme.TEXT_MUTED));
+            navigation.add(navButton("Overview", PAGE_OVERVIEW));
+            navigation.add(navButton("Visuals", PAGE_VISUALS));
+            navigation.add(navButton("Controls", PAGE_CONTROLS));
+            navigation.add(VantaUiNode.spacer(10));
+            navigation.add(VantaUiNode.text("PROTOTYPE", VantaUiTheme.TEXT_MUTED));
+            navigation.add(VantaUiNode.text("Native Minecraft renderer", VantaUiTheme.TEXT_SECONDARY));
+            navigation.add(VantaUiNode.text("Local demo state", VantaUiTheme.TEXT_MUTED));
+            navigation.add(VantaUiNode.spacer(1).flex(1));
+            navigation.add(VantaUiNode.text("TAB  Focus", VantaUiTheme.TEXT_MUTED));
+            navigation.add(VantaUiNode.text("ENTER  Activate", VantaUiTheme.TEXT_MUTED));
+            navigation.add(VantaUiNode.text("ARROWS  Adjust", VantaUiTheme.TEXT_MUTED));
+        }
 
         VantaUiNode content = VantaUiNode.column(12, 18)
                 .flex(1)
@@ -127,6 +144,12 @@ public final class VantaUiPrototypeScreen extends Screen {
                 "A real Minecraft screen, rendered through GuiGraphics with one retained component tree.",
                 VantaUiTheme.TEXT_SECONDARY));
         content.add(VantaUiNode.spacer(2));
+        if (width < 760) {
+            content.add(VantaUiNode.button(
+                    "Accent: " + VantaClientPreferences.get().accent.name(),
+                    this::cycleAccent).width(180)
+                    .tooltip("Cycles the global Vanta Appearance accent preference."));
+        }
 
         VantaUiNode metrics = VantaUiNode.row(10, 0).height(76);
         VantaUiNode fpsCard = VantaUiNode.column(7, 12)
