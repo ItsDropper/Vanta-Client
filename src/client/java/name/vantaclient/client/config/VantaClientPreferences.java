@@ -32,6 +32,9 @@ public final class VantaClientPreferences {
     public boolean animations = true;
     public boolean compactMode = false;
     public boolean showDescriptions = true;
+    public boolean hudSnapToGrid = true;
+    public boolean hudShowGrid = true;
+    public int hudGridSize = 16;
     public double uiScale = 1.0;
     public double panelOpacity = 0.92;
     public Set<String> favoriteMods = new HashSet<>();
@@ -60,6 +63,10 @@ public final class VantaClientPreferences {
         instance.uiScale = Math.max(0.8, Math.min(1.2, instance.uiScale));
         if (!Double.isFinite(instance.panelOpacity)) instance.panelOpacity = 0.92;
         instance.panelOpacity = Math.max(0.72, Math.min(0.98, instance.panelOpacity));
+        if (instance.hudGridSize != 8 && instance.hudGridSize != 16
+                && instance.hudGridSize != 24 && instance.hudGridSize != 32) {
+            instance.hudGridSize = 16;
+        }
         if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
     }
 
