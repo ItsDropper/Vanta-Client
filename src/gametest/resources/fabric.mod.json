@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "vanta-ui-screenshot-tests",
+  "version": "1.0.0",
+  "name": "Vanta UI Screenshot Tests",
+  "environment": "client",
+  "depends": {
+    "dropperutils": "*",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "name.vantaclient.client.gui.VantaUiScreenshotGameTest"
+    ]
+  }
+}
