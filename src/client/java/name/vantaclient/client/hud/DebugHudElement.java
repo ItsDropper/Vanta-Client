@@ -60,16 +60,6 @@ public class DebugHudElement extends HudElement {
                 22,
                 0xFFFFFF00
         );
-
-        if (HudEditorFeature.INSTANCE.isEnabled()) {
-            graphics.fill(
-                    -2,
-                    -2,
-                    getWidth(),
-                    getHeight(),
-                    0x55FFFFFF
-            );
-        }
     }
 
     @Override
