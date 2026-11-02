@@ -315,6 +315,9 @@ public class VantaIntegrationsScreen extends Screen {
         addPanelButton("Browse Modrinth", 34, 326, SIDEBAR_WIDTH - 24, 25, () -> {
             minecraft.setScreen(new VantaModrinthBrowserScreen(this));
         });
+        addPanelButton("HUD Editor", 34, 366, SIDEBAR_WIDTH - 24, 25, () -> {
+            minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this));
+        });
 
         // Installed mods use a four-column tile grid in the main content area.
     }
