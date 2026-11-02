@@ -17,6 +17,8 @@ public final class VantaUiRuntime {
     private int lastWidth = -1;
     private int lastHeight = -1;
     private long lastFrameNanos;
+    private long lastUiRenderNanos;
+    private long averageUiRenderNanos;
 
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
@@ -53,8 +55,23 @@ public final class VantaUiRuntime {
         float toggleFactor = 1.0f - (float) Math.exp(-VantaUiTheme.TOGGLE_RATE * deltaSeconds);
         root.animate(animationsEnabled, hoverFactor, toggleFactor);
 
+        long renderStart = System.nanoTime();
         root.render(graphics, font, theme, mouseX, mouseY);
         renderTooltip(graphics, font, screenWidth, screenHeight);
+        lastUiRenderNanos = Math.max(0L, System.nanoTime() - renderStart);
+        averageUiRenderNanos = averageUiRenderNanos == 0L
+                ? lastUiRenderNanos
+                : averageUiRenderNanos + (lastUiRenderNanos - averageUiRenderNanos) / 8L;
+    }
+
+    /** Last CPU-side UI command submission duration; excludes GPU completion. */
+    public long lastUiRenderNanos() {
+        return lastUiRenderNanos;
+    }
+
+    /** Smoothed CPU-side UI command submission duration; excludes GPU completion. */
+    public long averageUiRenderNanos() {
+        return averageUiRenderNanos;
     }
 
     public void tick() {
@@ -138,6 +155,8 @@ public final class VantaUiRuntime {
         root.closeDropdownsExcept(null);
         root.clearHover();
         lastFrameNanos = 0L;
+        lastUiRenderNanos = 0L;
+        averageUiRenderNanos = 0L;
     }
 
     private void setFocused(VantaUiNode node) {
