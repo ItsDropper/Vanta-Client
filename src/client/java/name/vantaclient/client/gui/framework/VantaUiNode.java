@@ -460,12 +460,16 @@ public final class VantaUiNode {
                 graphics.fill(x, y, x + width, y + 1,
                         focused ? accent : VantaUiTheme.BORDER);
                 if (focused) graphics.fill(x, y + 1, x + 2, y + height - 1, accent);
-                graphics.drawString(font, label,
-                        x + Math.max(8, (width - font.width(label)) / 2),
-                        y + (height - 9) / 2, enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
+                String shownLabel = font.plainSubstrByWidth(label, Math.max(0, width - 16));
+                graphics.drawString(font, shownLabel,
+                        x + Math.max(8, (width - font.width(shownLabel)) / 2),
+                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                        enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
             }
             case TOGGLE -> {
-                graphics.drawString(font, label, x, y + (height - 9) / 2,
+                String shownLabel = font.plainSubstrByWidth(label, Math.max(0, width - 52));
+                graphics.drawString(font, shownLabel, x,
+                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 boolean value = toggleValue != null && toggleValue.getAsBoolean();
                 int trackColor = value ? accent : VantaUiTheme.TRACK;
@@ -481,13 +485,15 @@ public final class VantaUiNode {
                 if (!Double.isFinite(value)) value = sliderMinimum;
                 double range = sliderMaximum - sliderMinimum;
                 double normalized = range <= 0.0 ? 0.0 : clamp((value - sliderMinimum) / range, 0.0, 1.0);
-                graphics.drawString(font, label, x, y + 2, VantaUiTheme.TEXT_PRIMARY);
                 if (Double.compare(value, cachedSliderValue) != 0) {
                     cachedSliderValue = value;
                     cachedSliderValueText = formatValue(value);
                 }
                 String valueText = cachedSliderValueText;
-                graphics.drawString(font, valueText, x + width - font.width(valueText), y + 2,
+                int valueWidth = font.width(valueText);
+                String sliderLabel = font.plainSubstrByWidth(label, Math.max(0, width - valueWidth - 12));
+                graphics.drawString(font, sliderLabel, x, y + 2, VantaUiTheme.TEXT_PRIMARY);
+                graphics.drawString(font, valueText, x + width - valueWidth, y + 2,
                         VantaUiTheme.TEXT_SECONDARY);
                 int trackY = y + 28;
                 int knobX = x + (int) Math.round((width - 8) * normalized);
@@ -498,10 +504,13 @@ public final class VantaUiNode {
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
             }
             case DROPDOWN -> {
-                graphics.drawString(font, label, x, y + (height - 9) / 2,
-                        VantaUiTheme.TEXT_PRIMARY);
-                int boxWidth = Math.min(150, Math.max(92, width / 2));
+                int boxWidth = Math.min(150, Math.max(72, width / 2));
                 int boxX = x + width - boxWidth;
+                String dropdownLabel = font.plainSubstrByWidth(label,
+                        Math.max(0, boxX - x - 12));
+                graphics.drawString(font, dropdownLabel, x,
+                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                        VantaUiTheme.TEXT_PRIMARY);
                 graphics.fill(boxX, y + 2, x + width, y + height - 2,
                         mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount));
                 String selected = dropdownValue == null ? "" : dropdownValue.get();
