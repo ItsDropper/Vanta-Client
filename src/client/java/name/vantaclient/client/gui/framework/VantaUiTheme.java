@@ -61,6 +61,7 @@ public final class VantaUiTheme {
     public static int applyPanelOpacity(int color) {
         if (color != PANEL && color != PANEL_RAISED) return color;
         double opacity = VantaClientPreferences.get().panelOpacity;
+        if (!Double.isFinite(opacity)) opacity = 0.92;
         int alpha = (int) Math.round(255.0 * Math.max(0.0, Math.min(1.0, opacity)));
         return withAlpha(color, alpha);
     }
