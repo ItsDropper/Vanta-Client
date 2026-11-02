@@ -7,6 +7,7 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -39,6 +40,7 @@ public final class VantaUiPrototypeScreen extends Screen {
     private double hudScale = 1.0;
     private String crosshairStyle = "Classic";
     private String keybindMode = "Hold";
+    private String searchQuery = "";
 
     public VantaUiPrototypeScreen(Screen parent) {
         super(Component.literal("Vanta UI Prototype"));
@@ -208,6 +210,12 @@ public final class VantaUiPrototypeScreen extends Screen {
                 VantaUiTheme.TEXT_SECONDARY));
         content.add(VantaUiNode.spacer(4));
 
+        content.add(VantaUiNode.textField("Search features...", () -> searchQuery,
+                value -> searchQuery = value, 64)
+                .tooltip("Tests focused text input, character events, cursor movement and deletion."));
+        content.add(VantaUiNode.dynamicText(
+                () -> searchQuery.isBlank() ? "No search filter" : "Filter: " + searchQuery,
+                VantaUiTheme.TEXT_SECONDARY));
         content.add(VantaUiNode.dropdown("Keybind interaction", List.of("Hold", "Toggle", "Press once"),
                 () -> keybindMode, value -> keybindMode = value)
                 .tooltip("Prototype-only keybind mode selection."));
@@ -246,6 +254,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         hudScale = 1.0;
         crosshairStyle = "Classic";
         keybindMode = "Hold";
+        searchQuery = "";
         rebuildUi();
     }
 
@@ -286,6 +295,12 @@ public final class VantaUiPrototypeScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (runtime != null && runtime.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (runtime != null && runtime.charTyped(event.codepoint())) return true;
+        return super.charTyped(event);
     }
 
     @Override
