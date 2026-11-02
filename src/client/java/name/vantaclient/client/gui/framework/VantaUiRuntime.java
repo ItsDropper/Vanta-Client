@@ -47,6 +47,7 @@ public final class VantaUiRuntime {
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button != 0) return false;
         VantaUiNode target = root.hitTest(mouseX, mouseY);
         setFocused(target);
         if (target == null) return false;
@@ -70,7 +71,9 @@ public final class VantaUiRuntime {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        return root.scrollAt(mouseX, mouseY, amount);
+        boolean handled = root.scrollAt(mouseX, mouseY, amount);
+        if (handled) lastWidth = -1;
+        return handled;
     }
 
     public boolean keyPressed(int keyCode, boolean shiftDown) {
