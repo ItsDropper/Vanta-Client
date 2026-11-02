@@ -33,7 +33,7 @@ public final class VantaUiPrototypeScreen extends Screen {
     private boolean showPerformanceHints = true;
     private boolean customCrosshair;
     private boolean hudGrid = true;
-    private boolean smoothAnimations = true;
+    private String updateStrategy = "Balanced";
     private double renderDistancePreview = 12.0;
     private double crosshairSize = 1.0;
     private double hudScale = 1.0;
@@ -152,14 +152,17 @@ public final class VantaUiPrototypeScreen extends Screen {
         content.add(VantaUiNode.toggle("Performance hints", () -> showPerformanceHints,
                 value -> showPerformanceHints = value)
                 .tooltip("Prototype-only presentation preference."));
-        content.add(VantaUiNode.toggle("Reduced UI animation", () -> !smoothAnimations,
-                value -> smoothAnimations = !value)
-                .tooltip("Demonstrates settings state binding. Motion policy is centralized in VantaUiTheme."));
+        content.add(VantaUiNode.toggle("Reduced UI animation",
+                () -> !VantaClientPreferences.get().animations,
+                reduced -> {
+                    VantaClientPreferences.get().animations = !reduced;
+                    VantaClientPreferences.save();
+                }).tooltip("Writes the existing Appearance preference; the framework reads it centrally."));
         content.add(VantaUiNode.slider("Render distance preview", 2, 32, 1,
                 () -> renderDistancePreview, value -> renderDistancePreview = value)
                 .tooltip("Local prototype value only; it does not change Minecraft video settings."));
         content.add(VantaUiNode.dropdown("Update strategy", List.of("Balanced", "Low latency", "Power saver"),
-                () -> keybindMode, value -> keybindMode = value)
+                () -> updateStrategy, value -> updateStrategy = value)
                 .tooltip("Dropdown interaction test. Use click or the left/right arrow keys."));
         if (showPerformanceHints) {
             content.add(VantaUiNode.text(
@@ -237,7 +240,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         showPerformanceHints = true;
         customCrosshair = false;
         hudGrid = true;
-        smoothAnimations = true;
+        updateStrategy = "Balanced";
         renderDistancePreview = 12.0;
         crosshairSize = 1.0;
         hudScale = 1.0;
