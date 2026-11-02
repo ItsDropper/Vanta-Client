@@ -752,7 +752,7 @@ public final class VantaUiNode {
         }
     }
 
-    void click(double mouseX, double mouseY, int button) {
+    void click(double mouseX, double mouseY, int button, Font font) {
         if (!enabled || button != 0) return;
         switch (kind) {
             case BUTTON -> { if (action != null) action.run(); }
@@ -780,9 +780,43 @@ public final class VantaUiNode {
                     dropdownOpen = false;
                 }
             }
-            case TEXT_FIELD -> inputCursor = currentInput().length();
+            case TEXT_FIELD -> positionInputCursor(mouseX, font);
             default -> { }
         }
+    }
+
+    private void positionInputCursor(double mouseX, Font font) {
+        String value = currentInput();
+        int availableWidth = Math.max(0, width - 18);
+        int cursor = clamp(inputCursor, 0, value.length());
+
+        int visibleStart = 0;
+        while (visibleStart < cursor
+                && font.width(value.substring(visibleStart, cursor)) > availableWidth) {
+            visibleStart = value.offsetByCodePoints(visibleStart, 1);
+        }
+        int visibleEnd = value.length();
+        while (visibleEnd > cursor
+                && font.width(value.substring(visibleStart, visibleEnd)) > availableWidth) {
+            visibleEnd = value.offsetByCodePoints(visibleEnd, -1);
+        }
+
+        double targetX = mouseX - (x + 8);
+        int previousWidth = 0;
+        int selectedCursor = visibleStart;
+        int offset = visibleStart;
+        while (offset < visibleEnd) {
+            int next = value.offsetByCodePoints(offset, 1);
+            int nextWidth = font.width(value.substring(visibleStart, next));
+            if (targetX < (previousWidth + nextWidth) / 2.0) break;
+            selectedCursor = next;
+            previousWidth = nextWidth;
+            offset = next;
+        }
+
+        inputCursor = selectedCursor;
+        caretVisible = true;
+        caretTicks = 0;
     }
 
     boolean charTyped(int codepoint) {
