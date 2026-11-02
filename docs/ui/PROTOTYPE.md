@@ -12,9 +12,9 @@ The prototype is a separate Minecraft \`Screen\`. It does not replace the active
 - Retained component tree with Row, Column and Stack containers.
 - Padding, gap, preferred/min/max sizes, flex, alignment and justification.
 - Scrollable content with clipping and matching pointer bounds.
-- Text, button, toggle, slider, dropdown selector and text field.
-- Mouse click, slider drag and wheel input.
-- Keyboard Tab focus, Enter/Space activation, directional adjustment and text editing.
+- Text, bounded paragraph, button, toggle, slider, expanded dropdown selector and text field.
+- Mouse click, slider drag/capture/release and wheel input.
+- Keyboard Tab/Shift+Tab focus traversal, Enter/Space activation, directional adjustment, Escape dismissal and text editing.
 - Tooltips and focus feedback.
 - Live FPS readout.
 - Appearance accent selection and global animation preference.
@@ -37,10 +37,10 @@ No in-game test is marked as passed by this repository change. Run these checks 
 | Navigation | Switch Overview / Visuals / Controls | Correct page, previous page state retained where expected |
 | Toggle | Click a toggle and use keyboard activation | Value changes once and feedback follows state |
 | Slider | Click, drag outside bounds, release, use arrows | Value clamps to min/max and drag capture ends on release |
-| Dropdown | Click repeatedly and use arrows | Value cycles within supplied choices |
+| Dropdown | Open, select an option, use arrows/Enter and Escape | Expanded option list selects a value; keyboard highlight commits; Escape closes without changing the value |
 | Text field | Focus, type, move caret, backspace/delete, Tab away | Edits only prototype value; text remains bounded |
 | Scroll | Wheel over content, wheel over navigation/background | Only the hovered scroll viewport consumes wheel |
-| Clip | Scroll content until rows pass viewport edges | Offscreen content is neither drawn nor interactive |
+| Clip | Scroll content until rows and dropdown options pass viewport edges | Offscreen content is neither drawn nor interactive; all options remain reachable through the content scroll viewport |
 | Tooltip | Hover each control near window edges | Tooltip stays within window bounds |
 | Accent | Change accent in prototype | Accent/selection/focus controls update consistently |
 | Animation | Toggle global animations | Motion snaps when disabled |
@@ -51,7 +51,7 @@ No in-game test is marked as passed by this repository change. Run these checks 
 ## Verification status
 
 - Source implementation: committed.
-- GitHub Actions build for the initial prototype commit: passed.
+- GitHub Actions builds passed for multiple intermediate framework commits; latest integrated commit is being validated separately.
 - In-game input/render/scale checks: pending local Minecraft execution.
 - Screenshot review: pending actual in-game screenshots.
 - Rendering overhead measurement: not yet measured.
