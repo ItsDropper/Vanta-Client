@@ -545,8 +545,11 @@ public final class VantaUiNode {
 
                 int textColor = value.isEmpty()
                         ? VantaUiTheme.TEXT_MUTED : VantaUiTheme.TEXT_PRIMARY;
-                String display = value.isEmpty() ? placeholder : cachedInputVisibleText;
-                graphics.drawString(font, display, x + 8, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
+                String display = value.isEmpty()
+                        ? font.plainSubstrByWidth(placeholder, availableWidth)
+                        : cachedInputVisibleText;
+                graphics.drawString(font, display, x + 8,
+                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
 
                 if (focused && caretVisible && width > 12) {
                     int caretX = Math.min(x + width - 5, x + 8 + cachedInputCursorWidth);
