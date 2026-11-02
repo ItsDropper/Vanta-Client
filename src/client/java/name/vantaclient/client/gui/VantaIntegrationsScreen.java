@@ -85,6 +85,9 @@ public class VantaIntegrationsScreen extends Screen {
                     VantaPanelButton.layoutY(25), VantaPanelButton.layoutSize(190),
                     VantaPanelButton.layoutSize(24), Component.literal("Search mods"));
             modSearch.setMaxLength(64);
+            modSearch.setBordered(false);
+            modSearch.setTextColor(0xFFE0E6F0);
+            modSearch.setHint(Component.literal("Search mods..."));
             modSearch.setValue(modSearchQuery);
             modSearch.setResponder(value -> {
                 modSearchQuery = value;
@@ -95,13 +98,13 @@ public class VantaIntegrationsScreen extends Screen {
             addRenderableWidget(modSearch);
         }
 
-        addPanelButton("Settings", 34, 68, SIDEBAR_WIDTH - 24, 25,
+        addPanelButton("Settings", 34, 132, SIDEBAR_WIDTH - 24, 25,
                 () -> {
                     section = Section.SETTINGS;
                     selection = Selection.NONE;
                     rebuildWidgets();
                 }, () -> section == Section.SETTINGS);
-        addPanelButton("Mods", 34, 99, SIDEBAR_WIDTH - 24, 25,
+        addPanelButton("Mods", 34, 78, SIDEBAR_WIDTH - 24, 25,
                 () -> {
                     section = Section.MODS;
                     selection = Selection.NONE;
@@ -111,6 +114,15 @@ public class VantaIntegrationsScreen extends Screen {
 
         if (section == Section.MODS) {
             addModNavigation();
+            if (selection != Selection.NONE) {
+                addPanelButton("‹", contentX() - 28, 22, 22, 24, () -> {
+                    selection = Selection.NONE;
+                    selectedFeature = null;
+                    selectedModId = null;
+                    firstSetting = 0;
+                    rebuildWidgets();
+                });
+            }
             if (selection == Selection.NONE) {
                 addPanelButton("All", contentX(), CONTENT_TOP + 42, 52, 24, () -> {
                     favoritesOnly = false;
@@ -266,7 +278,7 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private void addModNavigation() {
-        int y = 143;
+        int y = 177;
         addPanelButton("HUD", 34, y, SIDEBAR_WIDTH - 24, 22,
                 () -> selectCategory(Category.HUD),
                 () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.HUD);
@@ -750,19 +762,26 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.drawString(font, "VANTA", 45, 28, 0xFFF4F6FC);
         graphics.drawString(font, "CLIENT", 90, 28, 0xFF9AA4B6);
         graphics.drawString(font, "MINECRAFT MOD", 34, 47, 0xFF727D90);
+        graphics.drawString(font, "MODS & OPTIONS", 34, 63, 0xFF858A98);
+        graphics.drawString(font, "PERSONALIZATION", 34, 117, 0xFF858A98);
         if (section == Section.SETTINGS) {
             graphics.drawString(font, "LOCAL CONFIGURATION", 760, 34, 0xFF778296);
         }
         if (section == Section.MODS) {
-            graphics.drawString(font, "BUILT-IN", 34, 132, 0xFF858A98);
-            graphics.drawString(font, "INSTALLED MODS", 34, 266, 0xFF858A98);
+            graphics.drawString(font, "BUILT-IN", 34, 166, 0xFF858A98);
+            graphics.drawString(font, "INSTALLED MODS", 34, 302, 0xFF858A98);
         }
-        graphics.drawString(font, section == Section.SETTINGS ? "SETTINGS" : "MODS",
+        graphics.drawString(font, section == Section.SETTINGS ? "Settings" : "Mods",
                 contentX(), 27, 0xFFF2F4F9);
         graphics.drawString(font, section == Section.SETTINGS
                 ? "Appearance and interface preferences"
                 : "Built-in features and installed integrations",
                 contentX(), 43, 0xFF8D98AA);
+        if (section == Section.MODS && selection == Selection.NONE) {
+            drawRoundedCard(graphics, 648, 20, 196, 28, 0xFF303744, 9);
+            drawRoundedCard(graphics, 649, 21, 194, 26, 0xFF1B222B, 8);
+            graphics.drawString(font, "⌕", 658, 29, 0xFF7F8DA2);
+        }
         graphics.fill(contentX() - 8, 98, right - 14, 99, 0xFF252B36);
 
         if (section == Section.SETTINGS) {
