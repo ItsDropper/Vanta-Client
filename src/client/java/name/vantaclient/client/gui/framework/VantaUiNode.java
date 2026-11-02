@@ -143,8 +143,9 @@ public final class VantaUiNode {
 
     public static VantaUiNode slider(String label, double minimum, double maximum,
                                      double step, DoubleSupplier value, DoubleConsumer setter) {
-        if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || maximum < minimum) {
-            throw new IllegalArgumentException("Slider bounds must be finite and ordered.");
+        if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || maximum < minimum
+                || !Double.isFinite(step) || step < 0.0 || value == null || setter == null) {
+            throw new IllegalArgumentException("Slider bounds, step and bindings must be valid.");
         }
         VantaUiNode node = new VantaUiNode(Kind.SLIDER, null);
         node.label = label == null ? "" : label;
@@ -173,8 +174,8 @@ public final class VantaUiNode {
 
     public static VantaUiNode dropdown(String label, List<String> options,
                                        Supplier<String> value, Consumer<String> setter) {
-        if (options == null || options.isEmpty()) {
-            throw new IllegalArgumentException("Dropdown requires at least one option.");
+        if (options == null || options.isEmpty() || value == null || setter == null) {
+            throw new IllegalArgumentException("Dropdown requires options and value/setter bindings.");
         }
         VantaUiNode node = new VantaUiNode(Kind.DROPDOWN, null);
         node.label = label == null ? "" : label;
@@ -469,6 +470,7 @@ public final class VantaUiNode {
             }
             case SLIDER -> {
                 double value = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
+                if (!Double.isFinite(value)) value = sliderMinimum;
                 double range = sliderMaximum - sliderMinimum;
                 double normalized = range <= 0.0 ? 0.0 : clamp((value - sliderMinimum) / range, 0.0, 1.0);
                 graphics.drawString(font, label, x, y + 2, VantaUiTheme.TEXT_PRIMARY);
@@ -623,9 +625,10 @@ public final class VantaUiNode {
     }
 
     boolean charTyped(int codepoint) {
-        if (kind != Kind.TEXT_FIELD || !focused || !Character.isValidCodePoint(codepoint)
+        if (kind != Kind.TEXT_FIELD || !focused || !enabled || !Character.isValidCodePoint(codepoint)
                 || Character.isISOControl(codepoint)) return false;
         String current = currentInput();
+        inputCursor = clamp(inputCursor, 0, current.length());
         String insertion = new String(Character.toChars(codepoint));
         if (current.length() + insertion.length() > inputMaximumLength) return true;
         String next = current.substring(0, inputCursor) + insertion + current.substring(inputCursor);
@@ -637,8 +640,9 @@ public final class VantaUiNode {
     }
 
     boolean editKey(int keyCode) {
-        if (kind != Kind.TEXT_FIELD || !focused) return false;
+        if (kind != Kind.TEXT_FIELD || !focused || !enabled) return false;
         String current = currentInput();
+        inputCursor = clamp(inputCursor, 0, current.length());
         switch (keyCode) {
             case 259 -> {
                 if (inputCursor > 0) {
@@ -716,6 +720,7 @@ public final class VantaUiNode {
     }
 
     private void setSliderValue(double value) {
+        if (!Double.isFinite(value)) return;
         double clamped = clamp(value, sliderMinimum, sliderMaximum);
         if (sliderStep > 0.0) {
             clamped = sliderMinimum
