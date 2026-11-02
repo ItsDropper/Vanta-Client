@@ -290,7 +290,7 @@ public final class VantaUiNode {
                 if (direction == Direction.ROW && visibleChildren > 1) {
                     measured += gap * (visibleChildren - 1);
                 }
-                yield measured + padding * 2;
+                yield clamp(measured + padding * 2, minWidth, maxWidth);
             }
         };
     }
@@ -321,7 +321,7 @@ public final class VantaUiNode {
                 if (direction == Direction.COLUMN && visibleChildren > 1) {
                     measured += gap * (visibleChildren - 1);
                 }
-                yield measured + padding * 2;
+                yield clamp(measured + padding * 2, minHeight, maxHeight);
             }
         };
     }
@@ -329,8 +329,8 @@ public final class VantaUiNode {
     void arrange(int x, int y, int width, int height, Font font) {
         this.x = x;
         this.y = y;
-        this.width = clamp(width, minWidth, maxWidth);
-        this.height = clamp(height, minHeight, maxHeight);
+        this.width = Math.max(0, Math.min(width, maxWidth));
+        this.height = Math.max(0, Math.min(height, maxHeight));
 
         if (kind == Kind.TEXT && textMaximumLines > 1) {
             String value = currentText();
@@ -360,16 +360,19 @@ public final class VantaUiNode {
 
         if (direction == Direction.STACK) {
             for (VantaUiNode child : layoutChildren) {
-                int childWidth = child.preferredWidth >= 0
-                        ? Math.min(innerWidth, child.preferredWidth)
+                int requestedWidth = child.preferredWidth >= 0
+                        ? child.preferredWidth
                         : child.alignment == Alignment.STRETCH ? innerWidth
-                        : Math.min(innerWidth, child.intrinsicWidth(font));
+                        : child.intrinsicWidth(font);
+                int childWidth = constrain(requestedWidth, innerWidth,
+                        child.minWidth, child.maxWidth);
                 int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
                         ? child.intrinsicHeight(font)
                         : child.preferredHeight >= 0 ? child.preferredHeight
                         : child.alignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
-                int childHeight = Math.min(innerHeight, requestedHeight);
+                int childHeight = constrain(requestedHeight, innerHeight,
+                        child.minHeight, child.maxHeight);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
                 child.arrange(childX, childY, childWidth, childHeight, font);
@@ -430,10 +433,12 @@ public final class VantaUiNode {
             int primary = primarySizes[i];
 
             if (direction == Direction.COLUMN) {
-                int childWidth = child.preferredWidth >= 0
-                        ? Math.min(innerWidth, child.preferredWidth)
+                int requestedWidth = child.preferredWidth >= 0
+                        ? child.preferredWidth
                         : child.alignment == Alignment.STRETCH ? innerWidth
-                        : Math.min(innerWidth, child.intrinsicWidth(font));
+                        : child.intrinsicWidth(font);
+                int childWidth = constrain(requestedWidth, innerWidth,
+                        child.minWidth, child.maxWidth);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
                 child.arrange(childX, cursor, childWidth, primary, font);
                 cursor += primary + gap + distributedGap;
@@ -443,12 +448,19 @@ public final class VantaUiNode {
                         : child.preferredHeight >= 0 ? child.preferredHeight
                         : child.alignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
-                int childHeight = Math.min(innerHeight, requestedHeight);
+                int childHeight = constrain(requestedHeight, innerHeight,
+                        child.minHeight, child.maxHeight);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
                 child.arrange(cursor, childY, primary, childHeight, font);
                 cursor += primary + gap + distributedGap;
             }
         }
+    }
+
+    private static int constrain(int desired, int available, int minimum, int maximum) {
+        int upper = Math.max(0, Math.min(available, maximum));
+        int lower = Math.min(upper, Math.max(0, minimum));
+        return Math.max(lower, Math.min(upper, desired));
     }
 
     private static int alignedOffset(int start, int available, int size, Alignment alignment) {
