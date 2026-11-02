@@ -83,9 +83,11 @@ public final class VantaPanelButton extends AbstractWidget {
         hoverAmount += (target - hoverAmount) * 0.24f;
         if (Math.abs(target - hoverAmount) < 0.015f) hoverAmount = target;
 
-        int background = mixColor(0xFF191E28, 0xFF293244, hoverAmount);
-        if (active) background = mixColor(background, 0xFF303C52, 0.72f);
-        fillRounded(graphics, getX(), getY(), width, height, 7, background);
+        int background = mixColor(0xFF171C26, 0xFF252F40, hoverAmount);
+        if (active) background = mixColor(background, 0xFF1D304D, 0.82f);
+        int border = mixColor(0xFF2A3040, accent.getAsInt(), active ? 0.52f : hoverAmount * 0.36f);
+        fillRounded(graphics, getX(), getY(), width, height, 8, border);
+        fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 7, background);
 
         int accentColor = accent.getAsInt();
         if (active) {
@@ -95,7 +97,7 @@ public final class VantaPanelButton extends AbstractWidget {
                     mixColor(0xFF252D3B, accentColor, hoverAmount * 0.7f));
         }
 
-        int textColor = active ? 0xFFF5F7FC : hovered ? 0xFFE8ECF4 : 0xFFADB5C4;
+        int textColor = active ? 0xFFF7F9FF : hovered ? 0xFFF0F4FC : 0xFFAAB4C5;
         String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
         graphics.drawString(Minecraft.getInstance().font, visibleLabel,
                 getX() + 10, getY() + (height - 8) / 2, textColor);
