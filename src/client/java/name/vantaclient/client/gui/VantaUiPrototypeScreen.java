@@ -127,7 +127,8 @@ public final class VantaUiPrototypeScreen extends Screen {
         return VantaUiNode.button(label, () -> {
             page = targetPage;
             rebuildUi();
-        }).tooltip("Open the " + label.toLowerCase() + " prototype section.");
+        }).selected(page == targetPage)
+                .tooltip("Open the " + label.toLowerCase() + " prototype section.");
     }
 
     private void addPageContent(VantaUiNode content) {
@@ -207,7 +208,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 value -> customCrosshair = value)
                 .tooltip("Prototype toggle. A real crosshair adapter can replace this local state later."));
         content.add(VantaUiNode.dropdown("Crosshair preset",
-                List.of("Classic", "Dot", "Minimal", "Dynamic"),
+                List.of("Classic", "Dot", "Minimal", "Dynamic", "Circle", "T-Cross", "Outline", "Thin"),
                 () -> crosshairStyle, value -> crosshairStyle = value)
                 .tooltip("Cycles through available prototype presets."));
         content.add(VantaUiNode.slider("Crosshair scale", 0.5, 2.0, 0.05,
