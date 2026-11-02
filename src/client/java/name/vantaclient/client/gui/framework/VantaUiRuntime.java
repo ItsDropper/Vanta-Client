@@ -82,6 +82,7 @@ public final class VantaUiRuntime {
             return true;
         }
         if (focused == null) return false;
+        if (focused.editKey(keyCode)) return true;
 
         switch (keyCode) {
             case 257, 32 -> focused.activate();
@@ -90,6 +91,10 @@ public final class VantaUiRuntime {
             default -> { return false; }
         }
         return true;
+    }
+
+    public boolean charTyped(int codepoint) {
+        return focused != null && focused.charTyped(codepoint);
     }
 
     public void dispose() {
