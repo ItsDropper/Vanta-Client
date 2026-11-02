@@ -70,6 +70,30 @@ public final class ModrinthBrowserService {
         return List.copyOf(projects);
     }
 
+    public static byte[] downloadIcon(String iconUrl) throws IOException, InterruptedException {
+        if (iconUrl == null || iconUrl.isBlank()) return new byte[0];
+        URI uri;
+        try { uri = URI.create(iconUrl); }
+        catch (IllegalArgumentException exception) { throw new IOException("Invalid project icon URL.", exception); }
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                || !uri.getHost().equalsIgnoreCase("cdn.modrinth.com")) {
+            throw new IOException("Refusing an untrusted project icon host.");
+        }
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(15))
+                .header("User-Agent", "VantaClient/1.0 (https://github.com/ItsDropper/Vanta-Client)")
+                .GET().build();
+        HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            response.body().close();
+            throw new IOException("Modrinth icon returned HTTP " + response.statusCode());
+        }
+        try (InputStream input = response.body()) {
+            byte[] bytes = input.readNBytes(512 * 1024 + 1);
+            if (bytes.length > 512 * 1024) throw new IOException("Project icon exceeds 512 KiB.");
+            return bytes;
+        }
+    }
+
     public static InstallResult install(String projectId) throws IOException, InterruptedException {
         if (projectId == null || !projectId.matches("[A-Za-z0-9_-]{1,64}")) {
             throw new IOException("Invalid Modrinth project ID.");
