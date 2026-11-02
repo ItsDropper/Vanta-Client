@@ -49,6 +49,7 @@ public final class HudSettingsPanel {
     private static void rebuild() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
+        runtime.setScale((float) VantaClientPreferences.get().uiScale);
         lastWidth = -1;
         lastHeight = -1;
         layout();
@@ -138,6 +139,7 @@ public final class HudSettingsPanel {
         Minecraft mc = Minecraft.getInstance();
         int width = mc.getWindow().getGuiScaledWidth();
         int height = mc.getWindow().getGuiScaledHeight();
+        runtime.setScale((float) VantaClientPreferences.get().uiScale);
         if (width != lastWidth || height != lastHeight) {
             runtime.layout(mc.font, width, height);
             lastWidth = width;
