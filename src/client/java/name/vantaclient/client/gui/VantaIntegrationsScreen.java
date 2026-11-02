@@ -808,11 +808,11 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.SETTINGS) {
             int cardX = contentX() - 8;
             int cardWidth = contentWidth() + 8;
-            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 40, 0xFF171D27, 12);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 40, 0xFF151A23, 12);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 88, cardWidth, 40, 0xFF171D27, 12);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 132, cardWidth, 40, 0xFF151A23, 12);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 178, cardWidth, 40, 0xFF171D27, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 42, 0xFF1B2330, 14);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 42, 0xFF171F2B, 14);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 88, cardWidth, 42, 0xFF1B2330, 14);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 132, cardWidth, 42, 0xFF171F2B, 14);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 178, cardWidth, 42, 0xFF1B2330, 14);
             graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 9, 0xFFE8ECF4);
             graphics.drawString(font, "Choose the highlight colour used across Vanta.", contentX(), CONTENT_TOP + 23, 0xFF8792A4);
             graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 53, 0xFFE8ECF4);
