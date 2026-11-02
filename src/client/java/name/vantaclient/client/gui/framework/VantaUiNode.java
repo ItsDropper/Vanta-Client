@@ -641,26 +641,26 @@ public final class VantaUiNode {
         for (VantaUiNode child : children) child.tick();
     }
 
-    void animate(VantaUiTheme theme, float deltaSeconds) {
+    void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor) {
         float hoverTarget = hovered ? 1.0f : 0.0f;
-        if (!theme.animationsEnabled()) {
+        if (!animationsEnabled) {
             hoverAmount = hoverTarget;
-        } else {
-            float hoverFactor = 1.0f - (float) Math.exp(-VantaUiTheme.HOVER_RATE * deltaSeconds);
+        } else if (Math.abs(hoverTarget - hoverAmount) >= 0.002f) {
             hoverAmount += (hoverTarget - hoverAmount) * hoverFactor;
             if (Math.abs(hoverTarget - hoverAmount) < 0.002f) hoverAmount = hoverTarget;
         }
         if (kind == Kind.TOGGLE && toggleValue != null) {
             float target = toggleValue.getAsBoolean() ? 1.0f : 0.0f;
-            if (!theme.animationsEnabled()) {
+            if (!animationsEnabled) {
                 animatedToggle = target;
-            } else {
-                float toggleFactor = 1.0f - (float) Math.exp(-VantaUiTheme.TOGGLE_RATE * deltaSeconds);
+            } else if (Math.abs(target - animatedToggle) >= 0.002f) {
                 animatedToggle += (target - animatedToggle) * toggleFactor;
                 if (Math.abs(target - animatedToggle) < 0.002f) animatedToggle = target;
             }
         }
-        for (VantaUiNode child : children) child.animate(theme, deltaSeconds);
+        for (VantaUiNode child : children) {
+            child.animate(animationsEnabled, hoverFactor, toggleFactor);
+        }
     }
 
     void clearHover() {
