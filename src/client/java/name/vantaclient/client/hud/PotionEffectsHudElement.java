@@ -92,16 +92,6 @@ public class PotionEffectsHudElement extends HudElement {
 
             offset += 24;
         }
-
-        if (HudEditorFeature.INSTANCE.isEnabled()) {
-            graphics.fill(
-                    -2,
-                    -2,
-                    getWidth(),
-                    getHeight(),
-                    0x55FFFFFF
-            );
-        }
     }
 
     @Override
