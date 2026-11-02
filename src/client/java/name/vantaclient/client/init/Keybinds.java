@@ -11,7 +11,6 @@ public class Keybinds {
     public static KeyMapping fullbrightKey;
     public static KeyMapping zoomKey;
     public static KeyMapping guiKey;
-    public static KeyMapping hudEditorKey;
 
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(
@@ -51,13 +50,6 @@ public class Keybinds {
                 )
         );
 
-        hudEditorKey= KeyBindingHelper.registerKeyBinding(
-                new KeyMapping(
-                        "key.dropperutils.hud_editor",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_RIGHT_SHIFT,
-                        CATEGORY
-                )
-        );
+
     }
 }
