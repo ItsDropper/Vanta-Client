@@ -9,6 +9,7 @@ import name.vantaclient.client.config.VantaClientPreferences;
 public class HudEditorScreen extends Screen {
     private float entrance = 0.0f;
     private float selectionPulse = 0.0f;
+    private boolean panelPointer;
 
     public HudEditorScreen() {
         super(Component.literal("HUD Editor"));
@@ -147,7 +148,10 @@ public class HudEditorScreen extends Screen {
                                 boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
-        if (HudSettingsPanel.mouseClicked(mouseX, mouseY)) return true;
+        if (HudSettingsPanel.mouseClicked(mouseX, mouseY)) {
+            panelPointer = true;
+            return true;
+        }
         if (event.button() == 0) {
             HudElement hovered = HudMouseHandler.getHovered();
             if (hovered != null) {
@@ -163,7 +167,9 @@ public class HudEditorScreen extends Screen {
         boolean moved = HudMouseHandler.hasMoved();
         HudMouseHandler.release();
         HudSettingsPanel.mouseReleased();
-        if (!moved) {
+        boolean consumedByPanel = panelPointer;
+        panelPointer = false;
+        if (!moved && !consumedByPanel) {
             HudElement hovered = HudMouseHandler.getHovered();
             if (hovered != null) HudSettingsPanel.setSelected(hovered);
         }
@@ -175,7 +181,10 @@ public class HudEditorScreen extends Screen {
                                 double dragX, double dragY) {
         double mouseX = event.x();
         double mouseY = event.y();
-        if (HudSettingsPanel.mouseDragged(mouseX, mouseY)) return true;
+        if (panelPointer) {
+            HudSettingsPanel.mouseDragged(mouseX, mouseY);
+            return true;
+        }
         if (event.button() == 0) {
             HudMouseHandler.drag(mouseX, mouseY);
             return true;
@@ -186,6 +195,7 @@ public class HudEditorScreen extends Screen {
     @Override
     public void onClose() {
         HudMouseHandler.release();
+        panelPointer = false;
         HudSettingsPanel.clear();
         super.onClose();
     }
