@@ -564,7 +564,9 @@ public class VantaIntegrationsScreen extends Screen {
                 .filter(mod -> mod.id().equals(selectedModId))
                 .findFirst().orElse(null);
         if (descriptor != null) {
-            addIntegrationSettings(descriptor);
+            addPanelButton("Configure " + descriptor.displayName(),
+                    contentX(), CONTENT_TOP + 8, 220, 28,
+                    () -> minecraft.setScreen(new VantaIntegrationSettingsScreen(this, descriptor)));
             addPanelButton("Back to mod library", contentX(), 486, 180, 22, () -> {
                 selection = Selection.NONE;
                 selectedModId = null;
