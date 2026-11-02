@@ -281,7 +281,7 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        boolean handled = runtime != null && runtime.mouseReleased();
+        boolean handled = runtime != null && runtime.mouseReleased(event.button());
         return handled || super.mouseReleased(event);
     }
 
