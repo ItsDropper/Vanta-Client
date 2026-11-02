@@ -37,7 +37,7 @@ import java.util.jar.JarFile;
 
 /** Unified Vanta Client settings and installed-mod browser. */
 public class VantaIntegrationsScreen extends Screen {
-    private static final int SIDEBAR_WIDTH = 220;
+    private static final int SIDEBAR_WIDTH = 190;
     private static final int ROW_HEIGHT = 38;
     private static final int CONTENT_TOP = 118;
 
@@ -754,9 +754,9 @@ public class VantaIntegrationsScreen extends Screen {
         }
         int left = 20, top = 18, right = 940, bottom = 522;
         drawRoundedCard(graphics, left - 6, top - 6, right - left + 12,
-                bottom - top + 12, 0x55000000, 18);
+                bottom - top + 12, 0x55000000, 20);
         drawRoundedCard(graphics, left - 2, top - 2, right - left + 4,
-                bottom - top + 4, 0x99000000, 16);
+                bottom - top + 4, 0x99000000, 18);
         float panelOpacity = preferences == null ? 0.92f : (float) preferences.panelOpacity;
         drawRoundedCard(graphics, left, top, right - left, bottom - top,
                 withAlpha(0xFF10141C, panelOpacity), 15);
@@ -765,12 +765,12 @@ public class VantaIntegrationsScreen extends Screen {
         drawRoundedCard(graphics, left + 1, top + 1, right - left - 2, 3, accent, 2);
         drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49, 0xFF151B26, 13);
         drawRoundedCard(graphics, left + 12, top + 12, SIDEBAR_WIDTH + 12,
-                bottom - top - 24, 0xFF171D27, 11);
+                bottom - top - 24, 0xFF171D27, 14);
         graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 20,
                 left + 13 + SIDEBAR_WIDTH + 14, bottom - 20, 0xFF2A303C);
         drawRoundedCard(graphics, left + 12 + SIDEBAR_WIDTH + 20, top + 62,
                 right - (left + 12 + SIDEBAR_WIDTH + 20) - 12,
-                bottom - top - 74, 0xFF121720, 11);
+                bottom - top - 74, 0xFF121720, 14);
         graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
         graphics.fill(34, 31, 37, 44, accent);
