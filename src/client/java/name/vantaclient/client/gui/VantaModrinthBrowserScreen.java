@@ -55,17 +55,14 @@ public final class VantaModrinthBrowserScreen extends Screen {
             status = "Installed JARs are visible in the Mods section after returning.";
         }).bounds(left + PANEL_WIDTH - 190, top + PANEL_HEIGHT - 42, 162, 24).build());
         rebuildCards();
+        search();
     }
 
     private void search() {
         if (busy) return;
         String query = searchBox.getValue().trim();
-        if (query.isEmpty()) {
-            status = "Enter a search term.";
-            return;
-        }
         busy = true;
-        status = "Searching Modrinth…";
+        status = query.isEmpty() ? "Loading popular Fabric mods…" : "Searching Modrinth…";
         CompletableFuture.supplyAsync(() -> {
             try { return ModrinthBrowserService.search(query); }
             catch (Exception exception) { throw new java.util.concurrent.CompletionException(exception); }
