@@ -64,10 +64,10 @@ public final class VantaUiRuntime {
         return true;
     }
 
-    public boolean mouseReleased() {
-        boolean handled = activeSlider != null;
+    public boolean mouseReleased(int button) {
+        if (button != 0 || activeSlider == null) return false;
         activeSlider = null;
-        return handled;
+        return true;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
