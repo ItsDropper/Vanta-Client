@@ -124,13 +124,13 @@ public final class VantaModrinthBrowserScreen extends Screen {
             VantaPanelButton installButton = new VantaPanelButton(x + 226, y + 66, 82, 24,
                     "Install", () -> install(project), () -> false,
                     () -> 0xFF438BFF, true);
-            installButton.setActive(!busy);
+            installButton.active = !busy;
             cardButtons.add(addRenderableWidget(installButton));
         }
     }
 
     private void setCardButtonsActive(boolean active) {
-        for (VantaPanelButton button : cardButtons) button.setActive(active);
+        for (VantaPanelButton button : cardButtons) button.active = active;
     }
 
     private void pruneProjectIcons() {
