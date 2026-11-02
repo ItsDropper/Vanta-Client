@@ -116,7 +116,7 @@ public final class VantaSettingsScreen extends Screen {
             navigation.add(VantaUiNode.spacer(1).flex(1));
             navigation.add(VantaUiNode.eyebrow("TOOLS"));
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
-                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this, true)))
+                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
                     .height(34).tooltip("Open installed mods and integrations"));
             navigation.add(VantaUiNode.text("LOCAL CONFIGURATION", VantaUiTheme.TEXT_MUTED));
         }
