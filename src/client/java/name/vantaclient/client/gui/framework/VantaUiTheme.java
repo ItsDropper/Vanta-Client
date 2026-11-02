@@ -9,21 +9,21 @@ import name.vantaclient.client.config.VantaClientPreferences;
  * without rebuilding the screen tree.
  */
 public final class VantaUiTheme {
-    public static final int CANVAS = 0xFF0B0E13;
-    public static final int PANEL = 0xFF121821;
-    public static final int PANEL_RAISED = 0xFF1A232E;
-    public static final int SURFACE = 0xFF222D39;
-    public static final int SURFACE_HOVER = 0xFF2E3B49;
-    public static final int SURFACE_SELECTED = 0xFF263B4F;
-    public static final int BORDER = 0xFF354353;
-    public static final int BORDER_SUBTLE = 0xFF252F3B;
-    public static final int TEXT_PRIMARY = 0xFFF2F5F7;
-    public static final int TEXT_SECONDARY = 0xFFBAC5D1;
-    public static final int TEXT_MUTED = 0xFF8996A7;
-    public static final int TRACK = 0xFF354352;
-    public static final int INPUT_SURFACE = 0xFF121922;
-    public static final int INPUT_FOCUS_SURFACE = 0xFF1B2632;
-    public static final int TOOLTIP_SURFACE = 0xF00A1019;
+    public static final int CANVAS = 0xFF101113;
+    public static final int PANEL = 0xFF181A1D;
+    public static final int PANEL_RAISED = 0xFF202328;
+    public static final int SURFACE = 0xFF292D33;
+    public static final int SURFACE_HOVER = 0xFF343941;
+    public static final int SURFACE_SELECTED = 0xFF303A48;
+    public static final int BORDER = 0xFF3A3F46;
+    public static final int BORDER_SUBTLE = 0xFF2B2F35;
+    public static final int TEXT_PRIMARY = 0xFFF3F4F5;
+    public static final int TEXT_SECONDARY = 0xFFB9BEC5;
+    public static final int TEXT_MUTED = 0xFF858C96;
+    public static final int TRACK = 0xFF424850;
+    public static final int INPUT_SURFACE = 0xFF17191C;
+    public static final int INPUT_FOCUS_SURFACE = 0xFF24282E;
+    public static final int TOOLTIP_SURFACE = 0xF0141619;
     public static final int WHITE = 0xFFFFFFFF;
 
     public static final int SPACE_1 = 4;
