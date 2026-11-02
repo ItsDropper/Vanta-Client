@@ -74,7 +74,10 @@ public final class ExperimentalModHotLoader {
                     JsonObject metadata = readMetadata(jar);
                     if (metadata == null) continue;
                     String id = string(metadata, "id");
-                    if (!id.matches("[a-z0-9][a-z0-9_.-]{0,63}")) continue;
+                    if (!id.matches("[a-z0-9][a-z0-9_.-]{0,63}")
+                            || id.equals("minecraft") || id.equals("fabricloader")
+                            || id.equals("dropperutils") || id.equals("fabric-api")
+                            || id.startsWith("fabric-")) continue;
                     String name = string(metadata, "name");
                     String version = string(metadata, "version");
                     String icon = string(metadata, "icon");
