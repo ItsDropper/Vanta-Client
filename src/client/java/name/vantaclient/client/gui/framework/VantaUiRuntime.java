@@ -213,8 +213,8 @@ public final class VantaUiRuntime {
 
     private void renderTooltip(GuiGraphics graphics, Font font, int screenWidth, int screenHeight) {
         if (hovered == null || hovered.tooltip().isBlank()) return;
-        String tooltip = font.plainSubstrByWidth(hovered.tooltip(), Math.max(80, screenWidth - 24));
-        int boxWidth = font.width(tooltip) + 14;
+        String tooltip = VantaUiNode.fitText(font, hovered.tooltip(), Math.max(80, screenWidth - 24), VantaUiNode.UI_FONT);
+        int boxWidth = VantaUiNode.textWidth(font, tooltip, VantaUiNode.UI_FONT) + 14;
         int boxHeight = 22;
         int tooltipX = Math.max(6, Math.min(screenWidth - boxWidth - 6, hovered.x()));
         int tooltipY = hovered.y() - boxHeight - 7;
@@ -225,7 +225,7 @@ public final class VantaUiRuntime {
         graphics.fill(tooltipX, tooltipY, tooltipX + boxWidth, tooltipY + 1, theme.accent());
         graphics.fill(tooltipX, tooltipY + boxHeight - 1,
                 tooltipX + boxWidth, tooltipY + boxHeight, VantaUiTheme.BORDER);
-        graphics.drawString(font, tooltip, tooltipX + 7, tooltipY + 7,
+        graphics.drawString(font, VantaUiNode.styledText(tooltip, VantaUiNode.UI_FONT), tooltipX + 7, tooltipY + 7,
                 VantaUiTheme.TEXT_PRIMARY);
     }
 }
