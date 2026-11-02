@@ -401,12 +401,11 @@ public class VantaIntegrationsScreen extends Screen {
 
     private void addPreferenceToggle(String name, boolean current, java.util.function.Consumer<Boolean> setter,
                                      int x, int y) {
-        addRenderableWidget(VantaPanelButton.builder(Component.literal(current ? "On" : "Off"), button -> {
+        addRenderableWidget(new VantaPanelButton(x, y, 170, 22, current ? "On" : "Off", () -> {
             boolean next = !current;
             setter.accept(next);
-            button.setMessage(Component.literal(next ? "On" : "Off"));
             rebuildWidgets();
-        }).bounds(x, y, 170, 22).build());
+        }, () -> current, this::accentColor));
     }
 
     private int accentColor() {
@@ -564,6 +563,12 @@ public class VantaIntegrationsScreen extends Screen {
                 .findFirst().orElse(null);
         if (descriptor != null) {
             addIntegrationSettings(descriptor);
+            addPanelButton("Back to mod library", contentX(), 486, 180, 22, () -> {
+                selection = Selection.NONE;
+                selectedModId = null;
+                firstSetting = 0;
+                rebuildWidgets();
+            });
             return;
         }
 
@@ -580,6 +585,12 @@ public class VantaIntegrationsScreen extends Screen {
                     button -> openModMenu())
                     .bounds(x, CONTENT_TOP + 8, 180, 24).build());
         }
+        addPanelButton("Back to mod library", contentX(), 486, 180, 22, () -> {
+            selection = Selection.NONE;
+            selectedModId = null;
+            firstSetting = 0;
+            rebuildWidgets();
+        });
     }
 
     private void openModMenu() {
@@ -765,16 +776,21 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.SETTINGS) {
             int cardX = contentX() - 8;
             int cardWidth = contentWidth() + 8;
-            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 38, 0xFF171D27, 9);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 38, 0xFF151A23, 9);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 86, cardWidth, 38, 0xFF171D27, 9);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 128, cardWidth, 38, 0xFF151A23, 9);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 174, cardWidth, 38, 0xFF171D27, 9);
-            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 14, 0xFFE8ECF4);
-            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 58, 0xFFE8ECF4);
-            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 100, 0xFFE8ECF4);
-            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 142, 0xFFE8ECF4);
-            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 188, 0xFFE8ECF4);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 40, 0xFF171D27, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 40, 0xFF151A23, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 88, cardWidth, 40, 0xFF171D27, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 132, cardWidth, 40, 0xFF151A23, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 178, cardWidth, 40, 0xFF171D27, 12);
+            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 9, 0xFFE8ECF4);
+            graphics.drawString(font, "Choose the highlight colour used across Vanta.", contentX(), CONTENT_TOP + 23, 0xFF8792A4);
+            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 53, 0xFFE8ECF4);
+            graphics.drawString(font, "Animate panel, navigation and control feedback.", contentX(), CONTENT_TOP + 67, 0xFF8792A4);
+            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 97, 0xFFE8ECF4);
+            graphics.drawString(font, "Reduce vertical spacing in feature lists.", contentX(), CONTENT_TOP + 111, 0xFF8792A4);
+            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 141, 0xFFE8ECF4);
+            graphics.drawString(font, "Show explanatory text where integrations provide it.", contentX(), CONTENT_TOP + 155, 0xFF8792A4);
+            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 187, 0xFFE8ECF4);
+            graphics.drawString(font, "Adjust the overall interface size.", contentX(), CONTENT_TOP + 201, 0xFF8792A4);
         } else if (selection == Selection.BUILTIN_CATEGORY) {
             graphics.drawString(font, selectedCategory.name(), contentX(), 66, 0xFFE8EAF0);
             graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, 0xFF9296A3);
@@ -785,8 +801,8 @@ public class VantaIntegrationsScreen extends Screen {
             int y = CONTENT_TOP + 14;
             for (int i = firstSetting; i < end; i++) {
                 Feature feature = features.get(i);
-                drawCard(graphics, contentX() - 8, y - 10, contentWidth() + 8,
-                        rowHeight() - 4, 0xFF171D27);
+                drawRoundedCard(graphics, contentX() - 8, y - 10, contentWidth() + 8,
+                        rowHeight() - 4, 0xFF171D27, 12);
                 if (feature.isEnabled()) {
                     graphics.fill(contentX() - 8, y - 7, contentX() - 5,
                             y + rowHeight() - 13, accent);
@@ -806,8 +822,8 @@ public class VantaIntegrationsScreen extends Screen {
                     name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature);
             int y = CONTENT_TOP + 8;
             for (int i = firstSetting; i < Math.min(featureSettings.size(), firstSetting + visibleRows(34)); i++) {
-                drawCard(graphics, contentX() - 8, y - 3, Math.min(340, contentWidth() + 8),
-                        31, 0xFF171D27);
+                drawRoundedCard(graphics, contentX() - 8, y - 3, Math.min(340, contentWidth() + 8),
+                        31, 0xFF171D27, 11);
                 y += 34;
             }
         } else if (selection == Selection.INSTALLED_MOD) {
