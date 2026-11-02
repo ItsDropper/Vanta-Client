@@ -11,6 +11,7 @@ import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.gui.components.VantaPanelButton;
+import name.vantaclient.client.gui.components.VantaToggleSwitch;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.gui.GuiGraphics;
@@ -401,11 +402,12 @@ public class VantaIntegrationsScreen extends Screen {
 
     private void addPreferenceToggle(String name, boolean current, java.util.function.Consumer<Boolean> setter,
                                      int x, int y) {
-        addRenderableWidget(new VantaPanelButton(x, y, 170, 22, current ? "On" : "Off", () -> {
-            boolean next = !current;
-            setter.accept(next);
-            rebuildWidgets();
-        }, () -> current, this::accentColor));
+        addRenderableWidget(new VantaToggleSwitch(x + 122, y, () -> switch (name) {
+            case "Interface animations" -> preferences.animations;
+            case "Compact layout" -> preferences.compactMode;
+            case "Setting descriptions" -> preferences.showDescriptions;
+            default -> current;
+        }, setter));
     }
 
     private int accentColor() {
@@ -460,19 +462,16 @@ public class VantaIntegrationsScreen extends Screen {
             Feature feature = features.get(i);
             int controlX = contentX() + contentWidth() - 190;
             int rowY = y;
-            addRenderableWidget(VantaPanelButton.builder(
-                    Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"),
-                    button -> {
-                        feature.toggle();
+            addRenderableWidget(new VantaToggleSwitch(controlX, rowY,
+                    feature::isEnabled, enabled -> {
+                        if (feature.isEnabled() != enabled) feature.toggle();
                         feature.saveConfig();
                         DropperUtilsConfig.save();
-                        button.setMessage(Component.literal(feature.isEnabled() ? "Enabled" : "Disabled"));
-                    }).bounds(controlX, rowY, 88, 22).build());
+                    }));
             if (!name.vantaclient.client.gui.components.settings.SettingRegistry
                     .getSettings(feature).isEmpty()) {
-                addRenderableWidget(VantaPanelButton.builder(Component.literal("Settings"),
-                        button -> selectFeatureSettings(feature))
-                        .bounds(controlX + 94, rowY, 90, 22).build());
+                addPanelButton("Settings", controlX + 54, rowY, 90, 22,
+                        () -> selectFeatureSettings(feature));
             }
             y += rowHeight();
         }
@@ -542,14 +541,9 @@ public class VantaIntegrationsScreen extends Screen {
         } catch (RuntimeException exception) {
             return;
         }
-        int controlWidth = Math.min(300, contentWidth());
-        addRenderableWidget(VantaPanelButton.builder(
-                Component.literal(setting.getName() + ": " + (current ? "On" : "Off")),
-                button -> {
-                    boolean next = !setting.getGetter().get();
-                    setting.getSetter().accept(next);
-                    button.setMessage(Component.literal(setting.getName() + ": " + (next ? "On" : "Off")));
-                }).bounds(contentX(), y, controlWidth, 26).build());
+        int controlX = contentX() + Math.min(300, contentWidth()) - 46;
+        addRenderableWidget(new VantaToggleSwitch(controlX, y + 2,
+                () -> setting.getGetter().get(), setting.getSetter()::accept));
     }
 
     private void addInstalledModContent() {
@@ -633,15 +627,13 @@ public class VantaIntegrationsScreen extends Screen {
         }
 
         switch (setting.type()) {
-            case BOOLEAN -> addRenderableWidget(VantaPanelButton.builder(
-                    Component.literal(Boolean.TRUE.equals(value) ? "On" : "Off"), button -> {
-                        try {
-                            setting.set(!Boolean.TRUE.equals(setting.value()));
-                            button.setMessage(Component.literal(Boolean.TRUE.equals(setting.value()) ? "On" : "Off"));
-                        } catch (RuntimeException ignored) {
-                            button.setMessage(Component.literal("Error"));
-                        }
-                    }).bounds(controlX, y, controlWidth, 22).build());
+            case BOOLEAN -> addRenderableWidget(new VantaToggleSwitch(controlX + controlWidth - 46, y,
+                    () -> {
+                        try { return Boolean.TRUE.equals(setting.value()); }
+                        catch (RuntimeException ignored) { return false; }
+                    }, next -> {
+                        try { setting.set(next); } catch (RuntimeException ignored) {}
+                    }));
             case INTEGER, DECIMAL -> {
                 double minimum = setting.minimum() == null ? 0 : setting.minimum();
                 double maximum = setting.maximum() == null ? minimum : setting.maximum();
