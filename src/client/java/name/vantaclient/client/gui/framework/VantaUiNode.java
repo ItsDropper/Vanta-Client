@@ -573,7 +573,7 @@ public final class VantaUiNode {
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
             case IMAGE -> graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
-                    0.0f, 0.0f, width, height, 1010, 702);
+                    0.0f, 0.0f, width, height, 962, 702);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);

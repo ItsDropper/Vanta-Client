@@ -82,7 +82,7 @@ public final class VantaSettingsScreen extends Screen {
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode brand = VantaUiNode.row(9, 0).align(VantaUiNode.Alignment.CENTER);
         brand.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "dropperutils", "textures/gui/vanta_logo_transparent")).size(34, 24));
+                "dropperutils", "textures/gui/vanta_logo_transparent.png")).size(34, 24));
         VantaUiNode brandLabels = VantaUiNode.column(1, 0);
         brandLabels.add(VantaUiNode.title("VANTA"));
         brandLabels.add(VantaUiNode.eyebrow("CLIENT SETTINGS"));

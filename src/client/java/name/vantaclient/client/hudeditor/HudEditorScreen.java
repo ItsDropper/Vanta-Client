@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
@@ -35,8 +36,9 @@ public class HudEditorScreen extends Screen {
         root.add(VantaUiNode.spacer(1).flex(1));
         VantaUiNode toolbar = VantaUiNode.row(10, 10).width(430).height(48)
                 .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.START);
-        toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(22, 22)
-                .iconColor(VantaUiTheme.TEXT_PRIMARY).align(VantaUiNode.Alignment.CENTER));
+        toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
+                "dropperutils", "textures/gui/vanta_logo_transparent.png"))
+                .size(24, 24).align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(2, 0).align(VantaUiNode.Alignment.CENTER);
         labels.add(VantaUiNode.eyebrow("VANTA / HUD EDITOR"));
         labels.add(VantaUiNode.text("Drag elements to position", VantaUiTheme.TEXT_SECONDARY));
