@@ -2,6 +2,9 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +22,8 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    public enum Kind { CONTAINER, TEXT, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
+    public enum Kind { CONTAINER, TEXT, ICON, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
+    public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
     public enum Justification { START, CENTER, END, SPACE_BETWEEN }
@@ -27,8 +31,13 @@ public final class VantaUiNode {
     private final Kind kind;
     private final Direction direction;
     private final List<VantaUiNode> children = new ArrayList<>();
+    static final ResourceLocation UI_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "ui");
+    private static final ResourceLocation TITLE_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "title");
+    private static final ResourceLocation CAPTION_FONT = ResourceLocation.fromNamespaceAndPath("vanta", "caption");
 
     private String label = "";
+    private Icon icon;
+    private ResourceLocation textFont = UI_FONT;
     private Supplier<String> textSupplier;
     private String tooltip = "";
     private String placeholder = "";
@@ -133,6 +142,19 @@ public final class VantaUiNode {
         return node;
     }
 
+    public static VantaUiNode title(String value) {
+        VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
+        node.textFont = TITLE_FONT; node.preferredHeight = 22; return node;
+    }
+    public static VantaUiNode eyebrow(String value) {
+        VantaUiNode node = text(value, VantaUiTheme.TEXT_MUTED);
+        node.textFont = CAPTION_FONT; node.preferredHeight = 12; return node;
+    }
+    public static VantaUiNode icon(Icon icon) {
+        if (icon == null) throw new IllegalArgumentException("Icon cannot be null.");
+        VantaUiNode node = new VantaUiNode(Kind.ICON, null);
+        node.icon = icon; node.textColor = VantaUiTheme.TEXT_SECONDARY; node.size(16, 16); return node;
+    }
     public static VantaUiNode paragraph(String value, int color, int maximumLines) {
         VantaUiNode node = text(value, color);
         node.textMaximumLines = Math.max(1, maximumLines);
@@ -154,9 +176,11 @@ public final class VantaUiNode {
         return node;
     }
 
-    public static VantaUiNode button(String label, Runnable action) {
+    public static VantaUiNode button(String label, Runnable action) { return button(label, null, action); }
+    public static VantaUiNode button(String label, Icon icon, Runnable action) {
         VantaUiNode node = new VantaUiNode(Kind.BUTTON, null);
         node.label = label == null ? "" : label;
+        node.icon = icon;
         node.action = action;
         node.preferredHeight = VantaUiTheme.CONTROL_HEIGHT;
         return node;
@@ -231,6 +255,7 @@ public final class VantaUiNode {
     }
 
     public VantaUiNode background(int color) { background = color; return this; }
+    public VantaUiNode iconColor(int color) { textColor = color; return this; }
     public VantaUiNode padding(int value) { padding = Math.max(0, value); return this; }
     public VantaUiNode gap(int value) { gap = Math.max(0, value); return this; }
     public VantaUiNode width(int value) { preferredWidth = Math.max(0, value); return this; }
@@ -287,7 +312,8 @@ public final class VantaUiNode {
     int intrinsicWidth(Font font) {
         if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
         int measured = switch (kind) {
-            case TEXT -> font.width(currentText());
+            case TEXT -> textWidth(font, currentText(), textFont);
+            case ICON -> 16;
             case SPACER -> 1;
             case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
             case CONTAINER -> {
@@ -319,6 +345,7 @@ public final class VantaUiNode {
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
         int measured = switch (kind) {
             case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
+            case ICON -> 16;
             case SPACER -> 0;
             case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
@@ -353,7 +380,7 @@ public final class VantaUiNode {
             if (!value.equals(cachedTextLayoutValue) || this.width != cachedTextLayoutWidth) {
                 cachedTextLayoutValue = value;
                 cachedTextLayoutWidth = this.width;
-                cachedTextLines = wrapText(value, font, Math.max(1, this.width), textMaximumLines);
+                cachedTextLines = wrapText(value, font, Math.max(1, this.width), textMaximumLines, textFont);
             }
             return;
         }
@@ -501,11 +528,7 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) {
-            fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, background);
-            fillRounded(graphics, x + 1, y + 1, Math.max(0, width - 2), 1,
-                    VantaUiTheme.RADIUS_SMALL, VantaUiTheme.withAlpha(VantaUiTheme.WHITE, 13));
-        }
+        if (background != 0) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, background);
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
@@ -531,40 +554,35 @@ public final class VantaUiNode {
         switch (kind) {
             case TEXT -> {
                 if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
-                    for (int i = 0; i < cachedTextLines.size(); i++) {
-                        graphics.drawString(font, cachedTextLines.get(i),
-                                x, y + i * 14, textColor);
-                    }
+                    for (int i = 0; i < cachedTextLines.size(); i++)
+                        graphics.drawString(font, styledText(cachedTextLines.get(i), textFont), x, y + i * 14, textColor);
                 } else {
-                    graphics.drawString(font, currentText(), x,
+                    graphics.drawString(font, styledText(currentText(), textFont), x,
                             y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2), textColor);
                 }
             }
+            case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
-                int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.20f);
-                int surface = selected
-                        ? mixColor(selectedSurface,
-                                VantaUiTheme.SURFACE_HOVER, hoverAmount * 0.35f)
-                        : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
-                fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, surface);
-                fillRounded(graphics, x, y, width, 2,
-                        VantaUiTheme.RADIUS_SMALL,
-                        VantaUiTheme.withAlpha(focused ? accent : VantaUiTheme.BORDER, 190));
-                if (selected) {
-                    graphics.fill(x, y + 5, x + 2, y + height - 5, accent);
-                } else if (focused) {
-                    graphics.fill(x, y + height - 2, x + width, y + height, accent);
+                int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);
+                int surface = selected ? selectedSurface : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
+                if (selected || over || focused) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, surface);
+                if (selected || focused) fillRounded(graphics, x, y + 5, 2, Math.max(0, height - 10), 1, accent);
+                int labelX = x, labelWidth = width;
+                if (icon != null) {
+                    drawIcon(graphics, icon, x + 10, y + (height - 16) / 2, 16, 16,
+                            selected ? accent : VantaUiTheme.TEXT_SECONDARY);
+                    labelX = x + 34; labelWidth = width - 42;
                 }
-                String shownLabel = font.plainSubstrByWidth(label, Math.max(0, width - 16));
-                graphics.drawString(font, shownLabel,
-                        x + Math.max(8, (width - font.width(shownLabel)) / 2),
+                String shownLabel = fitText(font, label, Math.max(0, labelWidth - 8), UI_FONT);
+                int textX = icon == null ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
+                graphics.drawString(font, styledText(shownLabel, UI_FONT), textX,
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
             }
             case TOGGLE -> {
-                String shownLabel = font.plainSubstrByWidth(label, Math.max(0, width - 52));
-                graphics.drawString(font, shownLabel, x,
+                String shownLabel = fitText(font, label, Math.max(0, width - 52), UI_FONT);
+                graphics.drawString(font, styledText(shownLabel, UI_FONT), x,
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 boolean value = toggleValue != null && toggleValue.getAsBoolean();
@@ -588,12 +606,12 @@ public final class VantaUiNode {
                     cachedSliderValueText = formatValue(value);
                 }
                 String valueText = cachedSliderValueText;
-                int valueWidth = font.width(valueText);
-                String sliderLabel = font.plainSubstrByWidth(label, Math.max(0, width - valueWidth - 12));
+                int valueWidth = textWidth(font, valueText, UI_FONT);
+                String sliderLabel = fitText(font, label, Math.max(0, width - valueWidth - 12), UI_FONT);
                 int labelColor = enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED;
                 int valueColor = enabled ? VantaUiTheme.TEXT_SECONDARY : VantaUiTheme.TEXT_MUTED;
-                graphics.drawString(font, sliderLabel, x, y + 2, labelColor);
-                graphics.drawString(font, valueText, x + width - valueWidth, y + 2, valueColor);
+                graphics.drawString(font, styledText(sliderLabel, UI_FONT), x, y + 2, labelColor);
+                graphics.drawString(font, styledText(valueText, UI_FONT), x + width - valueWidth, y + 2, valueColor);
                 int trackY = y + 28;
                 int knobX = x + (int) Math.round((width - 8) * normalized);
                 fillRounded(graphics, x, trackY, width, 4, 2, VantaUiTheme.TRACK);
@@ -608,9 +626,8 @@ public final class VantaUiNode {
                 int controlHeight = VantaUiTheme.CONTROL_HEIGHT;
                 int boxWidth = Math.min(width, Math.min(150, Math.max(72, width / 2)));
                 int boxX = x + width - boxWidth;
-                String dropdownLabel = font.plainSubstrByWidth(label,
-                        Math.max(0, boxX - x - 12));
-                graphics.drawString(font, dropdownLabel, x,
+                String dropdownLabel = fitText(font, label, Math.max(0, boxX - x - 12), UI_FONT);
+                graphics.drawString(font, styledText(dropdownLabel, UI_FONT), x,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
                 fillRounded(graphics, boxX, y + 2, x + width - boxX, controlHeight - 4,
@@ -618,14 +635,13 @@ public final class VantaUiNode {
                         enabled ? mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount)
                                 : VantaUiTheme.INPUT_SURFACE);
                 String selected = dropdownValue == null ? "" : dropdownValue.get();
-                String shown = font.plainSubstrByWidth(selected == null ? "" : selected,
-                        Math.max(0, boxWidth - 24));
-                graphics.drawString(font, shown, boxX + 8,
+                String shown = fitText(font, selected == null ? "" : selected, Math.max(0, boxWidth - 24), UI_FONT);
+                graphics.drawString(font, styledText(shown, UI_FONT), boxX + 8,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
-                graphics.drawString(font, dropdownOpen ? "^" : "v",
-                        x + width - 15, y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
-                        VantaUiTheme.TEXT_SECONDARY);
+                int arrowX = x + width - 14, arrowY = y + 13;
+                line(graphics, arrowX - 3, arrowY - 1, arrowX, arrowY + 2, VantaUiTheme.TEXT_SECONDARY, 1, 1);
+                line(graphics, arrowX, arrowY + 2, arrowX + 3, arrowY - 1, VantaUiTheme.TEXT_SECONDARY, 1, 1);
                 if (focused && enabled) graphics.fill(boxX, y + controlHeight - 2, x + width,
                         y + controlHeight, accent);
 
@@ -652,9 +668,8 @@ public final class VantaUiNode {
                         if (option.equals(selected)) {
                             graphics.fill(x + 1, optionY, x + 3, optionY + 22, accent);
                         }
-                        String optionText = font.plainSubstrByWidth(option,
-                                Math.max(0, width - 18));
-                        graphics.drawString(font, optionText, x + 9, optionY + 7,
+                        String optionText = fitText(font, option, Math.max(0, width - 18), UI_FONT);
+                        graphics.drawString(font, styledText(optionText, UI_FONT), x + 9, optionY + 7,
                                 highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
                     }
                 }
@@ -679,24 +694,24 @@ public final class VantaUiNode {
 
                     int visibleStart = 0;
                     while (visibleStart < cursor
-                            && font.width(value.substring(visibleStart, cursor)) > availableWidth) {
+                            && textWidth(font, value.substring(visibleStart, cursor), UI_FONT) > availableWidth) {
                         visibleStart++;
                     }
                     int visibleEnd = value.length();
                     while (visibleEnd > cursor
-                            && font.width(value.substring(visibleStart, visibleEnd)) > availableWidth) {
+                            && textWidth(font, value.substring(visibleStart, visibleEnd), UI_FONT) > availableWidth) {
                         visibleEnd--;
                     }
                     cachedInputVisibleText = value.substring(visibleStart, visibleEnd);
-                    cachedInputCursorWidth = font.width(value.substring(visibleStart, cursor));
+                    cachedInputCursorWidth = textWidth(font, value.substring(visibleStart, cursor), UI_FONT);
                 }
 
                 int textColor = !enabled || value.isEmpty()
                         ? VantaUiTheme.TEXT_MUTED : VantaUiTheme.TEXT_PRIMARY;
                 String display = value.isEmpty()
-                        ? font.plainSubstrByWidth(placeholder, availableWidth)
+                        ? fitText(font, placeholder, availableWidth, UI_FONT)
                         : cachedInputVisibleText;
-                graphics.drawString(font, display, x + 8,
+                graphics.drawString(font, styledText(display, UI_FONT), x + 8,
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
 
                 if (focused && caretVisible && width > 12) {
@@ -713,6 +728,32 @@ public final class VantaUiNode {
         }
     }
 
+    private static void drawIcon(GuiGraphics g, Icon icon, int x, int y, int w, int h, int color) {
+        if(icon==null||w<=0||h<=0)return; float sx=w/16.0f,sy=h/16.0f;
+        switch(icon){
+            case BRAND->{line(g,x+3*sx,y+2*sy,x+7*sx,y+13*sy,color,sx,sy);line(g,x+7*sx,y+13*sy,x+13*sx,y+3*sy,color,sx,sy);line(g,x+7*sx,y+10*sy,x+10*sx,y+5*sy,color,sx,sy);}
+            case OVERVIEW->{rect(g,x+2*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+2*sx,y+9*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+9*sy,5*sx,5*sy,color,sx,sy);}
+            case VISUALS->{line(g,x+1*sx,y+8*sy,x+4*sx,y+4*sy,color,sx,sy);line(g,x+4*sx,y+4*sy,x+8*sx,y+2*sy,color,sx,sy);line(g,x+8*sx,y+2*sy,x+12*sx,y+4*sy,color,sx,sy);line(g,x+12*sx,y+4*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+12*sx,y+12*sy,color,sx,sy);line(g,x+12*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+4*sx,y+12*sy,color,sx,sy);line(g,x+4*sx,y+12*sy,x+1*sx,y+8*sy,color,sx,sy);ring(g,x+8*sx,y+8*sy,2*sx,color);}
+            case CONTROLS->{for(int i=0;i<3;i++)line(g,x+2*sx,y+(4+i*4)*sy,x+14*sx,y+(4+i*4)*sy,color,sx,sy);ring(g,x+6*sx,y+4*sy,1.8f*sx,color);ring(g,x+11*sx,y+8*sy,1.8f*sx,color);ring(g,x+5*sx,y+12*sy,1.8f*sx,color);}
+            case DISPLAY->{rect(g,x+1.5f*sx,y+2*sy,13*sx,9*sy,color,sx,sy);line(g,x+8*sx,y+11*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+4*sx,y+14*sy,x+12*sx,y+14*sy,color,sx,sy);}
+            case KEYBOARD->{rect(g,x+1*sx,y+3*sy,14*sx,10*sy,color,sx,sy);for(int row=0;row<2;row++)for(int col=0;col<5;col++){float px=x+(3+col*2.5f)*sx,py=y+(5+row*3)*sy;g.fill(Math.round(px),Math.round(py),Math.round(px+sx),Math.round(py+sy),color);}}
+            case SEARCH->{ring(g,x+6.5f*sx,y+6.5f*sy,4.3f*sx,color);line(g,x+9.7f*sx,y+9.7f*sy,x+14*sx,y+14*sy,color,sx,sy);}
+            case CROSSHAIR->{line(g,x+8*sx,y+1*sy,x+8*sx,y+5*sy,color,sx,sy);line(g,x+8*sx,y+11*sy,x+8*sx,y+15*sy,color,sx,sy);line(g,x+1*sx,y+8*sy,x+5*sx,y+8*sy,color,sx,sy);line(g,x+11*sx,y+8*sy,x+15*sx,y+8*sy,color,sx,sy);ring(g,x+8*sx,y+8*sy,2*sx,color);}
+            case HUD->{line(g,x+2*sx,y+6*sy,x+2*sx,y+2*sy,color,sx,sy);line(g,x+2*sx,y+2*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+10*sx,y+2*sy,x+14*sx,y+2*sy,color,sx,sy);line(g,x+14*sx,y+2*sy,x+14*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+10*sy,x+2*sx,y+14*sy,color,sx,sy);line(g,x+2*sx,y+14*sy,x+6*sx,y+14*sy,color,sx,sy);line(g,x+10*sx,y+14*sy,x+14*sx,y+14*sy,color,sx,sy);line(g,x+14*sx,y+10*sy,x+14*sx,y+14*sy,color,sx,sy);}
+            case SPARK->{line(g,x+8*sx,y+1*sy,x+9.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+6.5f*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+9.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+9.5f*sy,x+8*sx,y+15*sy,color,sx,sy);line(g,x+8*sx,y+15*sy,x+6.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+9.5f*sy,x+1*sx,y+8*sy,color,sx,sy);line(g,x+1*sx,y+8*sy,x+6.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+6.5f*sy,x+8*sx,y+1*sy,color,sx,sy);}
+            case RESET->{line(g,x+13*sx,y+2*sy,x+10*sx,y+4*sy,color,sx,sy);line(g,x+13*sx,y+2*sy,x+15*sx,y+5*sy,color,sx,sy);line(g,x+12*sx,y+3*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+6*sx,y+2*sy,x+2*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+6*sy,x+3*sx,y+12*sy,color,sx,sy);line(g,x+3*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+12*sx,y+11*sy,color,sx,sy);}
+        }
+    }
+    private static void line(GuiGraphics g,float x1,float y1,float x2,float y2,int color,float sx,float sy){
+        int steps=Math.max(1,Math.round(Math.max(Math.abs(x2-x1),Math.abs(y2-y1))*2));
+        for(int i=0;i<=steps;i++){float t=i/(float)steps;int px=Math.round(x1+(x2-x1)*t),py=Math.round(y1+(y2-y1)*t);g.fill(px,py,px+Math.max(1,Math.round(sx)),py+Math.max(1,Math.round(sy)),color);}
+    }
+    private static void rect(GuiGraphics g,float x,float y,float w,float h,int color,float sx,float sy){
+        line(g,x,y,x+w,y,color,sx,sy);line(g,x,y+h,x+w,y+h,color,sx,sy);line(g,x,y,x,y+h,color,sx,sy);line(g,x+w,y,x+w,y+h,color,sx,sy);
+    }
+    private static void ring(GuiGraphics g,float cx,float cy,float radius,int color){
+        float px=cx+radius,py=cy;for(int a=15;a<=360;a+=15){double rad=Math.toRadians(a);float nx=cx+(float)Math.cos(rad)*radius,ny=cy+(float)Math.sin(rad)*radius;line(g,px,py,nx,ny,color,1,1);px=nx;py=ny;}
+    }
     /**
      * Draws a rounded rectangle using a small set of horizontal spans.
      * This avoids a custom GPU pipeline while keeping panel/control corners consistent.
@@ -854,12 +895,12 @@ public final class VantaUiNode {
 
         int visibleStart = 0;
         while (visibleStart < cursor
-                && font.width(value.substring(visibleStart, cursor)) > availableWidth) {
+                && textWidth(font, value.substring(visibleStart, cursor), UI_FONT) > availableWidth) {
             visibleStart = value.offsetByCodePoints(visibleStart, 1);
         }
         int visibleEnd = value.length();
         while (visibleEnd > cursor
-                && font.width(value.substring(visibleStart, visibleEnd)) > availableWidth) {
+                && textWidth(font, value.substring(visibleStart, visibleEnd), UI_FONT) > availableWidth) {
             visibleEnd = value.offsetByCodePoints(visibleEnd, -1);
         }
 
@@ -869,7 +910,7 @@ public final class VantaUiNode {
         int offset = visibleStart;
         while (offset < visibleEnd) {
             int next = value.offsetByCodePoints(offset, 1);
-            int nextWidth = font.width(value.substring(visibleStart, next));
+            int nextWidth = textWidth(font, value.substring(visibleStart, next), UI_FONT);
             if (targetX < (previousWidth + nextWidth) / 2.0) break;
             selectedCursor = next;
             previousWidth = nextWidth;
@@ -1075,7 +1116,18 @@ public final class VantaUiNode {
         return value == null ? "" : value;
     }
 
-    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines) {
+    static Component styledText(String value, ResourceLocation fontId) {
+        return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(fontId == null ? UI_FONT : fontId));
+    }
+    static int textWidth(Font font, String value, ResourceLocation fontId) { return font.width(styledText(value, fontId)); }
+    private static String fitText(Font font, String value, int maximumWidth, ResourceLocation fontId) {
+        if (value == null || value.isEmpty() || maximumWidth <= 0) return "";
+        int end = value.length();
+        while (end > 0 && textWidth(font, value.substring(0, end), fontId) > maximumWidth)
+            end = value.offsetByCodePoints(end, -1);
+        return value.substring(0, end);
+    }
+    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines, ResourceLocation fontId) {
         if (value == null || value.isBlank()) return List.of("");
         List<String> lines = new ArrayList<>();
         StringBuilder line = new StringBuilder();
@@ -1084,7 +1136,7 @@ public final class VantaUiNode {
 
         for (String word : words) {
             String candidate = line.isEmpty() ? word : line + " " + word;
-            if (font.width(candidate) > maximumWidth && !line.isEmpty()) {
+            if (textWidth(font, candidate, fontId) > maximumWidth && !line.isEmpty()) {
                 lines.add(line.toString());
                 line.setLength(0);
                 if (lines.size() >= maximumLines) {
@@ -1093,8 +1145,8 @@ public final class VantaUiNode {
                 }
             }
 
-            if (font.width(word) > maximumWidth) {
-                word = font.plainSubstrByWidth(word, maximumWidth);
+            if (textWidth(font, word, fontId) > maximumWidth) {
+                word = fitText(font, word, maximumWidth, fontId);
                 truncated = true;
             }
             if (!line.isEmpty()) line.append(' ');
@@ -1107,12 +1159,12 @@ public final class VantaUiNode {
             int lastIndex = lines.size() - 1;
             String last = lines.get(lastIndex);
             String ellipsis = "…";
-            while (!last.isEmpty() && font.width(last + ellipsis) > maximumWidth) {
+            while (!last.isEmpty() && textWidth(font, last + ellipsis, fontId) > maximumWidth) {
                 last = last.substring(0, last.length() - 1);
             }
             lines.set(lastIndex, last + ellipsis);
         }
-        if (lines.isEmpty()) lines.add(font.plainSubstrByWidth(value, maximumWidth));
+        if (lines.isEmpty()) lines.add(fitText(font, value, maximumWidth, fontId));
         return List.copyOf(lines);
     }
 
