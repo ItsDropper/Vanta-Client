@@ -152,7 +152,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                     .tooltip("Cycles the global Vanta Appearance accent preference."));
         }
 
-        VantaUiNode metrics = VantaUiNode.row(10, 0).height(76);
+        VantaUiNode metrics = VantaUiNode.row(10, 0).height(84);
         VantaUiNode fpsCard = VantaUiNode.column(7, 12)
                 .flex(1).background(VantaUiTheme.PANEL_RAISED);
         fpsCard.add(VantaUiNode.text("FRAME RATE", VantaUiTheme.TEXT_MUTED));
@@ -163,9 +163,11 @@ public final class VantaUiPrototypeScreen extends Screen {
 
         VantaUiNode stateCard = VantaUiNode.column(7, 12)
                 .flex(1).background(VantaUiTheme.PANEL_RAISED);
-        stateCard.add(VantaUiNode.text("UI STATE", VantaUiTheme.TEXT_MUTED));
-        stateCard.add(VantaUiNode.text("Screen scoped", VantaUiTheme.TEXT_PRIMARY));
-        stateCard.add(VantaUiNode.text("Disposed when closed", VantaUiTheme.TEXT_SECONDARY));
+        stateCard.add(VantaUiNode.text("UI CPU COST", VantaUiTheme.TEXT_MUTED));
+        stateCard.add(VantaUiNode.dynamicText(
+                () -> runtime == null ? "—" : (runtime.averageUiRenderNanos() / 1_000) + " μs",
+                VantaUiTheme.TEXT_PRIMARY));
+        stateCard.add(VantaUiNode.text("Command submission only", VantaUiTheme.TEXT_SECONDARY));
 
         metrics.add(fpsCard);
         metrics.add(stateCard);
