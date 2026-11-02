@@ -20,6 +20,9 @@ public final class VantaUiTheme {
     public static final int TEXT_SECONDARY = 0xFF9AA8BA;
     public static final int TEXT_MUTED = 0xFF68788D;
     public static final int TRACK = 0xFF303D50;
+    public static final int INPUT_SURFACE = 0xFF0E1621;
+    public static final int INPUT_FOCUS_SURFACE = 0xFF111B29;
+    public static final int TOOLTIP_SURFACE = 0xF00A1019;
     public static final int WHITE = 0xFFFFFFFF;
 
     public static final int SPACE_1 = 4;
@@ -32,6 +35,15 @@ public final class VantaUiTheme {
     public static final int CONTROL_HEIGHT = 32;
     public static final int ROW_HEIGHT = 42;
     public static final int SLIDER_HEIGHT = 46;
+
+    public static final int RADIUS_SMALL = 3;
+    public static final int RADIUS_MEDIUM = 6;
+    public static final int RADIUS_LARGE = 10;
+
+    public static final int TEXT_LINE_HEIGHT = 9;
+    public static final int CARET_BLINK_TICKS = 10;
+    public static final float HOVER_EASING = 0.30f;
+    public static final float TOGGLE_EASING = 0.28f;
 
     public int accent() {
         return VantaClientPreferences.get().accent.color();
