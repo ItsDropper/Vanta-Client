@@ -529,7 +529,7 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, background);
+        if (background != 0) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
