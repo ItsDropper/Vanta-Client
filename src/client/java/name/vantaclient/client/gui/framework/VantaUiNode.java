@@ -282,7 +282,7 @@ public final class VantaUiNode {
     int intrinsicHeight(Font font) {
         if (kind == Kind.DROPDOWN && dropdownOpen) {
             int expanded = VantaUiTheme.CONTROL_HEIGHT
-                    + Math.min(5, dropdownOptions.size()) * 22;
+                    + dropdownOptions.size() * 22;
             return clamp(expanded, minHeight, maxHeight);
         }
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
@@ -326,10 +326,12 @@ public final class VantaUiNode {
                         ? Math.min(innerWidth, child.preferredWidth)
                         : child.alignment == Alignment.STRETCH ? innerWidth
                         : Math.min(innerWidth, child.intrinsicWidth(font));
-                int childHeight = child.preferredHeight >= 0
-                        ? Math.min(innerHeight, child.preferredHeight)
+                int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
+                        ? child.intrinsicHeight(font)
+                        : child.preferredHeight >= 0 ? child.preferredHeight
                         : child.alignment == Alignment.STRETCH ? innerHeight
-                        : Math.min(innerHeight, child.intrinsicHeight(font));
+                        : child.intrinsicHeight(font);
+                int childHeight = Math.min(innerHeight, requestedHeight);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
                 child.arrange(childX, childY, childWidth, childHeight, font);
@@ -398,10 +400,12 @@ public final class VantaUiNode {
                 child.arrange(childX, cursor, childWidth, primary, font);
                 cursor += primary + gap + distributedGap;
             } else {
-                int childHeight = child.preferredHeight >= 0
-                        ? Math.min(innerHeight, child.preferredHeight)
+                int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
+                        ? child.intrinsicHeight(font)
+                        : child.preferredHeight >= 0 ? child.preferredHeight
                         : child.alignment == Alignment.STRETCH ? innerHeight
-                        : Math.min(innerHeight, child.intrinsicHeight(font));
+                        : child.intrinsicHeight(font);
+                int childHeight = Math.min(innerHeight, requestedHeight);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
                 child.arrange(cursor, childY, primary, childHeight, font);
                 cursor += primary + gap + distributedGap;
