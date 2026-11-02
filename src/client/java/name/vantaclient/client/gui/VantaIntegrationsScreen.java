@@ -68,7 +68,7 @@ public class VantaIntegrationsScreen extends Screen {
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
     public VantaIntegrationsScreen(Screen parent) {
-        this(parent, false);
+        this(parent, true);
     }
 
     public VantaIntegrationsScreen(Screen parent, boolean openMods) {
@@ -139,18 +139,6 @@ public class VantaIntegrationsScreen extends Screen {
                     sidebarScroll = 0;
                     rebuildWidgets();
                 }, () -> favoritesOnly && selection == Selection.NONE);
-                addPanelButton("HUD", contentX() + 138, filterY, 48, 26,
-                        () -> selectCategory(Category.HUD),
-                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.HUD);
-                addPanelButton("Visual", contentX() + 192, filterY, 58, 26,
-                        () -> selectCategory(Category.VISUAL),
-                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.VISUAL);
-                addPanelButton("Combat", contentX() + 256, filterY, 64, 26,
-                        () -> selectCategory(Category.COMBAT),
-                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.COMBAT);
-                addPanelButton("Misc", contentX() + 326, filterY, 52, 26,
-                        () -> selectCategory(Category.MISC),
-                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
                 addPanelButton("Scan mods", contentX() + contentWidth() - 154,
                         filterY, 154, 26, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
@@ -295,33 +283,12 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private void addModNavigation() {
-        int y = 177;
-        addPanelButton("HUD", 34, y, SIDEBAR_WIDTH - 24, 22,
-                () -> selectCategory(Category.HUD),
-                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.HUD);
-        y += 27;
-        addPanelButton("Visual", 34, y, SIDEBAR_WIDTH - 24, 22,
-                () -> selectCategory(Category.VISUAL),
-                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.VISUAL);
-        y += 27;
-        addPanelButton("Combat", 34, y, SIDEBAR_WIDTH - 24, 22,
-                () -> selectCategory(Category.COMBAT),
-                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.COMBAT);
-        y += 27;
-        addPanelButton("Misc", 34, y, SIDEBAR_WIDTH - 24, 22,
-                () -> selectCategory(Category.MISC),
-                () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
-
-        // Keep the library entry in the sidebar instead of making users discover it
-        // through the main content area or the small "Mods" section switch.
-        addPanelButton("Browse Modrinth", 34, 326, SIDEBAR_WIDTH - 24, 25, () -> {
+        addPanelButton("Browse Modrinth", 34, 184, SIDEBAR_WIDTH - 24, 25, () -> {
             minecraft.setScreen(new VantaModrinthBrowserScreen(this));
         });
-        addPanelButton("HUD Editor", 34, 366, SIDEBAR_WIDTH - 24, 25, () -> {
+        addPanelButton("HUD Editor", 34, 222, SIDEBAR_WIDTH - 24, 25, () -> {
             minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this));
         });
-
-        // Installed mods use a four-column tile grid in the main content area.
     }
 
     private void addInstalledModGrid() {
@@ -796,8 +763,7 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "LOCAL CONFIGURATION", 760, 34, 0xFF778296);
         }
         if (section == Section.MODS) {
-            graphics.drawString(font, "BUILT-IN", 34, 166, 0xFF858A98);
-            graphics.drawString(font, "INSTALLED MODS", 34, 302, 0xFF858A98);
+            graphics.drawString(font, "MOD LIBRARY", 34, 166, 0xFF858A98);
         }
         drawRoundedCard(graphics, 34, 454, 184, 42, 0xFF202A38, 11);
         drawRoundedCard(graphics, 42, 461, 28, 28, mixColor(0xFF26364C, accent, 0.24f), 9);
