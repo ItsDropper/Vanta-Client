@@ -376,10 +376,18 @@ public final class VantaSettingsScreen extends Screen {
                 value -> { VantaClientPreferences.get().animations = value; VantaClientPreferences.save(); }));
         panel.add(divider());
         panel.add(VantaUiNode.toggle("Compact layout", () -> VantaClientPreferences.get().compactMode,
-                value -> { VantaClientPreferences.get().compactMode = value; VantaClientPreferences.save(); }));
+                value -> {
+                    VantaClientPreferences.get().compactMode = value;
+                    VantaClientPreferences.save();
+                    rebuildUi();
+                }));
         panel.add(divider());
         panel.add(VantaUiNode.toggle("Setting descriptions", () -> VantaClientPreferences.get().showDescriptions,
-                value -> { VantaClientPreferences.get().showDescriptions = value; VantaClientPreferences.save(); }));
+                value -> {
+                    VantaClientPreferences.get().showDescriptions = value;
+                    VantaClientPreferences.save();
+                    rebuildUi();
+                }));
         panel.add(divider());
         panel.add(VantaUiNode.slider("Interface scale", 0.8, 1.2, 0.05,
                 () -> VantaClientPreferences.get().uiScale,
