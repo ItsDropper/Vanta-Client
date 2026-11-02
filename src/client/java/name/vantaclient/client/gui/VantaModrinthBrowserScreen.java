@@ -39,8 +39,12 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 VantaPanelButton.layoutSize(420), VantaPanelButton.layoutSize(30), Component.literal("Search Modrinth"));
         searchBox.setMaxLength(100);
         searchBox.setHint(Component.literal("Search mods..."));
+        searchBox.setBordered(false);
+        searchBox.setTextColor(0xFFE6EDF8);
         addRenderableWidget(searchBox);
         addPanelButton("Search", 694, 76, 94, 30, this::search, true);
+        addPanelButton("Discover", 34, 132, 184, 30, this::loadPopular, true);
+        addPanelButton("Installed mods", 34, 170, 184, 30, this::onClose, false);
         addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
         addPanelButton("‹", 252, 492, 34, 26, () -> {
             page = Math.max(0, page - 1);
@@ -53,6 +57,11 @@ public final class VantaModrinthBrowserScreen extends Screen {
         addPanelButton("Installed mods", 744, 492, 154, 26,
                 () -> status = "Installed JARs are visible in the Mods section after returning.", false);
         rebuildCards();
+        search();
+    }
+
+    private void loadPopular() {
+        if (searchBox != null) searchBox.setValue("");
         search();
     }
 
@@ -140,6 +149,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
         rounded(graphics, left, top, panelWidth, panelHeight, 18, 0xFF0C111B);
         rounded(graphics, left + 1, top + 1, panelWidth - 2, panelHeight - 2, 17, 0xFF111824);
         rounded(graphics, left + 1, top + 1, panelWidth - 2, VantaPanelButton.layoutSize(3), 2, 0xFF438BFF);
+        rounded(graphics, VantaPanelButton.layoutX(20), VantaPanelButton.layoutY(112),
+                VantaPanelButton.layoutSize(214), VantaPanelButton.layoutSize(404), 14, 0xFF151D2A);
+        rounded(graphics, VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(112),
+                VantaPanelButton.layoutSize(2), VantaPanelButton.layoutSize(404), 1, 0xFF27364D);
 
         graphics.drawString(font, "VANTA", VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(24),
                 0xFF82B4FF, false);
@@ -147,6 +160,14 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 0xFFF1F5FC, false);
         graphics.drawString(font, "Discover Fabric mods that match your Minecraft version",
                 VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(46), 0xFF8998AD, false);
+        graphics.drawString(font, "LIBRARY", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(116),
+                0xFF64758D, false);
+        graphics.drawString(font, "DISCOVER", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(216),
+                0xFF64758D, false);
+        graphics.drawString(font, "Compatible with Minecraft "
+                        + net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("minecraft")
+                        .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse(""),
+                VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(238), 0xFF8292A8, false);
 
         rounded(graphics, VantaPanelButton.layoutX(24), VantaPanelButton.layoutY(68),
                 VantaPanelButton.layoutSize(884), VantaPanelButton.layoutSize(46), 12, 0xFF171F2D);
