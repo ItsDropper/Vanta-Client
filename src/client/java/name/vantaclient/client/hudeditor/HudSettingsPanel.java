@@ -232,7 +232,7 @@ public final class HudSettingsPanel {
             return true;
         }
 
-        int controlsY = y + (selected instanceof ArmorHudElement ? 183 : 137);
+        int controlsY = y + (selected instanceof ArmorHudElement ? 173 : 137);
         if (inside(mouseX, mouseY, x + 14, controlsY + 17, PANEL_WIDTH - 28, 27)) {
             VantaClientPreferences.get().hudSnapToGrid =
                     !VantaClientPreferences.get().hudSnapToGrid;
