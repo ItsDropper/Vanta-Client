@@ -14,6 +14,7 @@ public final class VantaUiRuntime {
     private VantaUiNode focused;
     private VantaUiNode activeSlider;
     private VantaUiNode hovered;
+    private VantaUiNode pendingFocusReveal;
     private int lastWidth = -1;
     private int lastHeight = -1;
     private long lastFrameNanos;
@@ -42,6 +43,12 @@ public final class VantaUiRuntime {
     public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight,
                        int mouseX, int mouseY) {
         layout(font, screenWidth, screenHeight);
+        if (pendingFocusReveal != null) {
+            root.revealDescendant(pendingFocusReveal, pendingFocusReveal.height());
+            pendingFocusReveal = null;
+            lastWidth = -1;
+            layout(font, screenWidth, screenHeight);
+        }
         long now = System.nanoTime();
         float deltaSeconds = lastFrameNanos == 0L
                 ? 1.0f / 60.0f
@@ -152,6 +159,7 @@ public final class VantaUiRuntime {
         if (focused != null) focused.setFocused(false);
         focused = null;
         hovered = null;
+        pendingFocusReveal = null;
         root.closeDropdownsExcept(null);
         root.clearHover();
         lastFrameNanos = 0L;
@@ -185,6 +193,7 @@ public final class VantaUiRuntime {
         }
         int next = Math.floorMod(index + direction, focusable.size());
         setFocused(focusable.get(next));
+        pendingFocusReveal = focused;
     }
 
     private void clearFocusIfDetached() {
