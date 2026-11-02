@@ -34,10 +34,10 @@ public class HudEditorScreen extends Screen {
         VantaUiNode root = VantaUiNode.row(0, 0).height(52);
         root.add(VantaUiNode.spacer(1).flex(1));
         VantaUiNode toolbar = VantaUiNode.row(10, 10).width(430).height(48)
-                .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.CENTER);
+                .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.START);
         toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(22, 22)
-                .iconColor(VantaUiTheme.TEXT_PRIMARY));
-        VantaUiNode labels = VantaUiNode.column(2, 0);
+                .iconColor(VantaUiTheme.TEXT_PRIMARY).align(VantaUiNode.Alignment.CENTER));
+        VantaUiNode labels = VantaUiNode.column(2, 0).align(VantaUiNode.Alignment.CENTER);
         labels.add(VantaUiNode.eyebrow("VANTA / HUD EDITOR"));
         labels.add(VantaUiNode.text("Drag elements to position", VantaUiTheme.TEXT_SECONDARY));
         toolbar.add(labels);
@@ -47,8 +47,8 @@ public class HudEditorScreen extends Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(84).tooltip("Snap moved elements to the alignment grid"));
-        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30));
+                }).width(84).tooltip("Snap moved elements to the alignment grid")\n                .align(VantaUiNode.Alignment.CENTER));
+        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30)\n                .align(VantaUiNode.Alignment.CENTER));
         root.add(toolbar);
         root.add(VantaUiNode.spacer(1).flex(1));
         toolbarRuntime = new VantaUiRuntime(root);
