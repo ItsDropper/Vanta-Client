@@ -299,7 +299,7 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button())) return true;
+        if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button(), font)) return true;
         return super.mouseClicked(event, doubleClick);
     }
 
