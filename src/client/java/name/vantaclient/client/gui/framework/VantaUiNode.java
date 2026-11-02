@@ -276,14 +276,17 @@ public final class VantaUiNode {
             case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
             case CONTAINER -> {
                 int measured = 0;
+                int visibleChildren = 0;
                 for (VantaUiNode child : children) {
+                    if (!child.visible) continue;
                     int childWidth = child.intrinsicWidth(font);
                     measured = direction == Direction.ROW
                             ? measured + childWidth
                             : Math.max(measured, childWidth);
+                    visibleChildren++;
                 }
-                if (direction == Direction.ROW && children.size() > 1) {
-                    measured += gap * (children.size() - 1);
+                if (direction == Direction.ROW && visibleChildren > 1) {
+                    measured += gap * (visibleChildren - 1);
                 }
                 yield measured + padding * 2;
             }
@@ -304,14 +307,17 @@ public final class VantaUiNode {
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
             case CONTAINER -> {
                 int measured = 0;
+                int visibleChildren = 0;
                 for (VantaUiNode child : children) {
+                    if (!child.visible) continue;
                     int childHeight = child.intrinsicHeight(font);
                     measured = direction == Direction.COLUMN
                             ? measured + childHeight
                             : Math.max(measured, childHeight);
+                    visibleChildren++;
                 }
-                if (direction == Direction.COLUMN && children.size() > 1) {
-                    measured += gap * (children.size() - 1);
+                if (direction == Direction.COLUMN && visibleChildren > 1) {
+                    measured += gap * (visibleChildren - 1);
                 }
                 yield measured + padding * 2;
             }
@@ -334,7 +340,16 @@ public final class VantaUiNode {
             return;
         }
 
-        if (kind != Kind.CONTAINER || children.isEmpty()) return;
+        if (kind != Kind.CONTAINER) return;
+        List<VantaUiNode> layoutChildren = new ArrayList<>();
+        for (VantaUiNode child : children) {
+            if (child.visible) layoutChildren.add(child);
+        }
+        if (layoutChildren.isEmpty()) {
+            contentHeight = 0;
+            scrollOffset = 0;
+            return;
+        }
 
         int innerX = this.x + padding;
         int innerY = this.y + padding;
@@ -663,6 +678,7 @@ public final class VantaUiNode {
     }
 
     void tick() {
+        if (!visible) return;
         if (kind == Kind.TEXT_FIELD && focused) {
             caretTicks++;
             if (caretTicks >= VantaUiTheme.CARET_BLINK_TICKS) {
@@ -677,6 +693,7 @@ public final class VantaUiNode {
     }
 
     void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor) {
+        if (!visible) return;
         float hoverTarget = hovered ? 1.0f : 0.0f;
         if (!animationsEnabled) {
             hoverAmount = hoverTarget;
