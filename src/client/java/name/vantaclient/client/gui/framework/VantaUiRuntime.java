@@ -31,7 +31,7 @@ public final class VantaUiRuntime {
 
     /** Applies the user's shared interface scale and invalidates placement when it changes. */
     public void setScale(float scale) {
-        float bounded = Math.max(0.8f, Math.min(1.2f, scale));
+        float bounded = Float.isFinite(scale) ? Math.max(0.8f, Math.min(1.2f, scale)) : 1.0f;
         if (Float.compare(uiScale, bounded) == 0) return;
         uiScale = bounded;
         invalidateLayout();
