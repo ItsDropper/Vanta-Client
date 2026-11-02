@@ -57,6 +57,10 @@ public class VantaIntegrationsScreen extends Screen {
     private int sidebarScroll;
     private int firstSetting;
     private float openProgress;
+    private EditBox modSearch;
+    private String modSearchQuery = "";
+    private boolean favoritesOnly;
+    private boolean studioOpen;
     private VantaClientPreferences preferences;
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
@@ -70,6 +74,18 @@ public class VantaIntegrationsScreen extends Screen {
         preferences = VantaClientPreferences.get();
         openProgress = preferences.animations ? 0.0f : 1.0f;
         refreshModList();
+        if (section == Section.MODS && selection == Selection.NONE) {
+            modSearch = new EditBox(font, VantaPanelButton.layoutX(650),
+                    VantaPanelButton.layoutY(25), VantaPanelButton.layoutSize(196),
+                    VantaPanelButton.layoutSize(24), Component.literal("Search mods"));
+            modSearch.setMaxLength(64);
+            modSearch.setValue(modSearchQuery);
+            modSearch.setResponder(value -> {
+                modSearchQuery = value;
+                sidebarScroll = 0;
+            });
+            addRenderableWidget(modSearch);
+        }
 
         addPanelButton("Settings", 34, 68, SIDEBAR_WIDTH - 24, 25,
                 () -> {
@@ -88,7 +104,18 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS) {
             addModNavigation();
             if (selection == Selection.NONE) {
-                addPanelButton("Scan for experimental hot-loads", contentX(), CONTENT_TOP + 42, 220, 26, () -> {
+                addPanelButton("All", contentX(), CONTENT_TOP + 42, 52, 24, () -> {
+                    favoritesOnly = false;
+                    sidebarScroll = 0;
+                    rebuildWidgets();
+                }, () -> !favoritesOnly);
+                addPanelButton("Favorites", contentX() + 58, CONTENT_TOP + 42, 88, 24, () -> {
+                    favoritesOnly = true;
+                    sidebarScroll = 0;
+                    rebuildWidgets();
+                }, () -> favoritesOnly);
+                addPanelButton("Scan for experimental hot-loads", contentX() + contentWidth() - 220,
+                        CONTENT_TOP + 42, 220, 24, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
                     List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
@@ -116,6 +143,57 @@ public class VantaIntegrationsScreen extends Screen {
         } else {
             addClientSettings();
         }
+        if (section == Section.MODS) {
+            addPanelButton("Studio", 866, 25, 64, 24, () -> {
+                studioOpen = !studioOpen;
+                rebuildWidgets();
+            }, () -> studioOpen);
+            if (studioOpen) addStudioControls();
+        }
+    }
+
+    private void addStudioControls() {
+        int x = 744;
+        addPanelButton("Opacity −", x + 10, 108, 78, 22, () -> {
+            preferences.panelOpacity = Math.max(0.72, Math.round((preferences.panelOpacity - 0.04) * 100.0) / 100.0);
+            VantaClientPreferences.save();
+            rebuildWidgets();
+        });
+        addPanelButton("Opacity +", x + 96, 108, 78, 22, () -> {
+            preferences.panelOpacity = Math.min(0.98, Math.round((preferences.panelOpacity + 0.04) * 100.0) / 100.0);
+            VantaClientPreferences.save();
+            rebuildWidgets();
+        });
+        addPanelButton("Scale −", x + 10, 138, 78, 22, () -> {
+            preferences.uiScale = Math.max(0.8, Math.round((preferences.uiScale - 0.05) * 100.0) / 100.0);
+            VantaClientPreferences.save();
+            rebuildWidgets();
+        });
+        addPanelButton("Scale +", x + 96, 138, 78, 22, () -> {
+            preferences.uiScale = Math.min(1.2, Math.round((preferences.uiScale + 0.05) * 100.0) / 100.0);
+            VantaClientPreferences.save();
+            rebuildWidgets();
+        });
+        addPanelButton(preferences.animations ? "Animations: On" : "Animations: Off",
+                x + 10, 168, 164, 22, () -> {
+                    preferences.animations = !preferences.animations;
+                    VantaClientPreferences.save();
+                    rebuildWidgets();
+                });
+        addPanelButton("Close studio", x + 10, 198, 164, 22, () -> {
+            studioOpen = false;
+            rebuildWidgets();
+        });
+    }
+
+    private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
+        String query = modSearchQuery == null ? "" : modSearchQuery.trim().toLowerCase(Locale.ROOT);
+        return availableMods.stream().filter(mod -> {
+            if (favoritesOnly && !preferences.favoriteMods.contains(mod.id())) return false;
+            if (query.isEmpty()) return true;
+            return mod.name().toLowerCase(Locale.ROOT).contains(query)
+                    || mod.id().toLowerCase(Locale.ROOT).contains(query);
+        }).toList();
     }
 
     private void refreshModList() {
@@ -200,18 +278,19 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private void addInstalledModGrid() {
+        List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
         int columns = 3;
         int gap = 12;
         int cardWidth = Math.max(150, (contentWidth() - gap * (columns - 1)) / columns);
         int cardHeight = 104;
         int startY = CONTENT_TOP + 88;
         int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
-        int start = Math.min(sidebarScroll, Math.max(0, availableMods.size() - visibleRows * columns));
-        int end = Math.min(availableMods.size(), start + visibleRows * columns);
+        int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
+        int end = Math.min(mods.size(), start + visibleRows * columns);
         Set<String> hotLoadedIds = new HashSet<>();
         ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
         for (int index = start; index < end; index++) {
-            ExperimentalModHotLoader.AvailableMod mod = availableMods.get(index);
+            ExperimentalModHotLoader.AvailableMod mod = mods.get(index);
             String id = mod.id();
             int column = (index - start) % columns;
             int row = (index - start) / columns;
@@ -220,6 +299,12 @@ public class VantaIntegrationsScreen extends Screen {
             int buttonY = y + 70;
             boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(id);
             boolean hotLoaded = hotLoadedIds.contains(id);
+            addPanelButton(preferences.favoriteMods.contains(id) ? "★" : "☆",
+                    x + cardWidth - 34, y + 10, 24, 22, () -> {
+                        if (!preferences.favoriteMods.add(id)) preferences.favoriteMods.remove(id);
+                        VantaClientPreferences.save();
+                        rebuildWidgets();
+                    });
             addPanelButton("Settings", x + 8, buttonY, Math.max(56, cardWidth - 116), 24, () -> {
                 if (fabricLoaded) {
                     selectInstalledMod(id);
@@ -616,7 +701,9 @@ public class VantaIntegrationsScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int accent = preferences == null ? 0xFF718BFF : preferences.accent.color();
-        int alpha = (int) (0xD9 * Math.min(1.0f, openProgress + 0.16f * partialTick));
+        float rawProgress = Math.min(1.0f, openProgress + 0.16f * partialTick);
+        float easedProgress = 1.0f - (float) Math.pow(1.0f - rawProgress, 3.0);
+        int alpha = (int) (0xD9 * easedProgress);
         graphics.fill(0, 0, width, height, (alpha << 24));
 
         graphics.pose().pushMatrix();
@@ -624,16 +711,18 @@ public class VantaIntegrationsScreen extends Screen {
                 (float) VantaPanelButton.layoutOffsetY());
         graphics.pose().scale(VantaPanelButton.layoutScale(), VantaPanelButton.layoutScale());
         if (preferences != null && preferences.animations) {
-            graphics.pose().translate(0.0f, 7.0f * (1.0f - Math.min(1.0f, openProgress + 0.16f * partialTick)));
+            graphics.pose().translate(0.0f, 7.0f * (1.0f - easedProgress));
         }
         int left = 20, top = 18, right = 940, bottom = 522;
         drawRoundedCard(graphics, left - 6, top - 6, right - left + 12,
                 bottom - top + 12, 0x55000000, 18);
         drawRoundedCard(graphics, left - 2, top - 2, right - left + 4,
                 bottom - top + 4, 0x99000000, 16);
-        drawRoundedCard(graphics, left, top, right - left, bottom - top, 0xFF10141C, 15);
+        float panelOpacity = preferences == null ? 0.92f : (float) preferences.panelOpacity;
+        drawRoundedCard(graphics, left, top, right - left, bottom - top,
+                withAlpha(0xFF10141C, panelOpacity), 15);
         drawRoundedCard(graphics, left + 1, top + 1, right - left - 2,
-                bottom - top - 2, 0xFF10141C, 14);
+                bottom - top - 2, withAlpha(0xFF10141C, panelOpacity), 14);
         drawRoundedCard(graphics, left + 1, top + 1, right - left - 2, 3, accent, 2);
         drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49, 0xFF151B26, 13);
         drawRoundedCard(graphics, left + 12, top + 12, SIDEBAR_WIDTH + 12,
@@ -752,8 +841,9 @@ public class VantaIntegrationsScreen extends Screen {
                 }
             }
         } else {
+            List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
             graphics.drawString(font, "Installed mods", contentX(), 66, 0xFFE8EAF0);
-            graphics.drawString(font, availableMods.size() + " installed mod JARs · * experimental hot-load",
+            graphics.drawString(font, mods.size() + " matching mods · " + availableMods.size() + " total",
                     contentX(), 86, 0xFF9296A3);
             graphics.drawString(font, "Three-column library · settings per mod · hot-loading is experimental",
                     contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
@@ -763,18 +853,18 @@ public class VantaIntegrationsScreen extends Screen {
             int cardHeight = 104;
             int startY = CONTENT_TOP + 88;
             int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
-            int start = Math.min(sidebarScroll, Math.max(0, availableMods.size() - visibleRows * columns));
-            int end = Math.min(availableMods.size(), start + visibleRows * columns);
+            int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
+            int end = Math.min(mods.size(), start + visibleRows * columns);
             Set<String> hotLoadedIds = new HashSet<>();
             ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
-            if (availableMods.isEmpty()) {
+            if (mods.isEmpty()) {
                 graphics.drawString(font, "No third-party mod JARs found in the active instance mods folder.",
                         contentX() + 8, startY + 18, 0xFF9296A3);
                 graphics.drawString(font, "Add Fabric mods, then reopen this screen to refresh the list.",
                         contentX() + 8, startY + 34, 0xFF727D90);
             }
             for (int index = start; index < end; index++) {
-                ExperimentalModHotLoader.AvailableMod mod = availableMods.get(index);
+                ExperimentalModHotLoader.AvailableMod mod = mods.get(index);
                 int column = (index - start) % columns;
                 int row = (index - start) / columns;
                 int x = contentX() + column * (cardWidth + gap);
@@ -806,8 +896,30 @@ public class VantaIntegrationsScreen extends Screen {
                     contentWidth() - 12, 0xFFB3B6C0, 2);
         }
 
+        if (studioOpen && section == Section.MODS) {
+            int panelAlpha = (int) (Math.max(0.72, Math.min(0.98, preferences.panelOpacity)) * 255.0);
+            drawRoundedCard(graphics, 736, 72, 192, 164,
+                    (panelAlpha << 24) | 0x00151B27, 12);
+            drawRoundedCard(graphics, 736, 72, 192, 2, accent, 1);
+            graphics.drawString(font, "STUDIO", 750, 84, 0xFFF1F4FA);
+            graphics.drawString(font, "Live interface controls", 750, 98, 0xFF8E9AAF);
+            graphics.drawString(font, "Panel opacity", 750, 130, 0xFFB8C1D0);
+            graphics.drawString(font, String.format(Locale.ROOT, "%.0f%%", preferences.panelOpacity * 100),
+                    866, 130, accent);
+            graphics.drawString(font, "UI scale", 750, 160, 0xFFB8C1D0);
+            graphics.drawString(font, String.format(Locale.ROOT, "%.2fx", preferences.uiScale),
+                    866, 160, accent);
+            graphics.drawString(font, "Animation", 750, 190, 0xFFB8C1D0);
+            graphics.drawString(font, preferences.animations ? "Enabled" : "Disabled",
+                    866, 190, accent);
+        }
         graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private int withAlpha(int color, float opacity) {
+        int alpha = Math.max(0, Math.min(255, Math.round(((color >>> 24) & 255) * opacity)));
+        return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
     private void drawRoundedCard(GuiGraphics graphics, int x, int y, int width,
@@ -871,7 +983,7 @@ public class VantaIntegrationsScreen extends Screen {
             int cardHeight = 104;
             int gap = 12;
             int visibleRows = Math.max(1, (504 - (CONTENT_TOP + 88) - 24) / (cardHeight + gap));
-            int maxScroll = Math.max(0, availableMods.size() - visibleRows * columns);
+            int maxScroll = Math.max(0, filteredMods().size() - visibleRows * columns);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
                     sidebarScroll - (int) Math.signum(scrollY) * columns));
             rebuildWidgets();
