@@ -132,8 +132,11 @@ public final class VantaUiRuntime {
 
     public void dispose() {
         activeSlider = null;
+        if (focused != null) focused.setFocused(false);
         focused = null;
         hovered = null;
+        root.closeDropdownsExcept(null);
+        root.clearHover();
         lastFrameNanos = 0L;
     }
 
