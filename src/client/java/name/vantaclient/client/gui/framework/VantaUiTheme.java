@@ -14,6 +14,7 @@ public final class VantaUiTheme {
     public static final int PANEL_RAISED = 0xFF151E2B;
     public static final int SURFACE = 0xFF192332;
     public static final int SURFACE_HOVER = 0xFF202E40;
+    public static final int SURFACE_SELECTED = 0xFF1D304D;
     public static final int BORDER = 0xFF2A394C;
     public static final int BORDER_SUBTLE = 0xFF202B3A;
     public static final int TEXT_PRIMARY = 0xFFEAF0F8;
