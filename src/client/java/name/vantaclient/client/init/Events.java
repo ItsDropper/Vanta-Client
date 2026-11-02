@@ -5,7 +5,7 @@ import name.vantaclient.client.util.AnchorPrediction;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
-import name.vantaclient.client.gui.VantaIntegrationsScreen;
+import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ExplosionEffects;
 import net.minecraft.world.item.Items;
