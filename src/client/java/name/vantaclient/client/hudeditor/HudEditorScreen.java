@@ -5,16 +5,54 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 
 public class HudEditorScreen extends Screen {
     private float entrance = 0.0f;
     private float selectionPulse = 0.0f;
     private boolean panelPointer;
+    private boolean toolbarPointer;
+    private VantaUiRuntime toolbarRuntime;
     private final net.minecraft.client.gui.screens.Screen parent;
 
     public HudEditorScreen(net.minecraft.client.gui.screens.Screen parent) {
         super(Component.literal("HUD Editor"));
         this.parent = parent;
+    }
+
+    @Override
+    protected void init() {
+        buildToolbar();
+    }
+
+    private void buildToolbar() {
+        if (toolbarRuntime != null) toolbarRuntime.dispose();
+        VantaUiNode root = VantaUiNode.row(0, 0).height(52);
+        root.add(VantaUiNode.spacer(1).flex(1));
+        VantaUiNode toolbar = VantaUiNode.row(10, 10).width(430).height(48)
+                .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.CENTER);
+        toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).size(22, 22)
+                .iconColor(VantaUiTheme.TEXT_PRIMARY));
+        VantaUiNode labels = VantaUiNode.column(2, 0);
+        labels.add(VantaUiNode.eyebrow("VANTA / HUD EDITOR"));
+        labels.add(VantaUiNode.text("Drag elements to position", VantaUiTheme.TEXT_SECONDARY));
+        toolbar.add(labels);
+        toolbar.add(VantaUiNode.spacer(1).flex(1));
+        toolbar.add(VantaUiNode.toggle("Snap",
+                () -> VantaClientPreferences.get().hudSnapToGrid,
+                value -> {
+                    VantaClientPreferences.get().hudSnapToGrid = value;
+                    VantaClientPreferences.save();
+                }).width(84).tooltip("Snap moved elements to the alignment grid"));
+        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30));
+        root.add(toolbar);
+        root.add(VantaUiNode.spacer(1).flex(1));
+        toolbarRuntime = new VantaUiRuntime(root);
+        toolbarRuntime.layout(font, width, height);
     }
 
     @Override
@@ -44,7 +82,9 @@ public class HudEditorScreen extends Screen {
             selectionPulse = 0.0f;
         }
 
-        drawToolbar(graphics, mc, preferences, entrance);
+        if (toolbarRuntime != null) {
+            toolbarRuntime.render(graphics, font, width, height, mouseX, mouseY);
+        }
         HudSettingsPanel.render(graphics, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, delta);
     }
@@ -177,6 +217,11 @@ public class HudEditorScreen extends Screen {
             panelPointer = true;
             return true;
         }
+        if (toolbarRuntime != null
+                && toolbarRuntime.mouseClicked(mouseX, mouseY, event.button(), font)) {
+            toolbarPointer = true;
+            return true;
+        }
         if (event.button() == 0) {
             HudElement hovered = HudMouseHandler.getHovered();
             if (hovered != null) {
@@ -192,8 +237,10 @@ public class HudEditorScreen extends Screen {
         boolean moved = HudMouseHandler.hasMoved();
         HudMouseHandler.release();
         HudSettingsPanel.mouseReleased();
-        boolean consumedByPanel = panelPointer;
+        if (toolbarRuntime != null) toolbarRuntime.mouseReleased(event.button());
+        boolean consumedByPanel = panelPointer || toolbarPointer;
         panelPointer = false;
+        toolbarPointer = false;
         if (!moved && !consumedByPanel) {
             HudElement hovered = HudMouseHandler.getHovered();
             if (hovered != null) HudSettingsPanel.setSelected(hovered);
@@ -210,11 +257,38 @@ public class HudEditorScreen extends Screen {
             HudSettingsPanel.mouseDragged(mouseX, mouseY);
             return true;
         }
+        if (toolbarPointer) return true;
         if (event.button() == 0) {
             HudMouseHandler.drag(mouseX, mouseY);
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (HudSettingsPanel.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        boolean shiftDown = (event.modifiers() & 1) != 0;
+        if (HudSettingsPanel.keyPressed(event.key(), shiftDown)) return true;
+        if (toolbarRuntime != null && toolbarRuntime.keyPressed(event.key(), shiftDown)) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        return super.charTyped(event);
+    }
+
+    @Override
+    public void removed() {
+        if (toolbarRuntime != null) toolbarRuntime.dispose();
+        HudSettingsPanel.clear();
+        super.removed();
     }
 
     @Override
