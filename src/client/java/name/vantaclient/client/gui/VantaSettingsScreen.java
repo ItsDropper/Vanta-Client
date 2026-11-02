@@ -68,7 +68,7 @@ public final class VantaSettingsScreen extends Screen {
         header.add(VantaUiNode.spacer(1).flex(1));
         header.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
                 VantaUiTheme.TEXT_MUTED));
-        header.add(VantaUiNode.button("CLOSE", this::onClose, this::onClose)
+        header.add(VantaUiNode.button("CLOSE", this::onClose)
                 .height(30).tooltip("Close settings"));
         root.add(header);
 
