@@ -124,18 +124,33 @@ public class VantaIntegrationsScreen extends Screen {
                 });
             }
             if (selection == Selection.NONE) {
-                addPanelButton("All", contentX(), CONTENT_TOP + 42, 52, 24, () -> {
+                int filterY = CONTENT_TOP + 42;
+                addPanelButton("All", contentX(), filterY, 44, 26, () -> {
                     favoritesOnly = false;
+                    selection = Selection.NONE;
                     sidebarScroll = 0;
                     rebuildWidgets();
-                }, () -> !favoritesOnly);
-                addPanelButton("Favorites", contentX() + 58, CONTENT_TOP + 42, 88, 24, () -> {
+                }, () -> !favoritesOnly && selection == Selection.NONE);
+                addPanelButton("Favorites", contentX() + 50, filterY, 80, 26, () -> {
                     favoritesOnly = true;
+                    selection = Selection.NONE;
                     sidebarScroll = 0;
                     rebuildWidgets();
-                }, () -> favoritesOnly);
-                addPanelButton("Scan for experimental hot-loads", contentX() + contentWidth() - 220,
-                        CONTENT_TOP + 42, 220, 24, () -> {
+                }, () -> favoritesOnly && selection == Selection.NONE);
+                addPanelButton("HUD", contentX() + 138, filterY, 48, 26,
+                        () -> selectCategory(Category.HUD),
+                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.HUD);
+                addPanelButton("Visual", contentX() + 192, filterY, 58, 26,
+                        () -> selectCategory(Category.VISUAL),
+                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.VISUAL);
+                addPanelButton("Combat", contentX() + 256, filterY, 64, 26,
+                        () -> selectCategory(Category.COMBAT),
+                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.COMBAT);
+                addPanelButton("Misc", contentX() + 326, filterY, 52, 26,
+                        () -> selectCategory(Category.MISC),
+                        () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
+                addPanelButton("Scan mods", contentX() + contentWidth() - 154,
+                        filterY, 154, 26, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
                     List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
@@ -303,7 +318,7 @@ public class VantaIntegrationsScreen extends Screen {
         int columns = 4;
         int gap = 10;
         int cardWidth = Math.max(112, (contentWidth() - gap * (columns - 1)) / columns);
-        int cardHeight = 112;
+        int cardHeight = 120;
         int startY = CONTENT_TOP + 88;
         int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
         int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
@@ -888,7 +903,7 @@ public class VantaIntegrationsScreen extends Screen {
             int columns = 4;
             int gap = 10;
             int cardWidth = Math.max(112, (contentWidth() - gap * (columns - 1)) / columns);
-            int cardHeight = 112;
+            int cardHeight = 120;
             int startY = CONTENT_TOP + 88;
             int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
             int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
@@ -922,7 +937,7 @@ public class VantaIntegrationsScreen extends Screen {
                 drawRoundedCard(graphics, x + 8, y + 7, cardWidth - 16, cardHeight - 44,
                         0xFF202A38, 10);
                 Identifier iconTexture = modIconTextures.get(mod.id());
-                int iconSize = 34;
+                int iconSize = 38;
                 int iconX = x + (cardWidth - iconSize) / 2;
                 int iconY = y + 18;
                 if (iconTexture != null) {
@@ -935,11 +950,11 @@ public class VantaIntegrationsScreen extends Screen {
                             iconY + 13, accent);
                 }
                 graphics.drawString(font, font.plainSubstrByWidth(mod.version(),
-                        cardWidth - 20), x + 10, y + 60, 0xFF8994A7);
+                        cardWidth - 20), x + 10, y + 66, 0xFF8994A7);
                 boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
                 graphics.drawString(font, fabricLoaded ? "Fabric loaded"
                         : hotLoadedIds.contains(mod.id()) ? "Session loaded"
-                        : "Available", x + 10, y + 72,
+                        : "Available", x + 10, y + 78,
                         fabricLoaded || hotLoadedIds.contains(mod.id()) ? 0xFF79B89A : 0xFF9BA7BA);
             }
             drawWrappedText(graphics, hotLoadStatus, contentX(), 486,
