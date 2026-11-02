@@ -80,9 +80,10 @@ public final class VantaSettingsScreen extends Screen {
         brand.add(brandLabels);
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
-        header.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
-                VantaUiTheme.TEXT_MUTED));
-        if (compact) {
+        if (!compact) {
+            header.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
+                    VantaUiTheme.TEXT_MUTED));
+        } else {
             header.add(VantaUiNode.button("MODS", () -> Minecraft.getInstance().setScreen(
                     new VantaIntegrationsScreen(this, true))).height(30));
         }
@@ -95,13 +96,14 @@ public final class VantaSettingsScreen extends Screen {
                 : VantaUiNode.row(12, 0).flex(1);
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(4, 4).height(38).background(VantaUiTheme.PANEL);
-            navigation.add(nav("Home", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW).flex(1));
-            navigation.add(nav("HUD", Page.HUD, VantaUiNode.Icon.HUD).flex(1));
-            navigation.add(nav("Visual", Page.VISUAL, VantaUiNode.Icon.VISUALS).flex(1));
-            navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR).flex(1));
-            navigation.add(nav("Misc", Page.MISC, VantaUiNode.Icon.SPARK).flex(1));
-            navigation.add(nav("UI", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY).flex(1));
+            navigation = VantaUiNode.row(4, 4).height(38).background(VantaUiTheme.PANEL)
+                    .justify(VantaUiNode.Justification.CENTER);
+            navigation.add(compactNav(Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
+            navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
+            navigation.add(compactNav(Page.VISUAL, VantaUiNode.Icon.VISUALS));
+            navigation.add(compactNav(Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
+            navigation.add(compactNav(Page.MISC, VantaUiNode.Icon.SPARK));
+            navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
         } else {
             navigation = VantaUiNode.column(5, 10).width(154).background(VantaUiTheme.PANEL);
             navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
@@ -126,6 +128,23 @@ public final class VantaSettingsScreen extends Screen {
         body.add(content);
         root.add(body);
         return root;
+    }
+
+    private VantaUiNode compactNav(Page target, VantaUiNode.Icon icon) {
+        String label = switch (target) {
+            case OVERVIEW -> "Overview";
+            case HUD -> "HUD";
+            case VISUAL -> "Visual";
+            case COMBAT -> "Combat";
+            case MISC -> "Miscellaneous";
+            case APPEARANCE -> "Appearance";
+        };
+        return VantaUiNode.button("", icon, () -> {
+            page = target;
+            selectedFeature = null;
+            rebuildUi();
+        }).size(42, 32).selected(page == target)
+                .tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
     }
 
     private VantaUiNode nav(String label, Page target, VantaUiNode.Icon icon) {
