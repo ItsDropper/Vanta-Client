@@ -12,7 +12,7 @@ public final class HudSettingsPanel {
     private static float openProgress;
 
     private static final int PANEL_WIDTH = 250;
-    private static final int PANEL_HEIGHT = 310;
+    private static final int PANEL_HEIGHT = 340;
     private static final int TEXT = 0xFFF0F3FA;
     private static final int SUBTEXT = 0xFF8995A8;
     private static final int SURFACE = 0xFF171D27;
