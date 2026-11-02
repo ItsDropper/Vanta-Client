@@ -285,7 +285,7 @@ public class VantaIntegrationsScreen extends Screen {
             }
             Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "mod_icons/" + modId);
             minecraft.getTextureManager().register(texture,
-                    new DynamicTexture("Vanta mod icon " + modId, image));
+                    new DynamicTexture(() -> "Vanta mod icon " + modId, image));
             modIconTextures.put(modId, texture);
         } catch (Exception | LinkageError ignored) {
             // Missing, malformed or oversized optional icons fall back to the mod initial.
