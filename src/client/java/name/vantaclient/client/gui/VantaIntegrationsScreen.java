@@ -287,10 +287,10 @@ public class VantaIntegrationsScreen extends Screen {
 
     private void addInstalledModGrid() {
         List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
-        int columns = 3;
-        int gap = 12;
-        int cardWidth = Math.max(150, (contentWidth() - gap * (columns - 1)) / columns);
-        int cardHeight = 104;
+        int columns = 4;
+        int gap = 10;
+        int cardWidth = Math.max(112, (contentWidth() - gap * (columns - 1)) / columns);
+        int cardHeight = 112;
         int startY = CONTENT_TOP + 88;
         int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
         int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
@@ -304,27 +304,21 @@ public class VantaIntegrationsScreen extends Screen {
             int row = (index - start) / columns;
             int x = contentX() + column * (cardWidth + gap);
             int y = startY + row * (cardHeight + gap);
-            int buttonY = y + 70;
             boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(id);
             boolean hotLoaded = hotLoadedIds.contains(id);
             addPanelButton(preferences.favoriteMods.contains(id) ? "★" : "☆",
-                    x + cardWidth - 34, y + 10, 24, 22, () -> {
+                    x + 7, y + 7, 20, 20, () -> {
                         if (!preferences.favoriteMods.add(id)) preferences.favoriteMods.remove(id);
                         VantaClientPreferences.save();
                         rebuildWidgets();
                     });
-            addPanelButton("Settings", x + 8, buttonY, Math.max(56, cardWidth - 116), 24, () -> {
-                if (fabricLoaded) {
-                    selectInstalledMod(id);
-                } else {
-                    hotLoadStatus = "Settings are only available for mods exposing a supported configuration screen or API.";
-                }
-            });
+            addAccentPanelButton(mod.name(), x + 2, y + cardHeight - 30,
+                    cardWidth - 4, 28, () -> selectInstalledMod(id));
             if (fabricLoaded || hotLoaded) {
-                addPanelButton("Enabled", x + cardWidth - 102, buttonY, 94, 24,
+                addPanelButton("Loaded", x + cardWidth - 57, y + 7, 50, 19,
                         () -> hotLoadStatus = id + " is already active. Arbitrary Fabric mods cannot be safely disabled at runtime.");
             } else {
-                addPanelButton("Enable*", x + cardWidth - 102, buttonY, 94, 24, () -> {
+                addPanelButton("Enable*", x + cardWidth - 61, y + 7, 54, 19, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
                     hotLoadStatus = result.summary();
                     refreshModList();
@@ -416,7 +410,14 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private int accentColor() {
-        return preferences == null ? 0xFF718BFF : preferences.accent.color();
+        return preferences == null ? 0xFF3B82FF : preferences.accent.color();
+    }
+
+    private VantaPanelButton addAccentPanelButton(String label, int x, int y,
+                                                   int buttonWidth, int buttonHeight,
+                                                   Runnable action) {
+        return addRenderableWidget(new VantaPanelButton(x, y, buttonWidth, buttonHeight,
+                label, action, () -> false, this::accentColor, true));
     }
 
     private VantaPanelButton addPanelButton(String label, int x, int y, int buttonWidth, int buttonHeight,
@@ -857,10 +858,10 @@ public class VantaIntegrationsScreen extends Screen {
                     contentX(), 86, 0xFF9296A3);
             graphics.drawString(font, "Three-column library · settings per mod · hot-loading is experimental",
                     contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
-            int columns = 3;
-            int gap = 12;
-            int cardWidth = Math.max(150, (contentWidth() - gap * (columns - 1)) / columns);
-            int cardHeight = 104;
+            int columns = 4;
+            int gap = 10;
+            int cardWidth = Math.max(112, (contentWidth() - gap * (columns - 1)) / columns);
+            int cardHeight = 112;
             int startY = CONTENT_TOP + 88;
             int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
             int start = Math.min(sidebarScroll, Math.max(0, mods.size() - visibleRows * columns));
@@ -888,30 +889,31 @@ public class VantaIntegrationsScreen extends Screen {
                 if (Math.abs((hovered ? 1.0f : 0.0f) - hover) < 0.015f) hover = hovered ? 1.0f : 0.0f;
                 modCardHover.put(mod.id(), hover);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
-                        withAlpha(accent, hover * 0.32f), 10);
+                        withAlpha(accent, 0.22f + hover * 0.34f), 12);
                 drawRoundedCard(graphics, x + 1, y + 1, cardWidth - 2, cardHeight - 2,
-                        mixColor(0xFF171D27, 0xFF202B3B, hover), 9);
-                drawRoundedCard(graphics, x + 10, y + 12, 34, 34, 0xFF202A3A, 9);
+                        mixColor(0xFF1B222E, 0xFF263449, hover), 11);
+                drawRoundedCard(graphics, x + 8, y + 7, cardWidth - 16, cardHeight - 44,
+                        0xFF202A38, 10);
                 Identifier iconTexture = modIconTextures.get(mod.id());
+                int iconSize = 34;
+                int iconX = x + (cardWidth - iconSize) / 2;
+                int iconY = y + 18;
                 if (iconTexture != null) {
-                    graphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, x + 11, y + 13,
-                            0.0f, 0.0f, 32, 32, 32, 32);
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, iconX, iconY,
+                            0.0f, 0.0f, iconSize, iconSize, iconSize, iconSize);
                 } else {
                     String iconLetter = mod.name().isBlank() ? "?" :
                             mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
-                    graphics.drawString(font, iconLetter, x + 22, y + 24, accent);
+                    graphics.drawCenteredString(font, iconLetter, x + cardWidth / 2,
+                            iconY + 13, accent);
                 }
-                graphics.drawString(font, font.plainSubstrByWidth(mod.name(),
-                        cardWidth - 60), x + 52, y + 15, 0xFFF0F2F8);
-                graphics.drawString(font, font.plainSubstrByWidth(mod.id(),
-                        cardWidth - 60), x + 52, y + 29, 0xFF8994A7);
-                graphics.drawString(font, font.plainSubstrByWidth(
-                        mod.version(), cardWidth - 18), x + 12, y + 53, 0xFF7F8A9C);
+                graphics.drawString(font, font.plainSubstrByWidth(mod.version(),
+                        cardWidth - 20), x + 10, y + 60, 0xFF8994A7);
                 boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
                 graphics.drawString(font, fabricLoaded ? "Fabric loaded"
-                        : hotLoadedIds.contains(mod.id()) ? "Experimental session"
-                        : "Not active · experimental", x + 12, y + 82,
-                        fabricLoaded || hotLoadedIds.contains(mod.id()) ? 0xFF79B89A : 0xFFE0B56A);
+                        : hotLoadedIds.contains(mod.id()) ? "Session loaded"
+                        : "Available", x + 10, y + 72,
+                        fabricLoaded || hotLoadedIds.contains(mod.id()) ? 0xFF79B89A : 0xFF9BA7BA);
             }
             drawWrappedText(graphics, hotLoadStatus, contentX(), 486,
                     contentWidth() - 12, 0xFFB3B6C0, 2);
@@ -1009,9 +1011,9 @@ public class VantaIntegrationsScreen extends Screen {
         mouseY = VantaPanelButton.unlayoutY(mouseY);
         if (section == Section.MODS && selection == Selection.NONE
                 && mouseX >= contentX() && mouseY >= CONTENT_TOP + 88) {
-            int columns = 3;
-            int cardHeight = 104;
-            int gap = 12;
+            int columns = 4;
+            int cardHeight = 112;
+            int gap = 10;
             int visibleRows = Math.max(1, (504 - (CONTENT_TOP + 88) - 24) / (cardHeight + gap));
             int maxScroll = Math.max(0, filteredMods().size() - visibleRows * columns);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
