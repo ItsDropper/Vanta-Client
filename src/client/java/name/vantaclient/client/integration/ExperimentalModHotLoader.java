@@ -51,6 +51,7 @@ public final class ExperimentalModHotLoader {
 
     public record Result(int loaded, int skipped, int failed, String summary) {}
     public record HotLoadedMod(String id, String name, String version, String jarName) {}
+    public record AvailableMod(String id, String name, String version, Path path, String iconPath) {}
 
     private record Candidate(
             String id, String name, String version, Path path, String identity,
@@ -60,7 +61,51 @@ public final class ExperimentalModHotLoader {
         return List.copyOf(HOT_LOADED_MODS.values());
     }
 
+    public static synchronized List<AvailableMod> getAvailableMods() {
+        Path modsDirectory = FabricLoader.getInstance().getGameDir().resolve("mods");
+        if (!Files.isDirectory(modsDirectory)) return List.of();
+        List<AvailableMod> result = new ArrayList<>();
+        try (var paths = Files.list(modsDirectory)) {
+            for (Path jar : paths.filter(path -> path.getFileName().toString()
+                    .toLowerCase(Locale.ROOT).endsWith(".jar"))
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString(),
+                            String.CASE_INSENSITIVE_ORDER)).toList()) {
+                try {
+                    JsonObject metadata = readMetadata(jar);
+                    if (metadata == null) continue;
+                    String id = string(metadata, "id");
+                    if (!id.matches("[a-z0-9][a-z0-9_.-]{0,63}")) continue;
+                    String name = string(metadata, "name");
+                    String version = string(metadata, "version");
+                    String icon = string(metadata, "icon");
+                    if (icon.isBlank()) {
+                        JsonElement iconValue = metadata.get("icon");
+                        if (iconValue != null && iconValue.isJsonObject()) {
+                            JsonObject icons = iconValue.getAsJsonObject();
+                            icon = icons.has("64") ? string(icons, "64")
+                                    : icons.has("32") ? string(icons, "32")
+                                    : icons.has("16") ? string(icons, "16") : "";
+                        }
+                    }
+                    if (icon.isBlank()) icon = "assets/" + id + "/icon.png";
+                    result.add(new AvailableMod(id, name.isBlank() ? id : name,
+                            version, jar, icon));
+                } catch (Exception | LinkageError ignored) {
+                    // Invalid or unreadable JARs are not presented as installable mods.
+                }
+            }
+        } catch (IOException ignored) {
+            return List.of();
+        }
+        return List.copyOf(result);
+    }
+
     public static synchronized Result scanAndLoad() {
+        return scanAndLoad(null);
+    }
+
+    /** Loads one selected JAR plus its transitive required dependencies. */
+    public static synchronized Result scanAndLoad(String requestedModId) {
         Path modsDirectory = FabricLoader.getInstance().getGameDir().resolve("mods");
         if (!Files.isDirectory(modsDirectory)) {
             return new Result(0, 0, 0, "Mods directory was not found.");
@@ -170,6 +215,29 @@ public final class ExperimentalModHotLoader {
             failed++;
             details.add("Could not scan mods directory: " + safeMessage(exception));
             return result(0, skipped, failed, details);
+        }
+
+        if (requestedModId != null) {
+            if (!candidates.containsKey(requestedModId)) {
+                return result(0, skipped + 1, failed, List.of(requestedModId
+                        + ": not eligible for experimental hot-loading (already loaded, unsupported, "
+                        + "or missing a valid client entrypoint)"));
+            }
+            Set<String> required = new LinkedHashSet<>();
+            List<String> pending = new ArrayList<>();
+            pending.add(requestedModId);
+            while (!pending.isEmpty()) {
+                String id = pending.remove(pending.size() - 1);
+                if (!required.add(id)) continue;
+                Candidate candidate = candidates.get(id);
+                if (candidate == null) continue;
+                for (String dependency : candidate.dependencies().keySet()) {
+                    if (candidates.containsKey(dependency) && !required.contains(dependency)) {
+                        pending.add(dependency);
+                    }
+                }
+            }
+            candidates.keySet().removeIf(id -> !required.contains(id));
         }
 
         skipped += rejectDuplicateClasses(candidates, details);
