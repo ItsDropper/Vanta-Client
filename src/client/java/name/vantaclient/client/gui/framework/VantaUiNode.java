@@ -32,6 +32,14 @@ public final class VantaUiNode {
     private Supplier<String> textSupplier;
     private String tooltip = "";
     private String placeholder = "";
+    private String cachedDynamicText;
+    private String cachedInputValue;
+    private String cachedInputVisibleText = "";
+    private int cachedInputAvailableWidth = -1;
+    private int cachedInputCursor = -1;
+    private int cachedInputCursorWidth;
+    private double cachedSliderValue = Double.NaN;
+    private String cachedSliderValueText = "";
     private Supplier<String> inputValue;
     private Consumer<String> inputSetter;
     private int inputMaximumLength = 128;
@@ -474,7 +482,11 @@ public final class VantaUiNode {
                 double range = sliderMaximum - sliderMinimum;
                 double normalized = range <= 0.0 ? 0.0 : clamp((value - sliderMinimum) / range, 0.0, 1.0);
                 graphics.drawString(font, label, x, y + 2, VantaUiTheme.TEXT_PRIMARY);
-                String valueText = formatValue(value);
+                if (Double.compare(value, cachedSliderValue) != 0) {
+                    cachedSliderValue = value;
+                    cachedSliderValueText = formatValue(value);
+                }
+                String valueText = cachedSliderValueText;
                 graphics.drawString(font, valueText, x + width - font.width(valueText), y + 2,
                         VantaUiTheme.TEXT_SECONDARY);
                 int trackY = y + 28;
@@ -501,7 +513,7 @@ public final class VantaUiNode {
                 if (focused) graphics.fill(boxX, y + height - 2, x + width, y + height, accent);
             }
             case TEXT_FIELD -> {
-                int fieldBackground = focused ? 0xFF111B29 : 0xFF0E1621;
+                int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
                 graphics.fill(x, y, x + width, y + height, fieldBackground);
                 graphics.fill(x, y, x + width, 1 + y, focused ? accent : VantaUiTheme.BORDER);
                 graphics.fill(x, y + height - 1, x + width, y + height,
@@ -509,22 +521,35 @@ public final class VantaUiNode {
 
                 String value = currentInput();
                 int availableWidth = Math.max(0, width - 18);
-                String shown = value;
-                while (!shown.isEmpty() && font.width(shown) > availableWidth) {
-                    shown = shown.substring(1);
+                int cursor = clamp(inputCursor, 0, value.length());
+                if (!value.equals(cachedInputValue)
+                        || availableWidth != cachedInputAvailableWidth
+                        || cursor != cachedInputCursor) {
+                    cachedInputValue = value;
+                    cachedInputAvailableWidth = availableWidth;
+                    cachedInputCursor = cursor;
+
+                    int visibleStart = 0;
+                    while (visibleStart < cursor
+                            && font.width(value.substring(visibleStart, cursor)) > availableWidth) {
+                        visibleStart++;
+                    }
+                    int visibleEnd = value.length();
+                    while (visibleEnd > cursor
+                            && font.width(value.substring(visibleStart, visibleEnd)) > availableWidth) {
+                        visibleEnd--;
+                    }
+                    cachedInputVisibleText = value.substring(visibleStart, visibleEnd);
+                    cachedInputCursorWidth = font.width(value.substring(visibleStart, cursor));
                 }
+
                 int textColor = value.isEmpty()
                         ? VantaUiTheme.TEXT_MUTED : VantaUiTheme.TEXT_PRIMARY;
-                String display = value.isEmpty() ? placeholder : shown;
-                graphics.drawString(font, display, x + 8, y + (height - 9) / 2, textColor);
+                String display = value.isEmpty() ? placeholder : cachedInputVisibleText;
+                graphics.drawString(font, display, x + 8, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
 
                 if (focused && caretVisible && width > 12) {
-                    int cursor = Math.max(0, Math.min(inputCursor, value.length()));
-                    String prefix = value.substring(0, cursor);
-                    while (!prefix.isEmpty() && font.width(prefix) > availableWidth) {
-                        prefix = prefix.substring(1);
-                    }
-                    int caretX = Math.min(x + width - 5, x + 8 + font.width(prefix));
+                    int caretX = Math.min(x + width - 5, x + 8 + cachedInputCursorWidth);
                     int caretY = y + (height - 12) / 2;
                     graphics.fill(caretX, caretY, caretX + 1, caretY + 12, accent);
                 }
@@ -552,7 +577,7 @@ public final class VantaUiNode {
     void tick(VantaUiTheme theme) {
         if (kind == Kind.TEXT_FIELD && focused) {
             caretTicks++;
-            if (caretTicks >= 10) {
+            if (caretTicks >= VantaUiTheme.CARET_BLINK_TICKS) {
                 caretTicks = 0;
                 caretVisible = !caretVisible;
             }
@@ -565,7 +590,7 @@ public final class VantaUiNode {
         if (!theme.animationsEnabled()) {
             hoverAmount = hoverTarget;
         } else {
-            hoverAmount += (hoverTarget - hoverAmount) * 0.30f;
+            hoverAmount += (hoverTarget - hoverAmount) * VantaUiTheme.HOVER_EASING;
             if (Math.abs(hoverTarget - hoverAmount) < 0.01f) hoverAmount = hoverTarget;
         }
         if (kind == Kind.TOGGLE && toggleValue != null) {
@@ -573,7 +598,7 @@ public final class VantaUiNode {
             if (!theme.animationsEnabled()) {
                 animatedToggle = target;
             } else {
-                animatedToggle += (target - animatedToggle) * 0.28f;
+                animatedToggle += (target - animatedToggle) * VantaUiTheme.TOGGLE_EASING;
                 if (Math.abs(target - animatedToggle) < 0.01f) animatedToggle = target;
             }
         }
@@ -753,7 +778,9 @@ public final class VantaUiNode {
     private String currentText() {
         if (textSupplier == null) return label;
         String value = textSupplier.get();
-        return value == null ? "" : value;
+        if (value == null) value = "";
+        if (!value.equals(cachedDynamicText)) cachedDynamicText = value;
+        return cachedDynamicText;
     }
 
     private static int mixColor(int from, int to, float amount) {
