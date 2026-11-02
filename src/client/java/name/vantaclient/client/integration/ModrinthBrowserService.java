@@ -157,11 +157,29 @@ public final class ModrinthBrowserService {
             try (java.util.jar.JarFile ignored = new java.util.jar.JarFile(temporary.toFile())) {
                 if (ignored.getJarEntry("fabric.mod.json") == null) throw new IOException("Downloaded file is not a Fabric mod JAR.");
             }
-            Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
             installed.add(destination);
         } catch (IOException exception) {
             Files.deleteIfExists(temporary);
             throw exception;
+        }
+    }
+
+    public static String readFabricModId(Path jarPath) throws IOException {
+        try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarPath.toFile())) {
+            var entry = jar.getJarEntry("fabric.mod.json");
+            if (entry == null) throw new IOException("Downloaded JAR has no Fabric metadata.");
+            try (InputStream input = jar.getInputStream(entry)) {
+                JsonObject metadata = JsonParser.parseString(new String(input.readNBytes(1024 * 1024 + 1),
+                        StandardCharsets.UTF_8)).getAsJsonObject();
+                String id = string(metadata, "id");
+                if (!id.matches("[a-z0-9][a-z0-9_.-]{0,63}")) throw new IOException("Downloaded JAR has an invalid Fabric mod ID.");
+                return id;
+            }
         }
     }
 
