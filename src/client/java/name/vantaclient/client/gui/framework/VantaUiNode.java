@@ -342,7 +342,7 @@ public final class VantaUiNode {
 
         if (kind != Kind.CONTAINER) return;
         List<VantaUiNode> layoutChildren = new ArrayList<>();
-        for (VantaUiNode child : children) {
+        for (VantaUiNode child : layoutChildren) {
             if (child.visible) layoutChildren.add(child);
         }
         if (layoutChildren.isEmpty()) {
@@ -357,7 +357,7 @@ public final class VantaUiNode {
         int innerHeight = Math.max(0, this.height - padding * 2);
 
         if (direction == Direction.STACK) {
-            for (VantaUiNode child : children) {
+            for (VantaUiNode child : layoutChildren) {
                 int childWidth = child.preferredWidth >= 0
                         ? Math.min(innerWidth, child.preferredWidth)
                         : child.alignment == Alignment.STRETCH ? innerWidth
@@ -375,10 +375,10 @@ public final class VantaUiNode {
             return;
         }
 
-        int childGap = gap * Math.max(0, children.size() - 1);
+        int childGap = gap * Math.max(0, layoutChildren.size() - 1);
         float totalFlex = 0.0f;
         int fixedPrimary = 0;
-        for (VantaUiNode child : children) {
+        for (VantaUiNode child : layoutChildren) {
             if (child.flex > 0.0f) totalFlex += child.flex;
             else fixedPrimary += direction == Direction.COLUMN
                     ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
@@ -386,10 +386,10 @@ public final class VantaUiNode {
 
         int availablePrimary = Math.max(0,
                 (direction == Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
-        int[] primarySizes = new int[children.size()];
+        int[] primarySizes = new int[layoutChildren.size()];
         int measuredContent = childGap;
-        for (int i = 0; i < children.size(); i++) {
-            VantaUiNode child = children.get(i);
+        for (int i = 0; i < layoutChildren.size(); i++) {
+            VantaUiNode child = layoutChildren.get(i);
             int primary = child.flex > 0.0f && totalFlex > 0.0f
                     ? Math.round(availablePrimary * child.flex / totalFlex)
                     : direction == Direction.COLUMN ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
@@ -406,7 +406,7 @@ public final class VantaUiNode {
                 case CENTER -> leadingSpace = freeSpace / 2;
                 case END -> leadingSpace = freeSpace;
                 case SPACE_BETWEEN -> {
-                    if (children.size() > 1) distributedGap = freeSpace / (children.size() - 1);
+                    if (layoutChildren.size() > 1) distributedGap = freeSpace / (layoutChildren.size() - 1);
                 }
                 case START -> { }
             }
@@ -423,8 +423,8 @@ public final class VantaUiNode {
         int cursor = direction == Direction.COLUMN
                 ? innerY + leadingSpace - (scrollable ? scrollOffset : 0)
                 : innerX + leadingSpace;
-        for (int i = 0; i < children.size(); i++) {
-            VantaUiNode child = children.get(i);
+        for (int i = 0; i < layoutChildren.size(); i++) {
+            VantaUiNode child = layoutChildren.get(i);
             int primary = primarySizes[i];
 
             if (direction == Direction.COLUMN) {
@@ -583,7 +583,7 @@ public final class VantaUiNode {
                         y + controlHeight, accent);
 
                 if (dropdownOpen) {
-                    int visibleOptions = Math.min(5, dropdownOptions.size());
+                    int visibleOptions = dropdownOptions.size();
                     int menuTop = y + controlHeight;
                     graphics.fill(x, menuTop, x + width, menuTop + visibleOptions * 22,
                             VantaUiTheme.PANEL_RAISED);
@@ -764,7 +764,7 @@ public final class VantaUiNode {
                     }
                 } else {
                     int optionIndex = (int) ((mouseY - controlBottom) / 22.0);
-                    if (optionIndex >= 0 && optionIndex < Math.min(5, dropdownOptions.size())) {
+                    if (optionIndex >= 0 && optionIndex < dropdownOptions.size()) {
                         dropdownHighlight = optionIndex;
                         dropdownSetter.accept(dropdownOptions.get(optionIndex));
                     }
@@ -838,7 +838,7 @@ public final class VantaUiNode {
             }
             case DROPDOWN -> {
                 if (dropdownOpen) {
-                    if (dropdownHighlight >= 0 && dropdownHighlight < Math.min(5, dropdownOptions.size())) {
+                    if (dropdownHighlight >= 0 && dropdownHighlight < dropdownOptions.size()) {
                         dropdownSetter.accept(dropdownOptions.get(dropdownHighlight));
                     }
                     dropdownOpen = false;
@@ -859,7 +859,7 @@ public final class VantaUiNode {
             setSliderValue(sliderValue.getAsDouble() + step * direction);
         } else if (kind == Kind.DROPDOWN) {
             if (dropdownOpen) {
-                int maxIndex = Math.min(5, dropdownOptions.size()) - 1;
+                int maxIndex = dropdownOptions.size() - 1;
                 dropdownHighlight = Math.max(0, Math.min(maxIndex, dropdownHighlight + direction));
             } else {
                 cycleDropdown(direction);
