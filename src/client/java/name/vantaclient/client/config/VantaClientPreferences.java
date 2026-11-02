@@ -8,11 +8,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Persistent presentation preferences for the Vanta Client interface. */
 public final class VantaClientPreferences {
     public enum Accent {
-        BLUE(0xFF718BFF),
+        BLUE(0xFF3B82FF),
         VIOLET(0xFF9A7BFF),
         EMERALD(0xFF45D6A0),
         CYAN(0xFF48C9E8);
@@ -31,6 +33,8 @@ public final class VantaClientPreferences {
     public boolean compactMode = false;
     public boolean showDescriptions = true;
     public double uiScale = 1.0;
+    public double panelOpacity = 0.92;
+    public Set<String> favoriteMods = new HashSet<>();
 
     private VantaClientPreferences() {}
 
@@ -54,6 +58,9 @@ public final class VantaClientPreferences {
         if (instance.accent == null) instance.accent = Accent.BLUE;
         if (!Double.isFinite(instance.uiScale)) instance.uiScale = 1.0;
         instance.uiScale = Math.max(0.8, Math.min(1.2, instance.uiScale));
+        if (!Double.isFinite(instance.panelOpacity)) instance.panelOpacity = 0.92;
+        instance.panelOpacity = Math.max(0.72, Math.min(0.98, instance.panelOpacity));
+        if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
     }
 
     public static void save() {
