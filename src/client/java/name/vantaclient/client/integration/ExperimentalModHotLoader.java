@@ -100,6 +100,7 @@ public final class ExperimentalModHotLoader {
         } catch (IOException ignored) {
             return List.of();
         }
+        result.sort(Comparator.comparing(AvailableMod::name, String.CASE_INSENSITIVE_ORDER));
         return List.copyOf(result);
     }
 
