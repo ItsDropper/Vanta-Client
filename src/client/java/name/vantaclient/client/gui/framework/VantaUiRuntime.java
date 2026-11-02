@@ -40,10 +40,10 @@ public final class VantaUiRuntime {
                 ? 1.0f / 60.0f
                 : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
         lastFrameNanos = now;
-        root.animate(theme, deltaSeconds);
         root.clearHover();
         hovered = root.hitTest(mouseX, mouseY);
         if (hovered != null) hovered.setHovered(true);
+        root.animate(theme, deltaSeconds);
 
         root.render(graphics, font, theme, mouseX, mouseY);
         renderTooltip(graphics, font, screenWidth, screenHeight);
