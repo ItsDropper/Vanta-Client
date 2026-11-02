@@ -168,6 +168,7 @@ public final class VantaUiRuntime {
     }
 
     private void setFocused(VantaUiNode node) {
+        pendingFocusReveal = null;
         if (focused == node) return;
         if (focused != null) focused.setFocused(false);
         focused = node != null && node.isInteractive() ? node : null;
