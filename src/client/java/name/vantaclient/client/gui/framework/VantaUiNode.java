@@ -3,7 +3,6 @@ package name.vantaclient.client.gui.framework;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
@@ -167,7 +166,7 @@ public final class VantaUiNode {
         if (texture == null) throw new IllegalArgumentException("Image texture cannot be null.");
         if (REGISTERED_IMAGES.add(texture)) {
             try {
-                Minecraft.getInstance().getTextureManager().register(texture, new SimpleTexture(texture));
+                Minecraft.getInstance().getTextureManager().register(texture);
             } catch (RuntimeException exception) {
                 REGISTERED_IMAGES.remove(texture);
                 throw new IllegalStateException("Unable to register Vanta UI texture: " + texture, exception);
