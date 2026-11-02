@@ -3,6 +3,13 @@ package name.vantaclient.client.gui;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.platform.NativeImage;
+import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
 import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -23,7 +30,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private boolean busy;
     private int page;
     private final List<VantaPanelButton> cardButtons = new java.util.ArrayList<>();
+    private final Map<String, Identifier> projectIconTextures = new HashMap<>();
+    private final java.util.Set<String> requestedIcons = new java.util.HashSet<>();
     private VantaPanelButton enableButton;
+    private boolean closed;
 
     public VantaModrinthBrowserScreen(Screen parent) {
         super(Component.literal("Vanta Modrinth Library"));
@@ -49,10 +59,12 @@ public final class VantaModrinthBrowserScreen extends Screen {
         addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
         addPanelButton("Previous", 252, 492, 66, 26, () -> {
             page = Math.max(0, page - 1);
+            requestVisibleIcons();
             rebuildCards();
         }, false);
         addPanelButton("Next", 324, 492, 58, 26, () -> {
             page = Math.min(Math.max(0, (projects.size() - 1) / 6), page + 1);
+            requestVisibleIcons();
             rebuildCards();
         }, false);
         rebuildCards();
@@ -91,6 +103,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 projects = result;
                 page = 0;
                 status = result.size() + " compatible results. Select Install to download a mod and its required dependencies.";
+                requestVisibleIcons();
             }
             rebuildCards();
         }));
@@ -197,9 +210,17 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     hovered ? 0xFF202C3E : 0xFF1B2635);
             rounded(graphics, sx + VantaPanelButton.layoutSize(12), sy + VantaPanelButton.layoutSize(12),
                     VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42), 10, 0xFF263B5A);
-            String initial = project.title().isBlank() ? "?" : project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-            graphics.drawString(font, initial, sx + VantaPanelButton.layoutSize(27) - font.width(initial) / 2,
-                    sy + VantaPanelButton.layoutSize(28), 0xFF9BC2FF, false);
+            Identifier icon = projectIconTextures.get(project.id());
+            if (icon != null) {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, icon,
+                        sx + VantaPanelButton.layoutSize(12), sy + VantaPanelButton.layoutSize(12),
+                        0.0f, 0.0f, VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42),
+                        VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42));
+            } else {
+                String initial = project.title().isBlank() ? "?" : project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+                graphics.drawString(font, initial, sx + VantaPanelButton.layoutSize(27) - font.width(initial) / 2,
+                        sy + VantaPanelButton.layoutSize(28), 0xFF9BC2FF, false);
+            }
             graphics.drawString(font, trim(project.title(), 34), sx + VantaPanelButton.layoutSize(64),
                     sy + VantaPanelButton.layoutSize(13), 0xFFF2F5FB, false);
             drawWrapped(graphics, trim(project.description(), 120), sx + VantaPanelButton.layoutSize(64),
@@ -225,6 +246,46 @@ public final class VantaModrinthBrowserScreen extends Screen {
         graphics.drawString(font, busy ? "Working…" : status,
                 VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(522), 0xFF9EACC0, false);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void requestVisibleIcons() {
+        int start = page * 6;
+        int end = Math.min(projects.size(), start + 6);
+        for (int i = start; i < end; i++) {
+            ModrinthBrowserService.Project project = projects.get(i);
+            if (project.iconUrl() == null || project.iconUrl().isBlank()
+                    || projectIconTextures.containsKey(project.id())
+                    || !requestedIcons.add(project.id())) continue;
+            CompletableFuture.supplyAsync(() -> {
+                try { return ModrinthBrowserService.downloadIcon(project.iconUrl()); }
+                catch (Exception ignored) { return new byte[0]; }
+            }).thenAccept(bytes -> minecraft.execute(() -> registerProjectIcon(project.id(), bytes)));
+        }
+    }
+
+    private void registerProjectIcon(String projectId, byte[] bytes) {
+        if (closed || bytes == null || bytes.length < 24 || bytes.length > 512 * 1024
+                || bytes[0] != (byte) 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47
+                || bytes[4] != 0x0D || bytes[5] != 0x0A || bytes[6] != 0x1A || bytes[7] != 0x0A) return;
+        int imageWidth = ((bytes[16] & 0xFF) << 24) | ((bytes[17] & 0xFF) << 16)
+                | ((bytes[18] & 0xFF) << 8) | (bytes[19] & 0xFF);
+        int imageHeight = ((bytes[20] & 0xFF) << 24) | ((bytes[21] & 0xFF) << 16)
+                | ((bytes[22] & 0xFF) << 8) | (bytes[23] & 0xFF);
+        if (imageWidth <= 0 || imageHeight <= 0 || imageWidth > 512 || imageHeight > 512) return;
+        try {
+            NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
+            if (image.getWidth() <= 0 || image.getHeight() <= 0
+                    || image.getWidth() > 512 || image.getHeight() > 512) {
+                image.close();
+                return;
+            }
+            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "modrinth/" + projectId);
+            minecraft.getTextureManager().register(texture,
+                    new DynamicTexture(() -> "Vanta Modrinth icon " + projectId, image));
+            projectIconTextures.put(projectId, texture);
+        } catch (Exception | LinkageError ignored) {
+            // Invalid optional icons fall back to the project's initial.
+        }
     }
 
     private VantaPanelButton addPanelButton(String label, int x, int y, int w, int h,
@@ -269,6 +330,11 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     @Override
     public void onClose() {
+        closed = true;
+        for (Identifier texture : projectIconTextures.values()) {
+            minecraft.getTextureManager().release(texture);
+        }
+        projectIconTextures.clear();
         minecraft.setScreen(parent);
     }
 
