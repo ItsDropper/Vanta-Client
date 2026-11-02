@@ -53,16 +53,6 @@ public class ArmorHudElement extends HudElement {
         } else {
             renderVertical(graphics, armor);
         }
-
-        if (HudEditorFeature.INSTANCE.isEnabled()) {
-            graphics.fill(
-                    -2,
-                    -2,
-                    getWidth(),
-                    getHeight(),
-                    0x55FFFFFF
-            );
-        }
     }
 
     private void renderVertical(
