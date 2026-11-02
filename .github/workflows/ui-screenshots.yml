@@ -41,14 +41,21 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run real Minecraft client screenshot tests
-        run: ./gradlew runProductionClientGameTest --stacktrace
+        run: xvfb-run -a ./gradlew runClientGameTest --stacktrace
+
+      - name: Verify screenshot count
+        run: |
+          find build/ui-screenshots -type f -name '*.png' -maxdepth 1 -print
+          count=$(find build/ui-screenshots -maxdepth 1 -type f -name '*.png' | wc -l)
+          echo "Captured screenshot count: $count"
+          test "$count" -eq 12
 
       - name: Upload Minecraft screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: vanta-ui-screenshots
-          path: build/run/clientGameTest/screenshots/
+          path: build/ui-screenshots/
           if-no-files-found: warn
           retention-days: 14
 
@@ -58,7 +65,8 @@ jobs:
         with:
           name: vanta-ui-test-diagnostics
           path: |
-            build/run/clientGameTest/
+            build/run/
+            build/ui-screenshots/
             build/reports/
           if-no-files-found: warn
           retention-days: 7
