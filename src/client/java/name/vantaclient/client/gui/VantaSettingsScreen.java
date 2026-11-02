@@ -96,7 +96,7 @@ public final class VantaSettingsScreen extends Screen {
             navigation.add(VantaUiNode.spacer(1).flex(1));
             navigation.add(VantaUiNode.eyebrow("TOOLS"));
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
-                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
+                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this, true)))
                     .height(34).tooltip("Open installed mods and integrations"));
             navigation.add(VantaUiNode.text("LOCAL CONFIGURATION", VantaUiTheme.TEXT_MUTED));
         }
@@ -196,6 +196,13 @@ public final class VantaSettingsScreen extends Screen {
     }
 
     private void addFeatureCategory(VantaUiNode content) {
+        if (page == Page.HUD) {
+            content.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
+                    .add(VantaUiNode.button("Open HUD editor", VantaUiNode.Icon.HUD,
+                            () -> Minecraft.getInstance().setScreen(
+                                    new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                            .height(32)));
+        }
         Category category = toCategory(page);
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
