@@ -55,7 +55,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
         addPanelButton("Search", 694, 76, 94, 30, this::search, true);
         addPanelButton("Clear", 796, 76, 44, 30, this::clearSearch, false);
         addPanelButton("Discover", 34, 132, 184, 30, this::loadPopular, true);
-        addPanelButton("Installed mods", 34, 170, 184, 30, this::onClose, false);
+        addPanelButton("Back to Vanta Client", 34, 170, 184, 30, this::onClose, false);
         addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
         addPanelButton("Previous", 252, 492, 66, 26, () -> {
             page = Math.max(0, page - 1);
@@ -90,6 +90,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
         if (busy) return;
         String query = searchBox.getValue().trim();
         busy = true;
+        setCardButtonsActive(false);
         status = query.isEmpty() ? "Loading popular Fabric mods…" : "Searching Modrinth…";
         CompletableFuture.supplyAsync(() -> {
             try { return ModrinthBrowserService.search(query); }
@@ -102,6 +103,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
             } else {
                 projects = result;
                 page = 0;
+                pruneProjectIcons();
                 status = result.size() + " compatible results. Select Install to download a mod and its required dependencies.";
                 requestVisibleIcons();
             }
@@ -122,13 +124,34 @@ public final class VantaModrinthBrowserScreen extends Screen {
             VantaPanelButton installButton = new VantaPanelButton(x + 226, y + 66, 82, 24,
                     "Install", () -> install(project), () -> false,
                     () -> 0xFF438BFF, true);
+            installButton.setActive(!busy);
             cardButtons.add(addRenderableWidget(installButton));
         }
+    }
+
+    private void setCardButtonsActive(boolean active) {
+        for (VantaPanelButton button : cardButtons) button.setActive(active);
+    }
+
+    private void pruneProjectIcons() {
+        java.util.Set<String> retained = projects.stream()
+                .map(ModrinthBrowserService.Project::id)
+                .collect(java.util.stream.Collectors.toSet());
+        var iterator = projectIconTextures.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            if (!retained.contains(entry.getKey())) {
+                minecraft.getTextureManager().release(entry.getValue());
+                iterator.remove();
+            }
+        }
+        requestedIcons.retainAll(retained);
     }
 
     private void install(ModrinthBrowserService.Project project) {
         if (busy) return;
         busy = true;
+        setCardButtonsActive(false);
         status = "Installing " + project.title() + " and resolving required dependencies…";
         CompletableFuture.supplyAsync(() -> {
             try { return ModrinthBrowserService.install(project.id()); }
@@ -137,6 +160,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
             busy = false;
             if (error != null) {
                 status = "Install failed: " + safeMessage(error);
+                rebuildCards();
                 return;
             }
             status = result.summary();
@@ -147,6 +171,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     modId = ModrinthBrowserService.readFabricModId(primary);
                 } catch (Exception exception) {
                     status += " Enable unavailable: " + safeMessage(exception);
+                    rebuildCards();
                     return;
                 }
                 if (enableButton != null) removeWidget(enableButton);
@@ -156,6 +181,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 }, true);
                 status += " " + modId + " is ready for an experimental session-load attempt.";
             }
+            rebuildCards();
         }));
     }
 
