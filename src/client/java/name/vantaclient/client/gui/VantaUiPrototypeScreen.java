@@ -70,11 +70,11 @@ public final class VantaUiPrototypeScreen extends Screen {
         boolean compact = width < 760;
         int accent = VantaClientPreferences.get().accent.color();
         VantaUiNode root = VantaUiNode.column(10, compact ? 9 : 14)
-                .background(0xFF080B11);
+                .background(0xFF090B10);
 
         VantaUiNode header = VantaUiNode.row(10, 10)
                 .height(42)
-                .background(0xFF0E141E);
+                .background(0xFF121722);
         VantaUiNode brand = VantaUiNode.row(7, 0).width(compact ? 100 : 150);
         brand.add(VantaUiNode.text("V", accent).width(14));
         brand.add(VantaUiNode.text("VANTA CLIENT", VantaUiTheme.TEXT_PRIMARY));
@@ -95,13 +95,13 @@ public final class VantaUiPrototypeScreen extends Screen {
 
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(5, 5).height(36).background(0xFF0E141E);
+            navigation = VantaUiNode.row(5, 5).height(36).background(0xFF121722);
             int tabWidth = Math.max(58, (width - 55) / 3);
             navigation.add(navButton("HOME", PAGE_OVERVIEW).width(tabWidth));
             navigation.add(navButton("VISUALS", PAGE_VISUALS).width(tabWidth));
             navigation.add(navButton("INPUT", PAGE_CONTROLS).width(tabWidth));
         } else {
-            navigation = VantaUiNode.column(7, 10).width(142).background(0xFF0E141E);
+            navigation = VantaUiNode.column(7, 10).width(142).background(0xFF121722);
             navigation.add(VantaUiNode.text("MENU", VantaUiTheme.TEXT_MUTED));
             navigation.add(navButton("Overview", PAGE_OVERVIEW));
             navigation.add(navButton("Visuals", PAGE_VISUALS));
@@ -118,7 +118,7 @@ public final class VantaUiPrototypeScreen extends Screen {
 
         VantaUiNode content = VantaUiNode.column(11, compact ? 10 : 16)
                 .flex(1)
-                .background(0xFF101722)
+                .background(0xFF141A25)
                 .scrollable();
         addPageContent(content);
         body.add(navigation);
@@ -151,7 +151,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 "A cleaner, faster control center for your Minecraft experience.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
 
-        VantaUiNode hero = VantaUiNode.column(7, 12).background(0xFF172235);
+        VantaUiNode hero = VantaUiNode.column(7, 12).background(0xFF1B2433);
         hero.add(VantaUiNode.text("VANTA  /  CLIENT OVERVIEW", accent));
         hero.add(VantaUiNode.text("Make the game yours.", VantaUiTheme.TEXT_PRIMARY).height(20));
         hero.add(VantaUiNode.paragraph(
@@ -174,7 +174,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         content.add(metrics);
 
         content.add(sectionHeading("QUICK SETTINGS", "Frequently used client preferences"));
-        VantaUiNode quick = VantaUiNode.column(2, 8).background(0xFF0C121B);
+        VantaUiNode quick = VantaUiNode.column(2, 8).background(0xFF171E2A);
         quick.add(VantaUiNode.toggle("Show FPS counter", () -> showFps, value -> showFps = value));
         quick.add(VantaUiNode.toggle("Performance hints", () -> showPerformanceHints,
                 value -> showPerformanceHints = value));
@@ -187,7 +187,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         content.add(quick);
 
         content.add(sectionHeading("GAMEPLAY PREVIEW", "Prototype values do not change live game settings"));
-        VantaUiNode settings = VantaUiNode.column(7, 10).background(0xFF0C121B);
+        VantaUiNode settings = VantaUiNode.column(7, 10).background(0xFF171E2A);
         settings.add(VantaUiNode.slider("Render distance preview", 2, 32, 1,
                 () -> renderDistancePreview, value -> renderDistancePreview = value));
         settings.add(VantaUiNode.dropdown("Update strategy",
@@ -226,7 +226,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 "Shape the information on screen. These controls preview the future Vanta HUD editor.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
 
-        VantaUiNode crosshair = VantaUiNode.column(7, 10).background(0xFF0C121B);
+        VantaUiNode crosshair = VantaUiNode.column(7, 10).background(0xFF171E2A);
         crosshair.add(sectionHeading("CROSSHAIR", "Style and scale"));
         crosshair.add(VantaUiNode.toggle("Enable custom crosshair", () -> customCrosshair,
                 value -> customCrosshair = value));
@@ -239,7 +239,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 accent));
         content.add(crosshair);
 
-        VantaUiNode hud = VantaUiNode.column(7, 10).background(0xFF0C121B);
+        VantaUiNode hud = VantaUiNode.column(7, 10).background(0xFF171E2A);
         hud.add(sectionHeading("HUD LAYOUT", "Alignment and sizing"));
         hud.add(VantaUiNode.toggle("Show alignment grid", () -> hudGrid,
                 value -> hudGrid = value));
@@ -261,7 +261,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 "Search, configure input behavior and validate keyboard navigation.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
 
-        VantaUiNode search = VantaUiNode.column(5, 10).background(0xFF0C121B);
+        VantaUiNode search = VantaUiNode.column(5, 10).background(0xFF171E2A);
         search.add(sectionHeading("FEATURE SEARCH", "Prototype search field"));
         search.add(VantaUiNode.textField("Search features...", () -> searchQuery,
                 value -> searchQuery = value, 64));
@@ -270,7 +270,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 VantaUiTheme.TEXT_SECONDARY));
         content.add(search);
 
-        VantaUiNode input = VantaUiNode.column(7, 10).background(0xFF0C121B);
+        VantaUiNode input = VantaUiNode.column(7, 10).background(0xFF171E2A);
         input.add(sectionHeading("KEYBIND BEHAVIOR", "How feature activation should work"));
         input.add(VantaUiNode.dropdown("Activation mode",
                 List.of("Hold", "Toggle", "Press once"),
