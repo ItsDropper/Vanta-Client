@@ -14,6 +14,10 @@ import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -22,6 +26,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.jar.JarFile;
 
 /** Unified Vanta Client settings and installed-mod browser. */
 public class VantaIntegrationsScreen extends Screen {
@@ -39,6 +52,8 @@ public class VantaIntegrationsScreen extends Screen {
     private Feature selectedFeature;
     private String selectedModId;
     private List<ModContainer> installedMods = List.of();
+    private List<ExperimentalModHotLoader.AvailableMod> availableMods = List.of();
+    private final Map<String, Identifier> modIconTextures = new HashMap<>();
     private Map<String, Object> discoveredConfigFactories = Map.of();
     private List<ModDescriptor> integrations = List.of();
     private int sidebarScroll;
@@ -120,6 +135,42 @@ public class VantaIntegrationsScreen extends Screen {
                 .sorted(Comparator.comparing(mod -> mod.getMetadata().getName(),
                         String.CASE_INSENSITIVE_ORDER))
                 .toList();
+        availableMods = ExperimentalModHotLoader.getAvailableMods();
+        for (Identifier texture : modIconTextures.values()) {
+            minecraft.getTextureManager().release(texture);
+        }
+        modIconTextures.clear();
+        for (ExperimentalModHotLoader.AvailableMod mod : availableMods) {
+            loadModIcon(mod.id(), mod.path(), mod.iconPath());
+        }
+    }
+
+    private void loadModIcon(String modId, Path jarPath, String iconPath) {
+        if (iconPath == null || iconPath.isBlank() || iconPath.startsWith("/")
+                || iconPath.contains("..") || iconPath.contains("\\")) return;
+        try (JarFile jar = new JarFile(jarPath.toFile())) {
+            var entry = jar.getJarEntry(iconPath);
+            if (entry == null || entry.getSize() <= 0 || entry.getSize() > 1024 * 1024) return;
+            byte[] bytes;
+            try (InputStream input = jar.getInputStream(entry);
+                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                input.transferTo(output);
+                bytes = output.toByteArray();
+            }
+            if (bytes.length == 0 || bytes.length > 1024 * 1024) return;
+            NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
+            if (image.getWidth() > 512 || image.getHeight() > 512
+                    || image.getWidth() <= 0 || image.getHeight() <= 0) {
+                image.close();
+                return;
+            }
+            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "mod_icons/" + modId);
+            minecraft.getTextureManager().register(texture,
+                    new DynamicTexture("Vanta mod icon " + modId, image));
+            modIconTextures.put(modId, texture);
+        } catch (Exception | LinkageError ignored) {
+            // Missing, malformed or oversized optional icons fall back to the mod initial.
+        }
     }
 
     private void addModNavigation() {
@@ -150,21 +201,38 @@ public class VantaIntegrationsScreen extends Screen {
         int cardHeight = 104;
         int startY = CONTENT_TOP + 88;
         int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
-        int start = Math.min(sidebarScroll, Math.max(0, installedMods.size() - visibleRows * columns));
-        int end = Math.min(installedMods.size(), start + visibleRows * columns);
+        int start = Math.min(sidebarScroll, Math.max(0, availableMods.size() - visibleRows * columns));
+        int end = Math.min(availableMods.size(), start + visibleRows * columns);
+        Set<String> hotLoadedIds = new HashSet<>();
+        ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
         for (int index = start; index < end; index++) {
-            ModContainer mod = installedMods.get(index);
-            String id = mod.getMetadata().getId();
+            ExperimentalModHotLoader.AvailableMod mod = availableMods.get(index);
+            String id = mod.id();
             int column = (index - start) % columns;
             int row = (index - start) / columns;
             int x = contentX() + column * (cardWidth + gap);
             int y = startY + row * (cardHeight + gap);
             int buttonY = y + 70;
-            addPanelButton("Settings", x + 8, buttonY, Math.max(56, cardWidth - 74), 24,
-                    () -> selectInstalledMod(id));
-            addPanelButton("Loaded", x + cardWidth - 62, buttonY, 54, 24,
-                    () -> hotLoadStatus = mod.getMetadata().getName()
-                            + " is already loaded by Fabric. Runtime disabling is not supported.");
+            boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(id);
+            boolean hotLoaded = hotLoadedIds.contains(id);
+            addPanelButton("Settings", x + 8, buttonY, Math.max(56, cardWidth - 116), 24, () -> {
+                if (fabricLoaded) {
+                    selectInstalledMod(id);
+                } else {
+                    hotLoadStatus = "Settings are only available for mods exposing a supported configuration screen or API.";
+                }
+            });
+            if (fabricLoaded || hotLoaded) {
+                addPanelButton("Enabled", x + cardWidth - 102, buttonY, 94, 24,
+                        () -> hotLoadStatus = id + " is already active. Arbitrary Fabric mods cannot be safely disabled at runtime.");
+            } else {
+                addPanelButton("Enable*", x + cardWidth - 102, buttonY, 94, 24, () -> {
+                    ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
+                    hotLoadStatus = result.summary();
+                    refreshModList();
+                    rebuildWidgets();
+                });
+            }
         }
     }
 
@@ -680,7 +748,7 @@ public class VantaIntegrationsScreen extends Screen {
             }
         } else {
             graphics.drawString(font, "Installed mods", contentX(), 66, 0xFFE8EAF0);
-            graphics.drawString(font, installedMods.size() + " mods loaded by Fabric",
+            graphics.drawString(font, availableMods.size() + " installed mod JARs · * experimental hot-load",
                     contentX(), 86, 0xFF9296A3);
             graphics.drawString(font, "Three-column library · settings per mod · hot-loading is experimental",
                     contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
@@ -690,27 +758,38 @@ public class VantaIntegrationsScreen extends Screen {
             int cardHeight = 104;
             int startY = CONTENT_TOP + 88;
             int visibleRows = Math.max(1, (504 - startY - 24) / (cardHeight + gap));
-            int start = Math.min(sidebarScroll, Math.max(0, installedMods.size() - visibleRows * columns));
-            int end = Math.min(installedMods.size(), start + visibleRows * columns);
+            int start = Math.min(sidebarScroll, Math.max(0, availableMods.size() - visibleRows * columns));
+            int end = Math.min(availableMods.size(), start + visibleRows * columns);
+            Set<String> hotLoadedIds = new HashSet<>();
+            ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
             for (int index = start; index < end; index++) {
-                ModContainer mod = installedMods.get(index);
+                ExperimentalModHotLoader.AvailableMod mod = availableMods.get(index);
                 int column = (index - start) % columns;
                 int row = (index - start) / columns;
                 int x = contentX() + column * (cardWidth + gap);
                 int y = startY + row * (cardHeight + gap);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight, 0xFF171D27, 10);
-                drawRoundedCard(graphics, x + 10, y + 12, 34, 34, accent & 0x553F3F3F | 0xFF202A3A, 9);
-                String iconLetter = mod.getMetadata().getName().isBlank() ? "?" :
-                        mod.getMetadata().getName().substring(0, 1).toUpperCase(Locale.ROOT);
-                graphics.drawString(font, iconLetter, x + 22, y + 24, accent);
-                graphics.drawString(font, font.plainSubstrByWidth(mod.getMetadata().getName(),
+                drawRoundedCard(graphics, x + 10, y + 12, 34, 34, 0xFF202A3A, 9);
+                Identifier iconTexture = modIconTextures.get(mod.id());
+                if (iconTexture != null) {
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, x + 11, y + 13,
+                            0.0f, 0.0f, 32, 32, 32, 32);
+                } else {
+                    String iconLetter = mod.name().isBlank() ? "?" :
+                            mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
+                    graphics.drawString(font, iconLetter, x + 22, y + 24, accent);
+                }
+                graphics.drawString(font, font.plainSubstrByWidth(mod.name(),
                         cardWidth - 60), x + 52, y + 15, 0xFFF0F2F8);
-                graphics.drawString(font, font.plainSubstrByWidth(mod.getMetadata().getId(),
+                graphics.drawString(font, font.plainSubstrByWidth(mod.id(),
                         cardWidth - 60), x + 52, y + 29, 0xFF8994A7);
                 graphics.drawString(font, font.plainSubstrByWidth(
-                        mod.getMetadata().getVersion().getFriendlyString(), cardWidth - 18),
-                        x + 12, y + 53, 0xFF7F8A9C);
-                graphics.drawString(font, "Fabric loaded", x + 12, y + 82, 0xFF79B89A);
+                        mod.version(), cardWidth - 18), x + 12, y + 53, 0xFF7F8A9C);
+                boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
+                graphics.drawString(font, fabricLoaded ? "Fabric loaded"
+                        : hotLoadedIds.contains(mod.id()) ? "Experimental session"
+                        : "Not active · experimental", x + 12, y + 82,
+                        fabricLoaded || hotLoadedIds.contains(mod.id()) ? 0xFF79B89A : 0xFFE0B56A);
             }
             drawWrappedText(graphics, hotLoadStatus, contentX(), 486,
                     contentWidth() - 12, 0xFFB3B6C0, 2);
@@ -781,7 +860,7 @@ public class VantaIntegrationsScreen extends Screen {
             int cardHeight = 104;
             int gap = 12;
             int visibleRows = Math.max(1, (504 - (CONTENT_TOP + 88) - 24) / (cardHeight + gap));
-            int maxScroll = Math.max(0, installedMods.size() - visibleRows * columns);
+            int maxScroll = Math.max(0, availableMods.size() - visibleRows * columns);
             sidebarScroll = Math.max(0, Math.min(maxScroll,
                     sidebarScroll - (int) Math.signum(scrollY) * columns));
             rebuildWidgets();
