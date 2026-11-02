@@ -35,6 +35,7 @@ public final class VantaIntegrationSettingsScreen extends Screen {
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
+        runtime.setScale((float) name.vantaclient.client.config.VantaClientPreferences.get().uiScale);
         runtime.layout(font, width, height);
     }
 
@@ -163,7 +164,10 @@ public final class VantaIntegrationSettingsScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, 0xE6090C10);
-        if (runtime != null) runtime.render(graphics, font, width, height, mouseX, mouseY);
+        if (runtime != null) {
+            runtime.setScale((float) name.vantaclient.client.config.VantaClientPreferences.get().uiScale);
+            runtime.render(graphics, font, width, height, mouseX, mouseY);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
