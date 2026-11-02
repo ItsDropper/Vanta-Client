@@ -47,6 +47,7 @@ public final class VantaSettingsScreen extends Screen {
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
+        runtime.setScale((float) VantaClientPreferences.get().uiScale);
         runtime.layout(font, width, height);
     }
 
@@ -64,7 +65,7 @@ public final class VantaSettingsScreen extends Screen {
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = width < 760;
+        boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
         VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
         VantaUiNode header = VantaUiNode.row(12, 12)
                 .height(compact ? 42 : 48)
@@ -427,7 +428,10 @@ public final class VantaSettingsScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, 0xE6090C10);
-        if (runtime != null) runtime.render(graphics, font, width, height, mouseX, mouseY);
+        if (runtime != null) {
+            runtime.setScale((float) VantaClientPreferences.get().uiScale);
+            runtime.render(graphics, font, width, height, mouseX, mouseY);
+        }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
