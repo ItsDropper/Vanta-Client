@@ -204,7 +204,7 @@ public final class HudSettingsPanel {
     public static boolean mouseClicked(double mouseX, double mouseY) {
         if (!open || selected == null) return false;
         int x = getPanelX();
-        int y = getPanelY();
+        int y = getPanelY() + Math.round((1.0f - openProgress) * 12.0f);
 
         if (!inside(mouseX, mouseY, x, y, PANEL_WIDTH, PANEL_HEIGHT)) return false;
         if (inside(mouseX, mouseY, x + PANEL_WIDTH - 40, y + 12, 32, 28)
