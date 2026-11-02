@@ -56,7 +56,7 @@ The overview's UI CPU value measures Java-side component drawing and tooltip com
 ## Verification status
 
 - Source implementation: committed.
-- GitHub Actions builds passed for multiple intermediate framework commits; latest integrated commit is being validated separately.
+- Latest integrated code build passed: commit `851dcd27746296b34d60c81aee879861fe38f0a6`, [GitHub Actions run 41516894258](https://github.com/ItsDropper/Vanta-Client/actions/runs/41516894258), JDK 21 Gradle build.
 - In-game input/render/scale checks: pending local Minecraft execution.
 - Screenshot review: pending actual in-game screenshots.
 - Rendering overhead measurement: not yet measured.
