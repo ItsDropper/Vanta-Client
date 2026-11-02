@@ -67,7 +67,16 @@ public final class VantaUiRuntime {
         }
         target.click(mouseX, mouseY, button, font);
         if (target.kind() == VantaUiNode.Kind.SLIDER) activeSlider = target;
+
+        int layoutWidth = lastWidth;
+        int layoutHeight = lastHeight;
         lastWidth = -1;
+        if (target.isDropdownOpen() && layoutWidth > 0 && layoutHeight > 0) {
+            layout(font, layoutWidth, layoutHeight);
+            root.revealDescendant(target, target.height());
+            lastWidth = -1;
+            layout(font, layoutWidth, layoutHeight);
+        }
         return true;
     }
 
