@@ -137,7 +137,7 @@ public final class ExperimentalModHotLoader {
                     List<String> entrypoints = clientEntrypoints(metadata);
                     if (entrypoints.isEmpty()) {
                         skipped++;
-                        details.add(id + ": no supported string-based client entrypoint");
+                        details.add(id + ": no supported Java client entrypoint declaration (the default language adapter is required)");
                         ATTEMPTED.add(identity);
                         continue;
                     }
