@@ -150,7 +150,10 @@ public final class VantaUiRuntime {
             case 262, 264 -> focused.adjust(1);
             default -> { return false; }
         }
-        if (focused.kind() == VantaUiNode.Kind.DROPDOWN) lastWidth = -1;
+        if (focused.kind() == VantaUiNode.Kind.DROPDOWN) {
+            lastWidth = -1;
+            if (focused.isDropdownOpen()) pendingFocusReveal = focused;
+        }
         return true;
     }
 
