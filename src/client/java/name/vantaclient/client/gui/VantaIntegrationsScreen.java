@@ -282,7 +282,7 @@ public class VantaIntegrationsScreen extends Screen {
                 () -> selectCategory(Category.MISC),
                 () -> selection == Selection.BUILTIN_CATEGORY && selectedCategory == Category.MISC);
 
-        // Installed mods are shown as a three-column card grid in the main content area.
+        // Installed mods use a four-column tile grid in the main content area.
     }
 
     private void addInstalledModGrid() {
@@ -856,7 +856,7 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.drawString(font, "Installed mods", contentX(), 66, 0xFFE8EAF0);
             graphics.drawString(font, mods.size() + " matching mods · " + availableMods.size() + " total",
                     contentX(), 86, 0xFF9296A3);
-            graphics.drawString(font, "Three-column library · settings per mod · hot-loading is experimental",
+            graphics.drawString(font, "Four-column library · settings per mod · hot-loading is experimental",
                     contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
             int columns = 4;
             int gap = 10;
@@ -974,9 +974,8 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private void drawCard(GuiGraphics graphics, int x, int y, int width, int height, int color) {
-        graphics.fill(x, y, x + width, y + height, color);
-        graphics.fill(x, y, x + width, y + 1, 0xFF252D39);
-        graphics.fill(x, y, x + 1, y + height, 0xFF252D39);
+        drawRoundedCard(graphics, x, y, width, height, 0xFF2A3443, 10);
+        drawRoundedCard(graphics, x + 1, y + 1, width - 2, height - 2, color, 9);
     }
 
     private void drawWrappedText(GuiGraphics graphics, String value, int x, int y,
