@@ -15,11 +15,8 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * Isolated in-game validation surface for the Vanta-native UI foundation.
- *
- * Settings other than the live FPS readout intentionally use local prototype
- * state. This prevents an architecture experiment from mutating live game
- * options or user configuration before the control adapters are validated.
+ * Isolated in-game validation surface for Vanta's native UI foundation.
+ * Demo controls intentionally avoid mutating live gameplay settings.
  */
 public final class VantaUiPrototypeScreen extends Screen {
     private static final int PAGE_OVERVIEW = 0;
@@ -67,58 +64,70 @@ public final class VantaUiPrototypeScreen extends Screen {
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = width < 760;
+        boolean compact = width < 700;
         int accent = VantaClientPreferences.get().accent.color();
-        VantaUiNode root = VantaUiNode.column(10, compact ? 9 : 14)
-                .background(0xFF090B10);
+        VantaUiNode root = VantaUiNode.column(compact ? 8 : 12, compact ? 8 : 14)
+                .background(VantaUiTheme.CANVAS);
 
-        VantaUiNode header = VantaUiNode.row(10, 10)
-                .height(42)
-                .background(0xFF121722);
-        VantaUiNode brand = VantaUiNode.row(7, 0).width(compact ? 100 : 150);
-        brand.add(VantaUiNode.text("V", accent).width(14));
-        brand.add(VantaUiNode.text("VANTA CLIENT", VantaUiTheme.TEXT_PRIMARY));
+        VantaUiNode header = VantaUiNode.row(10, compact ? 8 : 12)
+                .height(compact ? 36 : 42)
+                .background(VantaUiTheme.PANEL);
+        VantaUiNode brand = VantaUiNode.row(8, 0).width(compact ? 116 : 156)
+                .align(VantaUiNode.Alignment.CENTER);
+        brand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND).iconColor(accent));
+        VantaUiNode brandText = VantaUiNode.column(1, 0);
+        brandText.add(VantaUiNode.eyebrow("VANTA CLIENT"));
+        brandText.add(VantaUiNode.text("IN-GAME WORKSPACE", VantaUiTheme.TEXT_SECONDARY));
+        brand.add(brandText);
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
         if (!compact) {
-            header.add(VantaUiNode.text("BUILD  /  UI PREVIEW", VantaUiTheme.TEXT_MUTED).width(132));
-            header.add(VantaUiNode.dynamicText(
-                    () -> Minecraft.getInstance().getFps() + " FPS",
-                    VantaUiTheme.TEXT_SECONDARY).width(58));
+            VantaUiNode buildMeta = VantaUiNode.row(6, 0).align(VantaUiNode.Alignment.CENTER);
+            buildMeta.add(VantaUiNode.icon(VantaUiNode.Icon.DISPLAY));
+            buildMeta.add(VantaUiNode.text("FABRIC 1.21.11", VantaUiTheme.TEXT_MUTED));
+            header.add(buildMeta);
+            VantaUiNode fps = VantaUiNode.row(5, 7).height(26).background(VantaUiTheme.SURFACE)
+                    .align(VantaUiNode.Alignment.CENTER);
+            fps.add(VantaUiNode.icon(VantaUiNode.Icon.DISPLAY).iconColor(accent));
+            fps.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
+                    VantaUiTheme.TEXT_PRIMARY));
+            header.add(fps);
         }
-        header.add(VantaUiNode.button("EXIT", this::onClose).width(54));
+        header.add(VantaUiNode.button("CLOSE", this::onClose).height(compact ? 28 : 30));
         root.add(header);
 
         VantaUiNode body = compact
                 ? VantaUiNode.column(8, 0).flex(1)
-                : VantaUiNode.row(10, 0).flex(1);
+                : VantaUiNode.row(12, 0).flex(1);
 
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(5, 5).height(36).background(0xFF121722);
-            int tabWidth = Math.max(58, (width - 55) / 3);
-            navigation.add(navButton("HOME", PAGE_OVERVIEW).width(tabWidth));
-            navigation.add(navButton("VISUALS", PAGE_VISUALS).width(tabWidth));
-            navigation.add(navButton("INPUT", PAGE_CONTROLS).width(tabWidth));
+            navigation = VantaUiNode.row(5, 4).height(36).background(VantaUiTheme.PANEL);
+            navigation.add(navButton("Overview", PAGE_OVERVIEW, VantaUiNode.Icon.OVERVIEW).flex(1));
+            navigation.add(navButton("Visuals", PAGE_VISUALS, VantaUiNode.Icon.VISUALS).flex(1));
+            navigation.add(navButton("Controls", PAGE_CONTROLS, VantaUiNode.Icon.CONTROLS).flex(1));
         } else {
-            navigation = VantaUiNode.column(7, 10).width(142).background(0xFF121722);
-            navigation.add(VantaUiNode.text("MENU", VantaUiTheme.TEXT_MUTED));
-            navigation.add(navButton("Overview", PAGE_OVERVIEW));
-            navigation.add(navButton("Visuals", PAGE_VISUALS));
-            navigation.add(navButton("Controls", PAGE_CONTROLS));
-            navigation.add(VantaUiNode.spacer(8));
-            navigation.add(VantaUiNode.text("YOUR CLIENT", VantaUiTheme.TEXT_MUTED));
-            navigation.add(VantaUiNode.text("Fabric 1.21.11", VantaUiTheme.TEXT_SECONDARY));
-            navigation.add(VantaUiNode.text("Local profile", VantaUiTheme.TEXT_MUTED));
+            navigation = VantaUiNode.column(6, 10).width(150).background(VantaUiTheme.PANEL);
+            navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
+            navigation.add(navButton("Overview", PAGE_OVERVIEW, VantaUiNode.Icon.OVERVIEW));
+            navigation.add(navButton("Visuals", PAGE_VISUALS, VantaUiNode.Icon.VISUALS));
+            navigation.add(navButton("Controls", PAGE_CONTROLS, VantaUiNode.Icon.CONTROLS));
+            navigation.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+            navigation.add(VantaUiNode.eyebrow("PROFILE"));
+            navigation.add(VantaUiNode.text("Local profile", VantaUiTheme.TEXT_SECONDARY));
+            navigation.add(VantaUiNode.text("Preview environment", VantaUiTheme.TEXT_MUTED));
             navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(VantaUiNode.text("VANTA  /  PREVIEW", accent));
+            VantaUiNode footer = VantaUiNode.row(6, 0).align(VantaUiNode.Alignment.CENTER);
+            footer.add(VantaUiNode.icon(VantaUiNode.Icon.SPARK).iconColor(accent));
+            footer.add(VantaUiNode.eyebrow("VANTA / PREVIEW"));
+            navigation.add(footer);
             navigation.add(VantaUiNode.text("TAB  Navigate", VantaUiTheme.TEXT_MUTED));
             navigation.add(VantaUiNode.text("ENTER  Select", VantaUiTheme.TEXT_MUTED));
         }
 
-        VantaUiNode content = VantaUiNode.column(11, compact ? 10 : 16)
+        VantaUiNode content = VantaUiNode.column(14, compact ? 12 : 18)
                 .flex(1)
-                .background(0xFF141A25)
+                .background(VantaUiTheme.PANEL)
                 .scrollable();
         addPageContent(content);
         body.add(navigation);
@@ -127,12 +136,13 @@ public final class VantaUiPrototypeScreen extends Screen {
         return root;
     }
 
-    private VantaUiNode navButton(String label, int targetPage) {
-        return VantaUiNode.button(label, () -> {
+    private VantaUiNode navButton(String label, int targetPage, VantaUiNode.Icon icon) {
+        return VantaUiNode.button(label, icon, () -> {
             page = targetPage;
             rebuildUi();
-        }).selected(page == targetPage)
-                .tooltip("Open the " + label.toLowerCase() + " prototype section.");
+        }).height(34)
+                .selected(page == targetPage)
+                .tooltip("Open the " + label.toLowerCase() + " section.");
     }
 
     private void addPageContent(VantaUiNode content) {
@@ -145,159 +155,193 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     private void addOverviewPage(VantaUiNode content) {
         int accent = VantaClientPreferences.get().accent.color();
-        content.add(VantaUiNode.text("YOUR CLIENT", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.text("Welcome to Vanta.", VantaUiTheme.TEXT_PRIMARY).height(22));
-        content.add(VantaUiNode.paragraph(
-                "A cleaner, faster control center for your Minecraft experience.",
-                VantaUiTheme.TEXT_SECONDARY, 2));
+        addPageHeading(content, "HOME / OVERVIEW", "Your client, at a glance",
+                "A focused space for the details you actually use.");
 
-        VantaUiNode hero = VantaUiNode.column(7, 12).background(0xFF1B2433);
-        hero.add(VantaUiNode.text("VANTA  /  CLIENT OVERVIEW", accent));
-        hero.add(VantaUiNode.text("Make the game yours.", VantaUiTheme.TEXT_PRIMARY).height(20));
+        VantaUiNode hero = VantaUiNode.column(8, 16).background(0xFF1A2732);
+        VantaUiNode heroTop = VantaUiNode.row(7, 0).align(VantaUiNode.Alignment.CENTER);
+        heroTop.add(VantaUiNode.icon(VantaUiNode.Icon.SPARK).iconColor(accent));
+        heroTop.add(VantaUiNode.eyebrow("THE VANTA WORKSPACE"));
+        heroTop.add(VantaUiNode.spacer(1).flex(1));
+        heroTop.add(VantaUiNode.text("LOCAL PREVIEW", accent));
+        hero.add(heroTop);
+        hero.add(VantaUiNode.title("Make the game yours."));
         hero.add(VantaUiNode.paragraph(
-                "Tune your visual setup, interaction preferences and client behavior from one focused workspace.",
-                VantaUiTheme.TEXT_SECONDARY, 3));
-        hero.add(VantaUiNode.row(8, 0)
-                .add(VantaUiNode.button("EXPLORE VISUALS", () -> { page = PAGE_VISUALS; rebuildUi(); }).flex(1))
-                .add(VantaUiNode.button("INPUT SETTINGS", () -> { page = PAGE_CONTROLS; rebuildUi(); }).flex(1)));
+                "Shape your visual setup and interaction preferences without burying every option in another panel.",
+                VantaUiTheme.TEXT_SECONDARY, 2));
+        VantaUiNode heroActions = VantaUiNode.row(8, 0);
+        heroActions.add(VantaUiNode.button("Explore visuals", VantaUiNode.Icon.VISUALS,
+                () -> changePage(PAGE_VISUALS)).flex(1).height(32));
+        heroActions.add(VantaUiNode.button("Input settings", VantaUiNode.Icon.KEYBOARD,
+                () -> changePage(PAGE_CONTROLS)).flex(1).height(32));
+        hero.add(heroActions);
         content.add(hero);
 
-        VantaUiNode metrics = VantaUiNode.row(8, 0).height(70);
-        VantaUiNode fpsCard = metricCard("LIVE FPS",
-                () -> Integer.toString(Minecraft.getInstance().getFps()),
-                "CURRENT SESSION", accent);
-        VantaUiNode uiCard = metricCard("UI CPU",
+        VantaUiNode metrics = VantaUiNode.row(9, 0).height(64);
+        metrics.add(metricCard(VantaUiNode.Icon.DISPLAY, "LIVE PERFORMANCE",
+                () -> Integer.toString(Minecraft.getInstance().getFps()), "frames per second", accent).flex(1));
+        metrics.add(metricCard(VantaUiNode.Icon.CONTROLS, "UI RENDER COST",
                 () -> runtime == null ? "—" : (runtime.averageUiRenderNanos() / 1_000) + " μs",
-                "COMMAND SUBMISSION", VantaUiTheme.TEXT_PRIMARY);
-        metrics.add(fpsCard.flex(1));
-        metrics.add(uiCard.flex(1));
+                "CPU command submission", VantaUiTheme.TEXT_PRIMARY).flex(1));
         content.add(metrics);
 
-        content.add(sectionHeading("QUICK SETTINGS", "Frequently used client preferences"));
-        VantaUiNode quick = VantaUiNode.column(2, 8).background(0xFF171E2A);
-        quick.add(VantaUiNode.toggle("Show FPS counter", () -> showFps, value -> showFps = value));
+        content.add(sectionHeading(VantaUiNode.Icon.CONTROLS, "Quick settings",
+                "A few useful preferences"));
+        VantaUiNode quick = VantaUiNode.column(2, 10).background(VantaUiTheme.PANEL_RAISED);
+        quick.add(VantaUiNode.toggle("Show FPS counter preview", () -> showFps, value -> showFps = value));
+        quick.add(divider());
         quick.add(VantaUiNode.toggle("Performance hints", () -> showPerformanceHints,
                 value -> showPerformanceHints = value));
+        quick.add(divider());
         quick.add(VantaUiNode.toggle("Reduce interface animations",
-                () -> !VantaClientPreferences.get().animations,
-                reduced -> {
+                () -> !VantaClientPreferences.get().animations, reduced -> {
                     VantaClientPreferences.get().animations = !reduced;
                     VantaClientPreferences.save();
                 }));
         content.add(quick);
 
-        content.add(sectionHeading("GAMEPLAY PREVIEW", "Prototype values do not change live game settings"));
-        VantaUiNode settings = VantaUiNode.column(7, 10).background(0xFF171E2A);
-        settings.add(VantaUiNode.slider("Render distance preview", 2, 32, 1,
+        content.add(sectionHeading(VantaUiNode.Icon.DISPLAY, "Gameplay preview",
+                "Prototype values do not alter Minecraft settings"));
+        VantaUiNode preview = VantaUiNode.column(5, 12).background(VantaUiTheme.PANEL_RAISED);
+        preview.add(VantaUiNode.slider("Render distance preview", 2, 32, 1,
                 () -> renderDistancePreview, value -> renderDistancePreview = value));
-        settings.add(VantaUiNode.dropdown("Update strategy",
+        preview.add(divider());
+        preview.add(VantaUiNode.dropdown("Update strategy",
                 List.of("Balanced", "Low latency", "Power saver"),
                 () -> updateStrategy, value -> updateStrategy = value));
-        content.add(settings);
+        content.add(preview);
 
         if (showPerformanceHints) {
             content.add(VantaUiNode.paragraph(
-                    "PREVIEW MODE  •  Controls are isolated unless explicitly connected to an Appearance preference.",
+                    "PREVIEW MODE  ·  Only the animation preference is connected to Appearance settings. Other controls use isolated demo state.",
                     VantaUiTheme.TEXT_MUTED, 2));
         }
     }
 
-    private VantaUiNode metricCard(String label, java.util.function.Supplier<String> value,
-                                   String detail, int valueColor) {
-        VantaUiNode card = VantaUiNode.column(4, 9).background(0xFF0B111A);
-        card.add(VantaUiNode.text(label, VantaUiTheme.TEXT_MUTED));
+    private VantaUiNode metricCard(VantaUiNode.Icon icon, String label,
+                                   java.util.function.Supplier<String> value, String detail, int valueColor) {
+        VantaUiNode card = VantaUiNode.column(4, 10).background(VantaUiTheme.PANEL_RAISED);
+        VantaUiNode heading = VantaUiNode.row(6, 0).align(VantaUiNode.Alignment.CENTER);
+        heading.add(VantaUiNode.icon(icon));
+        heading.add(VantaUiNode.eyebrow(label));
+        card.add(heading);
         card.add(VantaUiNode.dynamicText(value, valueColor));
         card.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
         return card;
     }
 
-    private VantaUiNode sectionHeading(String title, String subtitle) {
-        VantaUiNode heading = VantaUiNode.column(3, 0);
-        heading.add(VantaUiNode.text(title, VantaUiTheme.TEXT_PRIMARY));
-        heading.add(VantaUiNode.text(subtitle, VantaUiTheme.TEXT_MUTED));
-        return heading;
-    }
-
     private void addVisualsPage(VantaUiNode content) {
         int accent = VantaClientPreferences.get().accent.color();
-        content.add(VantaUiNode.text("APPEARANCE", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.text("Visual experience", VantaUiTheme.TEXT_PRIMARY).height(22));
-        content.add(VantaUiNode.paragraph(
-                "Shape the information on screen. These controls preview the future Vanta HUD editor.",
-                VantaUiTheme.TEXT_SECONDARY, 2));
+        addPageHeading(content, "APPEARANCE / HUD", "Visual experience",
+                "Shape the information on screen and preview how the Vanta HUD should behave.");
 
-        VantaUiNode crosshair = VantaUiNode.column(7, 10).background(0xFF171E2A);
-        crosshair.add(sectionHeading("CROSSHAIR", "Style and scale"));
+        VantaUiNode preview = VantaUiNode.row(14, 14).height(78).background(0xFF1A2732)
+                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode previewIcon = VantaUiNode.icon(VantaUiNode.Icon.CROSSHAIR)
+                .size(28, 28).iconColor(accent);
+        preview.add(previewIcon);
+        VantaUiNode previewText = VantaUiNode.column(4, 0).flex(1);
+        previewText.add(VantaUiNode.eyebrow("LIVE PRESET PREVIEW"));
+        previewText.add(VantaUiNode.text(crosshairStyle + " crosshair", VantaUiTheme.TEXT_PRIMARY));
+        previewText.add(VantaUiNode.text("Scale " + String.format(java.util.Locale.ROOT, "%.2f", crosshairSize),
+                VantaUiTheme.TEXT_SECONDARY));
+        preview.add(previewText);
+        preview.add(VantaUiNode.text(customCrosshair ? "ON" : "OFF", accent));
+        content.add(preview);
+
+        content.add(sectionHeading(VantaUiNode.Icon.CROSSHAIR, "Crosshair",
+                "Style, preset and scale"));
+        VantaUiNode crosshair = VantaUiNode.column(5, 12).background(VantaUiTheme.PANEL_RAISED);
         crosshair.add(VantaUiNode.toggle("Enable custom crosshair", () -> customCrosshair,
                 value -> customCrosshair = value));
+        crosshair.add(divider());
         crosshair.add(VantaUiNode.dropdown("Preset",
                 List.of("Classic", "Dot", "Minimal", "Dynamic", "Circle", "T-Cross", "Outline", "Thin"),
                 () -> crosshairStyle, value -> crosshairStyle = value));
+        crosshair.add(divider());
         crosshair.add(VantaUiNode.slider("Crosshair scale", 0.5, 2.0, 0.05,
                 () -> crosshairSize, value -> crosshairSize = value));
-        crosshair.add(VantaUiNode.text("ACTIVE PRESET  /  " + crosshairStyle.toUpperCase(),
-                accent));
         content.add(crosshair);
 
-        VantaUiNode hud = VantaUiNode.column(7, 10).background(0xFF171E2A);
-        hud.add(sectionHeading("HUD LAYOUT", "Alignment and sizing"));
+        content.add(sectionHeading(VantaUiNode.Icon.HUD, "HUD layout",
+                "Alignment and sizing"));
+        VantaUiNode hud = VantaUiNode.column(5, 12).background(VantaUiTheme.PANEL_RAISED);
         hud.add(VantaUiNode.toggle("Show alignment grid", () -> hudGrid,
                 value -> hudGrid = value));
+        hud.add(divider());
         hud.add(VantaUiNode.slider("HUD scale", 0.5, 1.5, 0.05,
                 () -> hudScale, value -> hudScale = value));
         hud.add(VantaUiNode.text("GRID  /  " + (hudGrid ? "ENABLED" : "DISABLED"),
-                VantaUiTheme.TEXT_SECONDARY));
+                VantaUiTheme.TEXT_MUTED));
         content.add(hud);
 
         content.add(VantaUiNode.paragraph(
-                "The current prototype validates controls and layout only; it does not yet draw a live HUD canvas.",
+                "The HUD canvas is not implemented in this prototype yet. These controls validate visual settings and component behavior only.",
                 VantaUiTheme.TEXT_MUTED, 2));
     }
 
     private void addControlsPage(VantaUiNode content) {
-        content.add(VantaUiNode.text("INTERACTION", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.text("Controls & behavior", VantaUiTheme.TEXT_PRIMARY).height(22));
-        content.add(VantaUiNode.paragraph(
-                "Search, configure input behavior and validate keyboard navigation.",
-                VantaUiTheme.TEXT_SECONDARY, 2));
+        addPageHeading(content, "INTERACTION / INPUT", "Controls & behavior",
+                "Find settings quickly and define how feature activation should feel.");
 
-        VantaUiNode search = VantaUiNode.column(5, 10).background(0xFF171E2A);
-        search.add(sectionHeading("FEATURE SEARCH", "Prototype search field"));
+        VantaUiNode search = VantaUiNode.row(9, 10).height(48).background(VantaUiTheme.PANEL_RAISED)
+                .align(VantaUiNode.Alignment.CENTER);
+        search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
         search.add(VantaUiNode.textField("Search features...", () -> searchQuery,
-                value -> searchQuery = value, 64));
-        search.add(VantaUiNode.dynamicText(
-                () -> searchQuery.isBlank() ? "No active filter" : "FILTER  /  " + searchQuery,
-                VantaUiTheme.TEXT_SECONDARY));
+                value -> searchQuery = value, 64).flex(1));
         content.add(search);
+        content.add(VantaUiNode.dynamicText(
+                () -> searchQuery.isBlank() ? "BROWSE  /  ALL PREVIEW SETTINGS"
+                        : "FILTER QUERY  /  " + searchQuery,
+                VantaUiTheme.TEXT_MUTED));
 
-        VantaUiNode input = VantaUiNode.column(7, 10).background(0xFF171E2A);
-        input.add(sectionHeading("KEYBIND BEHAVIOR", "How feature activation should work"));
+        content.add(sectionHeading(VantaUiNode.Icon.KEYBOARD, "Keybind behavior",
+                "How features respond to your input"));
+        VantaUiNode input = VantaUiNode.column(5, 12).background(VantaUiTheme.PANEL_RAISED);
         input.add(VantaUiNode.dropdown("Activation mode",
                 List.of("Hold", "Toggle", "Press once"),
                 () -> keybindMode, value -> keybindMode = value));
+        input.add(divider());
         input.add(VantaUiNode.toggle("Show FPS overlay preview", () -> showFps,
                 value -> showFps = value));
+        input.add(divider());
         input.add(VantaUiNode.slider("Input response", 0.0, 1.0, 0.05,
                 () -> crosshairSize / 2.0, value -> crosshairSize = value * 2.0));
         content.add(input);
 
-        VantaUiNode actions = VantaUiNode.row(7, 0);
-        actions.add(VantaUiNode.button("RESET DEMO", this::resetPrototypeState).flex(1));
-        actions.add(VantaUiNode.button("BACK TO HOME", () -> {
-            page = PAGE_OVERVIEW;
-            rebuildUi();
-        }).flex(1));
+        VantaUiNode actions = VantaUiNode.row(8, 0);
+        actions.add(VantaUiNode.button("Reset demo", VantaUiNode.Icon.RESET,
+                this::resetPrototypeState).flex(1).height(34));
+        actions.add(VantaUiNode.button("Back to overview", VantaUiNode.Icon.OVERVIEW,
+                () -> changePage(PAGE_OVERVIEW)).flex(1).height(34));
         content.add(actions);
         content.add(VantaUiNode.paragraph(
-                "KEYBOARD  /  TAB to move focus  •  ENTER to activate  •  ARROWS to adjust  •  ESC to close menus",
-                VantaUiTheme.TEXT_MUTED, 3));
+                "KEYBOARD  /  TAB moves focus  ·  ENTER activates  ·  ARROWS adjust values  ·  ESC closes menus",
+                VantaUiTheme.TEXT_MUTED, 2));
     }
 
-    private void cycleAccent() {
-        VantaClientPreferences preferences = VantaClientPreferences.get();
-        VantaClientPreferences.Accent[] accents = VantaClientPreferences.Accent.values();
-        preferences.accent = accents[(preferences.accent.ordinal() + 1) % accents.length];
-        VantaClientPreferences.save();
+    private void addPageHeading(VantaUiNode content, String eyebrow, String title, String subtitle) {
+        content.add(VantaUiNode.eyebrow(eyebrow));
+        content.add(VantaUiNode.title(title));
+        content.add(VantaUiNode.paragraph(subtitle, VantaUiTheme.TEXT_SECONDARY, 2));
+    }
+
+    private VantaUiNode sectionHeading(VantaUiNode.Icon icon, String title, String subtitle) {
+        VantaUiNode heading = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+        heading.add(VantaUiNode.icon(icon));
+        VantaUiNode labels = VantaUiNode.column(2, 0);
+        labels.add(VantaUiNode.text(title, VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(subtitle, VantaUiTheme.TEXT_MUTED));
+        heading.add(labels);
+        return heading;
+    }
+
+    private VantaUiNode divider() {
+        return VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE);
+    }
+
+    private void changePage(int targetPage) {
+        page = targetPage;
         rebuildUi();
     }
 
@@ -324,10 +368,8 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0xB9080C12);
-        if (runtime != null) {
-            runtime.render(graphics, font, width, height, mouseX, mouseY);
-        }
+        graphics.fill(0, 0, width, height, 0xD90A0D12);
+        if (runtime != null) runtime.render(graphics, font, width, height, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
