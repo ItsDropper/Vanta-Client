@@ -342,7 +342,7 @@ public final class VantaUiNode {
 
         if (kind != Kind.CONTAINER) return;
         List<VantaUiNode> layoutChildren = new ArrayList<>();
-        for (VantaUiNode child : layoutChildren) {
+        for (VantaUiNode child : children) {
             if (child.visible) layoutChildren.add(child);
         }
         if (layoutChildren.isEmpty()) {
