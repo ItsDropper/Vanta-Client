@@ -86,6 +86,8 @@ public final class VantaUiNode {
     private Supplier<String> dropdownValue;
     private Consumer<String> dropdownSetter;
     private List<String> dropdownOptions = List.of();
+    private boolean dropdownOpen;
+    private int dropdownHighlight;
 
     private VantaUiNode(Kind kind, Direction direction) {
         this.kind = kind;
@@ -278,6 +280,11 @@ public final class VantaUiNode {
     }
 
     int intrinsicHeight(Font font) {
+        if (kind == Kind.DROPDOWN && dropdownOpen) {
+            int expanded = VantaUiTheme.CONTROL_HEIGHT
+                    + Math.min(5, dropdownOptions.size()) * 22;
+            return clamp(expanded, minHeight, maxHeight);
+        }
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
         return switch (kind) {
             case TEXT -> 14;
@@ -504,22 +511,52 @@ public final class VantaUiNode {
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
             }
             case DROPDOWN -> {
-                int boxWidth = Math.min(150, Math.max(72, width / 2));
+                int controlHeight = VantaUiTheme.CONTROL_HEIGHT;
+                int boxWidth = Math.min(width, Math.min(150, Math.max(72, width / 2)));
                 int boxX = x + width - boxWidth;
                 String dropdownLabel = font.plainSubstrByWidth(label,
                         Math.max(0, boxX - x - 12));
                 graphics.drawString(font, dropdownLabel, x,
-                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                        y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         VantaUiTheme.TEXT_PRIMARY);
-                graphics.fill(boxX, y + 2, x + width, y + height - 2,
+                graphics.fill(boxX, y + 2, x + width, y + controlHeight - 2,
                         mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount));
                 String selected = dropdownValue == null ? "" : dropdownValue.get();
-                String shown = font.plainSubstrByWidth(selected == null ? "" : selected, boxWidth - 24);
-                graphics.drawString(font, shown, boxX + 8, y + (height - 9) / 2,
+                String shown = font.plainSubstrByWidth(selected == null ? "" : selected,
+                        Math.max(0, boxWidth - 24));
+                graphics.drawString(font, shown, boxX + 8,
+                        y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         VantaUiTheme.TEXT_PRIMARY);
-                graphics.drawString(font, "v", x + width - 15, y + (height - 9) / 2,
+                graphics.drawString(font, dropdownOpen ? "^" : "v",
+                        x + width - 15, y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         VantaUiTheme.TEXT_SECONDARY);
-                if (focused) graphics.fill(boxX, y + height - 2, x + width, y + height, accent);
+                if (focused) graphics.fill(boxX, y + controlHeight - 2, x + width,
+                        y + controlHeight, accent);
+
+                if (dropdownOpen) {
+                    int visibleOptions = Math.min(5, dropdownOptions.size());
+                    int menuTop = y + controlHeight;
+                    graphics.fill(x, menuTop, x + width, menuTop + visibleOptions * 22,
+                            VantaUiTheme.PANEL_RAISED);
+                    graphics.fill(x, menuTop, x + width, menuTop + 1, VantaUiTheme.BORDER);
+                    for (int i = 0; i < visibleOptions; i++) {
+                        int optionY = menuTop + i * 22;
+                        String option = dropdownOptions.get(i);
+                        boolean highlighted = i == dropdownHighlight
+                                || (over && mouseY >= optionY && mouseY < optionY + 22);
+                        if (highlighted) {
+                            graphics.fill(x + 1, optionY, x + width - 1, optionY + 22,
+                                    VantaUiTheme.withAlpha(accent, 48));
+                        }
+                        if (option.equals(selected)) {
+                            graphics.fill(x + 1, optionY, x + 3, optionY + 22, accent);
+                        }
+                        String optionText = font.plainSubstrByWidth(option,
+                                Math.max(0, width - 18));
+                        graphics.drawString(font, optionText, x + 9, optionY + 7,
+                                highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
+                    }
+                }
             }
             case TEXT_FIELD -> {
                 int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
@@ -650,7 +687,7 @@ public final class VantaUiNode {
         }
     }
 
-    void click(double mouseX, int button) {
+    void click(double mouseX, double mouseY, int button) {
         if (!enabled || button != 0) return;
         switch (kind) {
             case BUTTON -> { if (action != null) action.run(); }
@@ -660,7 +697,24 @@ public final class VantaUiNode {
                 }
             }
             case SLIDER -> updateSlider(mouseX);
-            case DROPDOWN -> cycleDropdown(1);
+            case DROPDOWN -> {
+                int controlBottom = y + VantaUiTheme.CONTROL_HEIGHT;
+                if (mouseY < controlBottom || !dropdownOpen) {
+                    if (dropdownOpen) {
+                        dropdownOpen = false;
+                    } else {
+                        dropdownHighlight = selectedDropdownIndex();
+                        dropdownOpen = true;
+                    }
+                } else {
+                    int optionIndex = (int) ((mouseY - controlBottom) / 22.0);
+                    if (optionIndex >= 0 && optionIndex < Math.min(5, dropdownOptions.size())) {
+                        dropdownHighlight = optionIndex;
+                        dropdownSetter.accept(dropdownOptions.get(optionIndex));
+                    }
+                    dropdownOpen = false;
+                }
+            }
             case TEXT_FIELD -> inputCursor = currentInput().length();
             default -> { }
         }
@@ -726,7 +780,17 @@ public final class VantaUiNode {
                     toggleSetter.accept(!toggleValue.getAsBoolean());
                 }
             }
-            case DROPDOWN -> cycleDropdown(1);
+            case DROPDOWN -> {
+                if (dropdownOpen) {
+                    int selectedIndex = selectedDropdownIndex();
+                    if (selectedIndex >= 0) dropdownHighlight = selectedIndex;
+                    else dropdownHighlight = 0;
+                    dropdownOpen = false;
+                } else {
+                    dropdownHighlight = selectedDropdownIndex();
+                    dropdownOpen = true;
+                }
+            }
             case TEXT_FIELD -> { }
             default -> { }
         }
@@ -738,7 +802,12 @@ public final class VantaUiNode {
             double step = sliderStep > 0.0 ? sliderStep : Math.max(0.01, (sliderMaximum - sliderMinimum) / 100.0);
             setSliderValue(sliderValue.getAsDouble() + step * direction);
         } else if (kind == Kind.DROPDOWN) {
-            cycleDropdown(direction);
+            if (dropdownOpen) {
+                int maxIndex = Math.min(5, dropdownOptions.size()) - 1;
+                dropdownHighlight = Math.max(0, Math.min(maxIndex, dropdownHighlight + direction));
+            } else {
+                cycleDropdown(direction);
+            }
         }
     }
 
@@ -772,13 +841,35 @@ public final class VantaUiNode {
         sliderSetter.accept(clamped);
     }
 
-    private void cycleDropdown(int direction) {
-        if (dropdownSetter == null || dropdownOptions.isEmpty()) return;
+    private int selectedDropdownIndex() {
         String current = dropdownValue == null ? null : dropdownValue.get();
         int index = dropdownOptions.indexOf(current);
-        if (index < 0) index = 0;
+        return index >= 0 ? index : 0;
+    }
+
+    private void cycleDropdown(int direction) {
+        if (dropdownSetter == null || dropdownOptions.isEmpty()) return;
+        int index = selectedDropdownIndex();
         int next = Math.floorMod(index + direction, dropdownOptions.size());
         dropdownSetter.accept(dropdownOptions.get(next));
+    }
+
+    boolean closeDropdown() {
+        if (kind != Kind.DROPDOWN || !dropdownOpen) return false;
+        dropdownOpen = false;
+        return true;
+    }
+
+    boolean closeDropdownsExcept(VantaUiNode keepOpen) {
+        boolean changed = false;
+        if (kind == Kind.DROPDOWN && this != keepOpen && dropdownOpen) {
+            dropdownOpen = false;
+            changed = true;
+        }
+        for (VantaUiNode child : children) {
+            changed |= child.closeDropdownsExcept(keepOpen);
+        }
+        return changed;
     }
 
     void collectFocusable(List<VantaUiNode> result) {
