@@ -22,16 +22,26 @@ public abstract class HudElement {
     }
 
     public void move(int mouseX, int mouseY) {
-
         Minecraft mc = Minecraft.getInstance();
+        int screenWidth = mc.getWindow().getGuiScaledWidth();
+        int screenHeight = mc.getWindow().getGuiScaledHeight();
+        int maxX = Math.max(0, screenWidth - getScaledWidth());
+        int maxY = Math.max(0, screenHeight - getScaledHeight());
+        int targetX = Math.max(0, Math.min(mouseX, maxX));
+        int targetY = Math.max(0, Math.min(mouseY, maxY));
 
-        xPercent =
-                (float) mouseX /
-                        mc.getWindow().getGuiScaledWidth();
+        name.vantaclient.client.config.VantaClientPreferences preferences =
+                name.vantaclient.client.config.VantaClientPreferences.get();
+        if (preferences.hudSnapToGrid) {
+            int grid = preferences.hudGridSize;
+            targetX = Math.round(targetX / (float) grid) * grid;
+            targetY = Math.round(targetY / (float) grid) * grid;
+            targetX = Math.max(0, Math.min(targetX, maxX));
+            targetY = Math.max(0, Math.min(targetY, maxY));
+        }
 
-        yPercent =
-                (float) mouseY /
-                        mc.getWindow().getGuiScaledHeight();
+        xPercent = screenWidth <= 0 ? 0.0f : targetX / (float) screenWidth;
+        yPercent = screenHeight <= 0 ? 0.0f : targetY / (float) screenHeight;
     }
 
     public boolean isHovered(double mouseX, double mouseY) {
