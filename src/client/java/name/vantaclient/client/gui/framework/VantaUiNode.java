@@ -272,27 +272,28 @@ public final class VantaUiNode {
 
     int intrinsicWidth(Font font) {
         if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
-        return switch (kind) {
+        int measured = switch (kind) {
             case TEXT -> font.width(currentText());
             case SPACER -> 1;
             case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
             case CONTAINER -> {
-                int measured = 0;
+                int size = 0;
                 int visibleChildren = 0;
                 for (VantaUiNode child : children) {
                     if (!child.visible) continue;
                     int childWidth = child.intrinsicWidth(font);
-                    measured = direction == Direction.ROW
-                            ? measured + childWidth
-                            : Math.max(measured, childWidth);
+                    size = direction == Direction.ROW
+                            ? size + childWidth
+                            : Math.max(size, childWidth);
                     visibleChildren++;
                 }
                 if (direction == Direction.ROW && visibleChildren > 1) {
-                    measured += gap * (visibleChildren - 1);
+                    size += gap * (visibleChildren - 1);
                 }
-                yield clamp(measured + padding * 2, minWidth, maxWidth);
+                yield size + padding * 2;
             }
         };
+        return clamp(measured, minWidth, maxWidth);
     }
 
     int intrinsicHeight(Font font) {
@@ -302,28 +303,29 @@ public final class VantaUiNode {
             return clamp(expanded, minHeight, maxHeight);
         }
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
-        return switch (kind) {
-            case TEXT -> 14;
+        int measured = switch (kind) {
+            case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
             case SPACER -> 0;
             case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
             case CONTAINER -> {
-                int measured = 0;
+                int size = 0;
                 int visibleChildren = 0;
                 for (VantaUiNode child : children) {
                     if (!child.visible) continue;
                     int childHeight = child.intrinsicHeight(font);
-                    measured = direction == Direction.COLUMN
-                            ? measured + childHeight
-                            : Math.max(measured, childHeight);
+                    size = direction == Direction.COLUMN
+                            ? size + childHeight
+                            : Math.max(size, childHeight);
                     visibleChildren++;
                 }
                 if (direction == Direction.COLUMN && visibleChildren > 1) {
-                    measured += gap * (visibleChildren - 1);
+                    size += gap * (visibleChildren - 1);
                 }
-                yield clamp(measured + padding * 2, minHeight, maxHeight);
+                yield size + padding * 2;
             }
         };
+        return clamp(measured, minHeight, maxHeight);
     }
 
     void arrange(int x, int y, int width, int height, Font font) {
