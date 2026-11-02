@@ -118,7 +118,15 @@ public final class VantaUiRuntime {
             return;
         }
 
-        int index = focused == null ? -1 : focusable.indexOf(focused);
+        if (focused == null) {
+            setFocused(focusable.get(direction > 0 ? 0 : focusable.size() - 1));
+            return;
+        }
+        int index = focusable.indexOf(focused);
+        if (index < 0) {
+            setFocused(focusable.get(direction > 0 ? 0 : focusable.size() - 1));
+            return;
+        }
         int next = Math.floorMod(index + direction, focusable.size());
         setFocused(focusable.get(next));
     }
@@ -140,7 +148,7 @@ public final class VantaUiRuntime {
         if (tooltipY < 6) tooltipY = Math.min(screenHeight - boxHeight - 6, hovered.y() + hovered.height() + 7);
 
         graphics.fill(tooltipX, tooltipY, tooltipX + boxWidth, tooltipY + boxHeight,
-                0xF00A1019);
+                VantaUiTheme.TOOLTIP_SURFACE);
         graphics.fill(tooltipX, tooltipY, tooltipX + boxWidth, tooltipY + 1, theme.accent());
         graphics.fill(tooltipX, tooltipY + boxHeight - 1,
                 tooltipX + boxWidth, tooltipY + boxHeight, VantaUiTheme.BORDER);
