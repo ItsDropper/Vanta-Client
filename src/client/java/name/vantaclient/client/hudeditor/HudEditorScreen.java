@@ -19,8 +19,7 @@ public class HudEditorScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         VantaClientPreferences preferences = VantaClientPreferences.get();
         boolean animations = preferences.animations;
-        float target = 1.0f;
-        entrance = animations ? entrance + (target - entrance) * 0.18f : 1.0f;
+        entrance = animations ? entrance + (1.0f - entrance) * 0.18f : 1.0f;
         if (Math.abs(1.0f - entrance) < 0.01f) entrance = 1.0f;
 
         graphics.fill(0, 0, width, height, 0x99080C13);
@@ -32,24 +31,22 @@ public class HudEditorScreen extends Screen {
         HudElement focused = HudSettingsPanel.getSelected();
         if (focused == null) focused = HudMouseHandler.getHovered();
         if (focused != null) {
-            float pulseTarget = 1.0f;
             selectionPulse = animations
-                    ? selectionPulse + (pulseTarget - selectionPulse) * 0.22f
+                    ? selectionPulse + (1.0f - selectionPulse) * 0.22f
                     : 1.0f;
-            int accent = preferences.accent.color();
-            drawSelection(graphics, focused, accent, selectionPulse);
-            drawElementTag(graphics, mc, focused, accent);
+            drawSelection(graphics, focused, preferences.accent.color(), selectionPulse);
+            drawElementTag(graphics, mc, focused, preferences.accent.color());
         } else {
             selectionPulse = 0.0f;
         }
 
-        drawToolbar(graphics, mc, preferences, mouseX, mouseY, entrance);
+        drawToolbar(graphics, mc, preferences, entrance);
         HudSettingsPanel.render(graphics, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, delta);
     }
 
     private void drawGrid(GuiGraphics graphics, int spacing, float opacity) {
-        int color = Math.round(65.0f * opacity) << 24 | 0x005D82B8;
+        int color = (Math.round(65.0f * opacity) << 24) | 0x005D82B8;
         for (int y = 12; y < height; y += spacing) {
             for (int x = 12; x < width; x += spacing) {
                 graphics.fill(x, y, x + 1, y + 1, color);
@@ -58,8 +55,7 @@ public class HudEditorScreen extends Screen {
     }
 
     private void drawToolbar(GuiGraphics graphics, Minecraft mc,
-                             VantaClientPreferences preferences,
-                             int mouseX, int mouseY, float opacity) {
+                             VantaClientPreferences preferences, float opacity) {
         int accent = preferences.accent.color();
         int x = (width - 390) / 2;
         int y = 18 - Math.round((1.0f - opacity) * 10.0f);
@@ -86,7 +82,8 @@ public class HudEditorScreen extends Screen {
         int y = element.getY() - 4;
         int w = Math.max(12, element.getScaledWidth() + 8);
         int h = Math.max(12, element.getScaledHeight() + 8);
-        int color = (Math.round((150.0f + 75.0f * pulse)) << 24) | (accent & 0x00FFFFFF);
+        int color = (Math.round(150.0f + 75.0f * pulse) << 24)
+                | (accent & 0x00FFFFFF);
         drawRoundedOutline(graphics, x, y, w, h, 8, color, 2);
     }
 
@@ -150,7 +147,6 @@ public class HudEditorScreen extends Screen {
                                 boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
-
         if (HudSettingsPanel.mouseClicked(mouseX, mouseY)) return true;
         if (event.button() == 0) {
             HudElement hovered = HudMouseHandler.getHovered();
@@ -165,7 +161,6 @@ public class HudEditorScreen extends Screen {
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
         boolean moved = HudMouseHandler.hasMoved();
-        HudElement dragged = HudSettingsPanel.getSelected();
         HudMouseHandler.release();
         HudSettingsPanel.mouseReleased();
         if (!moved) {
