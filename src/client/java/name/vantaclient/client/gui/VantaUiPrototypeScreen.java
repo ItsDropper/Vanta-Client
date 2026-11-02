@@ -140,9 +140,9 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     private void addOverviewPage(VantaUiNode content) {
         content.add(VantaUiNode.text("Overview", VantaUiTheme.TEXT_PRIMARY).height(20));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "A real Minecraft screen, rendered through GuiGraphics with one retained component tree.",
-                VantaUiTheme.TEXT_SECONDARY));
+                VantaUiTheme.TEXT_SECONDARY, 2));
         content.add(VantaUiNode.spacer(2));
         if (width < 760) {
             content.add(VantaUiNode.button(
@@ -190,17 +190,17 @@ public final class VantaUiPrototypeScreen extends Screen {
                 () -> updateStrategy, value -> updateStrategy = value)
                 .tooltip("Dropdown interaction test. Use click or the left/right arrow keys."));
         if (showPerformanceHints) {
-            content.add(VantaUiNode.text(
+            content.add(VantaUiNode.paragraph(
                     "Prototype note: settings are deliberately isolated from live gameplay configuration.",
-                    VantaUiTheme.TEXT_MUTED));
+                    VantaUiTheme.TEXT_MUTED, 2));
         }
     }
 
     private void addVisualsPage(VantaUiNode content) {
         content.add(VantaUiNode.text("Visuals", VantaUiTheme.TEXT_PRIMARY).height(20));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "Control sizing, crosshair presentation and HUD layout behavior.",
-                VantaUiTheme.TEXT_SECONDARY));
+                VantaUiTheme.TEXT_SECONDARY, 2));
         content.add(VantaUiNode.spacer(4));
 
         content.add(VantaUiNode.toggle("Custom crosshair preview", () -> customCrosshair,
@@ -228,9 +228,9 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     private void addControlsPage(VantaUiNode content) {
         content.add(VantaUiNode.text("Controls", VantaUiTheme.TEXT_PRIMARY).height(20));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "Keyboard focus, activation, directional adjustment and pointer capture.",
-                VantaUiTheme.TEXT_SECONDARY));
+                VantaUiTheme.TEXT_SECONDARY, 2));
         content.add(VantaUiNode.spacer(4));
 
         content.add(VantaUiNode.textField("Search features...", () -> searchQuery,
@@ -253,9 +253,9 @@ public final class VantaUiPrototypeScreen extends Screen {
             page = PAGE_OVERVIEW;
             rebuildUi();
         }));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "Input contract: mouse events are routed through the runtime; Tab cycles focus; Enter/Space activate controls; arrows adjust sliders and dropdowns.",
-                VantaUiTheme.TEXT_MUTED));
+                VantaUiTheme.TEXT_MUTED, 3));
     }
 
     private void cycleAccent() {
