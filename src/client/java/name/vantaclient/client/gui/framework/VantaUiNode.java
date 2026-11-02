@@ -178,6 +178,7 @@ public final class VantaUiNode {
     public static VantaUiNode slider(String label, double minimum, double maximum,
                                      double step, DoubleSupplier value, DoubleConsumer setter) {
         if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || maximum < minimum
+                || !Double.isFinite(maximum - minimum)
                 || !Double.isFinite(step) || step < 0.0 || value == null || setter == null) {
             throw new IllegalArgumentException("Slider bounds, step and bindings must be valid.");
         }
@@ -906,6 +907,7 @@ public final class VantaUiNode {
     }
 
     void activate() {
+        if (!enabled) return;
         switch (kind) {
             case BUTTON -> { if (action != null) action.run(); }
             case TOGGLE -> {
