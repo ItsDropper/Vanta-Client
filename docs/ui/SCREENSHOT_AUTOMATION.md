@@ -14,15 +14,19 @@ No local Minecraft installation, manual mouse interaction, multiplayer server or
 
 ## Capture matrix
 
-`VantaUiScreenshotGameTest` captures the live `VantaSettingsScreen` at three states:
+`VantaUiScreenshotGameTest` captures the live `VantaSettingsScreen` at seven states:
 
 - Overview
 - HUD category
+- Visual category
+- Combat category
+- Misc category
 - Appearance
+- A built-in feature settings subpage
 
 It also opens the real `HudEditorScreen`, selects a HUD element and captures its inspector panel.
 
-Each of those four states is captured at four configurations:
+All eight states are captured at four configurations:
 
 | Window size | GUI scale |
 |---|---:|
@@ -31,9 +35,9 @@ Each of those four states is captured at four configurations:
 | 960 × 540 | 1 |
 | 960 × 540 | 2 |
 
-Expected output: 16 PNG files.
+Expected output: 32 PNG files.
 
-Each screenshot is checked for existence and a minimum size of 1 KiB. The workflow independently asserts that exactly 16 PNGs exist.
+Each screenshot is checked for existence and a minimum size of 1 KiB. The workflow independently asserts that exactly 32 PNGs exist.
 
 ## Artifacts
 
@@ -45,8 +49,8 @@ Fabric writes screenshots to `build/run/clientGameTest/screenshots/`; the workfl
 ## Validation history
 
 - Run [41537246163](https://github.com/ItsDropper/Vanta-Client/actions/runs/41537246163), commit `316b37e`: Minecraft client screenshot capture and the 16-file assertion passed.
-- Run [41537841411](https://github.com/ItsDropper/Vanta-Client/actions/runs/41537841411), commit `2f71bb6`: build and 16 screenshots passed after the HUD inspector was moved below the toolbar.
-- The screenshots were downloaded and visually reviewed. That review identified a toolbar/inspector collision at GUI scale 2; the toolbar alignment was corrected afterward. Revalidation of that final alignment is tracked by the newer workflow run.
+- Run [41538706648](https://github.com/ItsDropper/Vanta-Client/actions/runs/41538706648), commit `601f804`: build and 16 screenshots passed. The screenshots were downloaded and reviewed; the compact HUD inspector was verified below the toolbar at GUI scales 1 and 2.
+- The capture matrix has since been expanded to cover all four feature categories, Appearance, a feature subpage and the HUD editor. The 32-image workflow run is pending.
 
 ## Limits
 
