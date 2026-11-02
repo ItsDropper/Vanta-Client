@@ -3,7 +3,7 @@ package name.vantaclient.client.gui;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
+import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -14,16 +14,16 @@ import java.util.concurrent.CompletableFuture;
 
 /** In-game Modrinth browser. Network and disk work never runs on the render thread. */
 public final class VantaModrinthBrowserScreen extends Screen {
-    private static final int PANEL_WIDTH = 760;
-    private static final int PANEL_HEIGHT = 470;
+    private static final int PANEL_WIDTH = 920;
+    private static final int PANEL_HEIGHT = 540;
     private final Screen parent;
     private EditBox searchBox;
     private List<ModrinthBrowserService.Project> projects = List.of();
     private String status = "Search Modrinth for Fabric mods compatible with this Minecraft version.";
     private boolean busy;
     private int page;
-    private final List<Button> cardButtons = new java.util.ArrayList<>();
-    private Button enableButton;
+    private final List<VantaPanelButton> cardButtons = new java.util.ArrayList<>();
+    private VantaPanelButton enableButton;
 
     public VantaModrinthBrowserScreen(Screen parent) {
         super(Component.literal("Vanta Modrinth Library"));
@@ -33,27 +33,25 @@ public final class VantaModrinthBrowserScreen extends Screen {
     @Override
     protected void init() {
         clearWidgets();
-        int left = (width - PANEL_WIDTH) / 2;
-        int top = (height - PANEL_HEIGHT) / 2;
-        searchBox = new EditBox(font, left + 28, top + 56, 500, 28, Component.literal("Search Modrinth"));
+        int left = 0;
+        int top = 0;
+        searchBox = new EditBox(font, VantaPanelButton.layoutX(260), VantaPanelButton.layoutY(76),
+                VantaPanelButton.layoutSize(420), VantaPanelButton.layoutSize(30), Component.literal("Search Modrinth"));
         searchBox.setMaxLength(100);
         searchBox.setHint(Component.literal("Search mods..."));
         addRenderableWidget(searchBox);
-        addRenderableWidget(Button.builder(Component.literal("Search"), button -> search())
-                .bounds(left + 540, top + 56, 100, 28).build());
-        addRenderableWidget(Button.builder(Component.literal("Back"), button -> onClose())
-                .bounds(left + PANEL_WIDTH - 92, top + 12, 64, 24).build());
-        addRenderableWidget(Button.builder(Component.literal("‹"), button -> {
+        addPanelButton("Search", 694, 76, 94, 30, this::search, true);
+        addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
+        addPanelButton("‹", 252, 492, 34, 26, () -> {
             page = Math.max(0, page - 1);
             rebuildCards();
-        }).bounds(left + 28, top + PANEL_HEIGHT - 42, 34, 24).build());
-        addRenderableWidget(Button.builder(Component.literal("›"), button -> {
+        }, false);
+        addPanelButton("›", 294, 492, 34, 26, () -> {
             page = Math.min(Math.max(0, (projects.size() - 1) / 6), page + 1);
             rebuildCards();
-        }).bounds(left + 70, top + PANEL_HEIGHT - 42, 34, 24).build());
-        addRenderableWidget(Button.builder(Component.literal("Refresh installed"), button -> {
-            status = "Installed JARs are visible in the Mods section after returning.";
-        }).bounds(left + PANEL_WIDTH - 190, top + PANEL_HEIGHT - 42, 162, 24).build());
+        }, false);
+        addPanelButton("Installed mods", 744, 492, 154, 26,
+                () -> status = "Installed JARs are visible in the Mods section after returning.", false);
         rebuildCards();
         search();
     }
@@ -81,19 +79,18 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     private void rebuildCards() {
-        for (Button button : cardButtons) removeWidget(button);
+        for (VantaPanelButton button : cardButtons) removeWidget(button);
         cardButtons.clear();
-        int left = (width - PANEL_WIDTH) / 2;
-        int top = (height - PANEL_HEIGHT) / 2;
         int start = page * 6;
         int end = Math.min(projects.size(), start + 6);
         for (int i = start; i < end; i++) {
             ModrinthBrowserService.Project project = projects.get(i);
             int row = i - start;
-            int x = left + 28 + (row % 2) * 352;
-            int y = top + 104 + (row / 2) * 104;
-            Button installButton = Button.builder(Component.literal("Install"), button -> install(project))
-                    .bounds(x + 252, y + 57, 76, 24).build();
+            int x = 252 + (row % 2) * 326;
+            int y = 132 + (row / 2) * 112;
+            VantaPanelButton installButton = new VantaPanelButton(x + 226, y + 66, 82, 24,
+                    "Install", () -> install(project), () -> false,
+                    () -> 0xFF438BFF, true);
             cardButtons.add(addRenderableWidget(installButton));
         }
     }
@@ -122,11 +119,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     return;
                 }
                 if (enableButton != null) removeWidget(enableButton);
-                enableButton = addRenderableWidget(Button.builder(Component.literal("Enable now*"), button -> {
+                enableButton = addPanelButton("Enable now*", 736, 458, 162, 26, () -> {
                     ExperimentalModHotLoader.Result hotLoad = ExperimentalModHotLoader.scanAndLoad(modId);
                     status = hotLoad.summary();
-                }).bounds((width - PANEL_WIDTH) / 2 + PANEL_WIDTH - 190,
-                        (height - PANEL_HEIGHT) / 2 + PANEL_HEIGHT - 78, 162, 24).build());
+                }, true);
                 status += " " + modId + " is ready for an experimental session-load attempt.";
             }
         }));
@@ -135,27 +131,97 @@ public final class VantaModrinthBrowserScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
-        int left = (width - PANEL_WIDTH) / 2;
-        int top = (height - PANEL_HEIGHT) / 2;
-        graphics.fill(0, 0, width, height, 0x99060910);
-        graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xF20D111B);
-        graphics.fill(left, top, left + PANEL_WIDTH, top + 3, 0xFF438BFF);
-        graphics.drawString(font, "VANTA  /  MODRINTH LIBRARY", left + 28, top + 20, 0xFF82B4FF, false);
-        graphics.drawString(font, "Discover Fabric mods without leaving your world", left + 28, top + 37, 0xFF929EAF, false);
+        int left = VantaPanelButton.layoutX(0);
+        int top = VantaPanelButton.layoutY(0);
+        int panelWidth = VantaPanelButton.layoutSize(PANEL_WIDTH);
+        int panelHeight = VantaPanelButton.layoutSize(PANEL_HEIGHT);
+        graphics.fill(0, 0, width, height, 0xA8060912);
+        rounded(graphics, left + 4, top + 6, panelWidth - 8, panelHeight - 10, 18, 0xB8000000);
+        rounded(graphics, left, top, panelWidth, panelHeight, 18, 0xFF0C111B);
+        rounded(graphics, left + 1, top + 1, panelWidth - 2, panelHeight - 2, 17, 0xFF111824);
+        rounded(graphics, left + 1, top + 1, panelWidth - 2, VantaPanelButton.layoutSize(3), 2, 0xFF438BFF);
+
+        graphics.drawString(font, "VANTA", VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(24),
+                0xFF82B4FF, false);
+        graphics.drawString(font, "MODRINTH LIBRARY", VantaPanelButton.layoutX(86), VantaPanelButton.layoutY(24),
+                0xFFF1F5FC, false);
+        graphics.drawString(font, "Discover Fabric mods that match your Minecraft version",
+                VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(46), 0xFF8998AD, false);
+
+        rounded(graphics, VantaPanelButton.layoutX(24), VantaPanelButton.layoutY(68),
+                VantaPanelButton.layoutSize(884), VantaPanelButton.layoutSize(46), 12, 0xFF171F2D);
         for (int i = page * 6; i < Math.min(projects.size(), page * 6 + 6); i++) {
             ModrinthBrowserService.Project project = projects.get(i);
             int row = i - page * 6;
-            int x = left + 28 + (row % 2) * 352;
-            int y = top + 104 + (row / 2) * 104;
-            graphics.fill(x, y, x + 336, y + 92, 0xFF171E2B);
-            graphics.fill(x, y + 88, x + 336, y + 92, 0xFF397DE0);
-            graphics.drawString(font, trim(project.title(), 34), x + 12, y + 12, 0xFFF1F5FC, false);
-            graphics.drawString(font, trim(project.description(), 48), x + 12, y + 31, 0xFF9AA8BA, false);
-            graphics.drawString(font, "by " + trim(project.author(), 24) + "  •  " + compact(project.downloads()) + " downloads",
-                    x + 12, y + 76, 0xFF74839A, false);
+            int x = 252 + (row % 2) * 326;
+            int y = 132 + (row / 2) * 112;
+            int sx = VantaPanelButton.layoutX(x);
+            int sy = VantaPanelButton.layoutY(y);
+            int sw = VantaPanelButton.layoutSize(310);
+            int sh = VantaPanelButton.layoutSize(100);
+            boolean hovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh;
+            rounded(graphics, sx, sy + 2, sw, sh, 13, 0xFF090D15);
+            rounded(graphics, sx, sy, sw, sh, 13, hovered ? 0xFF222F43 : 0xFF192231);
+            rounded(graphics, sx + VantaPanelButton.layoutSize(1), sy + VantaPanelButton.layoutSize(1),
+                    sw - VantaPanelButton.layoutSize(2), sh - VantaPanelButton.layoutSize(2), 12,
+                    hovered ? 0xFF202C3E : 0xFF1B2635);
+            rounded(graphics, sx + VantaPanelButton.layoutSize(12), sy + VantaPanelButton.layoutSize(12),
+                    VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42), 10, 0xFF263B5A);
+            String initial = project.title().isBlank() ? "?" : project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+            graphics.drawString(font, initial, sx + VantaPanelButton.layoutSize(27) - font.width(initial) / 2,
+                    sy + VantaPanelButton.layoutSize(28), 0xFF9BC2FF, false);
+            graphics.drawString(font, trim(project.title(), 34), sx + VantaPanelButton.layoutSize(64),
+                    sy + VantaPanelButton.layoutSize(13), 0xFFF2F5FB, false);
+            drawWrapped(graphics, trim(project.description(), 120), sx + VantaPanelButton.layoutSize(64),
+                    sy + VantaPanelButton.layoutSize(31), VantaPanelButton.layoutSize(232), 0xFF9BA9BC, 2);
+            graphics.drawString(font, trim(project.author(), 20) + "  ·  " + compact(project.downloads()) + " downloads",
+                    sx + VantaPanelButton.layoutSize(64), sy + VantaPanelButton.layoutSize(78), 0xFF71839C, false);
+            rounded(graphics, sx + VantaPanelButton.layoutSize(10), sy + sh - VantaPanelButton.layoutSize(4),
+                    sw - VantaPanelButton.layoutSize(20), VantaPanelButton.layoutSize(2), 1, 0xFF438BFF);
         }
-        graphics.drawString(font, status, left + 120, top + PANEL_HEIGHT - 36, 0xFFB8C5D8, false);
+        graphics.drawString(font, busy ? "Working…" : status,
+                VantaPanelButton.layoutX(344), VantaPanelButton.layoutY(501), 0xFF9EACC0, false);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private VantaPanelButton addPanelButton(String label, int x, int y, int w, int h,
+                                            Runnable action, boolean accent) {
+        return addRenderableWidget(new VantaPanelButton(x, y, w, h, label, action,
+                () -> false, () -> 0xFF438BFF, accent));
+    }
+
+    private void drawWrapped(GuiGraphics graphics, String value, int x, int y,
+                             int maxWidth, int color, int maxLines) {
+        StringBuilder line = new StringBuilder();
+        int lines = 0;
+        for (String word : value.split(" ")) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (font.width(candidate) > maxWidth && !line.isEmpty()) {
+                graphics.drawString(font, line.toString(), x, y + lines * 11, color, false);
+                if (++lines >= maxLines) return;
+                line.setLength(0);
+                line.append(word);
+            } else {
+                if (!line.isEmpty()) line.append(' ');
+                line.append(word);
+            }
+        }
+        if (!line.isEmpty() && lines < maxLines) graphics.drawString(font, line.toString(), x, y + lines * 11, color, false);
+    }
+
+    private void rounded(GuiGraphics graphics, int x, int y, int w, int h, int radius, int color) {
+        int r = Math.max(1, Math.min(radius, Math.min(w, h) / 2));
+        for (int row = 0; row < h; row++) {
+            int inset = 0;
+            if (row < r) {
+                double dy = r - row - 0.5;
+                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
+            } else if (row >= h - r) {
+                double dy = row - (h - r) + 0.5;
+                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
+            }
+            graphics.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+        }
     }
 
     @Override
