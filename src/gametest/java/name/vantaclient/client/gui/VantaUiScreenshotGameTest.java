@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Launches the actual Minecraft client and captures the Vanta UI prototype.
+ * Launches the actual Minecraft client and captures the live Vanta settings workspace.
  *
  * These tests do not create a world, connect to a server, or require an
  * authenticated Minecraft account. They only exercise the client Screen.
@@ -23,11 +23,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.restoreDefaultGameOptions();
 
         VantaSettingsScreen screen = context.computeOnClient(
-                client -> new VantaUiPrototypeScreen(null));
+                client -> new VantaSettingsScreen(null));
 
         configureViewport(context, 1280, 720, 1);
         context.setScreen(() -> screen);
-        context.waitForScreen(VantaUiPrototypeScreen.class);
+        context.waitForScreen(VantaSettingsScreen.class);
         capturePages(context, screen, "1280x720-gui1");
 
         configureViewport(context, 1280, 720, 2);
@@ -53,18 +53,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void capturePages(ClientGameTestContext context,
-                                     VantaUiPrototypeScreen screen,
+                                     VantaSettingsScreen screen,
                                      String viewportLabel) {
         capturePage(context, screen, PAGE_OVERVIEW,
                 "vanta-ui-" + viewportLabel + "-overview");
-        capturePage(context, screen, PAGE_VISUALS,
+        capturePage(context, screen, PAGE_HUD,
                 "vanta-ui-" + viewportLabel + "-hud");
-        capturePage(context, screen, PAGE_CONTROLS,
+        capturePage(context, screen, PAGE_APPEARANCE,
                 "vanta-ui-" + viewportLabel + "-appearance");
     }
 
     private static void capturePage(ClientGameTestContext context,
-                                    VantaUiPrototypeScreen screen,
+                                    VantaSettingsScreen screen,
                                     int page, String screenshotName) {
         context.runOnClient(client -> screen.setPageForScreenshot(page));
         context.waitTicks(2);
