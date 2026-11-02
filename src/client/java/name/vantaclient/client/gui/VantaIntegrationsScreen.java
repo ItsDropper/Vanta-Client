@@ -61,6 +61,7 @@ public class VantaIntegrationsScreen extends Screen {
     private String modSearchQuery = "";
     private boolean favoritesOnly;
     private boolean studioOpen;
+    private final Map<String, Float> modCardHover = new HashMap<>();
     private VantaClientPreferences preferences;
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
@@ -83,6 +84,8 @@ public class VantaIntegrationsScreen extends Screen {
             modSearch.setResponder(value -> {
                 modSearchQuery = value;
                 sidebarScroll = 0;
+                rebuildWidgets();
+                if (modSearch != null) modSearch.setFocused(true);
             });
             addRenderableWidget(modSearch);
         }
@@ -863,13 +866,24 @@ public class VantaIntegrationsScreen extends Screen {
                 graphics.drawString(font, "Add Fabric mods, then reopen this screen to refresh the list.",
                         contentX() + 8, startY + 34, 0xFF727D90);
             }
+            int logicalMouseX = VantaPanelButton.unlayoutX(mouseX);
+            int logicalMouseY = VantaPanelButton.unlayoutY(mouseY);
             for (int index = start; index < end; index++) {
                 ExperimentalModHotLoader.AvailableMod mod = mods.get(index);
                 int column = (index - start) % columns;
                 int row = (index - start) / columns;
                 int x = contentX() + column * (cardWidth + gap);
                 int y = startY + row * (cardHeight + gap);
-                drawRoundedCard(graphics, x, y, cardWidth, cardHeight, 0xFF171D27, 10);
+                boolean hovered = logicalMouseX >= x && logicalMouseX < x + cardWidth
+                        && logicalMouseY >= y && logicalMouseY < y + cardHeight;
+                float hover = modCardHover.getOrDefault(mod.id(), 0.0f);
+                hover += ((hovered ? 1.0f : 0.0f) - hover) * 0.22f;
+                if (Math.abs((hovered ? 1.0f : 0.0f) - hover) < 0.015f) hover = hovered ? 1.0f : 0.0f;
+                modCardHover.put(mod.id(), hover);
+                drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
+                        withAlpha(accent, hover * 0.32f), 10);
+                drawRoundedCard(graphics, x + 1, y + 1, cardWidth - 2, cardHeight - 2,
+                        mixColor(0xFF171D27, 0xFF202B3B, hover), 9);
                 drawRoundedCard(graphics, x + 10, y + 12, 34, 34, 0xFF202A3A, 9);
                 Identifier iconTexture = modIconTextures.get(mod.id());
                 if (iconTexture != null) {
@@ -915,6 +929,15 @@ public class VantaIntegrationsScreen extends Screen {
         }
         graphics.pose().popMatrix();
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private int mixColor(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private int withAlpha(int color, float opacity) {
