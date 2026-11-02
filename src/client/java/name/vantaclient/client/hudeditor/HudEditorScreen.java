@@ -94,7 +94,8 @@ public class HudEditorScreen extends Screen {
     }
 
     private void drawGrid(GuiGraphics graphics, int spacing, float opacity) {
-        int color = (Math.round(65.0f * opacity) << 24) | 0x005D82B8;
+        int color = VantaUiTheme.withAlpha(VantaClientPreferences.get().accent.color(),
+                Math.round(34.0f * opacity));
         for (int y = 12; y < height; y += spacing) {
             for (int x = 12; x < width; x += spacing) {
                 graphics.fill(x, y, x + 1, y + 1, color);
