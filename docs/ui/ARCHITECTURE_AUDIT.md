@@ -40,13 +40,11 @@ The main settings panel uses a 920×540 logical design and coordinate conversion
 
 ## 5. Highest-impact limitations
 
-1. No shared measure/arrange layout engine for Row, Column, Box/Overlay and constraints.
-2. UI controls duplicate rendering, hover/focus and animation logic.
-3. No common input/focus/scroll/clip contract.
-4. Some built-in setting definitions are coupled to legacy ClickGUI widgets.
-5. HUD editor and settings screen have separate interaction/state approaches.
-6. Theme data exists but is not consumed by every legacy component.
-7. No in-game visual baseline has been captured by this repository audit.
+1. The retained framework still needs broader interaction tests beyond screenshot coverage.
+2. The separate mod-library and Modrinth browser surfaces retain their own presentation code.
+3. External mods that provide their own Mod Menu config screens remain outside Vanta's framework control.
+4. The HUD canvas selection/drag overlay intentionally remains specialized rendering; only its toolbar and inspector use the shared component runtime.
+5. Manual gameplay-session validation and performance profiling remain outstanding.
 
 ## 6. Existing functionality to preserve
 
