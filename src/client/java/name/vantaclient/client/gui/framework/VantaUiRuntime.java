@@ -43,7 +43,10 @@ public final class VantaUiRuntime {
         root.clearHover();
         hovered = root.hitTest(mouseX, mouseY);
         if (hovered != null) hovered.setHovered(true);
-        root.animate(theme, deltaSeconds);
+        boolean animationsEnabled = theme.animationsEnabled();
+        float hoverFactor = 1.0f - (float) Math.exp(-VantaUiTheme.HOVER_RATE * deltaSeconds);
+        float toggleFactor = 1.0f - (float) Math.exp(-VantaUiTheme.TOGGLE_RATE * deltaSeconds);
+        root.animate(animationsEnabled, hoverFactor, toggleFactor);
 
         root.render(graphics, font, theme, mouseX, mouseY);
         renderTooltip(graphics, font, screenWidth, screenHeight);
