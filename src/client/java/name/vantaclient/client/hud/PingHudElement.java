@@ -6,7 +6,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
 public final class PingHudElement extends HudElement {
-    public PingHudElement() { super(0.02f, 0.38f); }
+    public PingHudElement() {
+        super(name.vantaclient.client.config.DropperUtilsConfig.get().pingHudX,
+                name.vantaclient.client.config.DropperUtilsConfig.get().pingHudY);
+        scale = name.vantaclient.client.config.DropperUtilsConfig.get().pingHudScale;
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!PingHudFeature.INSTANCE.isEnabled()) return;
@@ -17,6 +21,19 @@ public final class PingHudElement extends HudElement {
             if (info != null) value = "PING  " + info.getLatency() + " ms";
         }
         graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
+    }
+
+    @Override public void savePosition() {
+        var config = name.vantaclient.client.config.DropperUtilsConfig.get();
+        config.pingHudX = xPercent;
+        config.pingHudY = yPercent;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
+    }
+
+    @Override public void setScale(float value) {
+        super.setScale(value);
+        name.vantaclient.client.config.DropperUtilsConfig.get().pingHudScale = scale;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
     @Override public int getWidth() { return 92; }

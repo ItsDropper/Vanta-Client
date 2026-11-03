@@ -9,7 +9,11 @@ public final class KeystrokesHudElement extends HudElement {
     private static final int KEY_SIZE = 18;
     private static final int GAP = 3;
 
-    public KeystrokesHudElement() { super(0.02f, 0.48f); }
+    public KeystrokesHudElement() {
+        super(name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudX,
+                name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudY);
+        scale = name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudScale;
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!KeystrokesFeature.INSTANCE.isEnabled()) return;
@@ -31,6 +35,19 @@ public final class KeystrokesHudElement extends HudElement {
         graphics.fill(x, y, x + width, y + 1, pressed ? 0xFF8CB8FF : 0xFF465164);
         graphics.drawCenteredString(mc.font, label, x + width / 2,
                 y + 5, 0xFFF2F5FA);
+    }
+
+    @Override public void savePosition() {
+        var config = name.vantaclient.client.config.DropperUtilsConfig.get();
+        config.keystrokesHudX = xPercent;
+        config.keystrokesHudY = yPercent;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
+    }
+
+    @Override public void setScale(float value) {
+        super.setScale(value);
+        name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudScale = scale;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
     @Override public int getWidth() { return KEY_SIZE * 3 + GAP * 2; }

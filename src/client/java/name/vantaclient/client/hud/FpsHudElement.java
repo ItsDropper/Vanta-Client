@@ -6,12 +6,29 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
 public final class FpsHudElement extends HudElement {
-    public FpsHudElement() { super(0.02f, 0.34f); }
+    public FpsHudElement() {
+        super(name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudX,
+                name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudY);
+        scale = name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudScale;
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!FpsHudFeature.INSTANCE.isEnabled()) return;
         int fps = Minecraft.getInstance().getFps();
         graphics.drawString(Minecraft.getInstance().font, "FPS  " + fps, 0, 0, 0xFFF0F3FA);
+    }
+
+    @Override public void savePosition() {
+        var config = name.vantaclient.client.config.DropperUtilsConfig.get();
+        config.fpsHudX = xPercent;
+        config.fpsHudY = yPercent;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
+    }
+
+    @Override public void setScale(float value) {
+        super.setScale(value);
+        name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudScale = scale;
+        name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
     @Override public int getWidth() { return 76; }
