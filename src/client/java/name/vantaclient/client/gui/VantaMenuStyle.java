@@ -15,7 +15,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.world.entity.player.PlayerModelType;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.function.Supplier;
 
 /** Purpose-built title-screen styling; gameplay and non-title-screen widgets retain vanilla rendering. */
@@ -32,6 +34,7 @@ public final class VantaMenuStyle {
     private static Supplier<PlayerSkin> cachedSkinLookup;
     private static PlayerModel cachedPlayerModel;
     private static PlayerModelType cachedPlayerModelType;
+    private static final Map<AbstractButton, Float> BUTTON_HOVER = new WeakHashMap<>();
 
     private VantaMenuStyle() {}
 
@@ -45,15 +48,26 @@ public final class VantaMenuStyle {
         int height = button.getHeight();
         if (width < 4 || height < 4) return;
 
+        float target = button.isActive() && (button.isHovered() || button.isFocused())
+                ? 1.0f : 0.0f;
+        float current = BUTTON_HOVER.getOrDefault(button, 0.0f);
+        current += (target - current) * 0.24f;
+        if (Math.abs(target - current) < 0.012f) current = target;
+        BUTTON_HOVER.put(button, current);
+
         if (!button.isActive()) {
             fillRounded(graphics, x, y, width, height, 5, 0x0EFFFFFF);
-        } else if (button.isFocused()) {
-            fillRounded(graphics, x, y, width, height, 5, 0x36FFFFFF);
-            graphics.fill(x + 2, y + 5, x + 3, y + height - 5, 0xD8DDE8F4);
-        } else if (button.isHovered()) {
-            fillRounded(graphics, x, y, width, height, 5, 0x20FFFFFF);
-            graphics.fill(x + 8, y + height - 2, x + width - 8, y + height - 1,
-                    0x88DDE8F5);
+        } else if (current > 0.01f) {
+            int surfaceAlpha = Math.round(0x28 * current);
+            fillRounded(graphics, x, y, width, height, 5,
+                    (surfaceAlpha << 24) | 0x00FFFFFF);
+            if (button.isFocused()) {
+                graphics.fill(x + 2, y + 5, x + 3, y + height - 5,
+                        withAlpha(0xFFDDE8F5, Math.round(232 * current)));
+            } else {
+                graphics.fill(x + 8, y + height - 2, x + width - 8, y + height - 1,
+                        withAlpha(0xFFDDE8F5, Math.round(136 * current)));
+            }
         }
     }
 
