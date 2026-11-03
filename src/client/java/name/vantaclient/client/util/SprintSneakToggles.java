@@ -47,7 +47,8 @@ public final class SprintSneakToggles {
         boolean sneakRequested = sneakToggled || client.options.keyShift.isDown();
 
         client.player.setSprinting(sprintRequested
-                && client.player.getAbilities().mayBuild()
+                && client.player.zza > 0.0f
+                && !sneakRequested
                 && client.player.isAlive());
         client.player.setShiftKeyDown(sneakRequested);
     }
