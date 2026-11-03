@@ -104,8 +104,8 @@ public abstract class TitleScreenMixin {
         int left = VantaMenuStyle.menuLeft(screenWidth);
         int width = VantaMenuStyle.menuButtonWidth(screenWidth);
         int top = VantaMenuStyle.menuTop(screenHeight);
-        int buttonHeight = 28;
-        int gap = 7;
+        int buttonHeight = VantaMenuStyle.menuButtonHeight(screenHeight);
+        int gap = VantaMenuStyle.menuButtonGap(screenHeight);
 
         AbstractButton singleplayer = null;
         AbstractButton multiplayer = null;
@@ -144,8 +144,6 @@ public abstract class TitleScreenMixin {
                 options = button;
             } else if (normalized.startsWith("quit")) {
                 quit = button;
-            } else if (!label.isBlank()) {
-                secondary.add(button);
             } else {
                 secondary.add(button);
             }
@@ -159,8 +157,8 @@ public abstract class TitleScreenMixin {
             y += buttonHeight + gap;
         }
 
-        int secondaryY = top + 3 * (buttonHeight + gap) - gap + 3;
-        int halfWidth = Math.max(60, (width - 8) / 2);
+        int secondaryY = top + 3 * (buttonHeight + gap) + 8;
+        int halfWidth = Math.max(72, (width - 8) / 2);
         if (options != null) vanta$setBounds(options, left, secondaryY, halfWidth, 27);
         if (quit != null) vanta$setBounds(quit, left + halfWidth + 8, secondaryY,
                 width - halfWidth - 8, 27);
@@ -171,24 +169,22 @@ public abstract class TitleScreenMixin {
                     bounds[0], bounds[1], bounds[2], bounds[3]);
         }
 
-        int extraY = screenHeight - 80;
-        int extraX = screenWidth - left - 27;
-        int utilityRowX = Math.max(0, screenWidth - left - 216);
+        int utilityY = Math.max(8, screenHeight - 58);
+        int utilityStart = Math.max(8, screenWidth - 236);
         if (vanta$languageShortcut != null) {
-            vanta$setBounds(vanta$languageShortcut, utilityRowX, extraY, 104, 22);
+            vanta$setBounds(vanta$languageShortcut, utilityStart, utilityY, 104, 24);
         }
         if (vanta$accessibilityShortcut != null) {
-            vanta$setBounds(vanta$accessibilityShortcut, utilityRowX + 112, extraY, 104, 22);
+            vanta$setBounds(vanta$accessibilityShortcut, utilityStart + 112, utilityY, 116, 24);
         }
         if (vanta$creditsShortcut != null) {
-            vanta$setBounds(vanta$creditsShortcut, Math.max(0, screenWidth - left - 90),
-                    Math.max(0, screenHeight - 52), 80, 22);
+            vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 88),
+                    Math.max(8, screenHeight - 30), 80, 22);
         }
 
         for (AbstractButton button : secondary) {
             if (button == options || button == quit) continue;
-            vanta$setBounds(button, extraX, extraY, 26, 26);
-            extraX -= 32;
+            vanta$setBounds(button, Math.max(8, screenWidth - left - 27), utilityY, 26, 26);
         }
     }
 
