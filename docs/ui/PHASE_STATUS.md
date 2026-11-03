@@ -26,7 +26,6 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - API-contributed mod settings use `VantaIntegrationSettingsScreen`, mapping BOOLEAN, INTEGER, DECIMAL, STRING and ENUM definitions to live framework controls.
 - `VantaIntegrationsScreen` now has a single retained-mode implementation for the installed-mod library and selected-mod details/config routing. The old manual renderer and duplicated widget path have been removed. The library retains favorites, search, refresh, Fabric/session load states, explicit per-mod hotload actions and mod-settings handoff. Local JAR inventory enumeration runs asynchronously; the Refresh action does not execute third-party entrypoints.
 - `VantaModrinthBrowserScreen` also uses the retained component tree. Search, project icons, pagination, install and experimental session-load work retain their asynchronous handling; icon arrival does not rebuild the screen or steal search focus.
-- Installed-mod inventory enumeration in `VantaIntegrationsScreen` runs asynchronously. Refresh reads local JAR metadata only; it does not execute third-party entrypoints. Experimental session loading remains a separate per-mod action.
 - The HUD editor toolbar and selected-element inspector use the shared runtime and theme. The draggable HUD canvas, selection outlines and hitboxes remain specialized rendering by design.
 - Every custom and vanilla HUD element has an independent, persisted background toggle. Backgrounds use a dark-gray fill at 80% opacity. Overlapping hitboxes are always unioned to prevent compounded alpha; the inspector can optionally bridge nearby hitboxes with a configurable 0–24 px connection distance.
 - FPS, Ping, Keystrokes and CPS remain previewable/selectable in the HUD editor even while their in-game feature is disabled, so their positions and backgrounds can still be configured.
@@ -56,12 +55,7 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 The 46-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector and both desktop/compact Modrinth, installed-mod library and selected-mod details screens. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and Vanta keybind conflict/rebind/cancel/unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
 
 ## Remaining acceptance gates
-
-- Review the latest screenshot artifact, particularly the title screen and HUD editor at 960×540 GUI scale 2.
-- Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown popup positioning and scrolling, screen open/close and HUD dragging in a real game session.
-- Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
-- Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
-- Review the latest 46-image artifact, particularly the Controls page, HUD editor at 960×540 GUI scale 2, compact Modrinth cards, installed-mod library and selected-mod details.
-- Manually exercise mod search/favorites, read-only inventory refresh, per-mod hotload recovery, details/config handoff, feature toggles/sliders, addon settings, dropdown scrolling, key capture and screen lifecycle, and HUD dragging in a gameplay session.
-
+- Review the 46-image artifact for visual quality, particularly the Controls page, title screen, HUD editor at 960×540 GUI scale 2, compact Modrinth cards and selected-mod details.
+- Manually test mod search/favorites, read-only inventory refresh, per-mod hotload recovery, config handoff, dropdown scrolling, keybind conflict/capture/reset/unbind, screen lifecycle, and HUD dragging.
+- Verify HUD hit-testing and FarView render-option restoration in a gameplay session; confirm layouts with the preferred GUI scale and a populated real mods folder.
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.
