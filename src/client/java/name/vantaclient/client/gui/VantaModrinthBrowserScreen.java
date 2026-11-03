@@ -1,47 +1,58 @@
 package name.vantaclient.client.gui;
 
+import com.mojang.blaze3d.platform.NativeImage;
+import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.Identifier;
-import com.mojang.blaze3d.platform.NativeImage;
-import java.io.ByteArrayInputStream;
-import java.util.HashMap;
-import java.util.Map;
-import name.vantaclient.client.gui.components.VantaPanelButton;
-import name.vantaclient.client.gui.framework.VantaUiTheme;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
+import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-/** In-game Modrinth browser. Network and disk work never runs on the render thread. */
+/**
+ * Modrinth library rendered entirely through Vanta's retained UI framework.
+ * Network and disk work remain off the render thread; texture ownership is scoped to this screen.
+ */
 public final class VantaModrinthBrowserScreen extends Screen {
-    private static final int PANEL_WIDTH = 920;
-    private static final int PANEL_HEIGHT = 540;
+    private static final int PAGE_SIZE = 6;
+    private static final int WIDE_LAYOUT_THRESHOLD = 760;
+    private static final int ICON_MAX_BYTES = 512 * 1024;
+    private static final int ICON_MAX_DIMENSION = 512;
+
     private final Screen parent;
-    private EditBox searchBox;
+    private VantaUiRuntime runtime;
     private List<ModrinthBrowserService.Project> projects = List.of();
+    private String searchQuery = "";
     private String status = "Search Modrinth for Fabric mods compatible with this Minecraft version.";
     private boolean busy;
     private int page;
-    private final List<VantaPanelButton> cardButtons = new java.util.ArrayList<>();
     private final Map<String, Identifier> projectIconTextures = new HashMap<>();
-    private final java.util.Set<String> requestedIcons = new java.util.HashSet<>();
-    private VantaPanelButton enableButton;
+    private final Set<String> requestedIcons = new HashSet<>();
+    private long iconGeneration;
     private boolean installedView;
     private List<ExperimentalModHotLoader.AvailableMod> installedMods = List.of();
     private Set<String> fabricLoadedIds = Set.of();
     private Set<String> sessionLoadedIds = Set.of();
+    private String enableModId;
     private boolean closed;
+    private long operationGeneration;
 
     public VantaModrinthBrowserScreen(Screen parent) {
         super(Component.literal("Vanta Modrinth Library"));
@@ -50,49 +61,278 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     @Override
     protected void init() {
-        clearWidgets();
-        int left = 0;
-        int top = 0;
-        searchBox = new EditBox(font, VantaPanelButton.layoutX(260), VantaPanelButton.layoutY(76),
-                VantaPanelButton.layoutSize(420), VantaPanelButton.layoutSize(30), Component.literal("Search Modrinth"));
-        searchBox.setMaxLength(100);
-        searchBox.setHint(Component.literal("Search mods..."));
-        searchBox.setBordered(false);
-        searchBox.setTextColor(0xFFE6EDF8);
-        addRenderableWidget(searchBox);
-        addPanelButton("Search", 694, 76, 94, 30, this::search, true);
-        addPanelButton("Clear", 796, 76, 44, 30, this::clearSearch, false);
-        addPanelButton("Installed", 34, 132, 184, 30, this::showInstalled, true);
-        addPanelButton("Discover", 34, 170, 184, 30, this::showDiscover, false);
-        addPanelButton("Back to Vanta Client", 34, 208, 184, 30, this::onClose, false);
-        addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
-        addPanelButton("Previous", 252, 492, 66, 26, () -> {
-            page = Math.max(0, page - 1);
-            requestVisibleIcons();
-            rebuildCards();
-        }, false);
-        addPanelButton("Next", 324, 492, 58, 26, () -> {
-            page = Math.min(Math.max(0, (projects.size() - 1) / 6), page + 1);
-            requestVisibleIcons();
-            rebuildCards();
-        }, false);
-        rebuildCards();
+        closed = false;
+        rebuildUi();
         search();
     }
 
-    private void loadPopular() {
-        if (searchBox != null) searchBox.setValue("");
-        page = 0;
-        search();
+    private void rebuildUi() {
+        if (runtime != null) runtime.dispose();
+
+        VantaUiNode root = VantaUiNode.column(12, 14)
+                .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
+                .padding(14)
+                .clipToBounds();
+
+        VantaUiNode header = VantaUiNode.row(12, 0)
+                .height(44)
+                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
+        identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
+        identity.add(VantaUiNode.title("Modrinth"));
+        header.add(identity);
+        header.add(VantaUiNode.text("Minecraft "
+                + FabricLoader.getInstance().getModContainer("minecraft")
+                        .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
+                        .orElse("unknown"),
+                VantaUiTheme.TEXT_MUTED));
+        header.add(VantaUiNode.button("Back", VantaUiNode.Icon.OVERVIEW,
+                this::onClose).height(30));
+        root.add(header);
+
+        if (!installedView) {
+            VantaUiNode search = VantaUiNode.row(8, 8)
+                    .height(46)
+                    .background(VantaUiTheme.INPUT_SURFACE)
+                    .align(VantaUiNode.Alignment.CENTER);
+            search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
+            search.add(VantaUiNode.textField("Search Fabric mods…",
+                    () -> searchQuery,
+                    value -> searchQuery = value,
+                    100).flex(1));
+            search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
+                    this::search).height(30).enabled(!busy));
+            search.add(VantaUiNode.button("Clear", () -> {
+                if (busy) return;
+                searchQuery = "";
+                search();
+            }).height(30).enabled(!busy));
+            root.add(search);
+        }
+
+        VantaUiNode body = VantaUiNode.row(12, 0).flex(1);
+        VantaUiNode sidebar = VantaUiNode.column(8, 10)
+                .width(142)
+                .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
+                .padding(10);
+        sidebar.add(VantaUiNode.eyebrow("LIBRARY"));
+        sidebar.add(VantaUiNode.button("Installed", VantaUiNode.Icon.OVERVIEW,
+                this::showInstalled).height(34).selected(installedView).enabled(!busy));
+        sidebar.add(VantaUiNode.button("Discover", VantaUiNode.Icon.SEARCH,
+                this::showDiscover).height(34).selected(!installedView).enabled(!busy));
+        sidebar.add(VantaUiNode.spacer(4));
+        sidebar.add(VantaUiNode.button("Vanta Client", VantaUiNode.Icon.BRAND,
+                this::onClose).height(34));
+        sidebar.add(VantaUiNode.spacer(1).flex(1));
+        sidebar.add(VantaUiNode.eyebrow("INSTALLATION"));
+        sidebar.add(VantaUiNode.paragraph(
+                "Fabric-compatible files only. Most new mods require a Minecraft restart.",
+                VantaUiTheme.TEXT_MUTED, 4));
+        body.add(sidebar);
+
+        VantaUiNode main = VantaUiNode.column(8, 10)
+                .flex(1)
+                .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
+                .padding(10);
+        VantaUiNode heading = VantaUiNode.row(8, 0)
+                .height(24)
+                .align(VantaUiNode.Alignment.CENTER);
+        heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
+        heading.add(VantaUiNode.spacer(1).flex(1));
+        heading.add(VantaUiNode.dynamicText(
+                () -> busy ? "WORKING…" : status,
+                VantaUiTheme.TEXT_MUTED));
+        main.add(heading);
+
+        VantaUiNode cards = VantaUiNode.column(8, 8)
+                .flex(1)
+                .background(VantaUiTheme.INPUT_SURFACE)
+                .padding(8)
+                .scrollable();
+        if (busy && visibleCount() == 0) {
+            VantaUiNode loading = VantaUiNode.column(8, 16)
+                    .height(132)
+                    .background(VantaUiTheme.PANEL_RAISED)
+                    .align(VantaUiNode.Alignment.CENTER);
+            loading.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH).iconColor(VantaUiTheme.TEXT_MUTED));
+            loading.add(VantaUiNode.title(installedView ? "Scanning installed mods" : "Searching Modrinth"));
+            loading.add(VantaUiNode.text("This runs asynchronously. The interface remains responsive.",
+                    VantaUiTheme.TEXT_MUTED));
+            cards.add(loading);
+        } else if (visibleCount() == 0) {
+            VantaUiNode empty = VantaUiNode.column(8, 16)
+                    .height(140)
+                    .background(VantaUiTheme.PANEL_RAISED)
+                    .align(VantaUiNode.Alignment.CENTER);
+            empty.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW));
+            empty.add(VantaUiNode.title(emptyTitle()));
+            empty.add(VantaUiNode.paragraph(emptyDescription(), VantaUiTheme.TEXT_MUTED, 2));
+            cards.add(empty);
+        } else {
+            addVisibleCards(cards);
+        }
+        main.add(cards);
+
+        VantaUiNode footer = VantaUiNode.row(8, 0)
+                .height(32)
+                .align(VantaUiNode.Alignment.CENTER);
+        footer.add(VantaUiNode.button("Previous", () -> changePage(-1))
+                .height(30).enabled(!busy && page > 0));
+        footer.add(VantaUiNode.dynamicText(
+                () -> "PAGE " + (page + 1) + " / " + pageCount(),
+                VantaUiTheme.TEXT_MUTED));
+        footer.add(VantaUiNode.button("Next", () -> changePage(1))
+                .height(30).enabled(!busy && page + 1 < pageCount()));
+        footer.add(VantaUiNode.spacer(1).flex(1));
+        if (enableModId != null) {
+            footer.add(VantaUiNode.button("Enable now*",
+                    VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
+                    .height(30).enabled(!busy));
+        }
+        main.add(footer);
+        body.add(main);
+        root.add(body);
+
+        runtime = new VantaUiRuntime(root);
+        runtime.setScale((float) VantaClientPreferences.get().uiScale);
+        if (width > 0 && height > 0) runtime.layout(font, width, height);
+    }
+
+    private void addVisibleCards(VantaUiNode cards) {
+        int count = visibleCount();
+        int start = Math.min(page * PAGE_SIZE, Math.max(0, count - 1));
+        int end = Math.min(count, start + PAGE_SIZE);
+        int columns = width >= WIDE_LAYOUT_THRESHOLD ? 2 : 1;
+
+        for (int index = start; index < end; index += columns) {
+            VantaUiNode row = VantaUiNode.row(8, 0)
+                    .height(132)
+                    .align(VantaUiNode.Alignment.STRETCH);
+            row.add(installedView
+                    ? buildInstalledCard(installedMods.get(index))
+                    : buildProjectCard(projects.get(index)));
+            if (columns == 2 && index + 1 < end) {
+                row.add(installedView
+                        ? buildInstalledCard(installedMods.get(index + 1))
+                        : buildProjectCard(projects.get(index + 1)));
+            } else if (columns == 2) {
+                row.add(VantaUiNode.spacer(1).flex(1));
+            }
+            cards.add(row);
+        }
+    }
+
+    private VantaUiNode buildProjectCard(ModrinthBrowserService.Project project) {
+        VantaUiNode card = VantaUiNode.column(6, 10)
+                .flex(1)
+                .height(132)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(10);
+
+        VantaUiNode top = VantaUiNode.row(8, 0)
+                .height(42)
+                .align(VantaUiNode.Alignment.CENTER);
+        Identifier icon = projectIconTextures.get(project.id());
+        if (icon != null) {
+            top.add(VantaUiNode.image(icon).size(38, 38));
+        } else {
+            String initial = project.title().isBlank() ? "?" :
+                    project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+            top.add(VantaUiNode.text(initial, VantaUiTheme.TEXT_PRIMARY)
+                    .size(38, 38)
+                    .background(VantaUiTheme.SURFACE_SELECTED)
+                    .align(VantaUiNode.Alignment.CENTER));
+        }
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(trim(project.title(), 46), VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(trim(project.author(), 30), VantaUiTheme.TEXT_MUTED));
+        top.add(labels);
+        card.add(top);
+        card.add(VantaUiNode.paragraph(trim(project.description(), 180),
+                VantaUiTheme.TEXT_SECONDARY, 2).flex(1));
+
+        VantaUiNode footer = VantaUiNode.row(8, 0)
+                .height(30)
+                .align(VantaUiNode.Alignment.CENTER);
+        footer.add(VantaUiNode.text(compact(project.downloads()) + " downloads",
+                VantaUiTheme.TEXT_MUTED).flex(1));
+        footer.add(VantaUiNode.button("Install", VantaUiNode.Icon.SPARK,
+                () -> install(project)).height(28).enabled(!busy));
+        card.add(footer);
+        return card;
+    }
+
+    private VantaUiNode buildInstalledCard(ExperimentalModHotLoader.AvailableMod mod) {
+        VantaUiNode card = VantaUiNode.column(6, 10)
+                .flex(1)
+                .height(132)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(10);
+        VantaUiNode top = VantaUiNode.row(8, 0)
+                .height(42)
+                .align(VantaUiNode.Alignment.CENTER);
+        String initial = mod.name().isBlank() ? "?" :
+                mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+        top.add(VantaUiNode.text(initial, VantaUiTheme.TEXT_PRIMARY)
+                .size(38, 38)
+                .background(VantaUiTheme.SURFACE_SELECTED)
+                .align(VantaUiNode.Alignment.CENTER));
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(trim(mod.name(), 46), VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 48),
+                VantaUiTheme.TEXT_MUTED));
+        top.add(labels);
+        card.add(top);
+
+        boolean fabricLoaded = fabricLoadedIds.contains(mod.id());
+        boolean sessionLoaded = sessionLoadedIds.contains(mod.id());
+        String state = fabricLoaded ? "Enabled by Fabric"
+                : sessionLoaded ? "Session-loaded · experimental"
+                : "Installed · restart to load";
+        int stateColor = fabricLoaded ? 0xFF78D6A0
+                : sessionLoaded ? 0xFFFFC978 : VantaUiTheme.TEXT_SECONDARY;
+        card.add(VantaUiNode.text(state, stateColor));
+        card.add(VantaUiNode.paragraph(fabricLoaded
+                        ? "Fabric loaded this mod at startup."
+                        : sessionLoaded
+                        ? "This mod was loaded experimentally in the current session."
+                        : "The JAR is present, but it has not been loaded by Fabric.",
+                VantaUiTheme.TEXT_MUTED, 2));
+        return card;
+    }
+
+    private void changePage(int delta) {
+        if (busy) return;
+        page = Math.max(0, Math.min(pageCount() - 1, page + delta));
+        if (!installedView) requestVisibleIcons();
+        rebuildUi();
+    }
+
+    private int visibleCount() {
+        return installedView ? installedMods.size() : projects.size();
+    }
+
+    private int pageCount() {
+        return Math.max(1, (visibleCount() + PAGE_SIZE - 1) / PAGE_SIZE);
+    }
+
+    private String emptyTitle() {
+        if (busy) return installedView ? "Scanning installed mods" : "Searching Modrinth";
+        if (status.startsWith("Search failed")) return "Could not load Modrinth results";
+        if (installedView) return "No external Fabric mods found";
+        return "No matching mods found";
+    }
+
+    private String emptyDescription() {
+        if (status.startsWith("Search failed")) return trim(status, 150);
+        if (installedView) return "Install a mod from Discover, or add a JAR and restart Minecraft.";
+        return "Try another search, or clear the query to browse popular Fabric mods.";
     }
 
     private void showDiscover() {
+        if (busy) return;
         installedView = false;
-        if (searchBox != null) searchBox.visible = true;
-        if (enableButton != null) {
-            removeWidget(enableButton);
-            enableButton = null;
-        }
+        enableModId = null;
         page = 0;
         search();
     }
@@ -100,18 +340,15 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private void showInstalled() {
         if (busy) return;
         installedView = true;
-        if (searchBox != null) searchBox.visible = false;
-        if (enableButton != null) {
-            removeWidget(enableButton);
-            enableButton = null;
-        }
-        busy = true;
+        enableModId = null;
         page = 0;
+        busy = true;
         status = "Scanning the local mods folder…";
-        rebuildCards();
+        rebuildUi();
+        long operation = ++operationGeneration;
         CompletableFuture.supplyAsync(ExperimentalModHotLoader::getAvailableMods)
                 .whenComplete((result, error) -> minecraft.execute(() -> {
-                    if (closed) return;
+                    if (closed || operation != operationGeneration) return;
                     busy = false;
                     if (error != null) {
                         installedMods = List.of();
@@ -123,7 +360,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
                         refreshLoadedStates();
                         status = result.size() + " installed mod JAR(s). Fabric-loaded mods are enabled; other JARs need a restart.";
                     }
-                    rebuildCards();
+                    page = 0;
+                    rebuildUi();
                 }));
     }
 
@@ -140,70 +378,104 @@ public final class VantaModrinthBrowserScreen extends Screen {
         sessionLoadedIds = Set.copyOf(sessionLoaded);
     }
 
-    private void clearSearch() {
-        if (searchBox != null) {
-            searchBox.setValue("");
-            searchBox.setFocused(true);
-        }
-        page = 0;
-        search();
-    }
-
     private void search() {
         if (busy) return;
         installedView = false;
-        if (searchBox != null) searchBox.visible = true;
-        String query = searchBox.getValue().trim();
+        page = 0;
+        enableModId = null;
         busy = true;
-        setCardButtonsActive(false);
-        status = query.isEmpty() ? "Loading popular Fabric mods…" : "Searching Modrinth…";
+        status = searchQuery.isBlank() ? "Loading popular Fabric mods…" : "Searching Modrinth…";
+        rebuildUi();
+        long operation = ++operationGeneration;
         CompletableFuture.supplyAsync(() -> {
-            try { return ModrinthBrowserService.search(query); }
-            catch (Exception exception) { throw new java.util.concurrent.CompletionException(exception); }
+            try {
+                return ModrinthBrowserService.search(searchQuery.trim());
+            } catch (Exception exception) {
+                throw new java.util.concurrent.CompletionException(exception);
+            }
         }).whenComplete((result, error) -> minecraft.execute(() -> {
-            if (closed) return;
+            if (closed || operation != operationGeneration) return;
             busy = false;
             if (error != null) {
                 status = "Search failed: " + safeMessage(error);
                 projects = List.of();
+                pruneProjectIcons();
                 VantaNotificationManager.error("Modrinth search failed",
                         "Could not reach Modrinth. Check your connection and retry.");
             } else {
-                projects = result;
+                projects = result == null ? List.of() : List.copyOf(result);
                 page = 0;
                 pruneProjectIcons();
-                status = result.size() + " compatible results. Select Install to download a mod and its required dependencies.";
+                status = projects.size()
+                        + " compatible results. Select Install to download a mod and its required dependencies.";
                 requestVisibleIcons();
             }
-            rebuildCards();
+            rebuildUi();
         }));
     }
 
-    private void rebuildCards() {
-        for (VantaPanelButton button : cardButtons) removeWidget(button);
-        cardButtons.clear();
-        if (installedView) return;
-        int start = page * 6;
-        int end = Math.min(projects.size(), start + 6);
-        for (int i = start; i < end; i++) {
-            ModrinthBrowserService.Project project = projects.get(i);
-            int row = i - start;
-            int x = 252 + (row % 2) * 326;
-            int y = 132 + (row / 2) * 112;
-            VantaPanelButton installButton = new VantaPanelButton(x + 226, y + 66, 82, 24,
-                    "Install", () -> install(project), () -> false,
-                    () -> 0xFF438BFF, true);
-            installButton.active = !busy;
-            cardButtons.add(addRenderableWidget(installButton));
-        }
+    private void install(ModrinthBrowserService.Project project) {
+        if (busy || project == null) return;
+        busy = true;
+        enableModId = null;
+        status = "Installing " + project.title() + " and resolving required dependencies…";
+        rebuildUi();
+        long operation = ++operationGeneration;
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return ModrinthBrowserService.install(project.id());
+            } catch (Exception exception) {
+                throw new java.util.concurrent.CompletionException(exception);
+            }
+        }).whenComplete((result, error) -> minecraft.execute(() -> {
+            if (closed || operation != operationGeneration) return;
+            busy = false;
+            if (error != null) {
+                status = "Install failed: " + safeMessage(error);
+                VantaNotificationManager.error("Installation failed",
+                        "Could not finish the download. Check your connection and retry.");
+                rebuildUi();
+                return;
+            }
+
+            status = result.summary();
+            if (!result.installed().isEmpty()) {
+                VantaNotificationManager.success("Download complete",
+                        project.title() + " was added. Restart Minecraft to load it.");
+                Path primary = result.installed().get(result.installed().size() - 1);
+                try {
+                    enableModId = ModrinthBrowserService.readFabricModId(primary);
+                    status += " " + enableModId + " is ready for an experimental session-load attempt.";
+                } catch (Exception exception) {
+                    status += " Enable unavailable: " + safeMessage(exception);
+                    VantaNotificationManager.error("Mod metadata unavailable",
+                            "The downloaded JAR does not contain valid Fabric metadata.");
+                }
+            }
+            rebuildUi();
+        }));
     }
 
-    private void setCardButtonsActive(boolean active) {
-        for (VantaPanelButton button : cardButtons) button.active = active;
+    private void attemptSessionLoad() {
+        if (busy || enableModId == null) return;
+        ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(enableModId);
+        status = result.summary();
+        if (result.loaded() > 0 && result.failed() == 0) {
+            VantaNotificationManager.success("Session load complete",
+                    "Loaded " + result.loaded() + " mod(s). This remains experimental.");
+        } else if (result.failed() > 0) {
+            VantaNotificationManager.error("Session load failed",
+                    "Some entrypoints failed. Restart Minecraft before trying again.");
+        } else {
+            VantaNotificationManager.warning("Mod not loaded",
+                    "This JAR is not eligible for experimental session loading.");
+        }
+        rebuildUi();
     }
 
     private void pruneProjectIcons() {
-        java.util.Set<String> retained = projects.stream()
+        iconGeneration++;
+        Set<String> retained = projects.stream()
                 .map(ModrinthBrowserService.Project::id)
                 .collect(java.util.stream.Collectors.toSet());
         var iterator = projectIconTextures.entrySet().iterator();
@@ -217,281 +489,155 @@ public final class VantaModrinthBrowserScreen extends Screen {
         requestedIcons.retainAll(retained);
     }
 
-    private void install(ModrinthBrowserService.Project project) {
-        if (busy) return;
-        busy = true;
-        setCardButtonsActive(false);
-        status = "Installing " + project.title() + " and resolving required dependencies…";
-        CompletableFuture.supplyAsync(() -> {
-            try { return ModrinthBrowserService.install(project.id()); }
-            catch (Exception exception) { throw new java.util.concurrent.CompletionException(exception); }
-        }).whenComplete((result, error) -> minecraft.execute(() -> {
-            if (closed) return;
-            busy = false;
-            if (error != null) {
-                status = "Install failed: " + safeMessage(error);
-                VantaNotificationManager.error("Installation failed",
-                        "Could not finish the download. Check your connection and retry.");
-                rebuildCards();
-                return;
-            }
-            status = result.summary();
-            if (!result.installed().isEmpty()) {
-                VantaNotificationManager.success("Download complete",
-                        project.title() + " was added. Restart Minecraft to load it.");
-                Path primary = result.installed().get(result.installed().size() - 1);
-                String modId;
+    private void requestVisibleIcons() {
+        int generation = (int) iconGeneration;
+        int start = Math.min(page * PAGE_SIZE, projects.size());
+        int end = Math.min(projects.size(), start + PAGE_SIZE);
+        for (int index = start; index < end; index++) {
+            ModrinthBrowserService.Project project = projects.get(index);
+            if (project.iconUrl() == null || project.iconUrl().isBlank()
+                    || projectIconTextures.containsKey(project.id())
+                    || !requestedIcons.add(project.id())) continue;
+
+            CompletableFuture.supplyAsync(() -> {
                 try {
-                    modId = ModrinthBrowserService.readFabricModId(primary);
-                } catch (Exception exception) {
-                    status += " Enable unavailable: " + safeMessage(exception);
-                    VantaNotificationManager.error("Mod metadata unavailable",
-                            "The downloaded JAR does not contain valid Fabric metadata.");
-                    rebuildCards();
-                    return;
+                    return ModrinthBrowserService.downloadIcon(project.iconUrl());
+                } catch (Exception ignored) {
+                    return new byte[0];
                 }
-                if (enableButton != null) removeWidget(enableButton);
-                enableButton = addPanelButton("Enable now*", 736, 458, 162, 26, () -> {
-                    ExperimentalModHotLoader.Result hotLoad = ExperimentalModHotLoader.scanAndLoad(modId);
-                    status = hotLoad.summary();
-                    if (hotLoad.loaded() > 0 && hotLoad.failed() == 0) {
-                        VantaNotificationManager.success("Session load complete",
-                                "Loaded " + hotLoad.loaded() + " mod(s). This remains experimental.");
-                    } else if (hotLoad.failed() > 0) {
-                        VantaNotificationManager.error("Session load failed",
-                                "Some entrypoints failed. Restart Minecraft before trying again.");
-                    } else {
-                        VantaNotificationManager.warning("Mod not loaded",
-                                "This JAR is not eligible for experimental session loading.");
-                    }
-                }, true);
-                status += " " + modId + " is ready for an experimental session-load attempt.";
+            }).thenAccept(bytes -> minecraft.execute(() -> {
+                if (closed || generation != (int) iconGeneration
+                        || projects.stream().noneMatch(candidate -> candidate.id().equals(project.id()))) return;
+                if (registerProjectIcon(project.id(), bytes)) rebuildUi();
+            }));
+        }
+    }
+
+    private boolean registerProjectIcon(String projectId, byte[] bytes) {
+        if (closed || bytes == null || bytes.length < 24 || bytes.length > ICON_MAX_BYTES
+                || bytes[0] != (byte) 0x89 || bytes[1] != 0x50
+                || bytes[2] != 0x4E || bytes[3] != 0x47
+                || bytes[4] != 0x0D || bytes[5] != 0x0A
+                || bytes[6] != 0x1A || bytes[7] != 0x0A) return false;
+
+        int imageWidth = readPngDimension(bytes, 16);
+        int imageHeight = readPngDimension(bytes, 20);
+        if (imageWidth <= 0 || imageHeight <= 0
+                || imageWidth > ICON_MAX_DIMENSION || imageHeight > ICON_MAX_DIMENSION) return false;
+
+        try {
+            NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
+            if (image.getWidth() <= 0 || image.getHeight() <= 0
+                    || image.getWidth() > ICON_MAX_DIMENSION
+                    || image.getHeight() > ICON_MAX_DIMENSION) {
+                image.close();
+                return false;
             }
-            rebuildCards();
-        }));
+
+            String textureKey = java.util.UUID.nameUUIDFromBytes(
+                    projectId.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString().replace("-", "");
+            Identifier texture = Identifier.fromNamespaceAndPath(
+                    "vantaclient", "modrinth/" + textureKey);
+            minecraft.getTextureManager().register(texture,
+                    new DynamicTexture(() -> "Vanta Modrinth icon " + projectId, image));
+            projectIconTextures.put(projectId, texture);
+            return true;
+        } catch (Exception | LinkageError ignored) {
+            // Invalid optional icons fall back to the project's initial.
+            return false;
+        }
+    }
+
+    private static int readPngDimension(byte[] bytes, int offset) {
+        return ((bytes[offset] & 0xFF) << 24)
+                | ((bytes[offset + 1] & 0xFF) << 16)
+                | ((bytes[offset + 2] & 0xFF) << 8)
+                | (bytes[offset + 3] & 0xFF);
+    }
+
+    private String safeMessage(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null) cause = cause.getCause();
+        String message = cause.getMessage();
+        return message == null || message.isBlank()
+                ? cause.getClass().getSimpleName() : message;
+    }
+
+    private String trim(String value, int max) {
+        if (value == null || value.isBlank()) return "";
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
+    }
+
+    private String compact(int value) {
+        if (value >= 1_000_000) {
+            return String.format(java.util.Locale.ROOT, "%.1fM", value / 1_000_000.0);
+        }
+        if (value >= 1_000) {
+            return String.format(java.util.Locale.ROOT, "%.1fK", value / 1_000.0);
+        }
+        return Integer.toString(value);
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (runtime != null) runtime.tick();
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-        int left = VantaPanelButton.layoutX(0);
-        int top = VantaPanelButton.layoutY(0);
-        int panelWidth = VantaPanelButton.layoutSize(PANEL_WIDTH);
-        int panelHeight = VantaPanelButton.layoutSize(PANEL_HEIGHT);
         graphics.fill(0, 0, width, height, 0x90070D16);
-        rounded(graphics, left + 3, top + 5, panelWidth - 6, panelHeight - 8, 18, 0x44000000);
-        rounded(graphics, left, top, panelWidth, panelHeight, 18,
-                VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL));
-        rounded(graphics, VantaPanelButton.layoutX(20), VantaPanelButton.layoutY(112),
-                VantaPanelButton.layoutSize(214), VantaPanelButton.layoutSize(404), 15,
-                VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
-
-        graphics.drawString(font, "VANTA", VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(24),
-                0xFF82B4FF, false);
-        graphics.drawString(font, "MODRINTH LIBRARY", VantaPanelButton.layoutX(86), VantaPanelButton.layoutY(24),
-                0xFFF1F5FC, false);
-        graphics.drawString(font, "Discover Fabric mods that match your Minecraft version",
-                VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(46), 0xFF8998AD, false);
-        graphics.drawString(font, "LIBRARY", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(116),
-                0xFF64758D, false);
-        graphics.drawString(font, "DISCOVER", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(254),
-                0xFF64758D, false);
-        graphics.drawString(font, "Compatible with Minecraft "
-                        + net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("minecraft")
-                        .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse(""),
-                VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(238), 0xFF8292A8, false);
-
-        rounded(graphics, VantaPanelButton.layoutX(24), VantaPanelButton.layoutY(68),
-                VantaPanelButton.layoutSize(884), VantaPanelButton.layoutSize(46), 12,
-                VantaUiTheme.INPUT_SURFACE);
-        if (installedView) {
-            graphics.drawString(font, "INSTALLED MODS", VantaPanelButton.layoutX(42),
-                    VantaPanelButton.layoutY(84), 0xFFE6EDF8, false);
-            graphics.drawString(font, "Fabric status is authoritative; session-loaded entries are experimental",
-                    VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(84), 0xFF8998AD, false);
-            for (int i = page * 6; i < Math.min(installedMods.size(), page * 6 + 6); i++) {
-                ExperimentalModHotLoader.AvailableMod mod = installedMods.get(i);
-                int row = i - page * 6;
-                int x = 252 + (row % 2) * 326;
-                int y = 132 + (row / 2) * 112;
-                int sx = VantaPanelButton.layoutX(x);
-                int sy = VantaPanelButton.layoutY(y);
-                int sw = VantaPanelButton.layoutSize(310);
-                int sh = VantaPanelButton.layoutSize(100);
-                boolean hovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh;
-                rounded(graphics, sx, sy, sw, sh, 13,
-                        hovered ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.PANEL_RAISED);
-                VantaUiTheme.outlineRounded(graphics, sx, sy, sw, sh, 13,
-                        hovered ? VantaUiTheme.BUTTON_OUTLINE_HOVER : VantaUiTheme.BUTTON_OUTLINE);
-                String initial = mod.name().isBlank() ? "?" :
-                        mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-                graphics.drawCenteredString(font, initial, sx + VantaPanelButton.layoutSize(33),
-                        sy + VantaPanelButton.layoutSize(27), 0xFF9BC2FF);
-                graphics.drawString(font, trim(mod.name(), 32), sx + VantaPanelButton.layoutSize(64),
-                        sy + VantaPanelButton.layoutSize(13), 0xFFF2F5FB, false);
-                graphics.drawString(font, trim(mod.id() + "  ·  " + mod.version(), 40),
-                        sx + VantaPanelButton.layoutSize(64), sy + VantaPanelButton.layoutSize(33),
-                        0xFF9BA9BC, false);
-                boolean fabricLoaded = fabricLoadedIds.contains(mod.id());
-                boolean sessionLoaded = sessionLoadedIds.contains(mod.id());
-                String state = fabricLoaded ? "ENABLED  ·  Fabric loaded"
-                        : sessionLoaded ? "SESSION-LOADED*  ·  experimental"
-                        : "INSTALLED  ·  restart to load";
-                int stateColor = fabricLoaded ? 0xFF78D6A0
-                        : sessionLoaded ? 0xFFFFC978 : 0xFF91A0B5;
-                graphics.drawString(font, state, sx + VantaPanelButton.layoutSize(64),
-                        sy + VantaPanelButton.layoutSize(61), stateColor, false);
-            }
-            if (installedMods.isEmpty() && !busy) {
-                rounded(graphics, VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(132),
-                        VantaPanelButton.layoutSize(636), VantaPanelButton.layoutSize(324), 14, VantaUiTheme.PANEL_RAISED);
-                graphics.drawCenteredString(font, "No external Fabric mods found",
-                        VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(270), 0xFFE6EDF8);
-                graphics.drawCenteredString(font, "Install a mod from Discover or add a JAR and restart Minecraft.",
-                        VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(292), 0xFF8998AD);
-            }
-        } else {
-        for (int i = page * 6; i < Math.min(projects.size(), page * 6 + 6); i++) {
-            ModrinthBrowserService.Project project = projects.get(i);
-            int row = i - page * 6;
-            int x = 252 + (row % 2) * 326;
-            int y = 132 + (row / 2) * 112;
-            int sx = VantaPanelButton.layoutX(x);
-            int sy = VantaPanelButton.layoutY(y);
-            int sw = VantaPanelButton.layoutSize(310);
-            int sh = VantaPanelButton.layoutSize(100);
-            boolean hovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh;
-            rounded(graphics, sx, sy + 2, sw, sh, 13, 0xFF090D15);
-            rounded(graphics, sx, sy, sw, sh, 13, hovered ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.PANEL_RAISED);
-            rounded(graphics, sx + VantaPanelButton.layoutSize(1), sy + VantaPanelButton.layoutSize(1),
-                    sw - VantaPanelButton.layoutSize(2), sh - VantaPanelButton.layoutSize(2), 12,
-                    hovered ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.PANEL_RAISED);
-            rounded(graphics, sx + VantaPanelButton.layoutSize(12), sy + VantaPanelButton.layoutSize(12),
-                    VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42), 10, VantaUiTheme.SURFACE_SELECTED);
-            Identifier icon = projectIconTextures.get(project.id());
-            if (icon != null) {
-                graphics.blit(RenderPipelines.GUI_TEXTURED, icon,
-                        sx + VantaPanelButton.layoutSize(12), sy + VantaPanelButton.layoutSize(12),
-                        0.0f, 0.0f, VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42),
-                        VantaPanelButton.layoutSize(42), VantaPanelButton.layoutSize(42));
-            } else {
-                String initial = project.title().isBlank() ? "?" : project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-                graphics.drawString(font, initial, sx + VantaPanelButton.layoutSize(27) - font.width(initial) / 2,
-                        sy + VantaPanelButton.layoutSize(28), 0xFF9BC2FF, false);
-            }
-            graphics.drawString(font, trim(project.title(), 34), sx + VantaPanelButton.layoutSize(64),
-                    sy + VantaPanelButton.layoutSize(13), 0xFFF2F5FB, false);
-            drawWrapped(graphics, trim(project.description(), 120), sx + VantaPanelButton.layoutSize(64),
-                    sy + VantaPanelButton.layoutSize(31), VantaPanelButton.layoutSize(232), 0xFF9BA9BC, 2);
-            graphics.drawString(font, trim(project.author(), 20) + "  ·  " + compact(project.downloads()) + " downloads",
-                    sx + VantaPanelButton.layoutSize(64), sy + VantaPanelButton.layoutSize(78), 0xFF71839C, false);
-            
+        if (runtime != null) {
+            runtime.setScale((float) VantaClientPreferences.get().uiScale);
+            runtime.render(graphics, font, width, height, mouseX, mouseY);
         }
-        if (projects.isEmpty() && !busy) {
-            rounded(graphics, VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(132),
-                    VantaPanelButton.layoutSize(636), VantaPanelButton.layoutSize(324), 14, VantaUiTheme.PANEL_RAISED);
-            graphics.drawCenteredString(font, status.startsWith("Search failed")
-                            ? "Could not load Modrinth results" : "No matching mods found",
-                    VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(270), 0xFFE6EDF8);
-            graphics.drawCenteredString(font, status.startsWith("Search failed")
-                            ? trim(status, 90) : "Try another search, or clear the search to browse popular mods.",
-                    VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(292), 0xFF8998AD);
-        }
-        }
-        int visibleCount = installedView ? installedMods.size() : projects.size();
-        int pageCount = Math.max(1, (visibleCount + 5) / 6);
-        graphics.drawString(font, "Page " + (page + 1) + " / " + pageCount,
-                VantaPanelButton.layoutX(394), VantaPanelButton.layoutY(501), 0xFF71839C, false);
-        graphics.drawString(font, busy ? "Working…" : status,
-                VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(522), 0xFF9EACC0, false);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void requestVisibleIcons() {
-        int start = page * 6;
-        int end = Math.min(projects.size(), start + 6);
-        for (int i = start; i < end; i++) {
-            ModrinthBrowserService.Project project = projects.get(i);
-            if (project.iconUrl() == null || project.iconUrl().isBlank()
-                    || projectIconTextures.containsKey(project.id())
-                    || !requestedIcons.add(project.id())) continue;
-            CompletableFuture.supplyAsync(() -> {
-                try { return ModrinthBrowserService.downloadIcon(project.iconUrl()); }
-                catch (Exception ignored) { return new byte[0]; }
-            }).thenAccept(bytes -> minecraft.execute(() -> registerProjectIcon(project.id(), bytes)));
-        }
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button(), font)) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
-    private void registerProjectIcon(String projectId, byte[] bytes) {
-        if (closed || bytes == null || bytes.length < 24 || bytes.length > 512 * 1024
-                || bytes[0] != (byte) 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47
-                || bytes[4] != 0x0D || bytes[5] != 0x0A || bytes[6] != 0x1A || bytes[7] != 0x0A) return;
-        int imageWidth = ((bytes[16] & 0xFF) << 24) | ((bytes[17] & 0xFF) << 16)
-                | ((bytes[18] & 0xFF) << 8) | (bytes[19] & 0xFF);
-        int imageHeight = ((bytes[20] & 0xFF) << 24) | ((bytes[21] & 0xFF) << 16)
-                | ((bytes[22] & 0xFF) << 8) | (bytes[23] & 0xFF);
-        if (imageWidth <= 0 || imageHeight <= 0 || imageWidth > 512 || imageHeight > 512) return;
-        try {
-            NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
-            if (image.getWidth() <= 0 || image.getHeight() <= 0
-                    || image.getWidth() > 512 || image.getHeight() > 512) {
-                image.close();
-                return;
-            }
-            String textureKey = java.util.UUID.nameUUIDFromBytes(
-                    projectId.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString().replace("-", "");
-            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "modrinth/" + textureKey);
-            minecraft.getTextureManager().register(texture,
-                    new DynamicTexture(() -> "Vanta Modrinth icon " + projectId, image));
-            projectIconTextures.put(projectId, texture);
-        } catch (Exception | LinkageError ignored) {
-            // Invalid optional icons fall back to the project's initial.
-        }
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        boolean handled = runtime != null && runtime.mouseReleased(event.button());
+        return handled || super.mouseReleased(event);
     }
 
-    private VantaPanelButton addPanelButton(String label, int x, int y, int w, int h,
-                                            Runnable action, boolean accent) {
-        return addRenderableWidget(new VantaPanelButton(x, y, w, h, label, action,
-                () -> false, () -> 0xFF438BFF, accent));
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (runtime != null && runtime.mouseDragged(event.x(), event.y(), event.button())) return true;
+        return super.mouseDragged(event, dragX, dragY);
     }
 
-    private void drawWrapped(GuiGraphics graphics, String value, int x, int y,
-                             int maxWidth, int color, int maxLines) {
-        StringBuilder line = new StringBuilder();
-        int lines = 0;
-        for (String word : value.split(" ")) {
-            String candidate = line.isEmpty() ? word : line + " " + word;
-            if (font.width(candidate) > maxWidth && !line.isEmpty()) {
-                graphics.drawString(font, line.toString(), x, y + lines * 11, color, false);
-                if (++lines >= maxLines) return;
-                line.setLength(0);
-                line.append(word);
-            } else {
-                if (!line.isEmpty()) line.append(' ');
-                line.append(word);
-            }
-        }
-        if (!line.isEmpty() && lines < maxLines) graphics.drawString(font, line.toString(), x, y + lines * 11, color, false);
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (runtime != null && runtime.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    private void rounded(GuiGraphics graphics, int x, int y, int w, int h, int radius, int color) {
-        int r = Math.max(1, Math.min(radius, Math.min(w, h) / 2));
-        for (int row = 0; row < h; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= h - r) {
-                double dy = row - (h - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            graphics.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
-        }
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        boolean shiftDown = (event.modifiers() & 1) != 0;
+        if (runtime != null && runtime.keyPressed(event.key(), shiftDown)) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (runtime != null && runtime.charTyped(event.codepoint())) return true;
+        return super.charTyped(event);
     }
 
     @Override
     public void removed() {
         closed = true;
+        operationGeneration++;
+        iconGeneration++;
+        if (runtime != null) runtime.dispose();
         for (Identifier texture : projectIconTextures.values()) {
             minecraft.getTextureManager().release(texture);
         }
@@ -504,21 +650,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
         minecraft.setScreen(parent);
     }
 
-    private String safeMessage(Throwable throwable) {
-        Throwable cause = throwable;
-        while (cause.getCause() != null) cause = cause.getCause();
-        String message = cause.getMessage();
-        return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
-    }
-
-    private String trim(String value, int max) {
-        if (value == null || value.isBlank()) return "";
-        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
-    }
-
-    private String compact(int value) {
-        if (value >= 1_000_000) return String.format(java.util.Locale.ROOT, "%.1fM", value / 1_000_000.0);
-        if (value >= 1_000) return String.format(java.util.Locale.ROOT, "%.1fK", value / 1_000.0);
-        return Integer.toString(value);
+    @Override
+    public boolean isPauseScreen() {
+        return false;
     }
 }
