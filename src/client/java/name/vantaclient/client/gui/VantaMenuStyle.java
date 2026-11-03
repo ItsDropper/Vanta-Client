@@ -1,14 +1,12 @@
 package name.vantaclient.client.gui;
 
 import com.mojang.authlib.GameProfile;
-import name.vantaclient.client.config.VantaClientPreferences;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerSkin;
 
@@ -113,7 +111,9 @@ public final class VantaMenuStyle {
         Minecraft client = Minecraft.getInstance();
         if (client.getUser() == null) return;
 
-        UUID profileId = client.getUser().getProfileId();
+        GameProfile activeProfile = client.getGameProfile();
+        UUID profileId = activeProfile == null
+                ? client.getUser().getProfileId() : activeProfile.getId();
         String playerName = client.getUser().getName();
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
@@ -134,8 +134,9 @@ public final class VantaMenuStyle {
             try {
                 if (!profileId.equals(cachedProfileId) || cachedSkinLookup == null) {
                     cachedProfileId = profileId;
-                    cachedSkinLookup = client.getSkinManager().createLookup(
-                            new GameProfile(profileId, playerName), false);
+                    GameProfile skinProfile = activeProfile != null
+                            ? activeProfile : new GameProfile(profileId, playerName);
+                    cachedSkinLookup = client.getSkinManager().createLookup(skinProfile, false);
                 }
                 PlayerSkin skin = cachedSkinLookup.get();
                 if (skin != null && skin.body() != null) {
