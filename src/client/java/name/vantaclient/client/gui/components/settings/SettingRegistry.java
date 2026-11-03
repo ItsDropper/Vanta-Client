@@ -27,9 +27,12 @@ public final class SettingRegistry {
         }
 
         if (feature == FarViewFeature.INSTANCE) {
-            settings.add(new SliderSetting("Target Render Distance", 2, 32, " chunks",
+            settings.add(new SliderSetting("Vanilla Detail Distance", 2, 32, " chunks",
                     () -> (double) FarViewFeature.getTargetRenderDistance(),
                     value -> FarViewFeature.setTargetRenderDistance(value.intValue())));
+            settings.add(new SliderSetting("Far Terrain Distance", 32, 2048, " chunks",
+                    () -> (double) FarViewFeature.getFarViewDistance(),
+                    value -> FarViewFeature.setFarViewDistance(value.intValue())));
             settings.add(new ChoiceSetting("Quality Profile",
                     List.of("PERFORMANCE", "BALANCED", "HIGH", "ULTRA"),
                     FarViewFeature::getQuality, FarViewFeature::setQuality));

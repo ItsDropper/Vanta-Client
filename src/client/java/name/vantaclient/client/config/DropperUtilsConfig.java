@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 10;
+    public int configVersion = 11;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -71,7 +71,10 @@ public class DropperUtilsConfig {
     public int anchorPredictionTimeoutTicks = 40;
     public float anchorPredictionRange = 12.0f;
     public boolean anchorExplosionPreview = true;
+    /** Vanilla close-detail distance. Distant terrain is rendered by FarTerrainRenderer. */
     public int farViewRenderDistance = 24;
+    /** Maximum singleplayer LOD range, in chunks. */
+    public int farViewDistance = 2048;
     public String farViewQuality = "BALANCED";
 
     public float armorHudScale = 1.0f;
@@ -126,6 +129,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 8) migrateV8();
                 if (INSTANCE.configVersion < 9) migrateV9();
                 if (INSTANCE.configVersion < 10) migrateV10();
+                if (INSTANCE.configVersion < 11) migrateV11();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -192,6 +196,13 @@ public class DropperUtilsConfig {
     private static void migrateV10() {
         System.out.println("[DropperUtils] Migrating config v9 -> v10");
         INSTANCE.configVersion = 10;
+        save();
+    }
+
+    private static void migrateV11() {
+        System.out.println("[DropperUtils] Migrating config v10 -> v11");
+        INSTANCE.farViewDistance = 2048;
+        INSTANCE.configVersion = 11;
         save();
     }
 

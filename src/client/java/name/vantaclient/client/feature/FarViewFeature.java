@@ -1,13 +1,14 @@
 package name.vantaclient.client.feature;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
+import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.util.FarViewController;
 
 public final class FarViewFeature extends Feature {
     public static final FarViewFeature INSTANCE = new FarViewFeature();
 
     private FarViewFeature() {
-        super("FarView", "Extended vanilla view-distance control with chunk-update prioritization, quality profiles and optional adaptive scaling. Nvidium is detected optionally; it is never required.", Category.VISUAL);
+        super("FarView", "Singleplayer distant-terrain LOD up to 2,048 chunks, with adjustable vanilla detail distance, quality profiles and adaptive budgets. Distant trees, structures and edits are not represented yet.", Category.VISUAL);
     }
 
     @Override
@@ -34,6 +35,7 @@ public final class FarViewFeature extends Feature {
         setEnabled(DropperUtilsConfig.get().farViewEnabled);
     }
 
+    /** Native Minecraft detail distance; remains capped at the vanilla maximum. */
     public static int getTargetRenderDistance() {
         int value = DropperUtilsConfig.get().farViewRenderDistance;
         return value <= 0 ? 24 : Math.max(2, Math.min(32, value));
@@ -45,10 +47,21 @@ public final class FarViewFeature extends Feature {
         FarViewController.resetAdaptiveTarget();
     }
 
+    public static int getFarViewDistance() {
+        return Math.max(32, Math.min(2048, DropperUtilsConfig.get().farViewDistance));
+    }
+
+    public static void setFarViewDistance(int value) {
+        int rounded = Math.round(value / 16.0f) * 16;
+        DropperUtilsConfig.get().farViewDistance = Math.max(32, Math.min(2048, rounded));
+        DropperUtilsConfig.save();
+    }
+
     public static String getQuality() {
         String value = DropperUtilsConfig.get().farViewQuality;
-        return switch (value == null ? "BALANCED" : value) {
-            case "PERFORMANCE", "BALANCED", "HIGH", "ULTRA" -> value;
+        String quality = value == null ? "BALANCED" : value;
+        return switch (quality) {
+            case "PERFORMANCE", "BALANCED", "HIGH", "ULTRA" -> quality;
             default -> "BALANCED";
         };
     }
@@ -59,6 +72,15 @@ public final class FarViewFeature extends Feature {
         DropperUtilsConfig.get().farViewQuality = value;
         DropperUtilsConfig.save();
         FarViewController.applyCurrentProfile();
+    }
+
+    public static int getSampleResolution() {
+        return switch (getQuality()) {
+            case "PERFORMANCE" -> 4;
+            case "HIGH" -> 12;
+            case "ULTRA" -> 16;
+            default -> 8;
+        };
     }
 
     public static boolean isAdaptiveEnabled() {

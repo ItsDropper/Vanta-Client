@@ -7,6 +7,7 @@ import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.feature.FarViewFeature;
 import name.vantaclient.client.util.FarViewController;
+import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.gui.components.settings.BooleanSetting;
 import name.vantaclient.client.gui.components.settings.Setting;
 import name.vantaclient.client.gui.components.settings.SettingRegistry;
@@ -352,8 +353,10 @@ public final class VantaSettingsScreen extends Screen {
             content.add(VantaUiNode.dynamicText(FarViewController::getRendererStatus,
                     VantaUiTheme.TEXT_MUTED));
             content.add(VantaUiNode.dynamicText(
-                    () -> "Effective view distance: " + FarViewController.getEffectiveRenderDistance()
-                            + " chunks (server may cap this)",
+                    () -> "Vanilla detail distance: " + FarViewController.getEffectiveRenderDistance()
+                            + " chunks",
+                    VantaUiTheme.TEXT_SECONDARY));
+            content.add(VantaUiNode.dynamicText(FarTerrainRenderer::getStatusLine,
                     VantaUiTheme.TEXT_SECONDARY));
         }
         content.add(VantaUiNode.toggle("Enabled", feature::isEnabled, enabled -> {
