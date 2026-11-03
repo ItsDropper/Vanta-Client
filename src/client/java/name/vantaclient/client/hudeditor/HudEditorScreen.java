@@ -141,9 +141,10 @@ public class HudEditorScreen extends Screen {
             if (!selected) {
                 String name = element.getClass().getSimpleName()
                         .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
-                graphics.fill(x, y - 13, x + Minecraft.getInstance().font.width(name) + 10,
-                        y - 2, 0xCC111A27);
-                graphics.drawString(Minecraft.getInstance().font, name, x + 5, y - 11,
+                int labelY = Math.max(4, y - 13);
+                graphics.fill(x, labelY, x + Minecraft.getInstance().font.width(name) + 10,
+                        labelY + 11, 0xCC111A27);
+                graphics.drawString(Minecraft.getInstance().font, name, x + 5, labelY + 2,
                         0xFFDCE6F5, false);
             }
         }
