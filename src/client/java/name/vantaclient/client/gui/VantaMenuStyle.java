@@ -56,18 +56,18 @@ public final class VantaMenuStyle {
         if (Math.abs(target - current) < 0.012f) current = target;
         BUTTON_HOVER.put(button, current);
 
-        if (!button.isActive()) {
-            fillRounded(graphics, x, y, width, height, 5, 0x0EFFFFFF);
-        } else if (current > 0.01f) {
-            int surfaceAlpha = Math.round(0x28 * current);
-            fillRounded(graphics, x, y, width, height, 5,
-                    (surfaceAlpha << 24) | 0x00FFFFFF);
+        int idleAlpha = button.isActive() ? 0x32 : 0x18;
+        int hoverAlpha = button.isFocused() ? 0x66 : 0x52;
+        int surfaceAlpha = Math.round(idleAlpha + (hoverAlpha - idleAlpha) * current);
+        fillRounded(graphics, x, y, width, height, 5,
+                (surfaceAlpha << 24) | 0x00E5E9EF);
+        if (current > 0.01f) {
             if (button.isFocused()) {
                 graphics.fill(x + 2, y + 5, x + 3, y + height - 5,
-                        withAlpha(0xFFDDE8F5, Math.round(232 * current)));
+                        withAlpha(0xFFDDE8F5, Math.round(220 * current)));
             } else {
-                graphics.fill(x + 8, y + height - 2, x + width - 8, y + height - 1,
-                        withAlpha(0xFFDDE8F5, Math.round(136 * current)));
+                graphics.fill(x + 9, y + height - 2, x + width - 9, y + height - 1,
+                        withAlpha(0xFFE7EDF5, Math.round(150 * current)));
             }
         }
     }
@@ -81,21 +81,35 @@ public final class VantaMenuStyle {
         if (screenWidth < 220 || screenHeight < 180) return null;
         int left = menuLeft(screenWidth);
         int width = menuButtonWidth(screenWidth);
+        int buttonHeight = menuButtonHeight(screenHeight);
+        int gap = menuButtonGap(screenHeight);
         int top = menuTop(screenHeight);
-        int y = top + 3 * 35 + 12 + 35;
-        return new int[]{left, Math.min(screenHeight - 52, y), Math.max(width, Math.min(220, screenWidth - left - 24)), 22};
+        int y = top + 3 * (buttonHeight + gap) + 8 + 27 + 6;
+        return new int[]{left, Math.min(screenHeight - 30, y), width, 24};
     }
 
     public static int menuLeft(int screenWidth) {
-        return Math.max(18, Math.min(72, Math.round(screenWidth * 0.075f)));
+        return Math.max(0, (screenWidth - menuButtonWidth(screenWidth)) / 2);
     }
 
     public static int menuButtonWidth(int screenWidth) {
-        return Math.max(132, Math.min(220, Math.round(screenWidth * 0.29f)));
+        return Math.max(176, Math.min(244, Math.round(screenWidth * 0.34f)));
+    }
+
+    public static int menuButtonHeight(int screenHeight) {
+        return screenHeight < 320 ? 24 : 30;
+    }
+
+    public static int menuButtonGap(int screenHeight) {
+        return screenHeight < 320 ? 4 : 8;
     }
 
     public static int menuTop(int screenHeight) {
-        return Math.max(78, Math.min(screenHeight - 150, screenHeight / 2 - 48));
+        return Math.max(64, screenHeight / 2 - (screenHeight < 320 ? 28 : 24));
+    }
+
+    private static int brandLeft(int screenWidth) {
+        return Math.max(22, Math.round(screenWidth * 0.055f));
     }
 
     /** Draws Vanta's standalone V mark above the complete wordmark. */
@@ -103,10 +117,10 @@ public final class VantaMenuStyle {
                                            int screenHeight, long elapsedMillis) {
         float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
         int alpha = Math.round(progress * 255.0f);
-        int x = menuLeft(screenWidth);
-        int y = Math.max(12, Math.round(screenHeight * 0.055f));
-        int markWidth = 48;
-        int markHeight = 35;
+        int x = brandLeft(screenWidth);
+        int y = Math.max(12, Math.round(screenHeight * 0.045f));
+        int markWidth = 66;
+        int markHeight = 48;
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
@@ -114,9 +128,9 @@ public final class VantaMenuStyle {
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
-        graphics.drawString(font, ComponentText.brand(), x - 1, y + 38,
+        graphics.drawString(font, ComponentText.brand(), x - 1, y + 51,
                 withAlpha(0xFFF5F7FC, alpha), false);
-        graphics.drawString(font, ComponentText.caption(), x, y + 64,
+        graphics.drawString(font, ComponentText.caption(), x, y + 78,
                 withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)), false);
 
     }
@@ -132,10 +146,10 @@ public final class VantaMenuStyle {
         String playerName = client.getUser().getName();
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
-        int width = Math.min(232, Math.max(192, Math.round(screenWidth * 0.42f)));
-        int height = 104;
-        int x = screenWidth - width - Math.max(18, menuLeft(screenWidth) / 2);
-        int y = Math.max(78, screenHeight / 2 - 52);
+        int width = Math.min(236, Math.max(190, Math.round(screenWidth * 0.43f)));
+        int height = 100;
+        int x = Math.max(12, screenWidth - width - Math.max(18, Math.round(screenWidth * 0.045f)));
+        int y = Math.max(18, Math.round(screenHeight * 0.16f));
         int alpha = Math.round(255.0f * easeOut(Math.min(1.0f,
                 Math.max(0.0f, elapsedMillis / 480.0f))));
 
@@ -218,14 +232,14 @@ public final class VantaMenuStyle {
 
     /** Replaces vanilla copyright/version text with a quiet client footer. */
     public static void renderFooter(GuiGraphics graphics, int screenWidth, int screenHeight) {
-        graphics.fill(0, screenHeight - 24, screenWidth, screenHeight, 0xFF070A10);
+        graphics.fill(0, screenHeight - 22, screenWidth, screenHeight, 0xFF070A10);
         Font font = Minecraft.getInstance().font;
-        graphics.drawString(font, ComponentText.footerLeft(), 12, screenHeight - 16,
+        graphics.drawString(font, ComponentText.footerLeft(), 14, screenHeight - 15,
                 0xFFAAB4C3, false);
         String right = "VANTA CLIENT";
         graphics.drawString(font, ComponentText.footerRight(right),
-                screenWidth - font.width(ComponentText.footerRight(right)) - 12,
-                screenHeight - 16, 0xFFAAB4C3, false);
+                screenWidth - font.width(ComponentText.footerRight(right)) - 14,
+                screenHeight - 15, 0xFFAAB4C3, false);
     }
 
     private static String fitName(Font font, String value, int maxWidth) {
