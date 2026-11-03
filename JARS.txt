@@ -1,0 +1,2 @@
+/home/runner/work/Vanta-Client/Vanta-Client/.gradle/loom-cache/minecraftMaven/net/minecraft/minecraft-common-88c1c9b63c/1.21.11-loom.mappings.1_21_11.layered+hash.2198-v2/minecraft-common-88c1c9b63c-1.21.11-loom.mappings.1_21_11.layered+hash.2198-v2-sources.jar
+/home/runner/work/Vanta-Client/Vanta-Client/.gradle/loom-cache/minecraftMaven/net/minecraft/minecraft-clientOnly-88c1c9b63c/1.21.11-loom.mappings.1_21_11.layered+hash.2198-v2/minecraft-clientOnly-88c1c9b63c-1.21.11-loom.mappings.1_21_11.layered+hash.2198-v2-sources.jar
