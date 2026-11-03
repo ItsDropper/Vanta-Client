@@ -223,6 +223,14 @@ public class DropperUtilsConfig {
         save();
     }
 
+    private static void migrateV13() {
+        System.out.println("[DropperUtils] Migrating config v12 -> v13");
+        INSTANCE.ogAnimations = false;
+        INSTANCE.ogAnimationPreset = "CLASSIC_1_8";
+        INSTANCE.configVersion = 13;
+        save();
+    }
+
     private static void fixBrokenHudPositions() {
         boolean changed = false;
         if (INSTANCE.armorHudX > 1) {
