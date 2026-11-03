@@ -736,17 +736,16 @@ public class VantaIntegrationsScreen extends Screen {
         float panelOpacity = preferences == null ? 0.92f : (float) preferences.panelOpacity;
         drawRoundedCard(graphics, left, top, right - left, bottom - top,
                 withAlpha(0xFF10141C, panelOpacity), 15);
-        drawRoundedCard(graphics, left + 1, top + 1, right - left - 2,
-                bottom - top - 2, withAlpha(0xFF10141C, panelOpacity), 14);
         drawRoundedCard(graphics, left + 1, top + 1, right - left - 2, 3, accent, 2);
-        drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49, 0xFF151B26, 13);
+        drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49,
+                withAlpha(0xFF151B26, panelOpacity), 13);
         drawRoundedCard(graphics, left + 12, top + 12, SIDEBAR_WIDTH + 12,
-                bottom - top - 24, 0xFF171D27, 14);
+                bottom - top - 24, withAlpha(0xFF171D27, panelOpacity), 14);
         graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 20,
                 left + 13 + SIDEBAR_WIDTH + 14, bottom - 20, 0xFF2A303C);
         drawRoundedCard(graphics, left + 12 + SIDEBAR_WIDTH + 20, top + 62,
                 right - (left + 12 + SIDEBAR_WIDTH + 20) - 12,
-                bottom - top - 74, 0xFF121720, 14);
+                bottom - top - 74, withAlpha(0xFF121720, panelOpacity), 14);
         graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
 
         drawVantaBrandMark(graphics, 34, 28, accent);
