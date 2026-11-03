@@ -66,6 +66,16 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.setScreen(() -> titleScreen);
         context.waitForScreen(TitleScreen.class);
         context.waitTicks(4);
+        context.runOnClient(client -> {
+            boolean hasSettingsShortcut = titleScreen.children().stream()
+                    .filter(net.minecraft.client.gui.components.AbstractWidget.class::isInstance)
+                    .map(net.minecraft.client.gui.components.AbstractWidget.class::cast)
+                    .anyMatch(widget -> widget.getMessage().getString()
+                            .equals("Open Vanta Client settings"));
+            if (!hasSettingsShortcut) {
+                throw new AssertionError("Title screen is missing the Vanta settings shortcut.");
+            }
+        });
 
         Path screenshot = context.takeScreenshot("vanta-menu-" + viewportLabel);
         if (!Files.isRegularFile(screenshot)) {

@@ -49,17 +49,29 @@ public final class VantaMenuStyle {
      * Adds Vanta's custom V mark and wordmark immediately below the original Minecraft logo.
      * The vanilla title screen, panorama, button layout and copyright remain untouched.
      */
-    public static void renderTitleBranding(GuiGraphics graphics, int screenWidth, int screenHeight) {
-        if (screenWidth < 190 || screenHeight < 150) return;
-
+    public static int[] titleBrandBounds(int screenWidth, int screenHeight) {
+        if (screenWidth < 190 || screenHeight < 150) return null;
         int panelWidth = Math.min(224, screenWidth - 20);
         int panelHeight = 24;
         int x = (screenWidth - panelWidth) / 2;
         int y = Math.max(5, Math.min(screenHeight - panelHeight - 5, screenHeight / 4 + 16));
+        return new int[]{x, y, panelWidth, panelHeight};
+    }
 
-        fillRounded(graphics, x, y, panelWidth, panelHeight, 7, 0xD75B9FCF);
+    public static void renderTitleBranding(GuiGraphics graphics, int screenWidth,
+                                           int screenHeight, boolean highlighted) {
+        int[] bounds = titleBrandBounds(screenWidth, screenHeight);
+        if (bounds == null) return;
+
+        int x = bounds[0];
+        int y = bounds[1];
+        int panelWidth = bounds[2];
+        int panelHeight = bounds[3];
+
+        fillRounded(graphics, x, y, panelWidth, panelHeight, 7,
+                highlighted ? 0xF0A5E6FF : 0xD75B9FCF);
         fillRounded(graphics, x + 1, y + 1, panelWidth - 2, panelHeight - 2,
-                6, 0xD5102741);
+                6, highlighted ? 0xE8285A84 : 0xD5102741);
         graphics.fill(x + 8, y + 2, x + panelWidth - 8, y + 3, 0x70DDF6FF);
 
         int markWidth = 22;
