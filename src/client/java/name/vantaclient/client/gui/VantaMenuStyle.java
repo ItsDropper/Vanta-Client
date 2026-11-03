@@ -135,6 +135,37 @@ public final class VantaMenuStyle {
 
     }
 
+    /** Draws compact, resolution-independent utility glyphs over the secondary controls. */
+    public static void renderUtilityIcon(GuiGraphics graphics, AbstractButton button, int kind) {
+        if (button == null || !button.visible) return;
+        int x = button.getX() + 9;
+        int y = button.getY() + (button.getHeight() - 12) / 2;
+        int color = button.isHovered() || button.isFocused() ? 0xFFEAF1FA : 0xFFB8C3D1;
+        if (kind == 0) {
+            graphics.fill(x + 5, y, x + 7, y + 12, color);
+            graphics.fill(x, y + 5, x + 12, y + 7, color);
+            graphics.fill(x + 2, y + 1, x + 10, y + 2, color);
+            graphics.fill(x + 2, y + 10, x + 10, y + 11, color);
+            graphics.fill(x + 1, y + 3, x + 2, y + 9, color);
+            graphics.fill(x + 10, y + 3, x + 11, y + 9, color);
+        } else if (kind == 1) {
+            graphics.fill(x + 5, y, x + 8, y + 3, color);
+            graphics.fill(x + 4, y + 4, x + 9, y + 8, color);
+            graphics.fill(x + 1, y + 5, x + 4, y + 6, color);
+            graphics.fill(x + 9, y + 5, x + 12, y + 6, color);
+            graphics.fill(x + 5, y + 8, x + 7, y + 12, color);
+            graphics.fill(x + 3, y + 10, x + 5, y + 12, color);
+            graphics.fill(x + 7, y + 10, x + 9, y + 12, color);
+        } else {
+            graphics.fill(x + 1, y, x + 11, y + 1, color);
+            graphics.fill(x, y + 1, x + 1, y + 11, color);
+            graphics.fill(x + 11, y + 1, x + 12, y + 11, color);
+            graphics.fill(x + 1, y + 11, x + 11, y + 12, color);
+            graphics.fill(x + 5, y + 3, x + 7, y + 5, color);
+            graphics.fill(x + 5, y + 6, x + 7, y + 10, color);
+        }
+    }
+
     /** Shows the active launcher profile and its resolved skin texture; never substitutes a hard-coded name. */
     public static void renderPlayerCard(GuiGraphics graphics, int screenWidth,
                                         int screenHeight, long elapsedMillis) {
