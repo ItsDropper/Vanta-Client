@@ -13,6 +13,7 @@ import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.util.ExplosionEffects;
+import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.SprintSneakToggles;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
@@ -67,6 +68,7 @@ public class Events {
                 HudPerformanceCache.tick(client);
             }
 
+            FarViewController.tick(client);
             InGameOverlayCache.tick(client);
 
             if (Keybinds.fullbrightKey.consumeClick()) {

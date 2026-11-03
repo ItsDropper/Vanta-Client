@@ -1,10 +1,11 @@
 package name.vantaclient.client.util;
 
+import name.vantaclient.client.feature.FarViewFeature;
 import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 
 /**
  * Low-overhead timings for the client tick and world-render phases.
- * Measurements are collected only while the Performance Optimizer is enabled.
+ * Measurements are collected only while a feature consumes them.
  */
 public final class ClientPerformanceMetrics {
     private static long clientTickStartNanos;
@@ -17,59 +18,47 @@ public final class ClientPerformanceMetrics {
 
     private ClientPerformanceMetrics() {}
 
+    private static boolean isCollectionEnabled() {
+        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                || FarViewFeature.INSTANCE.isEnabled();
+    }
+
     public static void beginClientTick() {
-        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+        if (!isCollectionEnabled()) {
             clientTickStartNanos = 0L;
             return;
         }
-
         clientTickStartNanos = System.nanoTime();
     }
 
     public static void endClientTick() {
         if (clientTickStartNanos == 0L) return;
-
         long started = clientTickStartNanos;
         clientTickStartNanos = 0L;
-
-        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled()) return;
+        if (!isCollectionEnabled()) return;
         recordClientTick((System.nanoTime() - started) / 1_000_000.0);
     }
 
     public static void beginWorldRender() {
-        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+        if (!isCollectionEnabled()) {
             worldRenderStartNanos = 0L;
             return;
         }
-
         worldRenderStartNanos = System.nanoTime();
     }
 
     public static void endWorldRender() {
         if (worldRenderStartNanos == 0L) return;
-
         long started = worldRenderStartNanos;
         worldRenderStartNanos = 0L;
-
-        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled()) return;
+        if (!isCollectionEnabled()) return;
         recordWorldRender((System.nanoTime() - started) / 1_000_000.0);
     }
 
-    public static double getLastClientTickMs() {
-        return lastClientTickMs;
-    }
-
-    public static double getAverageClientTickMs() {
-        return averageClientTickMs;
-    }
-
-    public static double getLastWorldRenderMs() {
-        return lastWorldRenderMs;
-    }
-
-    public static double getAverageWorldRenderMs() {
-        return averageWorldRenderMs;
-    }
+    public static double getLastClientTickMs() { return lastClientTickMs; }
+    public static double getAverageClientTickMs() { return averageClientTickMs; }
+    public static double getLastWorldRenderMs() { return lastWorldRenderMs; }
+    public static double getAverageWorldRenderMs() { return averageWorldRenderMs; }
 
     public static void reset() {
         clientTickStartNanos = 0L;

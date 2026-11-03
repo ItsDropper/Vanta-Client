@@ -26,6 +26,17 @@ public final class SettingRegistry {
                     ZoomFeature::isSmoothZoom, ZoomFeature::setSmoothZoom));
         }
 
+        if (feature == FarViewFeature.INSTANCE) {
+            settings.add(new SliderSetting("Target Render Distance", 2, 32, " chunks",
+                    () -> (double) FarViewFeature.getTargetRenderDistance(),
+                    value -> FarViewFeature.setTargetRenderDistance(value.intValue())));
+            settings.add(new ChoiceSetting("Quality Profile",
+                    List.of("PERFORMANCE", "BALANCED", "HIGH", "ULTRA"),
+                    FarViewFeature::getQuality, FarViewFeature::setQuality));
+            settings.add(new BooleanSetting("Adaptive Distance",
+                    FarViewFeature::isAdaptiveEnabled, FarViewFeature::setAdaptiveEnabled));
+        }
+
         if (feature == MotionBlurFeature.INSTANCE) {
             settings.add(new SliderSetting("Frame Persistence", 0.0, 0.95, "",
                     () -> (double) MotionBlurFeature.getStrength(),

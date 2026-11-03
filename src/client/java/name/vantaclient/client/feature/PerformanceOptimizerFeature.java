@@ -24,7 +24,9 @@ public final class PerformanceOptimizerFeature extends Feature {
     public void onDisable() {
         DropperUtilsConfig.get().performanceOptimizer = false;
         DropperUtilsConfig.save();
-        ClientPerformanceMetrics.reset();
+        if (!FarViewFeature.INSTANCE.isEnabled()) {
+            ClientPerformanceMetrics.reset();
+        }
     }
 
     @Override

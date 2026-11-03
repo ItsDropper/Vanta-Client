@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 9;
+    public int configVersion = 10;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -37,6 +37,8 @@ public class DropperUtilsConfig {
     public boolean sneakToggleEnabled = false;
     public boolean chatTimestamps = false;
     public boolean performanceOptimizer = false;
+    public boolean farViewEnabled = false;
+    public boolean farViewAdaptive = false;
 
     public float fpsHudX = 0.02f;
     public float fpsHudY = 0.34f;
@@ -69,6 +71,8 @@ public class DropperUtilsConfig {
     public int anchorPredictionTimeoutTicks = 40;
     public float anchorPredictionRange = 12.0f;
     public boolean anchorExplosionPreview = true;
+    public int farViewRenderDistance = 24;
+    public String farViewQuality = "BALANCED";
 
     public float armorHudScale = 1.0f;
     public float debugHudScale = 1.0f;
@@ -121,6 +125,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 7) migrateV7();
                 if (INSTANCE.configVersion < 8) migrateV8();
                 if (INSTANCE.configVersion < 9) migrateV9();
+                if (INSTANCE.configVersion < 10) migrateV10();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -181,6 +186,12 @@ public class DropperUtilsConfig {
     private static void migrateV9() {
         System.out.println("[DropperUtils] Migrating config v8 -> v9");
         INSTANCE.configVersion = 9;
+        save();
+    }
+
+    private static void migrateV10() {
+        System.out.println("[DropperUtils] Migrating config v9 -> v10");
+        INSTANCE.configVersion = 10;
         save();
     }
 

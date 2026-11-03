@@ -8,6 +8,7 @@ public class FeatureRegistry {
             FullbrightFeature.INSTANCE,
             ZoomFeature.INSTANCE,
             MotionBlurFeature.INSTANCE,
+            FarViewFeature.INSTANCE,
             PerformanceOptimizerFeature.INSTANCE,
             TotemCounterFeature.INSTANCE,
             ArmorHudFeature.INSTANCE,
