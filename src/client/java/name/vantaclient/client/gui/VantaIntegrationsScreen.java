@@ -946,7 +946,7 @@ public class VantaIntegrationsScreen extends Screen {
                         0x33000000, 13);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
                         withAlpha(mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.05f + hover * 0.08f),
-                                preferences.panelOpacity), 13);
+                                (float) preferences.panelOpacity), 13);
                 drawRoundedCard(graphics, x + 7, y + 7, cardWidth - 14, 62,
                         withAlpha(mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hover),
                                 0.82f), 11);
