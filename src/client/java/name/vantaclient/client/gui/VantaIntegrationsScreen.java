@@ -491,6 +491,13 @@ public class VantaIntegrationsScreen extends Screen {
                 .findFirst().orElse("Mod details");
     }
 
+    private static String trim(String value, int maximumLength) {
+        if (value == null || maximumLength <= 0) return "";
+        if (value.length() <= maximumLength) return value;
+        if (maximumLength == 1) return "…";
+        return value.substring(0, maximumLength - 1) + "…";
+    }
+
     private void toggleFavorite(String id) {
         if (!preferences.favoriteMods.add(id)) preferences.favoriteMods.remove(id);
         VantaClientPreferences.save();
@@ -1436,7 +1443,7 @@ public class VantaIntegrationsScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (runtime != null && runtime.mouseDragged(event.x(), event.y(), event.button())) return true;
-        return super.mouseDragged(event);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
