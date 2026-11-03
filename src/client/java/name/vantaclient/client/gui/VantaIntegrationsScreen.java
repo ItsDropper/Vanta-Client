@@ -319,7 +319,9 @@ public class VantaIntegrationsScreen extends Screen {
                     cardWidth - 4, 28, () -> selectInstalledMod(id));
             if (fabricLoaded || hotLoaded) {
                 addPanelButton(fabricLoaded ? "Enabled" : "Hotloaded", x + cardWidth - 69, y + 7, 62, 19,
-                        () -> hotLoadStatus = id + " is already active. Arbitrary Fabric mods cannot be safely disabled at runtime.");
+                        () -> hotLoadStatus = fabricLoaded
+                                ? id + " is enabled by Fabric. It cannot be safely unloaded at runtime; restart after changing the mod JAR."
+                                : id + " is session-loaded experimentally. It cannot be safely unloaded; restart Minecraft to clear it.");
             } else {
                 addPanelButton("Hotload", x + cardWidth - 61, y + 7, 54, 19, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
@@ -958,10 +960,11 @@ public class VantaIntegrationsScreen extends Screen {
                 graphics.drawString(font, font.plainSubstrByWidth(mod.version(),
                         cardWidth - 20), x + 10, y + 66, 0xFF8994A7);
                 boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
-                graphics.drawString(font, fabricLoaded ? "Fabric loaded"
-                        : hotLoadedIds.contains(mod.id()) ? "Session loaded"
-                        : "Available", x + 10, y + 78,
-                        fabricLoaded || hotLoadedIds.contains(mod.id()) ? 0xFF79B89A : 0xFF9BA7BA);
+                graphics.drawString(font, fabricLoaded ? "Enabled · Fabric"
+                        : hotLoadedIds.contains(mod.id()) ? "Session loaded*"
+                        : "Not loaded", x + 10, y + 78,
+                        fabricLoaded ? 0xFF79B89A
+                                : hotLoadedIds.contains(mod.id()) ? 0xFFE5BD78 : 0xFF9BA7BA);
             }
             drawWrappedText(graphics, hotLoadStatus, contentX(), 486,
                     contentWidth() - 12, 0xFFB3B6C0, 2);
