@@ -7,12 +7,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.LogoRenderer;
+import net.minecraft.client.gui.components.SplashRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,6 +28,9 @@ import java.util.Locale;
 /** Re-composes the vanilla title screen while retaining every original button action. */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin {
+    @Shadow
+    private SplashRenderer splash;
+
     @Unique
     private AbstractButton vanta$settingsShortcut;
 
@@ -37,6 +42,7 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
         vanta$openedAt = System.currentTimeMillis();
+        splash = null;
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
                 client.getWindow().getGuiScaledWidth(),
