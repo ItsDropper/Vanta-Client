@@ -2,6 +2,7 @@ package name.vantaclient.client.hudeditor;
 
 import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.DebugHudElement;
+import name.vantaclient.client.hud.CpsHudElement;
 import name.vantaclient.client.hud.FpsHudElement;
 import name.vantaclient.client.hud.KeystrokesHudElement;
 import name.vantaclient.client.hud.PingHudElement;
@@ -26,6 +27,7 @@ public class HudManager {
         add(new FpsHudElement());
         add(new PingHudElement());
         add(new KeystrokesHudElement());
+        add(new CpsHudElement());
     }
 
     public static void add(HudElement element) {
