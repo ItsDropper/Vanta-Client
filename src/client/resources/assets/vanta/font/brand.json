@@ -4,8 +4,8 @@
       "type": "ttf",
       "file": "vanta:ibm_plex_sans_medium.ttf",
       "shift": [0, 0],
-      "size": 23,
-      "oversample": 2
+      "size": 30,
+      "oversample": 4
     }
   ]
 }
