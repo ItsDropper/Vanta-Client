@@ -11,6 +11,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -19,6 +20,7 @@ import net.minecraft.world.food.FoodData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -185,6 +187,28 @@ public class GuiMixin {
         VanillaHudLayout.pop(graphics);
     }
 
+
+
+    @Redirect(
+            method = "renderHotbarAndDecorations",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/contextualbar/ContextualBarRenderer;renderExperienceLevel(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/gui/Font;I)V"
+            )
+    )
+    private void vanta$renderExperienceLevel(
+            GuiGraphics graphics,
+            Font font,
+            int level
+    ) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.EXPERIENCE);
+        try {
+            net.minecraft.client.gui.contextualbar.ContextualBarRenderer
+                    .renderExperienceLevel(graphics, font, level);
+        } finally {
+            VanillaHudLayout.pop(graphics);
+        }
+    }
 
     @Inject(method = "renderVehicleHealth", at = @At("HEAD"))
     private void vanta$pushMountHealth(GuiGraphics graphics, CallbackInfo ci) {
