@@ -18,6 +18,7 @@
     "AbstractButtonMixin",
     "TitleScreenMixin",
     "MouseHandlerMixin",
+    "ChatComponentMixin",
     "accessor.ScreenAccessor"
   ],
   "injectors": {
