@@ -56,6 +56,10 @@ public final class VantaClientPreferences {
     public double panelOpacity = 0.85;
     public Set<String> favoriteMods = new HashSet<>();
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
+    /** Enabled background keys are stored sparsely; absent keys are disabled. */
+    public Map<String, Boolean> hudBackgrounds = new HashMap<>();
+    /** Merge backgrounds whose hitboxes overlap or are separated by only a few pixels. */
+    public boolean connectHudBackgrounds = true;
 
     private VantaClientPreferences() {}
 
@@ -90,6 +94,10 @@ public final class VantaClientPreferences {
         }
         if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
         if (instance.vanillaHudPositions == null) instance.vanillaHudPositions = new HashMap<>();
+        if (instance.hudBackgrounds == null) instance.hudBackgrounds = new HashMap<>();
+        instance.hudBackgrounds.entrySet().removeIf(entry ->
+                entry.getKey() == null || entry.getKey().isBlank()
+                        || !Boolean.TRUE.equals(entry.getValue()));
         instance.vanillaHudPositions.entrySet().removeIf(entry -> entry.getValue() == null);
         for (HudPosition position : instance.vanillaHudPositions.values()) {
             if (!Float.isFinite(position.x)) position.x = 0.0f;
@@ -99,6 +107,17 @@ public final class VantaClientPreferences {
             position.y = Math.max(0.0f, Math.min(1.0f, position.y));
             position.scale = Math.max(0.25f, Math.min(3.0f, position.scale));
         }
+    }
+
+    public boolean isHudBackgroundEnabled(String backgroundId) {
+        return backgroundId != null && Boolean.TRUE.equals(hudBackgrounds.get(backgroundId));
+    }
+
+    public void setHudBackgroundEnabled(String backgroundId, boolean enabled) {
+        if (backgroundId == null || backgroundId.isBlank()) return;
+        if (enabled) hudBackgrounds.put(backgroundId, true);
+        else hudBackgrounds.remove(backgroundId);
+        save();
     }
 
     public static void save() {

@@ -83,6 +83,11 @@ public final class VanillaHudElement extends HudElement {
         return part.label();
     }
 
+    @Override
+    public String getBackgroundId() {
+        return "vanilla." + part.name();
+    }
+
     public static VantaClientPreferences.HudPosition getPosition(Part part) {
         return position(part);
     }

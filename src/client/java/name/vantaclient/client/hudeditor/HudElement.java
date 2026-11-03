@@ -65,6 +65,11 @@ public abstract class HudElement {
         return scale;
     }
 
+    /** Stable preference key used by the optional per-element background. */
+    public String getBackgroundId() {
+        return getClass().getSimpleName();
+    }
+
     public void setScale(float value) {
         scale = clampScale(value);
     }

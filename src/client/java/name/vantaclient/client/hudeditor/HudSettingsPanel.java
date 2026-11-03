@@ -86,6 +86,26 @@ public final class HudSettingsPanel {
         panel.add(header);
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
 
+        panel.add(VantaUiNode.eyebrow("BACKGROUND"));
+        panel.add(VantaUiNode.toggle("Show dark background",
+                () -> selected != null && VantaClientPreferences.get()
+                        .isHudBackgroundEnabled(selected.getBackgroundId()),
+                enabled -> {
+                    if (selected != null) {
+                        VantaClientPreferences.get().setHudBackgroundEnabled(
+                                selected.getBackgroundId(), enabled);
+                    }
+                }));
+        panel.add(VantaUiNode.toggle("Connect nearby backgrounds",
+                () -> VantaClientPreferences.get().connectHudBackgrounds,
+                enabled -> {
+                    VantaClientPreferences.get().connectHudBackgrounds = enabled;
+                    VantaClientPreferences.save();
+                }));
+        panel.add(VantaUiNode.text(
+                "Dark gray at 80% opacity. Enabled hitboxes merge when they touch or are within 4 px.",
+                VantaUiTheme.TEXT_MUTED));
+
         if (selected instanceof ArmorHudElement armor) {
             panel.add(VantaUiNode.dropdown("Orientation",
                     java.util.List.of("Vertical", "Horizontal"),
@@ -155,6 +175,11 @@ public final class HudSettingsPanel {
             case "DebugHudElement" -> "Debug HUD";
             case "TotemCounterHudElement" -> "Totem Counter";
             case "PotionEffectsHudElement" -> "Potion Effects";
+            case "FpsHudElement" -> "FPS";
+            case "PingHudElement" -> "Ping";
+            case "KeystrokesHudElement" -> "Keystrokes";
+            case "CpsHudElement" -> "CPS";
+            case "PerformanceHudElement" -> "Performance";
             default -> selected.getClass().getSimpleName();
         };
     }

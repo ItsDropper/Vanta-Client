@@ -4,6 +4,9 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.screens.TitleScreen;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
+import name.vantaclient.client.hud.HudBackgroundRenderer;
+import name.vantaclient.client.hudeditor.HudElement;
+import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
 import name.vantaclient.client.gui.framework.VantaUiNode;
@@ -32,6 +35,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
         verifyScrollbarThumbDragging(context);
+        verifyConnectedHudBackgrounds(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -100,6 +104,25 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         });
     }
 
+    private static void verifyConnectedHudBackgrounds(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            var merged = HudBackgroundRenderer.mergeConnectedBounds(java.util.List.of(
+                    new HudBackgroundRenderer.Bounds(10, 10, 40, 20),
+                    new HudBackgroundRenderer.Bounds(43, 10, 70, 20),
+                    new HudBackgroundRenderer.Bounds(10, 25, 40, 35)
+            ), 4);
+            if (merged.size() != 2) {
+                throw new AssertionError("HUD backgrounds did not merge only the nearby hitboxes: " + merged);
+            }
+            boolean joined = merged.stream().anyMatch(bounds ->
+                    bounds.left() == 10 && bounds.top() == 10
+                            && bounds.right() == 70 && bounds.bottom() == 20);
+            if (!joined) {
+                throw new AssertionError("Connected HUD background bounds were not unioned: " + merged);
+            }
+        });
+    }
+
     private static void captureTitleScreen(ClientGameTestContext context,
                                             VantaSettingsScreen settingsScreen,
                                             String viewportLabel) {
@@ -143,7 +166,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             HudManager.init();
             if (!HudManager.getElements().isEmpty()) {
-                HudSettingsPanel.setSelected(HudManager.getElements().get(0));
+                HudElement first = HudManager.getElements().get(0);
+                VantaClientPreferences.get().setHudBackgroundEnabled(first.getBackgroundId(), true);
+                HudSettingsPanel.setSelected(first);
             }
         });
         context.waitTicks(2);

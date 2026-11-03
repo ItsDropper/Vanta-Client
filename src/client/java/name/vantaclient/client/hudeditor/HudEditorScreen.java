@@ -8,6 +8,7 @@ import net.minecraft.resources.Identifier;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
@@ -88,6 +89,7 @@ public class HudEditorScreen extends Screen {
         if (preferences.hudShowGrid) drawGrid(graphics, preferences.hudGridSize, entrance);
 
         HudMouseHandler.updateHover(mouseX, mouseY);
+        HudBackgroundRenderer.render(graphics);
         HudManager.render(graphics);
         drawElementHitboxes(graphics, preferences.accent.color());
 
