@@ -14,7 +14,7 @@ No local Minecraft installation, multiplayer server or authenticated Minecraft a
 
 ## Capture matrix
 
-`VantaUiScreenshotGameTest` captures nine states:
+`VantaUiScreenshotGameTest` captures ten states:
 
 - Vanta title screen
 - Settings overview
@@ -23,10 +23,11 @@ No local Minecraft installation, multiplayer server or authenticated Minecraft a
 - Combat category
 - Miscellaneous category
 - Appearance
+- Controls / key bindings
 - A built-in feature settings subpage
 - HUD editor with a selected element and inspector
 
-All nine states are captured at four configurations:
+All ten states are captured at four configurations:
 
 | Window size | GUI scale |
 |---|---:|
@@ -35,9 +36,9 @@ All nine states are captured at four configurations:
 | 960 × 540 | 1 |
 | 960 × 540 | 2 |
 
-Expected output: **42 PNG files**. The workflow independently asserts that exactly 42 screenshots exist and each capture checks for a valid file of at least 1 KiB.
+Expected output: **46 PNG files**. The workflow independently asserts that exactly 46 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
-The 36-image matrix covers the title screen, seven settings pages and the HUD editor at four viewport/GUI-scale combinations. Two additional captures exercise the retained-mode Modrinth browser at 1280×720 GUI scale 1 (two-column cards) and 960×540 GUI scale 2 (single-column compact cards). Two capture the retained-mode installed-mod library, and two capture the selected-mod details view, at the same desktop and compact sizes. All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
+The 40-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at four viewport/GUI-scale combinations. Two additional captures exercise the retained-mode Modrinth browser at 1280×720 GUI scale 1 (two-column cards) and 960×540 GUI scale 2 (single-column compact cards). Two capture the retained-mode installed-mod library, and two capture the selected-mod details view, at the same desktop and compact sizes. All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
 
 ## Interaction smoke check
 
@@ -49,6 +50,7 @@ Before capturing the screenshot matrix, the client GameTest:
 - Verifies the armor HUD's hitbox includes its horizontal durability label and accurately covers the vertical slot stack.
 - Opens the retained-mode Modrinth browser with a fixed six-project preview dataset and captures both desktop and compact layouts without making network requests.
 - Opens the retained-mode installed-mod library with a fixed six-mod preview dataset and captures both desktop and compact layouts without reading a real mods folder.
+- Captures the Controls page showing the five registered Vanta key mappings. Key capture supports keyboard and mouse input, Escape cancel, Backspace unbind and reset-to-default.
 - Opens a selected mod's details/configuration-routing view with the same local fixture and captures it at desktop and compact sizes.
 
 These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.

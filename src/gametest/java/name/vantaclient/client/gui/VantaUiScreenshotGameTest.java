@@ -33,6 +33,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static final int PAGE_MISC = 4;
     private static final int PAGE_APPEARANCE = 5;
     private static final int PAGE_FEATURE_SETTINGS = 6;
+    private static final int PAGE_CONTROLS = 7;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -554,6 +555,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 "vanta-ui-" + viewportLabel + "-appearance");
         capturePage(context, screen, PAGE_FEATURE_SETTINGS,
                 "vanta-ui-" + viewportLabel + "-feature-settings");
+        capturePage(context, screen, PAGE_CONTROLS,
+                "vanta-ui-" + viewportLabel + "-controls");
     }
 
     private static void capturePage(ClientGameTestContext context,
