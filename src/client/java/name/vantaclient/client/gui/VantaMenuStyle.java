@@ -82,7 +82,7 @@ public final class VantaMenuStyle {
         int width = menuButtonWidth(screenWidth);
         int top = menuTop(screenHeight);
         int y = top + 3 * 35 + 12 + 35;
-        return new int[]{left, Math.min(screenHeight - 48, y), width, 27};
+        return new int[]{left, Math.min(screenHeight - 52, y), width, 22};
     }
 
     public static int menuLeft(int screenWidth) {
