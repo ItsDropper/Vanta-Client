@@ -175,21 +175,36 @@ public final class VantaModrinthBrowserScreen extends Screen {
         }
         main.add(cards);
 
-        VantaUiNode footer = VantaUiNode.row(8, 0)
-                .height(32)
+        boolean compactViewport = width < WIDE_LAYOUT_THRESHOLD;
+        boolean showSessionAction = enableModId != null;
+        VantaUiNode footer = VantaUiNode.column(4, 0)
+                .height(showSessionAction && compactViewport ? 64 : 32);
+        VantaUiNode pagination = VantaUiNode.row(8, 0)
+                .height(30)
                 .align(VantaUiNode.Alignment.CENTER);
-        footer.add(VantaUiNode.button("Previous", () -> changePage(-1))
+        pagination.add(VantaUiNode.button("Previous", () -> changePage(-1))
                 .size(64, 30).enabled(!busy && page > 0));
-        footer.add(VantaUiNode.dynamicText(
+        pagination.add(VantaUiNode.dynamicText(
                 () -> (page + 1) + " / " + pageCount(),
                 VantaUiTheme.TEXT_MUTED).width(34));
-        footer.add(VantaUiNode.button("Next", () -> changePage(1))
+        pagination.add(VantaUiNode.button("Next", () -> changePage(1))
                 .size(50, 30).enabled(!busy && page + 1 < pageCount()));
-        footer.add(VantaUiNode.spacer(1).flex(1));
-        if (enableModId != null) {
-            footer.add(VantaUiNode.button("Enable*",
+        pagination.add(VantaUiNode.spacer(1).flex(1));
+        if (showSessionAction && !compactViewport) {
+            pagination.add(VantaUiNode.button("Enable now*",
                     VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
-                    .size(88, 30).enabled(!busy));
+                    .size(116, 30).enabled(!busy));
+        }
+        footer.add(pagination);
+        if (showSessionAction && compactViewport) {
+            VantaUiNode actionRow = VantaUiNode.row(8, 0)
+                    .height(30)
+                    .align(VantaUiNode.Alignment.CENTER);
+            actionRow.add(VantaUiNode.spacer(1).flex(1));
+            actionRow.add(VantaUiNode.button("Enable now*",
+                    VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
+                    .size(116, 30).enabled(!busy));
+            footer.add(actionRow);
         }
         main.add(footer);
         body.add(main);
@@ -488,7 +503,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     private void requestVisibleIcons() {
-        int generation = (int) iconGeneration;
+        long generation = iconGeneration;
         int start = Math.min(page * PAGE_SIZE, projects.size());
         int end = Math.min(projects.size(), start + PAGE_SIZE);
         for (int index = start; index < end; index++) {
@@ -504,7 +519,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     return new byte[0];
                 }
             }).thenAccept(bytes -> minecraft.execute(() -> {
-                if (closed || generation != (int) iconGeneration
+                if (closed || generation != iconGeneration
                         || projects.stream().noneMatch(candidate -> candidate.id().equals(project.id()))) return;
                 registerProjectIcon(project.id(), bytes);
             }));
