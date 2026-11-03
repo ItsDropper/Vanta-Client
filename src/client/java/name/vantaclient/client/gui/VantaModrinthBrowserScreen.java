@@ -14,9 +14,12 @@ import name.vantaclient.client.gui.components.VantaPanelButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
 
 /** In-game Modrinth browser. Network and disk work never runs on the render thread. */
@@ -33,6 +36,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private final Map<String, Identifier> projectIconTextures = new HashMap<>();
     private final java.util.Set<String> requestedIcons = new java.util.HashSet<>();
     private VantaPanelButton enableButton;
+    private boolean installedView;
+    private List<ExperimentalModHotLoader.AvailableMod> installedMods = List.of();
+    private Set<String> fabricLoadedIds = Set.of();
+    private Set<String> sessionLoadedIds = Set.of();
     private boolean closed;
 
     public VantaModrinthBrowserScreen(Screen parent) {
@@ -54,8 +61,9 @@ public final class VantaModrinthBrowserScreen extends Screen {
         addRenderableWidget(searchBox);
         addPanelButton("Search", 694, 76, 94, 30, this::search, true);
         addPanelButton("Clear", 796, 76, 44, 30, this::clearSearch, false);
-        addPanelButton("Discover", 34, 132, 184, 30, this::loadPopular, true);
-        addPanelButton("Back to Vanta Client", 34, 170, 184, 30, this::onClose, false);
+        addPanelButton("Installed", 34, 132, 184, 30, this::showInstalled, true);
+        addPanelButton("Discover", 34, 170, 184, 30, this::showDiscover, false);
+        addPanelButton("Back to Vanta Client", 34, 208, 184, 30, this::onClose, false);
         addPanelButton("Back", 844, 24, 54, 26, this::onClose, false);
         addPanelButton("Previous", 252, 492, 66, 26, () -> {
             page = Math.max(0, page - 1);
@@ -77,6 +85,58 @@ public final class VantaModrinthBrowserScreen extends Screen {
         search();
     }
 
+    private void showDiscover() {
+        installedView = false;
+        if (searchBox != null) searchBox.visible = true;
+        if (enableButton != null) {
+            removeWidget(enableButton);
+            enableButton = null;
+        }
+        page = 0;
+        search();
+    }
+
+    private void showInstalled() {
+        if (busy) return;
+        installedView = true;
+        if (searchBox != null) searchBox.visible = false;
+        if (enableButton != null) {
+            removeWidget(enableButton);
+            enableButton = null;
+        }
+        busy = true;
+        page = 0;
+        status = "Scanning the local mods folder…";
+        rebuildCards();
+        CompletableFuture.supplyAsync(ExperimentalModHotLoader::getAvailableMods)
+                .whenComplete((result, error) -> minecraft.execute(() -> {
+                    if (closed) return;
+                    busy = false;
+                    if (error != null) {
+                        installedMods = List.of();
+                        status = "Could not scan installed mods: " + safeMessage(error);
+                    } else {
+                        installedMods = result;
+                        refreshLoadedStates();
+                        status = result.size() + " installed mod JAR(s). Fabric-loaded mods are enabled; other JARs need a restart.";
+                    }
+                    rebuildCards();
+                }));
+    }
+
+    private void refreshLoadedStates() {
+        Set<String> fabricLoaded = new HashSet<>();
+        for (var container : FabricLoader.getInstance().getAllMods()) {
+            fabricLoaded.add(container.getMetadata().getId());
+        }
+        Set<String> sessionLoaded = new HashSet<>();
+        for (ExperimentalModHotLoader.HotLoadedMod mod : ExperimentalModHotLoader.getHotLoadedMods()) {
+            sessionLoaded.add(mod.id());
+        }
+        fabricLoadedIds = Set.copyOf(fabricLoaded);
+        sessionLoadedIds = Set.copyOf(sessionLoaded);
+    }
+
     private void clearSearch() {
         if (searchBox != null) {
             searchBox.setValue("");
@@ -88,6 +148,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     private void search() {
         if (busy) return;
+        installedView = false;
+        if (searchBox != null) searchBox.visible = true;
         String query = searchBox.getValue().trim();
         busy = true;
         setCardButtonsActive(false);
@@ -114,6 +176,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private void rebuildCards() {
         for (VantaPanelButton button : cardButtons) removeWidget(button);
         cardButtons.clear();
+        if (installedView) return;
         int start = page * 6;
         int end = Math.min(projects.size(), start + 6);
         for (int i = start; i < end; i++) {
@@ -210,7 +273,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 VantaPanelButton.layoutX(28), VantaPanelButton.layoutY(46), 0xFF8998AD, false);
         graphics.drawString(font, "LIBRARY", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(116),
                 0xFF64758D, false);
-        graphics.drawString(font, "DISCOVER", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(216),
+        graphics.drawString(font, "DISCOVER", VantaPanelButton.layoutX(42), VantaPanelButton.layoutY(254),
                 0xFF64758D, false);
         graphics.drawString(font, "Compatible with Minecraft "
                         + net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("minecraft")
@@ -219,6 +282,54 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
         rounded(graphics, VantaPanelButton.layoutX(24), VantaPanelButton.layoutY(68),
                 VantaPanelButton.layoutSize(884), VantaPanelButton.layoutSize(46), 12, 0xFF171F2D);
+        if (installedView) {
+            graphics.drawString(font, "INSTALLED MODS", VantaPanelButton.layoutX(42),
+                    VantaPanelButton.layoutY(84), 0xFFE6EDF8, false);
+            graphics.drawString(font, "Fabric status is authoritative; session-loaded entries are experimental",
+                    VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(84), 0xFF8998AD, false);
+            for (int i = page * 6; i < Math.min(installedMods.size(), page * 6 + 6); i++) {
+                ExperimentalModHotLoader.AvailableMod mod = installedMods.get(i);
+                int row = i - page * 6;
+                int x = 252 + (row % 2) * 326;
+                int y = 132 + (row / 2) * 112;
+                int sx = VantaPanelButton.layoutX(x);
+                int sy = VantaPanelButton.layoutY(y);
+                int sw = VantaPanelButton.layoutSize(310);
+                int sh = VantaPanelButton.layoutSize(100);
+                boolean hovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh;
+                rounded(graphics, sx, sy + 2, sw, sh, 13, 0xFF090D15);
+                rounded(graphics, sx, sy, sw, sh, 13, hovered ? 0xFF222F43 : 0xFF192231);
+                rounded(graphics, sx + VantaPanelButton.layoutSize(1), sy + VantaPanelButton.layoutSize(1),
+                        sw - VantaPanelButton.layoutSize(2), sh - VantaPanelButton.layoutSize(2), 12,
+                        hovered ? 0xFF202C3E : 0xFF1B2635);
+                String initial = mod.name().isBlank() ? "?" :
+                        mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+                graphics.drawCenteredString(font, initial, sx + VantaPanelButton.layoutSize(33),
+                        sy + VantaPanelButton.layoutSize(27), 0xFF9BC2FF);
+                graphics.drawString(font, trim(mod.name(), 32), sx + VantaPanelButton.layoutSize(64),
+                        sy + VantaPanelButton.layoutSize(13), 0xFFF2F5FB, false);
+                graphics.drawString(font, trim(mod.id() + "  ·  " + mod.version(), 40),
+                        sx + VantaPanelButton.layoutSize(64), sy + VantaPanelButton.layoutSize(33),
+                        0xFF9BA9BC, false);
+                boolean fabricLoaded = fabricLoadedIds.contains(mod.id());
+                boolean sessionLoaded = sessionLoadedIds.contains(mod.id());
+                String state = fabricLoaded ? "ENABLED  ·  Fabric loaded"
+                        : sessionLoaded ? "SESSION-LOADED*  ·  experimental"
+                        : "INSTALLED  ·  restart to load";
+                int stateColor = fabricLoaded ? 0xFF78D6A0
+                        : sessionLoaded ? 0xFFFFC978 : 0xFF91A0B5;
+                graphics.drawString(font, state, sx + VantaPanelButton.layoutSize(64),
+                        sy + VantaPanelButton.layoutSize(61), stateColor, false);
+            }
+            if (installedMods.isEmpty() && !busy) {
+                rounded(graphics, VantaPanelButton.layoutX(252), VantaPanelButton.layoutY(132),
+                        VantaPanelButton.layoutSize(636), VantaPanelButton.layoutSize(324), 14, 0xFF192231);
+                graphics.drawCenteredString(font, "No external Fabric mods found",
+                        VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(270), 0xFFE6EDF8);
+                graphics.drawCenteredString(font, "Install a mod from Discover or add a JAR and restart Minecraft.",
+                        VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(292), 0xFF8998AD);
+            }
+        } else {
         for (int i = page * 6; i < Math.min(projects.size(), page * 6 + 6); i++) {
             ModrinthBrowserService.Project project = projects.get(i);
             int row = i - page * 6;
@@ -266,7 +377,9 @@ public final class VantaModrinthBrowserScreen extends Screen {
                             ? trim(status, 90) : "Try another search, or clear the search to browse popular mods.",
                     VantaPanelButton.layoutX(570), VantaPanelButton.layoutY(292), 0xFF8998AD);
         }
-        int pageCount = Math.max(1, (projects.size() + 5) / 6);
+        }
+        int visibleCount = installedView ? installedMods.size() : projects.size();
+        int pageCount = Math.max(1, (visibleCount + 5) / 6);
         graphics.drawString(font, "Page " + (page + 1) + " / " + pageCount,
                 VantaPanelButton.layoutX(394), VantaPanelButton.layoutY(501), 0xFF71839C, false);
         graphics.drawString(font, busy ? "Working…" : status,
