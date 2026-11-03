@@ -76,10 +76,10 @@ public final class HudBackgroundRenderer {
             }
         }
 
-        if (preferences.connectHudBackgrounds) {
-            backgrounds = mergeConnectedBounds(
-                    backgrounds, preferences.hudBackgroundConnectionGap);
-        }
+        int connectionGap = preferences.connectHudBackgrounds
+                ? preferences.hudBackgroundConnectionGap : 0;
+        // Always union overlaps so the shared area is never rendered at compounded opacity.
+        backgrounds = mergeConnectedBounds(backgrounds, connectionGap);
 
         for (Bounds bounds : backgrounds) {
             graphics.fill(bounds.left(), bounds.top(), bounds.right(), bounds.bottom(),

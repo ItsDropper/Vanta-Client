@@ -126,6 +126,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (strict.size() != 4) {
                 throw new AssertionError("The configured connection distance was not respected: " + strict);
             }
+            var overlapping = HudBackgroundRenderer.mergeConnectedBounds(java.util.List.of(
+                    new HudBackgroundRenderer.Bounds(100, 100, 130, 120),
+                    new HudBackgroundRenderer.Bounds(120, 110, 150, 130)
+            ), 0);
+            if (overlapping.size() != 1
+                    || overlapping.get(0).left() != 100
+                    || overlapping.get(0).top() != 100
+                    || overlapping.get(0).right() != 150
+                    || overlapping.get(0).bottom() != 130) {
+                throw new AssertionError("Overlapping backgrounds must be unioned even with gap-bridging off: "
+                        + overlapping);
+            }
         });
     }
 

@@ -41,7 +41,7 @@ Expected output: **36 PNG files**. The workflow independently asserts that exact
 
 Before capturing the screenshot matrix, the client GameTest:
 - Creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes.
-- Verifies that overlapping/adjacent HUD background rectangles merge transitively, while a smaller configured connection distance keeps them separate.
+- Verifies that overlapping HUD backgrounds are always unioned (preserving the 80% opacity), adjacent rectangles merge transitively at the configured distance, and a smaller distance keeps separated elements apart.
 - Opens the HUD editor with the Keystrokes HUD selected and a background enabled, including when its in-game feature is disabled.
 
 These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.
