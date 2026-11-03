@@ -43,7 +43,7 @@ public abstract class EntityRendererMixin {
         poseStack.popPose();
     }
 
-    @Inject(method = "hasLabel", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void vanta$hidePlayerNametags(
             Entity entity,
             double squaredDistanceToCamera,
