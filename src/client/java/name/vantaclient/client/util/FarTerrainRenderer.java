@@ -290,7 +290,7 @@ public final class FarTerrainRenderer {
 
             long taskRevision = revision;
             int seaLevel = level.getSeaLevel();
-            boolean waterSurfaceEnabled = level.dimension() == net.minecraft.world.level.Level.OVERWORLD;
+            boolean waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
             LevelHeightAccessor heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
             try {
                 WORKER.execute(() -> {
