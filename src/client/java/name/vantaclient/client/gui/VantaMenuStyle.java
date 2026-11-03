@@ -107,8 +107,7 @@ public final class VantaMenuStyle {
         if (client.getUser() == null) return;
 
         GameProfile activeProfile = client.getGameProfile();
-        UUID profileId = activeProfile == null
-                ? client.getUser().getProfileId() : activeProfile.getId();
+        UUID profileId = client.getUser().getProfileId();
         String playerName = client.getUser().getName();
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
