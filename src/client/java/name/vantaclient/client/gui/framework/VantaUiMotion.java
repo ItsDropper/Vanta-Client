@@ -42,6 +42,27 @@ public final class VantaUiMotion {
     }
 
     /**
+     * Advances an indeterminate ping-pong phase in the range [0, 2). A phase of
+     * 1 is returned when animations are disabled so progress remains stationary.
+     */
+    public static float advancePingPongPhase(float phase, float deltaSeconds,
+                                             float speedPerSecond, boolean animationsEnabled) {
+        if (!animationsEnabled) return 1.0f;
+        if (!Float.isFinite(phase) || !Float.isFinite(deltaSeconds)
+                || !Float.isFinite(speedPerSecond) || speedPerSecond <= 0.0f
+                || deltaSeconds <= 0.0f) {
+            return Float.isFinite(phase) ? normalizePingPongPhase(phase) : 0.0f;
+        }
+        float boundedDelta = Math.min(MAX_FRAME_DELTA_SECONDS, deltaSeconds);
+        return normalizePingPongPhase(phase + boundedDelta * speedPerSecond);
+    }
+
+    private static float normalizePingPongPhase(float phase) {
+        float normalized = phase % 2.0f;
+        return normalized < 0.0f ? normalized + 2.0f : normalized;
+    }
+
+    /**
      * Advances a scalar toward its target using exponential ease-out interpolation.
      * Non-finite current state is recovered by snapping to the finite target.
      */

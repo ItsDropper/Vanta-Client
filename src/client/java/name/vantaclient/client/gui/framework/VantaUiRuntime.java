@@ -83,7 +83,7 @@ public final class VantaUiRuntime {
                 VantaUiTheme.HOVER_RATE, deltaSeconds, animationsEnabled);
         float toggleFactor = VantaUiMotion.interpolationFactor(
                 VantaUiTheme.TOGGLE_RATE, deltaSeconds, animationsEnabled);
-        root.animate(animationsEnabled, hoverFactor, toggleFactor);
+        root.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
 
         long renderStart = System.nanoTime();
         graphics.pose().pushMatrix();

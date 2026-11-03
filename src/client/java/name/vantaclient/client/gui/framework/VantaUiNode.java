@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD }
+    public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS }
     public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
@@ -98,6 +98,7 @@ public final class VantaUiNode {
     private int height;
     private float hoverAmount;
     private float animatedToggle;
+    private float progressPhase;
     private int caretTicks;
     private boolean caretVisible = true;
 
@@ -192,6 +193,18 @@ public final class VantaUiNode {
         VantaUiNode node = text(value, color);
         node.textMaximumLines = Math.max(1, maximumLines);
         node.preferredHeight = node.textMaximumLines * 14;
+        return node;
+    }
+
+    /**
+     * Creates an indeterminate progress row. It intentionally does not claim a
+     * percentage because callers may not have access to byte-level progress.
+     */
+    public static VantaUiNode progressIndicator(String label) {
+        VantaUiNode node = new VantaUiNode(Kind.PROGRESS, null);
+        node.label = label == null ? "" : label;
+        node.textColor = VantaUiTheme.TEXT_MUTED;
+        node.preferredHeight = 30;
         return node;
     }
 
@@ -353,7 +366,7 @@ public final class VantaUiNode {
             case TEXT -> textWidth(font, currentText(), textFont);
             case ICON, IMAGE -> 16;
             case SPACER -> 1;
-            case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD -> 160;
+            case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS -> 160;
             case CONTAINER -> {
                 int size = 0;
                 int visibleChildren = 0;
@@ -381,6 +394,7 @@ public final class VantaUiNode {
             case ICON, IMAGE -> 16;
             case SPACER -> 0;
             case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
+            case PROGRESS -> 30;
             case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
             case CONTAINER -> {
                 int size = 0;
@@ -613,6 +627,25 @@ public final class VantaUiNode {
                 }
             }
             case SPACER, CONTAINER -> { }
+            case PROGRESS -> {
+                if (width > 0 && height >= 8) {
+                    if (!label.isBlank()) {
+                        String shownLabel = fitText(font, label, Math.max(0, width - 2), UI_FONT);
+                        graphics.drawString(font, styledText(shownLabel, UI_FONT),
+                                x, y + 1, textColor);
+                    }
+                    int trackY = y + height - 7;
+                    int trackWidth = Math.max(0, width);
+                    int segmentWidth = Math.min(trackWidth,
+                            Math.max(8, Math.round(trackWidth * 0.28f)));
+                    VantaUiTheme.fillRounded(graphics, x, trackY, trackWidth, 4, 2,
+                            VantaUiTheme.withAlpha(VantaUiTheme.TRACK, 180));
+                    float phase = progressPhase <= 1.0f ? progressPhase : 2.0f - progressPhase;
+                    int segmentTravel = Math.max(0, trackWidth - segmentWidth);
+                    int segmentX = x + Math.round(segmentTravel * phase);
+                    VantaUiTheme.fillRounded(graphics, segmentX, trackY, segmentWidth, 4, 2, accent);
+                }
+            }
             case BUTTON -> {
                 if (selected) {
                     VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
@@ -1058,7 +1091,8 @@ public final class VantaUiNode {
         for (VantaUiNode child : children) child.tick();
     }
 
-    void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor) {
+    void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor,
+                 float deltaSeconds) {
         if (!visible) return;
         float hoverTarget = hovered ? 1.0f : 0.0f;
         if (!animationsEnabled) {
@@ -1066,6 +1100,10 @@ public final class VantaUiNode {
         } else if (Math.abs(hoverTarget - hoverAmount) >= 0.002f) {
             hoverAmount += (hoverTarget - hoverAmount) * hoverFactor;
             if (Math.abs(hoverTarget - hoverAmount) < 0.002f) hoverAmount = hoverTarget;
+        }
+        if (kind == Kind.PROGRESS) {
+            progressPhase = VantaUiMotion.advancePingPongPhase(
+                    progressPhase, deltaSeconds, 0.9f, animationsEnabled);
         }
         if (kind == Kind.TOGGLE && toggleValue != null) {
             float target = toggleValue.getAsBoolean() ? 1.0f : 0.0f;
@@ -1077,7 +1115,7 @@ public final class VantaUiNode {
             }
         }
         for (VantaUiNode child : children) {
-            child.animate(animationsEnabled, hoverFactor, toggleFactor);
+            child.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
         }
     }
 
