@@ -5,6 +5,7 @@ import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.mixin.accessor.ScreenAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.LogoRenderer;
 import net.minecraft.client.gui.components.SplashRenderer;
@@ -155,6 +156,15 @@ public abstract class TitleScreenMixin {
     private void vanta$removeVanillaLogo(LogoRenderer renderer, GuiGraphics graphics,
                                          int width, float alpha) {
         // Intentionally suppress the Minecraft logo; Vanta owns the title-screen identity.
+    }
+
+
+    @Redirect(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I"))
+    private int vanta$hideVanillaCopyright(GuiGraphics graphics, Font font,
+                                           Component text, int x, int y, int color) {
+        // Vanilla title-screen copyright is replaced by the Vanta footer.
+        return 0;
     }
 
     @Inject(method = "render", at = @At("TAIL"))
