@@ -132,6 +132,11 @@ public final class VantaPanelButton extends AbstractWidget {
                             Math.round(110.0f + 45.0f * hoverAmount)));
         }
 
+        VantaUiTheme.outlineRounded(graphics, getX(), getY(), width, height, 9,
+                !isActive() ? 0x55798593
+                        : hovered ? VantaUiTheme.BUTTON_OUTLINE_HOVER
+                        : VantaUiTheme.BUTTON_OUTLINE);
+
         int textColor = !isActive() ? VantaUiTheme.TEXT_MUTED
                 : filledAccent ? VantaUiTheme.WHITE
                 : activeSelection || hovered ? VantaUiTheme.TEXT_PRIMARY

@@ -2,6 +2,7 @@ package name.vantaclient.client.gui.components;
 
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.gui.ClickGuiScreen;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -71,17 +72,11 @@ public class FeatureButton extends AbstractWidget {
         /*
          * Main background.
          */
-        int backgroundColor = hovered
-                ? 0xFF29292F
-                : 0xFF202024;
-
-        graphics.fill(
-                getX(),
-                getY(),
-                getX() + width,
-                getY() + height,
-                backgroundColor
-        );
+        int backgroundColor = isEnabled ? 0x403B76AC
+                : hovered ? 0x383A4654 : 0x241A2331;
+        VantaUiTheme.fillRounded(graphics, getX(), getY(), width, height, 8, backgroundColor);
+        VantaUiTheme.outlineRounded(graphics, getX(), getY(), width, height, 8,
+                hovered ? VantaUiTheme.BUTTON_OUTLINE_HOVER : VantaUiTheme.BUTTON_OUTLINE);
 
         /*
          * Feature name.
@@ -115,13 +110,8 @@ public class FeatureButton extends AbstractWidget {
                 toggleAnimation
         );
 
-        graphics.fill(
-                toggleX,
-                toggleY,
-                toggleX + toggleWidth,
-                toggleY + toggleHeight,
-                background
-        );
+        VantaUiTheme.fillRounded(graphics, toggleX, toggleY, toggleWidth, toggleHeight,
+                toggleHeight / 2, background);
 
         /*
          * Toggle knob.
@@ -134,13 +124,7 @@ public class FeatureButton extends AbstractWidget {
         int knobX =
                 (int) (toggleX + 2 + knobPosition);
 
-        graphics.fill(
-                knobX,
-                toggleY + 2,
-                knobX + knobSize,
-                toggleY + 10,
-                0xFFFFFFFF
-        );
+        VantaUiTheme.fillRounded(graphics, knobX, toggleY + 2, knobSize, 8, 4, 0xFFFFFFFF);
     }
 
     private int interpolateColor(

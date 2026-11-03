@@ -602,6 +602,11 @@ public final class VantaUiNode {
                     VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
                             VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER, 76));
                 }
+                VantaUiTheme.outlineRounded(graphics, x, y, width, height,
+                        VantaUiTheme.RADIUS_LARGE,
+                        !enabled ? 0x55798593
+                                : over ? VantaUiTheme.BUTTON_OUTLINE_HOVER
+                                : VantaUiTheme.BUTTON_OUTLINE);
                 int labelX = x, labelWidth = width;
                 if (icon != null) {
                     drawIcon(graphics, icon, x + 10, y + (height - 16) / 2, 16, 16,

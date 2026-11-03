@@ -317,11 +317,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 int sw = VantaPanelButton.layoutSize(310);
                 int sh = VantaPanelButton.layoutSize(100);
                 boolean hovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + sh;
-                rounded(graphics, sx, sy + 2, sw, sh, 13, 0xFF090D15);
-                rounded(graphics, sx, sy, sw, sh, 13, hovered ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.PANEL_RAISED);
-                rounded(graphics, sx + VantaPanelButton.layoutSize(1), sy + VantaPanelButton.layoutSize(1),
-                        sw - VantaPanelButton.layoutSize(2), sh - VantaPanelButton.layoutSize(2), 12,
+                rounded(graphics, sx, sy, sw, sh, 13,
                         hovered ? VantaUiTheme.SURFACE_HOVER : VantaUiTheme.PANEL_RAISED);
+                VantaUiTheme.outlineRounded(graphics, sx, sy, sw, sh, 13,
+                        hovered ? VantaUiTheme.BUTTON_OUTLINE_HOVER : VantaUiTheme.BUTTON_OUTLINE);
                 String initial = mod.name().isBlank() ? "?" :
                         mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
                 graphics.drawCenteredString(font, initial, sx + VantaPanelButton.layoutSize(33),

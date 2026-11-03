@@ -18,6 +18,8 @@ public final class VantaUiTheme {
     public static final int SURFACE_SELECTED = 0x6B3B76AC;
     public static final int BORDER = 0x643A4D65;
     public static final int BORDER_SUBTLE = 0x382E3C50;
+    public static final int BUTTON_OUTLINE = 0x8C9AA8B8;
+    public static final int BUTTON_OUTLINE_HOVER = 0xC0C9D3DF;
     public static final int TEXT_PRIMARY = 0xFFF1F5FC;
     public static final int TEXT_SECONDARY = 0xFFB5C0D0;
     public static final int TEXT_MUTED = 0xFF8290A4;
@@ -66,6 +68,34 @@ public final class VantaUiTheme {
         opacity = Math.max(0.0, Math.min(1.0, opacity));
         int baseAlpha = (color >>> 24) & 0xFF;
         return withAlpha(color, (int) Math.round(baseAlpha * opacity));
+    }
+
+    /** Crisp one-pixel rounded outline; no dark offset plate or side box. */
+    public static void outlineRounded(GuiGraphics graphics, int x, int y, int width,
+                                      int height, int radius, int color) {
+        if (graphics == null || width <= 1 || height <= 1 || color == 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
+        if (r == 0) {
+            graphics.fill(x, y, x + width, y + 1, color);
+            graphics.fill(x, y + height - 1, x + width, y + height, color);
+            graphics.fill(x, y + 1, x + 1, y + height - 1, color);
+            graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
+            return;
+        }
+        for (int row = 0; row < height; row++) {
+            int distanceFromCorner = row < r ? r - row
+                    : row >= height - r ? row - (height - r - 1) : 0;
+            int inset = distanceFromCorner == 0 ? 0
+                    : r - (int) Math.floor(Math.sqrt((double) r * r
+                    - (double) distanceFromCorner * distanceFromCorner));
+            if (row == 0 || row == height - 1) {
+                graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
+            } else {
+                graphics.fill(x + inset, y + row, x + inset + 1, y + row + 1, color);
+                graphics.fill(x + width - inset - 1, y + row,
+                        x + width - inset, y + row + 1, color);
+            }
+        }
     }
 
     /** Shared rounded fill used by Vanta-native controls and floating surfaces. */

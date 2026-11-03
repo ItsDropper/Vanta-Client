@@ -774,9 +774,6 @@ public class VantaIntegrationsScreen extends Screen {
         if (section == Section.MODS) {
             graphics.drawString(font, "MOD LIBRARY", 34, 166, VantaUiTheme.TEXT_MUTED);
         }
-        drawRoundedCard(graphics, 34, 454, 184, 42, VantaUiTheme.SURFACE, 11);
-        drawRoundedCard(graphics, 42, 461, 28, 28, mixColor(0xFF26364C, accent, 0.24f), 9);
-        drawRoundedCard(graphics, 43, 462, 26, 26, 0xFF151E2A, 8);
         graphics.drawCenteredString(font, "V", 56, 471, accent);
         graphics.drawString(font, "Vanta Client", 78, 462, 0xFFE8EDF6);
         graphics.drawString(font, "Fabric Edition", 78, 476, 0xFF7F8CA1);
@@ -942,14 +939,9 @@ public class VantaIntegrationsScreen extends Screen {
                 hover += ((hovered ? 1.0f : 0.0f) - hover) * 0.22f;
                 if (Math.abs((hovered ? 1.0f : 0.0f) - hover) < 0.015f) hover = hovered ? 1.0f : 0.0f;
                 modCardHover.put(mod.id(), hover);
-                drawRoundedCard(graphics, x + 1, y + 2, cardWidth, cardHeight,
-                        0x33000000, 13);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
                         withAlpha(mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.05f + hover * 0.08f),
                                 (float) preferences.panelOpacity), 13);
-                drawRoundedCard(graphics, x + 7, y + 7, cardWidth - 14, 62,
-                        withAlpha(mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hover),
-                                0.82f), 11);
                 Identifier iconTexture = modIconTextures.get(mod.id());
                 int iconSize = 42;
                 int iconX = x + (cardWidth - iconSize) / 2;
