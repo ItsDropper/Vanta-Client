@@ -138,6 +138,15 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Overlapping backgrounds must be unioned even with gap-bridging off: "
                         + overlapping);
             }
+            var noPhantomConnection = HudBackgroundRenderer.mergeConnectedBounds(java.util.List.of(
+                    new HudBackgroundRenderer.Bounds(0, 0, 10, 10),
+                    new HudBackgroundRenderer.Bounds(14, 0, 24, 10),
+                    new HudBackgroundRenderer.Bounds(10, 14, 14, 24)
+            ), 4);
+            if (noPhantomConnection.size() != 2) {
+                throw new AssertionError("A union's empty bounding-box area must not connect unrelated HUDs: "
+                        + noPhantomConnection);
+            }
         });
     }
 

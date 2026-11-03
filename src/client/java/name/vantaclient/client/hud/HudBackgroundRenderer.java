@@ -8,6 +8,7 @@ import name.vantaclient.client.hudeditor.HudManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,29 +94,38 @@ public final class HudBackgroundRenderer {
     }
 
     /**
-     * Unions hitboxes that overlap or touch along an edge (including a small gap).
-     * A restart after every union handles transitive groups regardless of input order.
+     * Builds connected components from the original hitboxes, then unions each component.
+     * Adjacency is never tested against an expanded group bound: doing so could falsely
+     * connect a third HUD through empty space introduced by an earlier rectangular union.
      */
     public static List<Bounds> mergeConnectedBounds(List<Bounds> input, int connectionGap) {
+        if (input == null || input.isEmpty()) return List.of();
         int allowedGap = Math.max(0, connectionGap);
-        List<Bounds> merged = new ArrayList<>();
-        for (Bounds rectangle : input) {
-            if (rectangle == null) continue;
-            Bounds candidate = rectangle;
-            int index = 0;
-            while (index < merged.size()) {
-                Bounds existing = merged.get(index);
-                if (areConnected(candidate, existing, allowedGap)) {
-                    candidate = candidate.union(existing);
-                    merged.remove(index);
-                    index = 0;
-                } else {
-                    index++;
+        List<Bounds> rectangles = input.stream().filter(java.util.Objects::nonNull).toList();
+        boolean[] visited = new boolean[rectangles.size()];
+        List<Bounds> groups = new ArrayList<>();
+        ArrayDeque<Integer> pending = new ArrayDeque<>();
+
+        for (int start = 0; start < rectangles.size(); start++) {
+            if (visited[start]) continue;
+            visited[start] = true;
+            pending.addLast(start);
+            Bounds group = rectangles.get(start);
+
+            while (!pending.isEmpty()) {
+                Bounds current = rectangles.get(pending.removeFirst());
+                for (int candidate = 0; candidate < rectangles.size(); candidate++) {
+                    if (visited[candidate]) continue;
+                    Bounds other = rectangles.get(candidate);
+                    if (!areConnected(current, other, allowedGap)) continue;
+                    visited[candidate] = true;
+                    pending.addLast(candidate);
+                    group = group.union(other);
                 }
             }
-            merged.add(candidate);
+            groups.add(group);
         }
-        return List.copyOf(merged);
+        return List.copyOf(groups);
     }
 
     private static boolean areConnected(Bounds first, Bounds second, int maximumGap) {
