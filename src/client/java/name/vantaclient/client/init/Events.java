@@ -8,6 +8,7 @@ import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ExplosionEffects;
+import name.vantaclient.client.util.SprintSneakToggles;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 
@@ -47,6 +48,11 @@ public class Events {
         PotionEffectsFeature.INSTANCE.setEnabled(
                 DropperUtilsConfig.get().potionEffects
         );
+        FpsHudFeature.INSTANCE.loadConfig();
+        PingHudFeature.INSTANCE.loadConfig();
+        KeystrokesFeature.INSTANCE.loadConfig();
+        CpsHudFeature.INSTANCE.loadConfig();
+        SprintSneakToggles.load();
 
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -63,6 +69,9 @@ public class Events {
 
 
             ZoomFeature.INSTANCE.tick(Keybinds.zoomKey);
+            if (Keybinds.sprintToggleKey.consumeClick()) SprintSneakToggles.toggleSprint();
+            if (Keybinds.sneakToggleKey.consumeClick()) SprintSneakToggles.toggleSneak();
+            SprintSneakToggles.tick(client);
 
             if (client.player != null) {
 
