@@ -15,7 +15,10 @@ public class FeatureRegistry {
             DebugHudFeature.INSTANCE,
             NoExplosionEffectsFeature.INSTANCE,
             LowFireFeature.INSTANCE,
-            PotionEffectsFeature.INSTANCE
+            PotionEffectsFeature.INSTANCE,
+            FpsHudFeature.INSTANCE,
+            PingHudFeature.INSTANCE,
+            KeystrokesFeature.INSTANCE
     );
 
     public static void loadConfigs() {
