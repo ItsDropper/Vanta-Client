@@ -428,6 +428,9 @@ public final class VantaIntegrationsScreen extends Screen {
                                 ? cause.getClass().getSimpleName() : cause.getMessage());
                     } else {
                         availableMods = result == null ? List.of() : List.copyOf(result);
+                        if ("Refreshing the local mod inventory…".equals(hotLoadStatus)) {
+                            hotLoadStatus = "Inventory refreshed: " + availableMods.size() + " mod JAR(s).";
+                        }
                     }
                     if (screenActive) {
                         reloadModIcons();
