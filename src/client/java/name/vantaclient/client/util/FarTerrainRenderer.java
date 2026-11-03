@@ -290,13 +290,14 @@ public final class FarTerrainRenderer {
 
             long taskRevision = revision;
             int seaLevel = level.getSeaLevel();
+            boolean waterSurfaceEnabled = level.dimension() == net.minecraft.world.level.Level.OVERWORLD;
             LevelHeightAccessor heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
             try {
                 WORKER.execute(() -> {
                     try {
                         if (taskRevision != revision || !DESIRED.contains(key)) return;
                         TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
-                                biomeSource, climateSampler, seaLevel);
+                                biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
                         if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
                     } catch (RuntimeException | LinkageError error) {
                         // A job from an old world revision must never poison the new world's tile state.
@@ -324,7 +325,7 @@ public final class FarTerrainRenderer {
     private static TileMesh generateTile(TileKey key, ChunkGenerator generator,
                                          RandomState randomState, LevelHeightAccessor heightAccessor,
                                          BiomeSource biomeSource, Climate.Sampler climateSampler,
-                                         int seaLevel) {
+                                         int seaLevel, boolean waterSurfaceEnabled) {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
         int[] colors = new int[side * side];
@@ -378,7 +379,7 @@ public final class FarTerrainRenderer {
             }
         }
 
-        return new TileMesh(key, originX, originZ, spanBlocks, seaLevel,
+        return new TileMesh(key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
                 heights, colors, waterColors);
     }
 
@@ -520,7 +521,8 @@ public final class FarTerrainRenderer {
                     int i10 = i00 + 1;
                     int i01 = i00 + side;
                     int i11 = i01 + 1;
-                    boolean submerged = heights[i00] < mesh.seaLevel
+                    boolean submerged = mesh.waterSurfaceEnabled
+                            && heights[i00] < mesh.seaLevel
                             && heights[i10] < mesh.seaLevel
                             && heights[i01] < mesh.seaLevel
                             && heights[i11] < mesh.seaLevel;
@@ -727,7 +729,8 @@ public final class FarTerrainRenderer {
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
     private record TileMesh(TileKey key, int originX, int originZ, int spanBlocks,
-                            int seaLevel, int[] heights, int[] colors, int[] waterColors) {
+                            int seaLevel, boolean waterSurfaceEnabled,
+                            int[] heights, int[] colors, int[] waterColors) {
         private long estimatedBytes() {
             return ((long) heights.length + colors.length + waterColors.length) * Integer.BYTES;
         }
