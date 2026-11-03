@@ -264,11 +264,20 @@ public final class VantaSettingsScreen extends Screen {
         search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
         search.add(VantaUiNode.textField("Filter features...", () -> pendingSearch,
                 value -> pendingSearch = value, 64).flex(1));
+        if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
+            search.add(VantaUiNode.button("Clear", () -> {
+                pendingSearch = "";
+                searchQuery = "";
+                rebuildUi();
+            }).height(28).tooltip("Clear the feature filter"));
+        }
         search.add(VantaUiNode.button("Apply", VantaUiNode.Icon.SEARCH, () -> {
             searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
             rebuildUi();
         }).height(28));
         content.add(search);
+        content.add(VantaUiNode.text("Searches feature names, descriptions and available setting labels.",
+                VantaUiTheme.TEXT_MUTED));
 
         if (features.isEmpty()) {
             String emptyMessage = searchQuery.isBlank()
@@ -303,7 +312,12 @@ public final class VantaSettingsScreen extends Screen {
             list.add(divider());
         }
         content.add(list);
-        content.add(VantaUiNode.text(features.size() + " feature(s)", VantaUiTheme.TEXT_MUTED));
+        long totalInCategory = FeatureRegistry.FEATURES.stream()
+                .filter(feature -> feature.getCategory() == category).count();
+        String resultSummary = searchQuery.isBlank()
+                ? totalInCategory + " feature(s) in this category"
+                : "Showing " + features.size() + " of " + totalInCategory + " feature(s)";
+        content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
     }
 
     private boolean matchesSearch(Feature feature) {
