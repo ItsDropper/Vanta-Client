@@ -28,6 +28,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - The HUD editor toolbar and selected-element inspector use the shared runtime and theme. The draggable HUD canvas, selection outlines and hitboxes remain specialized rendering by design.
 - Every custom and vanilla HUD element has an independent, persisted background toggle. Backgrounds use a dark-gray fill at 80% opacity. Overlapping hitboxes are always unioned to prevent compounded alpha; the inspector can optionally bridge nearby hitboxes with a configurable 0–24 px connection distance.
 - FPS, Ping, Keystrokes and CPS remain previewable/selectable in the HUD editor even while their in-game feature is disabled, so their positions and backgrounds can still be configured.
+- HUD background, selection and mouse hit-testing use the same rendered hitbox geometry. The horizontal armor HUD includes its above-icon durability labels, and its vertical layout uses the actual four-slot height rather than an oversized placeholder bound.
 
 ## Automated visual verification
 

@@ -100,7 +100,18 @@ public class ArmorHudElement extends HudElement {
     }
 
     @Override public int getWidth() { return horizontal ? 85 : 50; }
-    @Override public int getHeight() { return horizontal ? 35 : 140; }
+
+    @Override
+    public int getHeight() {
+        // Four vertical slots occupy 0..86 px (22 px spacing, 20 px final slot).
+        return horizontal ? 35 : 86;
+    }
+
+    @Override
+    protected int getHitboxTopOffset() {
+        // Horizontal durability labels render ten pixels above the armor icons.
+        return horizontal ? -10 : 0;
+    }
 
     @Override
     public void savePosition() {

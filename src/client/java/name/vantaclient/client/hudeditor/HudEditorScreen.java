@@ -160,10 +160,10 @@ public class HudEditorScreen extends Screen {
 
     private void drawElementHitboxes(GuiGraphics graphics, int accent) {
         for (HudElement element : HudManager.getElements()) {
-            int x = element.getX() - 3;
-            int y = element.getY() - 3;
-            int w = Math.max(8, element.getScaledWidth() + 6);
-            int h = Math.max(8, element.getScaledHeight() + 6);
+            int x = element.getHitboxX() - 3;
+            int y = element.getHitboxY() - 3;
+            int w = Math.max(8, element.getHitboxWidth() + 6);
+            int h = Math.max(8, element.getHitboxHeight() + 6);
             boolean selected = element == HudSettingsPanel.getSelected();
             int fill = selected ? 0x263F8DFF : 0x182A3A50;
             int border = selected ? accent : 0xA8798CA8;
@@ -185,10 +185,10 @@ public class HudEditorScreen extends Screen {
 
     private void drawSelection(GuiGraphics graphics, HudElement element,
                                int accent, float pulse) {
-        int x = element.getX() - 4;
-        int y = element.getY() - 4;
-        int w = Math.max(12, element.getScaledWidth() + 8);
-        int h = Math.max(12, element.getScaledHeight() + 8);
+        int x = element.getHitboxX() - 4;
+        int y = element.getHitboxY() - 4;
+        int w = Math.max(12, element.getHitboxWidth() + 8);
+        int h = Math.max(12, element.getHitboxHeight() + 8);
         int color = (Math.round(150.0f + 75.0f * pulse) << 24)
                 | (accent & 0x00FFFFFF);
         drawRoundedOutline(graphics, x, y, w, h, 8, color, 2);
@@ -206,8 +206,8 @@ public class HudEditorScreen extends Screen {
                     default -> "HUD ELEMENT";
                 };
         int tagWidth = mc.font.width(label) + 16;
-        int x = Math.max(8, Math.min(element.getX(), width - tagWidth - 8));
-        int y = Math.max(76, element.getY() - 25);
+        int x = Math.max(8, Math.min(element.getHitboxX(), width - tagWidth - 8));
+        int y = Math.max(76, element.getHitboxY() - 25);
         fillRounded(graphics, x, y, tagWidth, 18, 7, accent);
         graphics.drawCenteredString(mc.font, label, x + tagWidth / 2, y + 5, 0xFFFFFFFF);
     }

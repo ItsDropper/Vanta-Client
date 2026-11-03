@@ -54,8 +54,8 @@ public final class HudBackgroundRenderer {
             if (element instanceof VanillaHudElement vanilla) {
                 VanillaHudElement.Part part = vanilla.getPart();
                 if (editing) {
-                    add(backgrounds, vanilla.getX(), vanilla.getY(),
-                            vanilla.getScaledWidth(), vanilla.getScaledHeight());
+                    add(backgrounds, vanilla.getHitboxX(), vanilla.getHitboxY(),
+                            vanilla.getHitboxWidth(), vanilla.getHitboxHeight());
                 } else if (vanillaPositionsEnabled) {
                     VantaClientPreferences.HudPosition position =
                             VanillaHudElement.getPosition(part);
@@ -72,8 +72,8 @@ public final class HudBackgroundRenderer {
             }
 
             if (element.shouldRender()) {
-                add(backgrounds, element.getX(), element.getY(),
-                        element.getScaledWidth(), element.getScaledHeight());
+                add(backgrounds, element.getHitboxX(), element.getHitboxY(),
+                        element.getHitboxWidth(), element.getHitboxHeight());
             }
         }
 

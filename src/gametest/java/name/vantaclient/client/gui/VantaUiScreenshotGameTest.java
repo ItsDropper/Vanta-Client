@@ -36,6 +36,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.restoreDefaultGameOptions();
         verifyScrollbarThumbDragging(context);
         verifyConnectedHudBackgrounds(context);
+        verifyHudHitboxGeometry(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -146,6 +147,39 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (noPhantomConnection.size() != 2) {
                 throw new AssertionError("A union's empty bounding-box area must not connect unrelated HUDs: "
                         + noPhantomConnection);
+            }
+        });
+    }
+
+    private static void verifyHudHitboxGeometry(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            HudManager.init();
+            name.vantaclient.client.hud.ArmorHudElement armor =
+                    HudManager.getElements().stream()
+                            .filter(name.vantaclient.client.hud.ArmorHudElement.class::isInstance)
+                            .map(name.vantaclient.client.hud.ArmorHudElement.class::cast)
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError("Armor HUD is missing from the registry."));
+
+            boolean originalOrientation = armor.isHorizontal();
+            try {
+                armor.setHorizontal(true);
+                int expectedTopExpansion = Math.round(10 * armor.getScale());
+                if (armor.getHitboxY() != armor.getY() - expectedTopExpansion
+                        || armor.getHitboxHeight() != armor.getScaledHeight() + expectedTopExpansion) {
+                    throw new AssertionError("Horizontal armor HUD hitbox must include its durability labels.");
+                }
+                if (!armor.isHovered(armor.getX() + 4, armor.getY() - Math.max(1, expectedTopExpansion / 2))) {
+                    throw new AssertionError("The horizontal armor label area must be part of its draggable hitbox.");
+                }
+
+                armor.setHorizontal(false);
+                if (armor.getHeight() != 86
+                        || armor.getHitboxHeight() != armor.getScaledHeight()) {
+                    throw new AssertionError("Vertical armor HUD hitbox must tightly fit its four rendered slots.");
+                }
+            } finally {
+                armor.setHorizontal(originalOrientation);
             }
         });
     }

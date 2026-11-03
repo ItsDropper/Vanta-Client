@@ -25,10 +25,12 @@ public abstract class HudElement {
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
-        int maxX = Math.max(0, screenWidth - getScaledWidth());
-        int maxY = Math.max(0, screenHeight - getScaledHeight());
-        int targetX = Math.max(0, Math.min(mouseX, maxX));
-        int targetY = Math.max(0, Math.min(mouseY, maxY));
+        int leftOffset = scaledOffset(getHitboxLeftOffset());
+        int topOffset = scaledOffset(getHitboxTopOffset());
+        int maxX = Math.max(-leftOffset, screenWidth - leftOffset - getHitboxWidth());
+        int maxY = Math.max(-topOffset, screenHeight - topOffset - getHitboxHeight());
+        int targetX = Math.max(-leftOffset, Math.min(mouseX, maxX));
+        int targetY = Math.max(-topOffset, Math.min(mouseY, maxY));
 
         name.vantaclient.client.config.VantaClientPreferences preferences =
                 name.vantaclient.client.config.VantaClientPreferences.get();
@@ -36,8 +38,8 @@ public abstract class HudElement {
             int grid = preferences.hudGridSize;
             targetX = Math.round(targetX / (float) grid) * grid;
             targetY = Math.round(targetY / (float) grid) * grid;
-            targetX = Math.max(0, Math.min(targetX, maxX));
-            targetY = Math.max(0, Math.min(targetY, maxY));
+            targetX = Math.max(-leftOffset, Math.min(targetX, maxX));
+            targetY = Math.max(-topOffset, Math.min(targetY, maxY));
         }
 
         xPercent = screenWidth <= 0 ? 0.0f : targetX / (float) screenWidth;
@@ -45,10 +47,10 @@ public abstract class HudElement {
     }
 
     public boolean isHovered(double mouseX, double mouseY) {
-        return mouseX >= getX() &&
-                mouseX <= getX() + getScaledWidth() &&
-                mouseY >= getY() &&
-                mouseY <= getY() + getScaledHeight();
+        return mouseX >= getHitboxX() &&
+                mouseX <= getHitboxX() + getHitboxWidth() &&
+                mouseY >= getHitboxY() &&
+                mouseY <= getHitboxY() + getHitboxHeight();
     }
 
     public int getX() {
@@ -86,6 +88,29 @@ public abstract class HudElement {
         return (int) (getHeight() * scale);
     }
 
+    /** Local-pixel expansion beyond the element's normal rendered rectangle. */
+    protected int getHitboxLeftOffset() { return 0; }
+    protected int getHitboxTopOffset() { return 0; }
+    protected int getHitboxRightOffset() { return 0; }
+    protected int getHitboxBottomOffset() { return 0; }
+
+    private int scaledOffset(int offset) {
+        return Math.round(offset * scale);
+    }
+
+    public int getHitboxX() { return getX() + scaledOffset(getHitboxLeftOffset()); }
+    public int getHitboxY() { return getY() + scaledOffset(getHitboxTopOffset()); }
+
+    public int getHitboxWidth() {
+        return Math.max(1, getScaledWidth()
+                + scaledOffset(getHitboxRightOffset() - getHitboxLeftOffset()));
+    }
+
+    public int getHitboxHeight() {
+        return Math.max(1, getScaledHeight()
+                + scaledOffset(getHitboxBottomOffset() - getHitboxTopOffset()));
+    }
+
     /**
      * Whether this element needs to be included in the per-frame HUD render pass.
      * The manager rebuilds this list at tick rate, not during rendering.
@@ -112,8 +137,10 @@ public abstract class HudElement {
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = Math.max(1, mc.getWindow().getGuiScaledWidth());
         int screenHeight = Math.max(1, mc.getWindow().getGuiScaledHeight());
-        int targetX = Math.max(0, (screenWidth - getScaledWidth()) / 2);
-        int targetY = Math.max(0, (screenHeight - getScaledHeight()) / 2);
+        int targetX = Math.max(-scaledOffset(getHitboxLeftOffset()),
+                (screenWidth - getHitboxWidth()) / 2 - scaledOffset(getHitboxLeftOffset()));
+        int targetY = Math.max(-scaledOffset(getHitboxTopOffset()),
+                (screenHeight - getHitboxHeight()) / 2 - scaledOffset(getHitboxTopOffset()));
         xPercent = targetX / (float) screenWidth;
         yPercent = targetY / (float) screenHeight;
         savePosition();
