@@ -61,7 +61,9 @@ public final class VantaClientPreferences {
         if (instance.accent == null) instance.accent = Accent.BLUE;
         if (!Double.isFinite(instance.uiScale)) instance.uiScale = 1.0;
         instance.uiScale = Math.max(0.8, Math.min(1.2, instance.uiScale));
-        if (!Double.isFinite(instance.panelOpacity)) instance.panelOpacity = 0.85;
+        if (!Double.isFinite(instance.panelOpacity) || Math.abs(instance.panelOpacity - 0.92) < 0.0001) {
+            instance.panelOpacity = 0.85;
+        }
         instance.panelOpacity = Math.max(0.85, Math.min(0.98, instance.panelOpacity));
         if (instance.hudGridSize != 8 && instance.hudGridSize != 16
                 && instance.hudGridSize != 24 && instance.hudGridSize != 32) {
