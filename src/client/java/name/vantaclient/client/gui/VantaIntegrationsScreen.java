@@ -497,6 +497,8 @@ public class VantaIntegrationsScreen extends Screen {
                 addFeatureSlider(setting, y);
             } else if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.BooleanSetting setting) {
                 addFeatureToggle(setting, y);
+            } else if (settings.get(i) instanceof name.vantaclient.client.gui.components.settings.ChoiceSetting setting) {
+                addFeatureChoice(setting, y);
             }
             y += 34;
         }
@@ -537,6 +539,36 @@ public class VantaIntegrationsScreen extends Screen {
                 setting.getSetter().accept(minimum + this.value * (maximum - minimum));
             }
         });
+    }
+
+
+    private void addFeatureChoice(
+            name.vantaclient.client.gui.components.settings.ChoiceSetting setting, int y) {
+        List<String> options = setting.getOptions();
+        if (options.isEmpty()) return;
+
+        String current;
+        try {
+            current = setting.getGetter().get();
+        } catch (RuntimeException exception) {
+            return;
+        }
+        if (current == null || !options.contains(current)) current = options.get(0);
+        String displayedValue = current;
+        int buttonWidth = Math.min(320, contentWidth());
+        addPanelButton(setting.getName() + ": " + displayedValue,
+                contentX(), y, buttonWidth, 26, () -> {
+                    String value;
+                    try {
+                        value = setting.getGetter().get();
+                    } catch (RuntimeException exception) {
+                        return;
+                    }
+                    int index = options.indexOf(value);
+                    int next = (index + 1 + options.size()) % options.size();
+                    setting.getSetter().accept(options.get(next));
+                    rebuildWidgets();
+                });
     }
 
     private void addFeatureToggle(
