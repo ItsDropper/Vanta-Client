@@ -43,13 +43,22 @@ public final class SprintSneakToggles {
             DropperUtilsConfig.save();
         }
 
-        boolean sprintRequested = sprintToggled || client.options.keySprint.isDown();
-        boolean sneakRequested = sneakToggled || client.options.keyShift.isDown();
+        // Only override vanilla input while a toggle is active. Previously this
+        // wrote both states every tick, even with both toggles off, which could
+        // fight Minecraft's own keyboard-input and sprint-state handling.
+        if (sneakToggled) {
+            client.player.setShiftKeyDown(true);
+        }
 
-        client.player.setSprinting(sprintRequested
-                && client.player.zza > 0.0f
-                && !sneakRequested
-                && client.player.isAlive());
-        client.player.setShiftKeyDown(sneakRequested);
+        if (sprintToggled) {
+            boolean physicalSneak = client.options.keyShift.isDown();
+            boolean canSprint = client.player.isAlive()
+                    && client.player.zza > 0.0f
+                    && !sneakToggled
+                    && !physicalSneak
+                    && !client.player.isUsingItem()
+                    && !client.player.isPassenger();
+            client.player.setSprinting(canSprint);
+        }
     }
 }
