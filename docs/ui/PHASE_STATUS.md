@@ -49,8 +49,11 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `3b253f3`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524196) and [42-image real-client screenshots with dropdown overlay regression test](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524317).
 - `fb63556`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732997610) and [42-image screenshots with popup wheel/keyboard/parent-scroll tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732997617).
 - `be5f1eb`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41733534267) and [42-image screenshots](https://github.com/ItsDropper/Vanta-Client/actions/runs/41733534212).
+- `f46f01c`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735197828) and [46-image screenshots including the Controls page](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735197888).
+- `1b95d17`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937594) and [46-image screenshots with keyboard rebind/cancel/unbind lifecycle tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937566).
+- `64fa3c9`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445767) and [46-image screenshots with duplicate-binding detection and key capture tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445960).
 
-The 46-image suite covers the title screen, eight settings states including Controls and the HUD editor/inspector across four window-size / GUI-scale combinations, plus desktop and compact captures of the Modrinth browser, installed-mod library and selected-mod details view. The HUD editor capture enables the FPS and Keystrokes backgrounds, places their hitboxes 2 px apart, and asserts that they become one continuous background. The test restores the previous positions, background toggles, connection distance and snap-to-grid preference afterward. Other client GameTests cover connected-region geometry, armor hitbox dimensions and retained-framework scrollbar dragging. The workflow verifies real Minecraft screenshot production and exact count; the latest images have not been independently reviewed for visual quality in this session.
+The 46-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector and both desktop/compact Modrinth, installed-mod library and selected-mod details screens. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and Vanta keybind conflict/rebind/cancel/unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
 
 ## Remaining acceptance gates
 
@@ -58,8 +61,7 @@ The 46-image suite covers the title screen, eight settings states including Cont
 - Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown popup positioning and scrolling, screen open/close and HUD dragging in a real game session.
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
 - Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
-- Review the latest 42-image artifact, particularly HUD background grouping, the HUD editor at 960×540 GUI scale 2, compact Modrinth cards and selected-mod details.
-- Exercise mod search, favorites, read-only inventory refresh, per-mod hotload error recovery, details/config handoff, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation and screen open/close in a real game session.
-- Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay. CI does not replace this manual acceptance.
+- Review the latest 46-image artifact, particularly the Controls page, HUD editor at 960×540 GUI scale 2, compact Modrinth cards, installed-mod library and selected-mod details.
+- Manually exercise mod search/favorites, read-only inventory refresh, per-mod hotload recovery, details/config handoff, feature toggles/sliders, addon settings, dropdown scrolling, key capture and screen lifecycle, and HUD dragging in a gameplay session.
 
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

@@ -51,6 +51,7 @@ Before capturing the screenshot matrix, the client GameTest:
 - Opens the retained-mode Modrinth browser with a fixed six-project preview dataset and captures both desktop and compact layouts without making network requests.
 - Opens the retained-mode installed-mod library with a fixed six-mod preview dataset and captures both desktop and compact layouts without reading a real mods folder.
 - Captures the Controls page showing the five registered Vanta key mappings. Key capture supports keyboard and mouse input, Escape cancel, Backspace unbind and reset-to-default.
+- Temporarily duplicates a Vanta binding and verifies the conflict warning, rebinds the GUI shortcut, confirms suppression lasts until key release, checks Escape cancel and Backspace unbind, then restores the original mapping.
 - Opens a selected mod's details/configuration-routing view with the same local fixture and captures it at desktop and compact sizes.
 
 These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.
@@ -73,6 +74,9 @@ Fabric writes screenshots to `build/run/clientGameTest/screenshots/`; the workfl
 - Run [41723780313](https://github.com/ItsDropper/Vanta-Client/actions/runs/41723780313), commit `51ea19e`: build and 36 screenshots passed with the first connected-background regression check.
 - Run [41729498054](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729498054), commit `f58bf71`: build and 40 screenshots passed; the HUD editor screenshot includes two connected panels.
 - Run [41729746874](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746874), commit `5209a47`: build and all 42 screenshots passed, including the installed-mod details route.
+- Run [41735197828](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735197828) and [41735197888](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735197888), commit `f46f01c`: build and the 46-image matrix with the Controls page passed.
+- Run [41735937594](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937594) and [41735937566](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937566), commit `1b95d17`: build and 46 images passed, including key rebinding, Escape cancel and Backspace unbind lifecycle tests.
+- Run [41736445767](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445767) and [41736445960](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445960), commit `64fa3c9`: build and 46 images passed, including duplicate-binding conflict detection.
 
 ## Limits
 
