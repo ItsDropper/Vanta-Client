@@ -17,6 +17,7 @@
     "LightTextureMixin",
     "AbstractButtonMixin",
     "TitleScreenMixin",
+    "MouseHandlerMixin",
     "accessor.ScreenAccessor"
   ],
   "injectors": {
