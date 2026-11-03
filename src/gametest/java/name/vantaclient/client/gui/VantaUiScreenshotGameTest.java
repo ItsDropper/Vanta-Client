@@ -14,6 +14,7 @@ import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.integration.VantaLanHostingService;
+import name.vantaclient.client.integration.net.LoopbackTcpBridge;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -24,6 +25,12 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Arrays;
 
 /**
  * Launches the actual Minecraft client and captures the live Vanta settings workspace.
@@ -53,6 +60,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyUiMotion(context);
         verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
+        verifyLoopbackTcpBridge(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -110,6 +118,65 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     net.minecraft.world.level.GameType.SURVIVAL, false);
             if (start.state() != VantaLanHostingService.State.NO_WORLD || start.port() != -1) {
                 throw new AssertionError("World sharing must not try to publish a missing world: " + start);
+            }
+        });
+    }
+
+    private static void verifyLoopbackTcpBridge(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            InetAddress loopback = InetAddress.getLoopbackAddress();
+            try (ServerSocket echoServer = new ServerSocket(0, 2, loopback)) {
+                Thread echoWorker = new Thread(() -> {
+                    try (Socket socket = echoServer.accept()) {
+                        byte[] buffer = new byte[1024];
+                        int read;
+                        while ((read = socket.getInputStream().read(buffer)) != -1) {
+                            socket.getOutputStream().write(buffer, 0, read);
+                            socket.getOutputStream().flush();
+                        }
+                        socket.shutdownOutput();
+                    } catch (IOException exception) {
+                        if (!echoServer.isClosed()) {
+                            throw new AssertionError("Loopback echo server failed.", exception);
+                        }
+                    }
+                }, "Vanta bridge echo test");
+                echoWorker.setDaemon(true);
+                echoWorker.start();
+
+                try (LoopbackTcpBridge bridge = LoopbackTcpBridge.listen(() -> {
+                    Socket upstream = new Socket();
+                    upstream.connect(new InetSocketAddress(loopback, echoServer.getLocalPort()), 2_000);
+                    upstream.setSoTimeout(2_000);
+                    return LoopbackTcpBridge.fromSocket(upstream);
+                }, 2)) {
+                    if (!bridge.address().getAddress().isLoopbackAddress()) {
+                        throw new AssertionError("A Vanta tunnel listener must bind to loopback only: "
+                                + bridge.address());
+                    }
+
+                    byte[] payload = new byte[] {
+                            0x00, 0x01, 0x7F, (byte) 0x80, (byte) 0xFF, 0x21, 0x42, 0x00
+                    };
+                    try (Socket clientSocket = new Socket()) {
+                        clientSocket.connect(bridge.address(), 2_000);
+                        clientSocket.setSoTimeout(2_000);
+                        clientSocket.getOutputStream().write(payload);
+                        clientSocket.getOutputStream().flush();
+                        clientSocket.shutdownOutput();
+
+                        byte[] echoed = clientSocket.getInputStream().readNBytes(payload.length);
+                        if (!Arrays.equals(payload, echoed)) {
+                            throw new AssertionError("Loopback tunnel corrupted binary payload: "
+                                    + Arrays.toString(echoed));
+                        }
+                        if (clientSocket.getInputStream().read() != -1) {
+                            throw new AssertionError("Loopback tunnel did not propagate the remote half-close.");
+                        }
+                    }
+                }
+            } catch (IOException exception) {
+                throw new AssertionError("Loopback TCP bridge failed its local forwarding test.", exception);
             }
         });
     }
