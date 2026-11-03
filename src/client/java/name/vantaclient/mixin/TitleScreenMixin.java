@@ -71,7 +71,7 @@ public abstract class TitleScreenMixin {
 
         vanta$creditsShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
                 .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
-                        Component.literal("Credits").withStyle(
+                        Component.literal("   Credits").withStyle(
                                 style -> style.withFont(VantaMenuStyle.uiFont())),
                         button -> client.setScreen(new CreditsAndAttributionScreen(screen)))
                         .bounds(Math.max(0, screen.width - 112), Math.max(0, screen.height - 52), 80, 22)
@@ -79,7 +79,7 @@ public abstract class TitleScreenMixin {
 
         vanta$languageShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
                 .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
-                        Component.literal("Language").withStyle(
+                        Component.literal("   Language").withStyle(
                                 style -> style.withFont(VantaMenuStyle.uiFont())),
                         button -> client.setScreen(new LanguageSelectScreen(
                                 screen, client.options, client.getLanguageManager())))
@@ -88,7 +88,7 @@ public abstract class TitleScreenMixin {
 
         vanta$accessibilityShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
                 .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
-                        Component.literal("Accessibility").withStyle(
+                        Component.literal("   Accessibility").withStyle(
                                 style -> style.withFont(VantaMenuStyle.uiFont())),
                         button -> client.setScreen(new AccessibilityOptionsScreen(screen, client.options)))
                         .bounds(0, 0, 104, 22)
@@ -170,16 +170,16 @@ public abstract class TitleScreenMixin {
         }
 
         int utilityY = Math.max(8, screenHeight - 58);
-        int utilityStart = Math.max(8, screenWidth - 236);
+        int utilityStart = Math.max(8, screenWidth - 244);
         if (vanta$languageShortcut != null) {
             vanta$setBounds(vanta$languageShortcut, utilityStart, utilityY, 104, 24);
         }
         if (vanta$accessibilityShortcut != null) {
-            vanta$setBounds(vanta$accessibilityShortcut, utilityStart + 112, utilityY, 116, 24);
+            vanta$setBounds(vanta$accessibilityShortcut, utilityStart + 112, utilityY, 132, 24);
         }
         if (vanta$creditsShortcut != null) {
-            vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 88),
-                    Math.max(8, screenHeight - 30), 80, 22);
+            vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 100),
+                    Math.max(8, screenHeight - 52), 92, 22);
         }
 
         for (AbstractButton button : secondary) {
@@ -224,5 +224,8 @@ public abstract class TitleScreenMixin {
         VantaMenuStyle.renderTitleBranding(graphics, width, height, elapsed);
         VantaMenuStyle.renderPlayerCard(graphics, width, height, elapsed);
         VantaMenuStyle.renderFooter(graphics, width, height);
+        VantaMenuStyle.renderUtilityIcon(graphics, vanta$languageShortcut, 0);
+        VantaMenuStyle.renderUtilityIcon(graphics, vanta$accessibilityShortcut, 1);
+        VantaMenuStyle.renderUtilityIcon(graphics, vanta$creditsShortcut, 2);
     }
 }
