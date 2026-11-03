@@ -154,12 +154,10 @@ private VantaUiNode buildRetainedRoot() {
                 this::rebuildRetainedUi).size(66, 32));
         toolbar.add(VantaUiNode.button("All", () -> {
             favoritesOnly = false;
-            sidebarScroll = 0;
             rebuildRetainedUi();
         }).size(46, 32).selected(!favoritesOnly));
         toolbar.add(VantaUiNode.button("★", () -> {
             favoritesOnly = true;
-            sidebarScroll = 0;
             rebuildRetainedUi();
         }).size(42, 32).selected(favoritesOnly));
         toolbar.add(VantaUiNode.button("Scan", this::scanAllMods).size(54, 32));
@@ -398,18 +396,6 @@ private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
 private void refreshModList() {
         integrations = VantaClientApi.getRegisteredMods();
         discoveredConfigFactories = ModConfigDiscovery.discover();
-        installedMods = FabricLoader.getInstance().getAllMods().stream()
-                .filter(mod -> {
-                    String id = mod.getMetadata().getId();
-                    return !id.equals("minecraft")
-                            && !id.equals("fabricloader")
-                            && !id.equals("dropperutils")
-                            && !id.equals("fabric-api")
-                            && !id.startsWith("fabric-");
-                })
-                .sorted(Comparator.comparing(mod -> mod.getMetadata().getName(),
-                        String.CASE_INSENSITIVE_ORDER))
-                .toList();
         availableMods = ExperimentalModHotLoader.getAvailableMods();
         for (Identifier texture : modIconTextures.values()) {
             minecraft.getTextureManager().release(texture);
