@@ -45,7 +45,24 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run real Minecraft client screenshot tests
-        run: xvfb-run -a ./gradlew runClientGameTest --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            echo "Minecraft screenshot attempt $attempt/3"
+            xvfb-run -a ./gradlew runClientGameTest --stacktrace 2>&1 | tee "/tmp/vanta-screenshot-$attempt.log"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if grep -Eq "SocketTimeoutException|Could not GET|Connection reset|Read timed out" "/tmp/vanta-screenshot-$attempt.log" && [ "$attempt" -lt 3 ]; then
+              echo "Transient dependency/network failure; retrying after 20 seconds."
+              sleep 20
+            else
+              exit "$status"
+            fi
+          done
+          exit 1
 
       - name: Verify screenshot count
         run: |
