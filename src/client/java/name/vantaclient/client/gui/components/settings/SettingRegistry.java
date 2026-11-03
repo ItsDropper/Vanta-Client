@@ -12,6 +12,15 @@ public final class SettingRegistry {
     public static List<Setting> getSettings(Feature feature) {
         List<Setting> settings = new ArrayList<>();
 
+        if (feature == NametagUtilsFeature.INSTANCE) {
+            settings.add(new SliderSetting("Nameplate scale", 0.5, 2.0, "x",
+                    () -> (double) NametagUtilsFeature.getScale(),
+                    value -> NametagUtilsFeature.setScale(value.floatValue())));
+            settings.add(new BooleanSetting("Hide player nameplates",
+                    NametagUtilsFeature::isHidePlayers,
+                    NametagUtilsFeature::setHidePlayers));
+        }
+
         if (feature == ChatTimestampsFeature.INSTANCE) {
             settings.add(new ChoiceSetting("Timestamp format",
                     ChatTimestampsFeature.getFormats(),

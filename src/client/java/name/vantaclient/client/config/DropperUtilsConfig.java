@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 15;
+    public int configVersion = 16;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -43,9 +43,11 @@ public class DropperUtilsConfig {
     public boolean vanillaHud = false;
     public boolean flyBoost = false;
     public boolean ogAnimations = false;
+    public boolean nametagHidePlayers = false;
     public boolean disableDoubleTapSprint = false;
 
     public float flyBoostMultiplier = 1.5f;
+    public float nametagScale = 1.0f;
     public String ogAnimationPreset = "CLASSIC_1_8";
     public int sprintWindowBeforeDisable = 7;
     public boolean sprintWindowCaptured = false;
@@ -144,6 +146,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 13) migrateV13();
                 if (INSTANCE.configVersion < 14) migrateV14();
                 if (INSTANCE.configVersion < 15) migrateV15();
+                if (INSTANCE.configVersion < 16) migrateV16();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -250,6 +253,14 @@ public class DropperUtilsConfig {
         System.out.println("[DropperUtils] Migrating config v14 -> v15");
         INSTANCE.chatTimestampFormat = "HH:mm";
         INSTANCE.configVersion = 15;
+        save();
+    }
+
+    private static void migrateV16() {
+        System.out.println("[DropperUtils] Migrating config v15 -> v16");
+        INSTANCE.nametagScale = 1.0f;
+        INSTANCE.nametagHidePlayers = false;
+        INSTANCE.configVersion = 16;
         save();
     }
 

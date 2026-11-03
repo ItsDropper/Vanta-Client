@@ -21,7 +21,8 @@
     "MouseHandlerMixin",
     "ChatComponentMixin",
     "accessor.ScreenAccessor",
-    "OgAnimationsMixin"
+    "OgAnimationsMixin",
+    "EntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
