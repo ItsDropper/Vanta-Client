@@ -60,6 +60,8 @@ public final class VantaClientPreferences {
     public Map<String, Boolean> hudBackgrounds = new HashMap<>();
     /** Merge backgrounds whose hitboxes overlap or are separated by only a few pixels. */
     public boolean connectHudBackgrounds = true;
+    /** Maximum empty space bridged between adjacent HUD backgrounds, in GUI pixels. */
+    public int hudBackgroundConnectionGap = 4;
 
     private VantaClientPreferences() {}
 
@@ -98,6 +100,8 @@ public final class VantaClientPreferences {
         instance.hudBackgrounds.entrySet().removeIf(entry ->
                 entry.getKey() == null || entry.getKey().isBlank()
                         || !Boolean.TRUE.equals(entry.getValue()));
+        instance.hudBackgroundConnectionGap =
+                Math.max(0, Math.min(24, instance.hudBackgroundConnectionGap));
         instance.vanillaHudPositions.entrySet().removeIf(entry -> entry.getValue() == null);
         for (HudPosition position : instance.vanillaHudPositions.values()) {
             if (!Float.isFinite(position.x)) position.x = 0.0f;

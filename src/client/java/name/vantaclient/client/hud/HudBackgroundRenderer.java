@@ -17,7 +17,6 @@ import java.util.List;
  */
 public final class HudBackgroundRenderer {
     private static final int BACKGROUND_COLOR = 0xCC292D35;
-    private static final int DEFAULT_CONNECTION_GAP = 4;
 
     private HudBackgroundRenderer() {}
 
@@ -78,7 +77,8 @@ public final class HudBackgroundRenderer {
         }
 
         if (preferences.connectHudBackgrounds) {
-            backgrounds = mergeConnectedBounds(backgrounds, DEFAULT_CONNECTION_GAP);
+            backgrounds = mergeConnectedBounds(
+                    backgrounds, preferences.hudBackgroundConnectionGap);
         }
 
         for (Bounds bounds : backgrounds) {

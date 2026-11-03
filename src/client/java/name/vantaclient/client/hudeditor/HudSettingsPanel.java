@@ -102,8 +102,15 @@ public final class HudSettingsPanel {
                     VantaClientPreferences.get().connectHudBackgrounds = enabled;
                     VantaClientPreferences.save();
                 }));
+        panel.add(VantaUiNode.slider("Connection distance", 0, 24, 1,
+                () -> VantaClientPreferences.get().hudBackgroundConnectionGap,
+                value -> {
+                    VantaClientPreferences.get().hudBackgroundConnectionGap =
+                            Math.max(0, Math.min(24, (int) Math.round(value)));
+                    VantaClientPreferences.save();
+                }));
         panel.add(VantaUiNode.text(
-                "Dark gray at 80% opacity. Enabled hitboxes merge when they touch or are within 4 px.",
+                "Dark gray at 80% opacity. Connected hitboxes merge into one continuous panel.",
                 VantaUiTheme.TEXT_MUTED));
 
         if (selected instanceof ArmorHudElement armor) {
