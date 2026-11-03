@@ -176,7 +176,7 @@ public class VantaIntegrationsScreen extends Screen {
     private void addStudioControls() {
         int x = 744;
         addPanelButton("Opacity −", x + 10, 108, 78, 22, () -> {
-            preferences.panelOpacity = Math.max(0.72, Math.round((preferences.panelOpacity - 0.04) * 100.0) / 100.0);
+            preferences.panelOpacity = Math.max(0.85, Math.round((preferences.panelOpacity - 0.04) * 100.0) / 100.0);
             VantaClientPreferences.save();
             rebuildWidgets();
         });
@@ -970,7 +970,7 @@ public class VantaIntegrationsScreen extends Screen {
         }
 
         if (studioOpen && section == Section.MODS) {
-            int panelAlpha = (int) (Math.max(0.72, Math.min(0.98, preferences.panelOpacity)) * 255.0);
+            int panelAlpha = (int) (Math.max(0.85, Math.min(0.98, preferences.panelOpacity)) * 255.0);
             drawRoundedCard(graphics, 736, 72, 192, 164,
                     (panelAlpha << 24) | 0x00151B27, 12);
             drawRoundedCard(graphics, 736, 72, 192, 2, accent, 1);
