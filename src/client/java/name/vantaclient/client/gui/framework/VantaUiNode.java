@@ -61,6 +61,7 @@ public final class VantaUiNode {
     private int inputMaximumLength = 128;
     private int inputCursor;
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
+    private boolean boldText;
     private int background;
     private int preferredWidth = -1;
     private int preferredHeight = -1;
@@ -149,7 +150,7 @@ public final class VantaUiNode {
 
     public static VantaUiNode title(String value) {
         VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
-        node.textFont = TITLE_FONT; node.preferredHeight = 22; return node;
+        node.textFont = TITLE_FONT; node.preferredHeight = 22; node.boldText = true; return node;
     }
     public static VantaUiNode eyebrow(String value) {
         VantaUiNode node = text(value, VantaUiTheme.TEXT_MUTED);
@@ -591,8 +592,15 @@ public final class VantaUiNode {
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);
-                int surface = selected ? selectedSurface : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
-                if (selected || over || focused) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, surface);
+                int surface = selected ? selectedSurface
+                        : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
+                int border = selected || focused ? mixColor(0xFF68717D, accent, 0.30f)
+                        : mixColor(0xFF424850, 0xFF737C88, hoverAmount);
+                fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, border);
+                if (selected || over || focused) {
+                    fillRounded(graphics, x + 1, y + 1, width - 2, height - 2,
+                            VantaUiTheme.RADIUS_MEDIUM - 1, surface);
+                }
                 if (selected || focused) fillRounded(graphics, x, y + 5, 2, Math.max(0, height - 10), 1, accent);
                 int labelX = x, labelWidth = width;
                 if (icon != null) {
@@ -602,7 +610,7 @@ public final class VantaUiNode {
                 }
                 String shownLabel = fitText(font, label, Math.max(0, labelWidth - 8), UI_FONT);
                 int textX = icon == null ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
-                graphics.drawString(font, styledText(shownLabel, UI_FONT), textX,
+                graphics.drawString(font, styledText(shownLabel, UI_FONT, true), textX,
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
             }
@@ -1156,7 +1164,12 @@ public final class VantaUiNode {
     }
 
     static Component styledText(String value, Identifier fontId) {
-        return Component.literal(value == null ? "" : value).withStyle(Style.EMPTY.withFont(new FontDescription.Resource(fontId == null ? UI_FONT : fontId)));
+        return styledText(value, fontId, false);
+    }
+    static Component styledText(String value, Identifier fontId, boolean bold) {
+        Style style = Style.EMPTY.withFont(new FontDescription.Resource(fontId == null ? UI_FONT : fontId));
+        if (bold) style = style.withBold(true);
+        return Component.literal(value == null ? "" : value).withStyle(style);
     }
     static int textWidth(Font font, String value, Identifier fontId) { return font.width(styledText(value, fontId)); }
     static String fitText(Font font, String value, int maximumWidth, Identifier fontId) {
