@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 13;
+    public int configVersion = 14;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -42,9 +42,12 @@ public class DropperUtilsConfig {
     public boolean vanillaHud = false;
     public boolean flyBoost = false;
     public boolean ogAnimations = false;
+    public boolean disableDoubleTapSprint = false;
 
     public float flyBoostMultiplier = 1.5f;
     public String ogAnimationPreset = "CLASSIC_1_8";
+    public int sprintWindowBeforeDisable = 7;
+    public boolean sprintWindowCaptured = false;
 
     public float fpsHudX = 0.02f;
     public float fpsHudY = 0.34f;
@@ -138,6 +141,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 11) migrateV11();
                 if (INSTANCE.configVersion < 12) migrateV12();
                 if (INSTANCE.configVersion < 13) migrateV13();
+                if (INSTANCE.configVersion < 14) migrateV14();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -228,6 +232,15 @@ public class DropperUtilsConfig {
         INSTANCE.ogAnimations = false;
         INSTANCE.ogAnimationPreset = "CLASSIC_1_8";
         INSTANCE.configVersion = 13;
+        save();
+    }
+
+    private static void migrateV14() {
+        System.out.println("[DropperUtils] Migrating config v13 -> v14");
+        INSTANCE.disableDoubleTapSprint = false;
+        INSTANCE.sprintWindowBeforeDisable = 7;
+        INSTANCE.sprintWindowCaptured = false;
+        INSTANCE.configVersion = 14;
         save();
     }
 

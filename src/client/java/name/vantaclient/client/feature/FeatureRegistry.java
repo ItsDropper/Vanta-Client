@@ -25,7 +25,8 @@ public class FeatureRegistry {
             ChatTimestampsFeature.INSTANCE,
             VanillaHudFeature.INSTANCE,
             FlyBoostFeature.INSTANCE,
-            OgAnimationsFeature.INSTANCE
+            OgAnimationsFeature.INSTANCE,
+            DisableDoubleTapSprintFeature.INSTANCE
     );
 
     public static void loadConfigs() {

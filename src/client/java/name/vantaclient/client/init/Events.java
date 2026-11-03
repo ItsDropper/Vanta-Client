@@ -74,6 +74,7 @@ public class Events {
             InGameOverlayCache.tick(client);
             VantaNotificationManager.tick();
             FlyBoostFeature.tick(client);
+            DisableDoubleTapSprintFeature.tick(client);
 
             if (Keybinds.fullbrightKey.consumeClick()) {
                 FullbrightFeature.INSTANCE.toggle();
