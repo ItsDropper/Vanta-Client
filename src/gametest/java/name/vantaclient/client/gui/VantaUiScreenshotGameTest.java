@@ -51,6 +51,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyHudHitboxGeometry(context);
         verifyKeybindCaptureLifecycle(context);
         verifyUiMotion(context);
+        verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
@@ -109,6 +110,45 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     net.minecraft.world.level.GameType.SURVIVAL, false);
             if (start.state() != VantaLanHostingService.State.NO_WORLD || start.port() != -1) {
                 throw new AssertionError("World sharing must not try to publish a missing world: " + start);
+            }
+        });
+    }
+
+    private static void verifyProgressComponent(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            VantaUiNode progress = VantaUiNode.progressIndicator("Checking local files");
+            if (progress.kind() != VantaUiNode.Kind.PROGRESS || progress.isInteractive()) {
+                throw new AssertionError("Progress indicators must be presentation nodes, not controls.");
+            }
+
+            VantaUiRuntime runtime = new VantaUiRuntime(
+                    VantaUiNode.column(4, 8).width(320).height(90).add(progress));
+            runtime.layout(client.font, 360, 160);
+            if (progress.width() <= 0 || progress.height() != 30) {
+                throw new AssertionError("Progress indicator layout produced invalid bounds: "
+                        + progress.width() + "x" + progress.height());
+            }
+            runtime.dispose();
+
+            float atSixtyFps = 0.0f;
+            for (int frame = 0; frame < 60; frame++) {
+                atSixtyFps = VantaUiMotion.advancePingPongPhase(
+                        atSixtyFps, 1.0f / 60.0f, 0.9f, true);
+            }
+            float atThirtyFps = 0.0f;
+            for (int frame = 0; frame < 30; frame++) {
+                atThirtyFps = VantaUiMotion.advancePingPongPhase(
+                        atThirtyFps, 1.0f / 30.0f, 0.9f, true);
+            }
+            if (Math.abs(atSixtyFps - atThirtyFps) > 0.0002f) {
+                throw new AssertionError("Progress motion must be frame-rate independent: 60 FPS="
+                        + atSixtyFps + ", 30 FPS=" + atThirtyFps);
+            }
+            if (VantaUiMotion.advancePingPongPhase(0.25f, 1.0f / 60.0f, 0.9f, false) != 1.0f) {
+                throw new AssertionError("Progress motion must remain static when animations are disabled.");
+            }
+            if (VantaUiMotion.advancePingPongPhase(Float.NaN, 1.0f / 60.0f, 0.9f, true) != 0.0f) {
+                throw new AssertionError("Progress motion must recover from a non-finite phase.");
             }
         });
     }

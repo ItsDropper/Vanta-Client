@@ -10,11 +10,11 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 <badge>Implemented; interaction coverage still expanding</badge>
 
 - Retained `VantaUiNode` tree, `VantaUiRuntime` layout/input/focus/scroll handling and centralized `VantaUiTheme` tokens.
-- Shared controls include buttons, toggles, sliders, dropdowns, text fields, text, tooltips and vector-style icons.
+- Shared controls include buttons, toggles, sliders, dropdowns, text fields, indeterminate progress, text, tooltips and vector-style icons.
 - IBM Plex Sans is bundled and wired through Minecraft's font-provider resources, with its OFL license.
 - UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
 - Dropdowns now use bounded floating overlays outside parent clipping, without layout reflow; keyboard navigation and popup-local wheel scrolling are supported.
-- Remaining framework gaps include generic dialog/progress primitives and a comprehensive layout/input unit-test suite. The Controls page edits the five registered Vanta mappings; no feature-level keybinding model currently exists.
+- Remaining framework gaps include reusable modal dialogs and a comprehensive layout/input unit-test suite. Progress indicators are indeterminate because the Modrinth installer does not expose transfer callbacks. The Controls page edits the five registered Vanta mappings; no feature-level keybinding model currently exists.
 
 ## Production migration
 
@@ -52,10 +52,16 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `1b95d17`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937594) and [46-image screenshots with keyboard rebind/cancel/unbind lifecycle tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937566).
 - `64fa3c9`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445767) and [46-image screenshots with duplicate-binding detection and key capture tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445960).
 
-The 46-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector and both desktop/compact Modrinth, installed-mod library and selected-mod details screens. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and Vanta keybind conflict/rebind/cancel/unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
+The 48-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector, desktop/compact Modrinth, installed-mod library, selected-mod details and the LAN world-sharing screen. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and Vanta keybind conflict/rebind/cancel/unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
+
+## World sharing milestone
+
+- The pause menu exposes a retained-mode Vanta world-sharing screen for singleplayer integrated servers. It uses Minecraft's existing LAN publishing API and lets the host select game mode and whether guests may use commands.
+- This is LAN sharing, not Internet P2P. Remote invitations still require a dedicated authenticated signalling service and direct/relay transport; the current screen does not expose public addresses or claim Internet connectivity.
+- The service has no-world GameTest coverage and the screen is included in the 48-image workflow. Publishing a real integrated server and joining from another device still require manual gameplay testing.
 
 ## Remaining acceptance gates
-- Review the 46-image artifact for visual quality, particularly the Controls page, title screen, HUD editor at 960×540 GUI scale 2, compact Modrinth cards and selected-mod details.
+- Review the 48-image artifact for visual quality, particularly the Controls page, title screen, HUD editor at 960×540 GUI scale 2, compact Modrinth cards, selected-mod details and world-sharing screen.
 - Manually test mod search/favorites, read-only inventory refresh, per-mod hotload recovery, config handoff, dropdown scrolling, keybind conflict/capture/reset/unbind, screen lifecycle, and HUD dragging.
 - Verify HUD hit-testing and FarView render-option restoration in a gameplay session; confirm layouts with the preferred GUI scale and a populated real mods folder.
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

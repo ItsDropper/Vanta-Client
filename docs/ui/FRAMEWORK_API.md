@@ -91,6 +91,7 @@ All dimensions and pointer positions use Minecraft GUI-scaled logical coordinate
 - Sliders use a finite ordered range, optional positive step and numeric getter/setter.
 - Dropdowns copy a finite option list and use a selected-value getter/setter.
 - Text fields use a string getter/setter and maximum UTF-16 length.
+- Indeterminate progress indicators render a concise status label and an animated accent segment. They do not invent percentages for operations that do not report transfer progress.
 
 Callbacks should update the existing Vanta feature/configuration objects. The framework must not introduce a second configuration store or save preferences directly.
 
@@ -139,6 +140,6 @@ The prototype exposes a smoothed CPU-side command-submission timer. It measures 
 
 - Scroll containers support wheel scrolling, clipped pointer input and draggable scrollbar thumbs. The screenshot GameTest includes a targeted thumb-drag smoke assertion, but this is not a comprehensive input-test suite.
 - Dropdowns render bounded floating popups outside parent clipping, do not reflow their containing layout, and support wheel scrolling, mouse selection and keyboard navigation. Lists are windowed to at most eight visible options; this is not a virtualized data model.
-- There is no generic icon, keybind editor, dialog, notification, progress or color-picker component yet.
+- Generic modal dialog and color-picker components are not implemented. Progress is currently indeterminate; a determinate transfer bar requires a downloader API that exposes byte progress.
 - The runtime is not a Compose replacement. It does not implement compiler transforms, recomposition effects, coroutine state or general-purpose modifier semantics.
 - No automated layout/input unit test suite has been added; build success only confirms compilation.
