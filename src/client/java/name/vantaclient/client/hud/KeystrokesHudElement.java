@@ -15,16 +15,16 @@ public final class KeystrokesHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudScale;
     }
 
+    @Override public boolean shouldRender() { return KeystrokesFeature.INSTANCE.isEnabled(); }
+
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!KeystrokesFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         drawKey(graphics, mc, mc.options.keyUp.isDown(), "W", KEY_SIZE, 0);
         drawKey(graphics, mc, mc.options.keyLeft.isDown(), "A", 0, KEY_SIZE + GAP);
         drawKey(graphics, mc, mc.options.keyDown.isDown(), "S", KEY_SIZE + GAP, KEY_SIZE + GAP);
-        drawKey(graphics, mc, mc.options.keyRight.isDown(), "D",
-                (KEY_SIZE + GAP) * 2, KEY_SIZE + GAP);
-        drawKey(graphics, mc, mc.options.keyJump.isDown(), "JUMP", 0,
-                (KEY_SIZE + GAP) * 2);
+        drawKey(graphics, mc, mc.options.keyRight.isDown(), "D", (KEY_SIZE + GAP) * 2, KEY_SIZE + GAP);
+        drawKey(graphics, mc, mc.options.keyJump.isDown(), "JUMP", 0, (KEY_SIZE + GAP) * 2);
     }
 
     private void drawKey(GuiGraphics graphics, Minecraft mc, boolean pressed,
@@ -33,8 +33,7 @@ public final class KeystrokesHudElement extends HudElement {
         int background = pressed ? 0xFF3B82FF : 0xCC171E29;
         graphics.fill(x, y, x + width, y + KEY_SIZE, background);
         graphics.fill(x, y, x + width, y + 1, pressed ? 0xFF8CB8FF : 0xFF465164);
-        graphics.drawCenteredString(mc.font, label, x + width / 2,
-                y + 5, 0xFFF2F5FA);
+        graphics.drawCenteredString(mc.font, label, x + width / 2, y + 5, 0xFFF2F5FA);
     }
 
     @Override public void savePosition() {

@@ -35,6 +35,7 @@ public final class MotionBlurRenderer {
     private static final int UBO_USAGE = 130; // UNIFORM | MAP_WRITE
 
     private static PostChain cachedChain;
+    private static Map<String, GpuBuffer> cachedUniforms;
     private static GpuBuffer blendFactorUbo;
     private static Method createBufferMethod;
     private static boolean loadFailed;
@@ -100,7 +101,6 @@ public final class MotionBlurRenderer {
             if (historyPrimed && previousFrameNanos != 0L) {
                 double elapsed = (now - previousFrameNanos) / 1_000_000_000.0;
                 if (elapsed > 0.0 && elapsed <= 0.25) {
-                    // Keep the same temporal response at 60, 144, and 300+ FPS.
                     frameRetention = (float) Math.pow(retention, elapsed * 60.0);
                 } else {
                     historyPrimed = false;
@@ -128,6 +128,7 @@ public final class MotionBlurRenderer {
             PostChain chain = cache.getOrLoadPostChain(EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
             if (chain != cachedChain) {
                 cachedChain = chain;
+                cachedUniforms = null;
                 blendFactorUbo = null;
                 historyPrimed = false;
             }
@@ -147,16 +148,16 @@ public final class MotionBlurRenderer {
             }
         }
 
-        List<PostPass> passes = ((PostChainAccessor) chain).dropperutils$getPasses();
-        if (passes.isEmpty()) {
-            throw new IllegalStateException("Motion blur post-chain contains no passes");
+        if (cachedUniforms == null) {
+            List<PostPass> passes = ((PostChainAccessor) chain).dropperutils$getPasses();
+            if (passes.isEmpty()) {
+                throw new IllegalStateException("Motion blur post-chain contains no passes");
+            }
+            cachedUniforms = ((PostPassAccessor) passes.get(0)).dropperutils$getCustomUniforms();
         }
 
-        Map<String, GpuBuffer> uniforms =
-                ((PostPassAccessor) passes.get(0)).dropperutils$getCustomUniforms();
-        if (uniforms.get(UNIFORM_BLOCK) == blendFactorUbo) return;
-
-        GpuBuffer displaced = uniforms.put(UNIFORM_BLOCK, blendFactorUbo);
+        if (cachedUniforms.get(UNIFORM_BLOCK) == blendFactorUbo) return;
+        GpuBuffer displaced = cachedUniforms.put(UNIFORM_BLOCK, blendFactorUbo);
         if (displaced != null && displaced != blendFactorUbo) {
             displaced.close();
         }

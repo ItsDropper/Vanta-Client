@@ -45,7 +45,6 @@ public abstract class HudElement {
     }
 
     public boolean isHovered(double mouseX, double mouseY) {
-
         return mouseX >= getX() &&
                 mouseX <= getX() + getScaledWidth() &&
                 mouseY >= getY() &&
@@ -53,23 +52,13 @@ public abstract class HudElement {
     }
 
     public int getX() {
-
         Minecraft mc = Minecraft.getInstance();
-
-        return (int) (
-                xPercent *
-                        mc.getWindow().getGuiScaledWidth()
-        );
+        return (int) (xPercent * mc.getWindow().getGuiScaledWidth());
     }
 
     public int getY() {
-
         Minecraft mc = Minecraft.getInstance();
-
-        return (int) (
-                yPercent *
-                        mc.getWindow().getGuiScaledHeight()
-        );
+        return (int) (yPercent * mc.getWindow().getGuiScaledHeight());
     }
 
     public float getScale() {
@@ -77,10 +66,7 @@ public abstract class HudElement {
     }
 
     public void setScale(float value) {
-        scale = Math.max(
-                0.25f,
-                Math.min(value, 3.0f)
-        );
+        scale = Math.max(0.25f, Math.min(value, 3.0f));
     }
 
     public int getScaledWidth() {
@@ -91,25 +77,23 @@ public abstract class HudElement {
         return (int) (getHeight() * scale);
     }
 
+    /**
+     * Whether this element needs to be included in the per-frame HUD render pass.
+     * The manager rebuilds this list at tick rate, not during rendering.
+     */
+    public boolean shouldRender() {
+        return true;
+    }
+
     public final void render(GuiGraphics graphics) {
-
         graphics.pose().pushMatrix();
-
-        graphics.pose().translate(
-                getX(),
-                getY()
-        );
-
+        graphics.pose().translate(getX(), getY());
         graphics.pose().scale(scale);
-
         renderElement(graphics);
-
         graphics.pose().popMatrix();
     }
 
-    protected abstract void renderElement(
-            GuiGraphics graphics
-    );
+    protected abstract void renderElement(GuiGraphics graphics);
 
     public abstract int getWidth();
 
@@ -119,15 +103,10 @@ public abstract class HudElement {
     }
 
     public final void renderScaled(GuiGraphics graphics) {
-
         graphics.pose().pushMatrix();
-
         graphics.pose().translate(getX(), getY());
         graphics.pose().scale(scale);
-
         renderElement(graphics);
-
         graphics.pose().popMatrix();
     }
-
 }

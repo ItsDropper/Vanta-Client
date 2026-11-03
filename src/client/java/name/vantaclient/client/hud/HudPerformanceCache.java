@@ -21,6 +21,8 @@ public final class HudPerformanceCache {
     };
     private static final int[] ARMOR_DURABILITY = new int[4];
     private static final int[] ARMOR_COLORS = new int[4];
+    private static final int[] ARMOR_BAR_WIDTHS = new int[4];
+    private static final String[] ARMOR_DURABILITY_TEXT = {"0", "0", "0", "0"};
 
     private static int totemCount;
     private static String pingText = "PING  --";
@@ -35,6 +37,8 @@ public final class HudPerformanceCache {
                 ARMOR_STACKS[i] = ItemStack.EMPTY;
                 ARMOR_DURABILITY[i] = 0;
                 ARMOR_COLORS[i] = 0xFF555555;
+                ARMOR_BAR_WIDTHS[i] = 0;
+                ARMOR_DURABILITY_TEXT[i] = "0";
             }
             totemCount = 0;
             pingText = "PING  --";
@@ -49,14 +53,19 @@ public final class HudPerformanceCache {
             if (stack.isEmpty() || stack.getMaxDamage() <= 0) {
                 ARMOR_DURABILITY[i] = 0;
                 ARMOR_COLORS[i] = 0xFF555555;
+                ARMOR_BAR_WIDTHS[i] = 0;
+                ARMOR_DURABILITY_TEXT[i] = "0";
                 continue;
             }
 
-            int durability = stack.getMaxDamage() - stack.getDamageValue();
-            float percent = (float) durability / stack.getMaxDamage();
+            int maxDamage = stack.getMaxDamage();
+            int durability = maxDamage - stack.getDamageValue();
+            float percent = (float) durability / maxDamage;
             ARMOR_DURABILITY[i] = durability;
             ARMOR_COLORS[i] = percent > 0.5f ? 0xFF00FF00
                     : percent > 0.25f ? 0xFFFFFF00 : 0xFFFF0000;
+            ARMOR_BAR_WIDTHS[i] = (int) (16.0f * percent);
+            ARMOR_DURABILITY_TEXT[i] = Integer.toString(durability);
         }
 
         totemCount = mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
@@ -72,31 +81,13 @@ public final class HudPerformanceCache {
         fpsText = "FPS  " + mc.getFps();
     }
 
-    public static ItemStack getArmorStack(int slot) {
-        return ARMOR_STACKS[slot];
-    }
-
-    public static int getArmorDurability(int slot) {
-        return ARMOR_DURABILITY[slot];
-    }
-
-    public static int getArmorColor(int slot) {
-        return ARMOR_COLORS[slot];
-    }
-
-    public static int getTotemCount() {
-        return totemCount;
-    }
-
-    public static String getPingText() {
-        return pingText;
-    }
-
-    public static String getCpsText() {
-        return cpsText;
-    }
-
-    public static String getFpsText() {
-        return fpsText;
-    }
+    public static ItemStack getArmorStack(int slot) { return ARMOR_STACKS[slot]; }
+    public static int getArmorDurability(int slot) { return ARMOR_DURABILITY[slot]; }
+    public static int getArmorColor(int slot) { return ARMOR_COLORS[slot]; }
+    public static int getArmorBarWidth(int slot) { return ARMOR_BAR_WIDTHS[slot]; }
+    public static String getArmorDurabilityText(int slot) { return ARMOR_DURABILITY_TEXT[slot]; }
+    public static int getTotemCount() { return totemCount; }
+    public static String getPingText() { return pingText; }
+    public static String getCpsText() { return cpsText; }
+    public static String getFpsText() { return fpsText; }
 }

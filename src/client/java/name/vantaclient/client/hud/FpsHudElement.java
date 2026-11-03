@@ -13,12 +13,13 @@ public final class FpsHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudScale;
     }
 
+    @Override public boolean shouldRender() { return FpsHudFeature.INSTANCE.isEnabled(); }
+
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!FpsHudFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getFpsText()
-                : "FPS  " + mc.getFps();
+                ? HudPerformanceCache.getFpsText() : "FPS  " + mc.getFps();
         graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
     }
 

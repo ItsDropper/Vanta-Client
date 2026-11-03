@@ -16,7 +16,9 @@ import java.util.List;
 
 public class HudManager {
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
+    private static final List<HudElement> ACTIVE_ELEMENTS = new ArrayList<>();
     private static boolean initialized = false;
+    private static boolean visibilityInitialized = false;
 
     public static void init() {
         if (initialized) return;
@@ -34,11 +36,32 @@ public class HudManager {
 
     public static void add(HudElement element) {
         ELEMENTS.add(element);
+        visibilityInitialized = false;
+    }
+
+    /**
+     * Resolve feature visibility once per client tick. Disabled HUDs are excluded
+     * from the render loop, avoiding matrix operations and feature checks per frame.
+     */
+    public static void refreshVisibleElements() {
+        init();
+        ACTIVE_ELEMENTS.clear();
+        for (HudElement element : ELEMENTS) {
+            if (element.shouldRender()) {
+                ACTIVE_ELEMENTS.add(element);
+            }
+        }
+        visibilityInitialized = true;
     }
 
     public static void render(GuiGraphics graphics) {
         init();
-        for (HudElement element : ELEMENTS) element.renderScaled(graphics);
+        if (!visibilityInitialized) {
+            refreshVisibleElements();
+        }
+        for (HudElement element : ACTIVE_ELEMENTS) {
+            element.renderScaled(graphics);
+        }
     }
 
     public static List<HudElement> getElements() {

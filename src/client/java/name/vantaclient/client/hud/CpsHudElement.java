@@ -13,13 +13,14 @@ public final class CpsHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().cpsHudScale;
     }
 
+    @Override public boolean shouldRender() { return CpsHudFeature.INSTANCE.isEnabled(); }
+
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!CpsHudFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
                 ? HudPerformanceCache.getCpsText()
-                : "CPS  " + ClickRateTracker.getLeftCps()
-                        + " | " + ClickRateTracker.getRightCps();
+                : "CPS  " + ClickRateTracker.getLeftCps() + " | " + ClickRateTracker.getRightCps();
         graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
     }
 

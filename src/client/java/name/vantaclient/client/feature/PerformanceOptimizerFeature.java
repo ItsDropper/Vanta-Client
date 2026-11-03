@@ -9,7 +9,7 @@ public final class PerformanceOptimizerFeature extends Feature {
     private PerformanceOptimizerFeature() {
         super(
                 "Performance Optimizer",
-                "Skips Vanta motion blur and caches potion HUD data while monitoring client timings.",
+                "Caches frequently rendered HUD and overlay data while monitoring client timings.",
                 Category.MISC
         );
     }

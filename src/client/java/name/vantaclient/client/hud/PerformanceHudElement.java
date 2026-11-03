@@ -15,23 +15,20 @@ public final class PerformanceHudElement extends HudElement {
     private String tickText = "TICK  -- ms";
 
     public PerformanceHudElement() {
-        super(
-                DropperUtilsConfig.get().performanceHudX,
-                DropperUtilsConfig.get().performanceHudY
-        );
+        super(DropperUtilsConfig.get().performanceHudX, DropperUtilsConfig.get().performanceHudY);
         scale = DropperUtilsConfig.get().performanceHudScale;
     }
 
     @Override
-    protected void renderElement(GuiGraphics graphics) {
-        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                && !HudEditorFeature.INSTANCE.isEnabled()) {
-            return;
-        }
+    public boolean shouldRender() {
+        return PerformanceOptimizerFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled();
+    }
 
+    @Override
+    protected void renderElement(GuiGraphics graphics) {
+        if (!PerformanceOptimizerFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         refreshSnapshot(mc);
-
         graphics.drawString(mc.font, "VANTA PERFORMANCE", 0, 0, 0xFF8CB8FF);
         graphics.drawString(mc.font, fpsText, 0, 11, 0xFFF0F3FA);
         graphics.drawString(mc.font, worldText, 0, 21, 0xFFD6DCE8);
@@ -41,10 +38,7 @@ public final class PerformanceHudElement extends HudElement {
     private void refreshSnapshot(Minecraft mc) {
         long gameTime = mc.level == null ? 0L : mc.level.getGameTime();
         if (lastUpdateTick != Long.MIN_VALUE && gameTime >= lastUpdateTick
-                && gameTime - lastUpdateTick < 5L) {
-            return;
-        }
-
+                && gameTime - lastUpdateTick < 5L) return;
         lastUpdateTick = gameTime;
         if (mc.level == null) {
             fpsText = "FPS  " + mc.getFps();
@@ -52,7 +46,6 @@ public final class PerformanceHudElement extends HudElement {
             tickText = "TICK  -- ms";
             return;
         }
-
         fpsText = "FPS  " + mc.getFps();
         worldText = "WORLD  " + format(ClientPerformanceMetrics.getAverageWorldRenderMs()) + " ms";
         tickText = "TICK  " + format(ClientPerformanceMetrics.getAverageClientTickMs()) + " ms";
@@ -63,8 +56,7 @@ public final class PerformanceHudElement extends HudElement {
         return String.valueOf(Math.round(value * 100.0) / 100.0);
     }
 
-    @Override
-    public void savePosition() {
+    @Override public void savePosition() {
         DropperUtilsConfig.get().performanceHudX = xPercent;
         DropperUtilsConfig.get().performanceHudY = yPercent;
         DropperUtilsConfig.save();
@@ -77,13 +69,6 @@ public final class PerformanceHudElement extends HudElement {
         DropperUtilsConfig.save();
     }
 
-    @Override
-    public int getWidth() {
-        return 130;
-    }
-
-    @Override
-    public int getHeight() {
-        return 42;
-    }
+    @Override public int getWidth() { return 130; }
+    @Override public int getHeight() { return 42; }
 }

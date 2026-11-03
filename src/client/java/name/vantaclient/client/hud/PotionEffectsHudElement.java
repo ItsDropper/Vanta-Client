@@ -23,21 +23,18 @@ public class PotionEffectsHudElement extends HudElement {
     private long lastSnapshotTick = Long.MIN_VALUE;
 
     public PotionEffectsHudElement() {
-        super(
-                DropperUtilsConfig.get().potionHudX,
-                DropperUtilsConfig.get().potionHudY
-        );
-
+        super(DropperUtilsConfig.get().potionHudX, DropperUtilsConfig.get().potionHudY);
         scale = DropperUtilsConfig.get().potionHudScale;
     }
 
     @Override
-    protected void renderElement(GuiGraphics graphics) {
-        if (!PotionEffectsFeature.INSTANCE.isEnabled()
-                && !HudEditorFeature.INSTANCE.isEnabled()) {
-            return;
-        }
+    public boolean shouldRender() {
+        return PotionEffectsFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled();
+    }
 
+    @Override
+    protected void renderElement(GuiGraphics graphics) {
+        if (!PotionEffectsFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
 
@@ -51,14 +48,9 @@ public class PotionEffectsHudElement extends HudElement {
         for (MobEffectInstance effect : mc.player.getActiveEffects()) {
             Identifier texture = getTexture(effect);
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, texture, 0, offset, 18, 18);
-
             String name = getEffectName(effect);
             Component duration = MobEffectUtil.formatDuration(
-                    effect,
-                    1.0F,
-                    mc.level.tickRateManager().tickrate()
-            );
-
+                    effect, 1.0F, mc.level.tickRateManager().tickrate());
             graphics.drawString(mc.font, name, 22, offset + 1, 0xFFFFFFFF);
             graphics.drawString(mc.font, duration, 22, offset + 10, 0xFFAAAAAA);
             offset += 24;
@@ -71,23 +63,16 @@ public class PotionEffectsHudElement extends HudElement {
             lastSnapshotTick = Long.MIN_VALUE;
             return;
         }
-
         long gameTime = mc.level.getGameTime();
         if (lastSnapshotTick != Long.MIN_VALUE && gameTime >= lastSnapshotTick
-                && gameTime - lastSnapshotTick < 5L) {
-            return;
-        }
+                && gameTime - lastSnapshotTick < 5L) return;
 
         List<EffectSnapshot> updated = new ArrayList<>();
         for (MobEffectInstance effect : mc.player.getActiveEffects()) {
             String duration = MobEffectUtil.formatDuration(
-                    effect,
-                    1.0F,
-                    mc.level.tickRateManager().tickrate()
-            ).getString();
+                    effect, 1.0F, mc.level.tickRateManager().tickrate()).getString();
             updated.add(new EffectSnapshot(getTexture(effect), getEffectName(effect), duration));
         }
-
         performanceSnapshot = List.copyOf(updated);
         lastSnapshotTick = gameTime;
     }
@@ -104,8 +89,7 @@ public class PotionEffectsHudElement extends HudElement {
     }
 
     private static Identifier getTexture(MobEffectInstance effect) {
-        return effect.getEffect()
-                .unwrapKey()
+        return effect.getEffect().unwrapKey()
                 .map(key -> key.identifier().withPrefix("mob_effect/"))
                 .orElse(MissingTextureAtlasSprite.getLocation());
     }
@@ -117,17 +101,13 @@ public class PotionEffectsHudElement extends HudElement {
         return name;
     }
 
-    @Override
-    public void savePosition() {
+    @Override public void savePosition() {
         DropperUtilsConfig.get().potionHudX = xPercent;
         DropperUtilsConfig.get().potionHudY = yPercent;
         DropperUtilsConfig.save();
     }
 
-    @Override
-    public int getWidth() {
-        return 125;
-    }
+    @Override public int getWidth() { return 125; }
 
     @Override
     public int getHeight() {
@@ -136,7 +116,6 @@ public class PotionEffectsHudElement extends HudElement {
             refreshPerformanceSnapshot(mc);
             return Math.max(24, performanceSnapshot.size() * 24);
         }
-
         if (Minecraft.getInstance().player == null) return 24;
         return Math.max(24, Minecraft.getInstance().player.getActiveEffects().size() * 24);
     }

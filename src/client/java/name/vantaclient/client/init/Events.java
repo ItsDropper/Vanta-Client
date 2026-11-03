@@ -9,6 +9,8 @@ import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.hud.HudPerformanceCache;
+import name.vantaclient.client.hudeditor.HudManager;
+import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.SprintSneakToggles;
@@ -65,6 +67,8 @@ public class Events {
                 HudPerformanceCache.tick(client);
             }
 
+            InGameOverlayCache.tick(client);
+
             if (Keybinds.fullbrightKey.consumeClick()) {
                 FullbrightFeature.INSTANCE.toggle();
             }
@@ -100,6 +104,7 @@ public class Events {
             AnchorOptimizer.tick();
             AnchorPrediction.tick();
             ExplosionEffects.tick();
+            HudManager.refreshVisibleElements();
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());

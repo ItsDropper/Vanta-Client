@@ -13,6 +13,8 @@ public final class PingHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().pingHudScale;
     }
 
+    @Override public boolean shouldRender() { return PingHudFeature.INSTANCE.isEnabled(); }
+
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!PingHudFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
