@@ -641,6 +641,26 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             throw new AssertionError("Could not verify Modrinth screenshot: " + screenshot, exception);
         }
 
+        VantaModrinthBrowserScreen progressBrowser = context.computeOnClient(
+                client -> new VantaModrinthBrowserScreen(settingsScreen, previewProjects, true));
+        context.setScreen(() -> progressBrowser);
+        context.waitForScreen(VantaModrinthBrowserScreen.class);
+        context.waitTicks(3);
+        Path progressScreenshot = context.takeScreenshot("vanta-modrinth-progress-" + viewportLabel);
+        if (!Files.isRegularFile(progressScreenshot)) {
+            throw new AssertionError("Minecraft did not produce Modrinth progress screenshot: "
+                    + progressScreenshot);
+        }
+        try {
+            if (Files.size(progressScreenshot) < 1_024L) {
+                throw new AssertionError("Modrinth progress screenshot is unexpectedly small: "
+                        + progressScreenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify Modrinth progress screenshot: "
+                    + progressScreenshot, exception);
+        }
+
         context.setScreen(() -> settingsScreen);
         context.waitForScreen(VantaSettingsScreen.class);
     }

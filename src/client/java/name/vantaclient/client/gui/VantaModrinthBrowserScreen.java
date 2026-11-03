@@ -39,6 +39,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private final Screen parent;
     /** Optional deterministic data source used by the real-client UI screenshot test. */
     private final List<ModrinthBrowserService.Project> initialProjects;
+    private final boolean previewBusy;
     private VantaUiRuntime runtime;
     private List<ModrinthBrowserService.Project> projects = List.of();
     private String searchQuery = "";
@@ -62,9 +63,16 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     VantaModrinthBrowserScreen(Screen parent,
                                List<ModrinthBrowserService.Project> initialProjects) {
+        this(parent, initialProjects, false);
+    }
+
+    VantaModrinthBrowserScreen(Screen parent,
+                               List<ModrinthBrowserService.Project> initialProjects,
+                               boolean previewBusy) {
         super(Component.literal("Vanta Modrinth Library"));
         this.parent = parent;
         this.initialProjects = initialProjects == null ? null : List.copyOf(initialProjects);
+        this.previewBusy = previewBusy;
     }
 
     @Override
@@ -75,7 +83,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
             search();
         } else {
             projects = initialProjects;
-            status = projects.size() + " local preview projects. Network access is disabled for this UI test.";
+            busy = previewBusy;
+            status = previewBusy
+                    ? "Installing preview mod and resolving dependencies…"
+                    : projects.size() + " local preview projects. Network access is disabled for this UI test.";
             rebuildUi();
         }
     }
