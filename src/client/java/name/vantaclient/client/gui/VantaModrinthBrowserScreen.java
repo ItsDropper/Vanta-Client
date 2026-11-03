@@ -490,12 +490,17 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     @Override
-    public void onClose() {
+    public void removed() {
         closed = true;
         for (Identifier texture : projectIconTextures.values()) {
             minecraft.getTextureManager().release(texture);
         }
         projectIconTextures.clear();
+        super.removed();
+    }
+
+    @Override
+    public void onClose() {
         minecraft.setScreen(parent);
     }
 

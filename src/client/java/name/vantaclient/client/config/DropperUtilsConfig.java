@@ -152,6 +152,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 17) migrateV17();
                 if (INSTANCE.configVersion < 18) migrateV18();
                 fixBrokenHudPositions();
+                sanitizeHudConfiguration();
             } else {
                 INSTANCE = new DropperUtilsConfig();
                 save();
@@ -308,6 +309,93 @@ public class DropperUtilsConfig {
             System.out.println("[DropperUtils] Fixed broken HUD positions");
             save();
         }
+    }
+
+
+    /**
+     * Keeps persisted HUD geometry within normalized viewport and rendering bounds.
+     * Legacy coordinate migrations run first so their thousandths-based values are preserved.
+     */
+    private static void sanitizeHudConfiguration() {
+        boolean changed = false;
+
+        changed |= sanitizePosition("fpsHudX", INSTANCE.fpsHudX, 0.02f);
+        INSTANCE.fpsHudX = normalizedPosition(INSTANCE.fpsHudX, 0.02f);
+        changed |= sanitizePosition("fpsHudY", INSTANCE.fpsHudY, 0.34f);
+        INSTANCE.fpsHudY = normalizedPosition(INSTANCE.fpsHudY, 0.34f);
+        changed |= sanitizePosition("pingHudX", INSTANCE.pingHudX, 0.02f);
+        INSTANCE.pingHudX = normalizedPosition(INSTANCE.pingHudX, 0.02f);
+        changed |= sanitizePosition("pingHudY", INSTANCE.pingHudY, 0.38f);
+        INSTANCE.pingHudY = normalizedPosition(INSTANCE.pingHudY, 0.38f);
+        changed |= sanitizePosition("keystrokesHudX", INSTANCE.keystrokesHudX, 0.02f);
+        INSTANCE.keystrokesHudX = normalizedPosition(INSTANCE.keystrokesHudX, 0.02f);
+        changed |= sanitizePosition("keystrokesHudY", INSTANCE.keystrokesHudY, 0.48f);
+        INSTANCE.keystrokesHudY = normalizedPosition(INSTANCE.keystrokesHudY, 0.48f);
+        changed |= sanitizePosition("cpsHudX", INSTANCE.cpsHudX, 0.02f);
+        INSTANCE.cpsHudX = normalizedPosition(INSTANCE.cpsHudX, 0.02f);
+        changed |= sanitizePosition("cpsHudY", INSTANCE.cpsHudY, 0.42f);
+        INSTANCE.cpsHudY = normalizedPosition(INSTANCE.cpsHudY, 0.42f);
+        changed |= sanitizePosition("performanceHudX", INSTANCE.performanceHudX, 0.02f);
+        INSTANCE.performanceHudX = normalizedPosition(INSTANCE.performanceHudX, 0.02f);
+        changed |= sanitizePosition("performanceHudY", INSTANCE.performanceHudY, 0.10f);
+        INSTANCE.performanceHudY = normalizedPosition(INSTANCE.performanceHudY, 0.10f);
+        changed |= sanitizePosition("debugHudX", INSTANCE.debugHudX, 0.01f);
+        INSTANCE.debugHudX = normalizedPosition(INSTANCE.debugHudX, 0.01f);
+        changed |= sanitizePosition("debugHudY", INSTANCE.debugHudY, 0.30f);
+        INSTANCE.debugHudY = normalizedPosition(INSTANCE.debugHudY, 0.30f);
+        changed |= sanitizePosition("armorHudX", INSTANCE.armorHudX, 0.02f);
+        INSTANCE.armorHudX = normalizedPosition(INSTANCE.armorHudX, 0.02f);
+        changed |= sanitizePosition("armorHudY", INSTANCE.armorHudY, 0.20f);
+        INSTANCE.armorHudY = normalizedPosition(INSTANCE.armorHudY, 0.20f);
+        changed |= sanitizePosition("totemHudX", INSTANCE.totemHudX, 0.30f);
+        INSTANCE.totemHudX = normalizedPosition(INSTANCE.totemHudX, 0.30f);
+        changed |= sanitizePosition("totemHudY", INSTANCE.totemHudY, 0.20f);
+        INSTANCE.totemHudY = normalizedPosition(INSTANCE.totemHudY, 0.20f);
+        changed |= sanitizePosition("potionHudX", INSTANCE.potionHudX, 0.01f);
+        INSTANCE.potionHudX = normalizedPosition(INSTANCE.potionHudX, 0.01f);
+        changed |= sanitizePosition("potionHudY", INSTANCE.potionHudY, 0.02f);
+        INSTANCE.potionHudY = normalizedPosition(INSTANCE.potionHudY, 0.02f);
+
+        changed |= sanitizeScale("fpsHudScale", INSTANCE.fpsHudScale);
+        INSTANCE.fpsHudScale = normalizedScale(INSTANCE.fpsHudScale);
+        changed |= sanitizeScale("pingHudScale", INSTANCE.pingHudScale);
+        INSTANCE.pingHudScale = normalizedScale(INSTANCE.pingHudScale);
+        changed |= sanitizeScale("keystrokesHudScale", INSTANCE.keystrokesHudScale);
+        INSTANCE.keystrokesHudScale = normalizedScale(INSTANCE.keystrokesHudScale);
+        changed |= sanitizeScale("cpsHudScale", INSTANCE.cpsHudScale);
+        INSTANCE.cpsHudScale = normalizedScale(INSTANCE.cpsHudScale);
+        changed |= sanitizeScale("performanceHudScale", INSTANCE.performanceHudScale);
+        INSTANCE.performanceHudScale = normalizedScale(INSTANCE.performanceHudScale);
+        changed |= sanitizeScale("debugHudScale", INSTANCE.debugHudScale);
+        INSTANCE.debugHudScale = normalizedScale(INSTANCE.debugHudScale);
+        changed |= sanitizeScale("armorHudScale", INSTANCE.armorHudScale);
+        INSTANCE.armorHudScale = normalizedScale(INSTANCE.armorHudScale);
+        changed |= sanitizeScale("totemCounterScale", INSTANCE.totemCounterScale);
+        INSTANCE.totemCounterScale = normalizedScale(INSTANCE.totemCounterScale);
+        changed |= sanitizeScale("potionHudScale", INSTANCE.potionHudScale);
+        INSTANCE.potionHudScale = normalizedScale(INSTANCE.potionHudScale);
+
+        if (changed) save();
+    }
+
+    private static float normalizedPosition(float value, float fallback) {
+        return Float.isFinite(value) ? Math.max(0.0f, Math.min(1.0f, value)) : fallback;
+    }
+
+    private static float normalizedScale(float value) {
+        return Float.isFinite(value) ? Math.max(0.25f, Math.min(3.0f, value)) : 1.0f;
+    }
+
+    private static boolean sanitizePosition(String name, float value, float fallback) {
+        if (Float.compare(value, normalizedPosition(value, fallback)) == 0) return false;
+        System.out.println("[DropperUtils] Normalized " + name + " in HUD config");
+        return true;
+    }
+
+    private static boolean sanitizeScale(String name, float value) {
+        if (Float.compare(value, normalizedScale(value)) == 0) return false;
+        System.out.println("[DropperUtils] Normalized " + name + " in HUD config");
+        return true;
     }
 
     private static void convertHudPositions() {

@@ -54,6 +54,7 @@ public class HudMouseHandler {
         }
 
         dragging = null;
+        moved = false;
     }
 
     public static void updateHover(double mouseX, double mouseY) {

@@ -80,6 +80,11 @@ public class VantaIntegrationsScreen extends Screen {
         if (!modListInitialized) {
             refreshModList();
             modListInitialized = true;
+        } else if (modIconTextures.isEmpty() && !availableMods.isEmpty()) {
+            // Returning from a child screen reinitializes this screen after removed() released GPU textures.
+            for (ExperimentalModHotLoader.AvailableMod mod : availableMods) {
+                loadModIcon(mod.id(), mod.path(), mod.iconPath());
+            }
         }
         if (section == Section.MODS && selection == Selection.NONE) {
             modSearch = new EditBox(font, VantaPanelButton.layoutX(650),
@@ -1153,11 +1158,20 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     @Override
-    public void onClose() {
+    public void removed() {
+        releaseModIcons();
+        super.removed();
+    }
+
+    private void releaseModIcons() {
         for (Identifier texture : modIconTextures.values()) {
             minecraft.getTextureManager().release(texture);
         }
         modIconTextures.clear();
+    }
+
+    @Override
+    public void onClose() {
         minecraft.setScreen(parent);
     }
 }

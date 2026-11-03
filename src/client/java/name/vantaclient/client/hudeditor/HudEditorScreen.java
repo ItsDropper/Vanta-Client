@@ -331,6 +331,9 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public void removed() {
+        HudMouseHandler.release();
+        panelPointer = false;
+        toolbarPointer = false;
         if (toolbarRuntime != null) toolbarRuntime.dispose();
         HudSettingsPanel.clear();
         HudEditorFeature.INSTANCE.setEnabled(false);
