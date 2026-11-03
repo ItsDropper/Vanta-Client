@@ -485,7 +485,7 @@ public final class VantaSettingsScreen extends Screen {
         panel.add(row);
     }
 
-    private void beginKeyCapture(KeyMapping mapping) {
+    void beginKeyCapture(KeyMapping mapping) {
         if (mapping == null || pendingKeyCapture != null) return;
         pendingKeyCapture = mapping;
         capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;

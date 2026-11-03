@@ -13,6 +13,11 @@ import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.init.Keybinds;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.input.KeyEvent;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.nio.file.Files;
@@ -42,6 +47,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
+        verifyKeybindCaptureLifecycle(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -251,6 +257,67 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (noPhantomConnection.size() != 2) {
                 throw new AssertionError("A union's empty bounding-box area must not connect unrelated HUDs: "
                         + noPhantomConnection);
+            }
+        });
+    }
+
+    private static void verifyKeybindCaptureLifecycle(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            KeyMapping mapping = Keybinds.guiKey;
+            if (mapping == null) {
+                throw new AssertionError("Vanta key mappings were not registered before the Controls test.");
+            }
+            InputConstants.Key originalKey = mapping.getKey();
+            VantaSettingsScreen screen = new VantaSettingsScreen(null);
+            client.setScreen(screen);
+            try {
+                screen.beginKeyCapture(mapping);
+                KeyEvent xKey = new KeyEvent(GLFW.GLFW_KEY_X, GLFW.GLFW_KEY_X, 0);
+                if (!Keybinds.isCaptureActive() || !screen.keyPressed(xKey)) {
+                    throw new AssertionError("Keyboard key capture did not enter its active state.");
+                }
+                if (!mapping.getKey().equals(InputConstants.getKey(xKey))) {
+                    throw new AssertionError("The selected keyboard binding was not applied.");
+                }
+                if (!Keybinds.isCaptureActive()) {
+                    throw new AssertionError("Gameplay hotkeys must remain suppressed until key release.");
+                }
+                if (!screen.keyReleased(xKey) || Keybinds.isCaptureActive()) {
+                    throw new AssertionError("Keyboard capture suppression did not end on key release.");
+                }
+
+                screen.beginKeyCapture(mapping);
+                KeyEvent escape = new KeyEvent(GLFW.GLFW_KEY_ESCAPE, GLFW.GLFW_KEY_ESCAPE, 0);
+                if (!screen.keyPressed(escape) || !Keybinds.isCaptureActive()) {
+                    throw new AssertionError("Escape did not cancel capture while retaining release suppression.");
+                }
+                if (!mapping.getKey().equals(InputConstants.getKey(xKey))) {
+                    throw new AssertionError("Cancelling a capture changed the current binding.");
+                }
+                if (!screen.keyReleased(escape) || Keybinds.isCaptureActive()) {
+                    throw new AssertionError("Escape release did not clear the capture guard.");
+                }
+
+                screen.beginKeyCapture(mapping);
+                KeyEvent backspace = new KeyEvent(
+                        GLFW.GLFW_KEY_BACKSPACE, GLFW.GLFW_KEY_BACKSPACE, 0);
+                if (!screen.keyPressed(backspace)) {
+                    throw new AssertionError("Backspace was not handled as the unbind command.");
+                }
+                InputConstants.Key unbound = InputConstants.Type.KEYSYM
+                        .getOrCreate(GLFW.GLFW_KEY_UNKNOWN);
+                if (!mapping.getKey().equals(unbound)) {
+                    throw new AssertionError("Backspace did not unbind the selected Vanta shortcut.");
+                }
+                if (!screen.keyReleased(backspace) || Keybinds.isCaptureActive()) {
+                    throw new AssertionError("Unbind capture guard did not clear on key release.");
+                }
+            } finally {
+                mapping.setKey(originalKey);
+                KeyMapping.resetMapping();
+                client.options.save();
+                Keybinds.setCaptureActive(false);
+                client.setScreen(null);
             }
         });
     }
