@@ -2,6 +2,7 @@ package name.vantaclient.client.hud;
 
 import name.vantaclient.client.feature.FpsHudFeature;
 import name.vantaclient.client.hudeditor.HudElement;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -14,8 +15,11 @@ public final class FpsHudElement extends HudElement {
 
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!FpsHudFeature.INSTANCE.isEnabled()) return;
-        int fps = Minecraft.getInstance().getFps();
-        graphics.drawString(Minecraft.getInstance().font, "FPS  " + fps, 0, 0, 0xFFF0F3FA);
+        Minecraft mc = Minecraft.getInstance();
+        String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? HudPerformanceCache.getFpsText()
+                : "FPS  " + mc.getFps();
+        graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
     }
 
     @Override public void savePosition() {

@@ -4,6 +4,7 @@ import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.feature.TotemCounterFeature;
 import name.vantaclient.client.hudeditor.HudElement;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,6 +12,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public class TotemCounterHudElement extends HudElement {
+    private static final class ItemStackHolder {
+        private static final ItemStack TOTEM = new ItemStack(Items.TOTEM_OF_UNDYING);
+    }
+
 
     public TotemCounterHudElement() {
         super(
@@ -35,12 +40,13 @@ public class TotemCounterHudElement extends HudElement {
             return;
         }
 
-        int count = mc.player
-                .getInventory()
-                .countItem(Items.TOTEM_OF_UNDYING);
+        int count = PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? HudPerformanceCache.getTotemCount()
+                : mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
 
-        ItemStack stack =
-                new ItemStack(Items.TOTEM_OF_UNDYING);
+        ItemStack stack = PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? ItemStackHolder.TOTEM
+                : new ItemStack(Items.TOTEM_OF_UNDYING);
 
         graphics.renderItem(
                 stack,

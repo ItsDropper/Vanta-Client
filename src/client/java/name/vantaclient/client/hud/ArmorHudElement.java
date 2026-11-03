@@ -3,6 +3,7 @@ package name.vantaclient.client.hud;
 import name.vantaclient.client.feature.ArmorHudFeature;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.config.DropperUtilsConfig;
 
 import net.minecraft.client.Minecraft;
@@ -41,6 +42,11 @@ public class ArmorHudElement extends HudElement {
             return;
         }
 
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            renderCachedArmor(graphics, mc);
+            return;
+        }
+
         ItemStack[] armor = new ItemStack[]{
                 mc.player.getItemBySlot(EquipmentSlot.HEAD),
                 mc.player.getItemBySlot(EquipmentSlot.CHEST),
@@ -52,6 +58,33 @@ public class ArmorHudElement extends HudElement {
             renderHorizontal(graphics, armor);
         } else {
             renderVertical(graphics, armor);
+        }
+    }
+
+    private void renderCachedArmor(GuiGraphics graphics, Minecraft mc) {
+        for (int i = 0; i < 4; i++) {
+            ItemStack item = HudPerformanceCache.getArmorStack(i);
+            if (item.isEmpty()) continue;
+
+            int drawX = horizontal ? i * 22 : 0;
+            int drawY = horizontal ? 0 : i * 22;
+            graphics.renderItem(item, drawX, drawY);
+
+            int durability = HudPerformanceCache.getArmorDurability(i);
+            int color = HudPerformanceCache.getArmorColor(i);
+            if (horizontal) {
+                graphics.drawString(mc.font, Integer.toString(durability),
+                        drawX + 1, drawY - 10, color, false);
+            } else {
+                graphics.drawString(mc.font, Integer.toString(durability),
+                        drawX + 25, drawY + 8, color, false);
+            }
+
+            graphics.fill(drawX, drawY + 18, drawX + 16, drawY + 20, 0xFF555555);
+            int maxDamage = item.getMaxDamage();
+            int filled = maxDamage <= 0 ? 0
+                    : (int) (16.0f * durability / maxDamage);
+            graphics.fill(drawX, drawY + 18, drawX + filled, drawY + 20, color);
         }
     }
 

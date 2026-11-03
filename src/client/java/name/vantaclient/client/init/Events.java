@@ -8,6 +8,8 @@ import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
+import name.vantaclient.client.hud.HudPerformanceCache;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.SprintSneakToggles;
 import net.minecraft.world.item.Items;
@@ -58,6 +60,10 @@ public class Events {
 
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
+            if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+                HudPerformanceCache.tick(client);
+            }
 
             if (Keybinds.fullbrightKey.consumeClick()) {
                 FullbrightFeature.INSTANCE.toggle();

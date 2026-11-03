@@ -2,6 +2,7 @@ package name.vantaclient.client.hud;
 
 import name.vantaclient.client.feature.PingHudFeature;
 import name.vantaclient.client.hudeditor.HudElement;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -15,6 +16,10 @@ public final class PingHudElement extends HudElement {
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!PingHudFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            graphics.drawString(mc.font, HudPerformanceCache.getPingText(), 0, 0, 0xFFF0F3FA);
+            return;
+        }
         String value = "PING  --";
         if (mc.player != null && mc.getConnection() != null) {
             var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
