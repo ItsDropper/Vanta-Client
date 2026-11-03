@@ -33,7 +33,20 @@ public final class NametagUtilsFeature extends Feature {
     }
 
     @Override
+    public void onEnable() {
+        DropperUtilsConfig.get().nametagUtils = true;
+        DropperUtilsConfig.save();
+    }
+
+    @Override
+    public void onDisable() {
+        DropperUtilsConfig.get().nametagUtils = false;
+        DropperUtilsConfig.save();
+    }
+
+    @Override
     public void saveConfig() {
+        DropperUtilsConfig.get().nametagUtils = isEnabled();
         DropperUtilsConfig.save();
     }
 
@@ -42,5 +55,6 @@ public final class NametagUtilsFeature extends Feature {
         DropperUtilsConfig config = DropperUtilsConfig.get();
         if (!Float.isFinite(config.nametagScale)) config.nametagScale = 1.0f;
         config.nametagScale = Math.max(0.5f, Math.min(2.0f, config.nametagScale));
+        setEnabled(config.nametagUtils);
     }
 }
