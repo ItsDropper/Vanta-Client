@@ -54,6 +54,7 @@ public final class FarTerrainRenderer {
     private static final int SKIRT_MIN_DEPTH = 24;
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
+    private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> DESIRED = ConcurrentHashMap.newKeySet();
     private static final ConcurrentLinkedQueue<TileMesh> COMPLETED = new ConcurrentLinkedQueue<>();
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(
@@ -261,7 +262,7 @@ public final class FarTerrainRenderer {
 
         for (TileKey key : orderedTiles) {
             if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
-            if (MESHES.containsKey(key)) continue;
+            if (MESHES.containsKey(key) || FAILED.contains(key)) continue;
             WorkKey workKey = new WorkKey(key, revision);
             if (!PENDING.add(workKey)) continue;
 
@@ -274,7 +275,8 @@ public final class FarTerrainRenderer {
                         if (taskRevision != revision || !DESIRED.contains(key)) return;
                         TileMesh mesh = generateTile(key, generator, randomState, heightAccessor, seaLevel);
                         if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
-                    } catch (Throwable error) {
+                    } catch (RuntimeException error) {
+                        FAILED.add(key);
                         lastWorkerError = error.getClass().getSimpleName() + ": " + error.getMessage();
                     } finally {
                         PENDING.remove(workKey);
@@ -289,7 +291,7 @@ public final class FarTerrainRenderer {
     }
 
     private static TileMesh generateTile(TileKey key, ChunkGenerator generator,
-                                         RandomState randomState, ServerLevel heightAccessor,
+                                         RandomState randomState, LevelHeightAccessor heightAccessor,
                                          int seaLevel) {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
@@ -575,6 +577,7 @@ public final class FarTerrainRenderer {
         lastWorkerError = "";
         DESIRED.clear();
         MESHES.clear();
+        FAILED.clear();
         orderedTiles = List.of();
         COMPLETED.clear();
         WORKER.getQueue().clear();
@@ -594,8 +597,8 @@ public final class FarTerrainRenderer {
         if (activeLevel == null) return "Far terrain LOD is available in singleplayer worlds";
         String suffix = lastWorkerError.isBlank() ? "" : " | worker warning: " + lastWorkerError;
         return "LOD tiles: " + MESHES.size() + "/" + DESIRED.size()
-                + " ready | " + WORKER.getQueue().size() + " queued | range "
-                + effectiveFarDistance + " chunks" + suffix;
+                + " ready | " + WORKER.getQueue().size() + " queued | " + FAILED.size()
+                + " failed | range " + effectiveFarDistance + " chunks" + suffix;
     }
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
