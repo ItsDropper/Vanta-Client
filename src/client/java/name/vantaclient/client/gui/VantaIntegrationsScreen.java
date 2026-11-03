@@ -316,10 +316,10 @@ public class VantaIntegrationsScreen extends Screen {
             addAccentPanelButton(mod.name(), x + 2, y + cardHeight - 30,
                     cardWidth - 4, 28, () -> selectInstalledMod(id));
             if (fabricLoaded || hotLoaded) {
-                addPanelButton("Loaded", x + cardWidth - 57, y + 7, 50, 19,
+                addPanelButton(fabricLoaded ? "Enabled" : "Hotloaded", x + cardWidth - 69, y + 7, 62, 19,
                         () -> hotLoadStatus = id + " is already active. Arbitrary Fabric mods cannot be safely disabled at runtime.");
             } else {
-                addPanelButton("Enable*", x + cardWidth - 61, y + 7, 54, 19, () -> {
+                addPanelButton("Hotload", x + cardWidth - 61, y + 7, 54, 19, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
                     hotLoadStatus = result.summary();
                     refreshModList();
