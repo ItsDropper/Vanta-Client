@@ -11,6 +11,8 @@ public class Keybinds {
     public static KeyMapping fullbrightKey;
     public static KeyMapping zoomKey;
     public static KeyMapping guiKey;
+    public static KeyMapping sprintToggleKey;
+    public static KeyMapping sneakToggleKey;
 
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(
@@ -41,6 +43,14 @@ public class Keybinds {
                 )
         );
 
+        sprintToggleKey = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.dropperutils.sprint_toggle", InputConstants.Type.KEYSYM,
+                        GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
+        );
+        sneakToggleKey = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.dropperutils.sneak_toggle", InputConstants.Type.KEYSYM,
+                        GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
+        );
         guiKey = KeyBindingHelper.registerKeyBinding(
                 new KeyMapping(
                         "key.dropperutils.gui",
