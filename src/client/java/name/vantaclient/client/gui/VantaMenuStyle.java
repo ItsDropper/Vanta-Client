@@ -1,93 +1,191 @@
 package name.vantaclient.client.gui;
 
+import com.mojang.authlib.GameProfile;
+import name.vantaclient.client.config.VantaClientPreferences;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.PlayerSkin;
 
-/** Shared glass-blue treatment for vanilla Minecraft buttons and title branding. */
+import java.util.UUID;
+import java.util.function.Supplier;
+
+/** Purpose-built title-screen styling; gameplay and non-title-screen widgets retain vanilla rendering. */
 public final class VantaMenuStyle {
     private static final Identifier VANTA_MARK = Identifier.fromNamespaceAndPath(
             "dropperutils", "textures/gui/vanta_logo_transparent.png");
+    private static final Identifier BRAND_FONT = Identifier.fromNamespaceAndPath("vanta", "brand");
+    private static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
+    private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
     private static final int MARK_TEXTURE_WIDTH = 962;
     private static final int MARK_TEXTURE_HEIGHT = 702;
 
+    private static UUID cachedProfileId;
+    private static Supplier<PlayerSkin> cachedSkinLookup;
+
     private VantaMenuStyle() {}
 
-    /** Replaces only the vanilla button surface; vanilla labels, icons and actions remain intact. */
+    /** Transparent title-screen controls with restrained hover and keyboard-focus feedback. */
     public static void renderButtonSurface(GuiGraphics graphics, AbstractButton button) {
+        if (!(Minecraft.getInstance().screen instanceof TitleScreen)) return;
+
         int x = button.getX();
         int y = button.getY();
         int width = button.getWidth();
         int height = button.getHeight();
         if (width < 4 || height < 4) return;
 
-        boolean enabled = button.isActive();
-        boolean highlighted = button.isHoveredOrFocused();
-
-        int border = !enabled ? 0x80506A82
-                : highlighted ? 0xF08DDBFF : 0xD05C9BCB;
-        int surface = !enabled ? 0xA5101D2B
-                : highlighted ? 0xE2266396 : 0xD2163858;
-        fillRounded(graphics, x, y, width, height, 7, border);
-        fillRounded(graphics, x + 1, y + 1, width - 2, height - 2, 6, surface);
-
-        if (width > 16) {
-            graphics.fill(x + 7, y + 2, x + width - 7, y + 3,
-                    enabled ? 0x56E3F6FF : 0x2A9CB7D0);
-            graphics.fill(x + 7, y + height - 2, x + width - 7, y + height - 1,
-                    enabled ? 0x67439DE8 : 0x35436B8B);
-        }
-        if (highlighted && width > 7 && height > 8) {
-            fillRounded(graphics, x + 2, y + 4, 2, height - 8, 1,
-                    enabled ? 0xFF8CE1FF : 0x806C849A);
+        if (!button.isActive()) {
+            fillRounded(graphics, x, y, width, height, 5, 0x0EFFFFFF);
+        } else if (button.isFocused()) {
+            fillRounded(graphics, x, y, width, height, 5, 0x36FFFFFF);
+            graphics.fill(x + 2, y + 5, x + 3, y + height - 5, 0xD8DDE8F4);
+        } else if (button.isHovered()) {
+            fillRounded(graphics, x, y, width, height, 5, 0x20FFFFFF);
+            graphics.fill(x + 8, y + height - 2, x + width - 8, y + height - 1,
+                    0x88DDE8F5);
         }
     }
 
-    /**
-     * Adds Vanta's custom V mark and wordmark immediately below the original Minecraft logo.
-     * The vanilla title screen, panorama, button layout and copyright remain untouched.
-     */
+    public static Identifier uiFont() {
+        return UI_FONT;
+    }
+
+    /** Returns a compact settings shortcut position in the secondary action row. */
     public static int[] titleBrandBounds(int screenWidth, int screenHeight) {
-        if (screenWidth < 190 || screenHeight < 150) return null;
-        int panelWidth = Math.min(224, screenWidth - 20);
-        int panelHeight = 24;
-        int x = (screenWidth - panelWidth) / 2;
-        int y = Math.max(5, Math.min(screenHeight - panelHeight - 5, screenHeight / 4 + 16));
-        return new int[]{x, y, panelWidth, panelHeight};
+        if (screenWidth < 220 || screenHeight < 180) return null;
+        int left = menuLeft(screenWidth);
+        int width = menuButtonWidth(screenWidth);
+        int top = menuTop(screenHeight);
+        int y = top + 3 * 35 + 12 + 35;
+        return new int[]{left, Math.min(screenHeight - 48, y), width, 27};
     }
 
+    public static int menuLeft(int screenWidth) {
+        return Math.max(18, Math.min(72, Math.round(screenWidth * 0.075f)));
+    }
+
+    public static int menuButtonWidth(int screenWidth) {
+        return Math.max(132, Math.min(220, Math.round(screenWidth * 0.29f)));
+    }
+
+    public static int menuTop(int screenHeight) {
+        return Math.max(78, Math.min(screenHeight - 150, screenHeight / 2 - 48));
+    }
+
+    /** Draws Vanta's standalone V mark above the complete wordmark. */
     public static void renderTitleBranding(GuiGraphics graphics, int screenWidth,
-                                           int screenHeight, boolean highlighted) {
-        int[] bounds = titleBrandBounds(screenWidth, screenHeight);
-        if (bounds == null) return;
+                                           int screenHeight, long elapsedMillis) {
+        float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
+        int alpha = Math.round(progress * 255.0f);
+        int x = menuLeft(screenWidth);
+        int y = Math.max(24, Math.round(screenHeight * 0.13f));
+        float slide = (1.0f - progress) * 8.0f;
 
-        int x = bounds[0];
-        int y = bounds[1];
-        int panelWidth = bounds[2];
-        int panelHeight = bounds[3];
+        graphics.pose().pushPose();
+        graphics.pose().translate(0.0, slide, 0.0);
 
-        fillRounded(graphics, x, y, panelWidth, panelHeight, 7,
-                highlighted ? 0xF0A5E6FF : 0xD75B9FCF);
-        fillRounded(graphics, x + 1, y + 1, panelWidth - 2, panelHeight - 2,
-                6, highlighted ? 0xE8285A84 : 0xD5102741);
-        graphics.fill(x + 8, y + 2, x + panelWidth - 8, y + 3, 0x70DDF6FF);
-
-        int markWidth = 22;
-        int markHeight = 16;
-        int markX = x + 9;
-        int markY = y + (panelHeight - markHeight) / 2;
-        graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK, markX, markY,
-                0.0f, 0.0f, markWidth, markHeight,
+        int markWidth = 48;
+        int markHeight = 35;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
+                x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT);
 
-        graphics.fill(x + 38, y + 5, x + 39, y + panelHeight - 5, 0x805FA9D8);
-        Font font = net.minecraft.client.Minecraft.getInstance().font;
-        graphics.drawString(font, "ANTA CLIENT", x + 47, y + 8, 0xFFF0F8FF, false);
-        graphics.drawString(font, "CLIENT EDITION", x + panelWidth - 76, y + 8,
-                0xFF9FC7E6, false);
+        Minecraft client = Minecraft.getInstance();
+        Font font = client.font;
+        graphics.drawString(font, ComponentText.brand(), x - 1, y + 38,
+                withAlpha(0xFFF5F7FC, alpha), false);
+        graphics.drawString(font, ComponentText.caption(), x, y + 64,
+                withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)), false);
+
+        graphics.pose().popPose();
+    }
+
+    /** Shows the active launcher profile and its resolved skin texture; never substitutes a hard-coded name. */
+    public static void renderPlayerCard(GuiGraphics graphics, int screenWidth,
+                                        int screenHeight, long elapsedMillis) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.getUser() == null) return;
+
+        UUID profileId = client.getUser().getProfileId();
+        String playerName = client.getUser().getName();
+        if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
+
+        int width = Math.min(204, Math.max(164, screenWidth / 3));
+        int x = screenWidth - width - Math.max(22, menuLeft(screenWidth));
+        int y = Math.max(90, screenHeight / 2 - 48);
+        int alpha = Math.round(255.0f * easeOut(Math.min(1.0f,
+                Math.max(0.0f, elapsedMillis / 480.0f))));
+
+        fillRounded(graphics, x, y, width, 88, 8, withAlpha(0xFF111722, Math.round(alpha * 0.56f)));
+        fillRounded(graphics, x + 1, y + 1, width - 2, 86, 7,
+                withAlpha(0xFF1A2230, Math.round(alpha * 0.26f)));
+
+        int avatarX = x + 14;
+        int avatarY = y + 17;
+        boolean skinDrawn = false;
+        if (profileId != null) {
+            try {
+                if (!profileId.equals(cachedProfileId) || cachedSkinLookup == null) {
+                    cachedProfileId = profileId;
+                    cachedSkinLookup = client.getSkinManager().createLookup(
+                            new GameProfile(profileId, playerName), false);
+                }
+                PlayerSkin skin = cachedSkinLookup.get();
+                if (skin != null && skin.body() != null) {
+                    Identifier texture = skin.body().texturePath();
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
+                            avatarX, avatarY, 8.0f, 8.0f, 34, 34, 64, 64, 64, 64);
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
+                            avatarX, avatarY, 40.0f, 8.0f, 34, 34, 64, 64, 64, 64);
+                    skinDrawn = true;
+                }
+            } catch (RuntimeException ignored) {
+                cachedSkinLookup = null;
+            }
+        }
+
+        if (!skinDrawn) {
+            fillRounded(graphics, avatarX, avatarY, 34, 34, 6,
+                    withAlpha(0xFF303B4C, alpha));
+            graphics.drawCenteredString(client.font, "?", avatarX + 17, avatarY + 12,
+                    withAlpha(0xFFE0E6EF, alpha));
+        }
+
+        graphics.drawString(client.font, ComponentText.account(), x + 60, y + 18,
+                withAlpha(0xFF9AA8BA, alpha), false);
+        String safeName = playerName.length() > 16 ? playerName.substring(0, 16) : playerName;
+        graphics.drawString(client.font, ComponentText.playerName(safeName), x + 60, y + 35,
+                withAlpha(0xFFF2F5FA, alpha), false);
+        graphics.drawString(client.font, ComponentText.profileState(profileId != null),
+                x + 60, y + 54, withAlpha(0xFF9AA8BA, alpha), false);
+    }
+
+    /** Replaces vanilla copyright/version text with a quiet client footer. */
+    public static void renderFooter(GuiGraphics graphics, int screenWidth, int screenHeight) {
+        graphics.fill(0, screenHeight - 15, screenWidth, screenHeight, 0xB8070A10);
+        Font font = Minecraft.getInstance().font;
+        graphics.drawString(font, ComponentText.footerLeft(), 12, screenHeight - 10,
+                0xFFAAB4C3, false);
+        String right = "VANTA CLIENT";
+        graphics.drawString(font, ComponentText.footerRight(right),
+                screenWidth - font.width(ComponentText.footerRight(right)) - 12,
+                screenHeight - 10, 0xFFAAB4C3, false);
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static float easeOut(float value) {
+        float inverse = 1.0f - value;
+        return 1.0f - inverse * inverse * inverse;
     }
 
     private static void fillRounded(GuiGraphics graphics, int x, int y,
@@ -104,6 +202,47 @@ public final class VantaMenuStyle {
                 inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
             }
             graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
+        }
+    }
+
+    /** Keeps font styling centralized without creating a second UI framework. */
+    private static final class ComponentText {
+        private ComponentText() {}
+
+        private static net.minecraft.network.chat.Component brand() {
+            return net.minecraft.network.chat.Component.literal("Vanta Client")
+                    .withStyle(style -> style.withFont(BRAND_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component caption() {
+            return net.minecraft.network.chat.Component.literal("CLIENT EXPERIENCE")
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component account() {
+            return net.minecraft.network.chat.Component.literal("CURRENT ACCOUNT")
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component playerName(String name) {
+            return net.minecraft.network.chat.Component.literal(name)
+                    .withStyle(style -> style.withFont(UI_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component profileState(boolean available) {
+            return net.minecraft.network.chat.Component.literal(
+                    available ? "ACTIVE PROFILE" : "PROFILE UNAVAILABLE")
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component footerLeft() {
+            return net.minecraft.network.chat.Component.literal("VANTA CLIENT  /  FABRIC")
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component footerRight(String value) {
+            return net.minecraft.network.chat.Component.literal(value)
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
         }
     }
 }
