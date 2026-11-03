@@ -19,7 +19,8 @@ public class FeatureRegistry {
             FpsHudFeature.INSTANCE,
             PingHudFeature.INSTANCE,
             KeystrokesFeature.INSTANCE,
-            CpsHudFeature.INSTANCE
+            CpsHudFeature.INSTANCE,
+            ChatTimestampsFeature.INSTANCE
     );
 
     public static void loadConfigs() {
