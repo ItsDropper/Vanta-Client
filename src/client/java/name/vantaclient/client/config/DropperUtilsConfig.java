@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 5;
+    public int configVersion = 6;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -32,6 +32,9 @@ public class DropperUtilsConfig {
     public boolean fpsHud = true;
     public boolean pingHud = true;
     public boolean keystrokesHud = false;
+    public boolean cpsHud = false;
+    public boolean sprintToggleEnabled = false;
+    public boolean sneakToggleEnabled = false;
 
     public int zoomFov = 30;
     public float zoomSpeed = 0.15f;
@@ -96,6 +99,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 3) migrateV3();
                 if (INSTANCE.configVersion < 4) migrateV4();
                 if (INSTANCE.configVersion < 5) migrateV5();
+                if (INSTANCE.configVersion < 6) migrateV6();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -132,6 +136,12 @@ public class DropperUtilsConfig {
     private static void migrateV5() {
         System.out.println("[DropperUtils] Migrating config v4 -> v5");
         INSTANCE.configVersion = 5;
+        save();
+    }
+
+    private static void migrateV6() {
+        System.out.println("[DropperUtils] Migrating config v5 -> v6");
+        INSTANCE.configVersion = 6;
         save();
     }
 
