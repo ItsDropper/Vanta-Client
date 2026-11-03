@@ -10,6 +10,7 @@ import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.input.CharacterEvent;
@@ -18,6 +19,7 @@ import net.minecraft.client.input.KeyEvent;
 public class HudEditorScreen extends Screen {
     private float entrance = 0.0f;
     private float selectionPulse = 0.0f;
+    private long lastAnimationFrameNanos;
     private boolean panelPointer;
     private boolean toolbarPointer;
     private VantaUiRuntime toolbarRuntime;
@@ -82,8 +84,12 @@ public class HudEditorScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         VantaClientPreferences preferences = VantaClientPreferences.get();
         boolean animations = preferences.animations;
-        entrance = animations ? entrance + (1.0f - entrance) * 0.18f : 1.0f;
-        if (Math.abs(1.0f - entrance) < 0.01f) entrance = 1.0f;
+        long nowNanos = System.nanoTime();
+        float animationDeltaSeconds = VantaUiMotion.frameDeltaSeconds(
+                lastAnimationFrameNanos, nowNanos);
+        lastAnimationFrameNanos = nowNanos;
+        entrance = VantaUiMotion.approach(
+                entrance, 1.0f, 12.0f, animationDeltaSeconds, animations);
 
         graphics.fill(0, 0, width, height, VantaUiTheme.withAlpha(VantaUiTheme.CANVAS, 164));
         if (preferences.hudShowGrid) drawGrid(graphics, preferences.hudGridSize, entrance);
@@ -95,14 +101,11 @@ public class HudEditorScreen extends Screen {
 
         HudElement focused = HudSettingsPanel.getSelected();
         if (focused == null) focused = HudMouseHandler.getHovered();
+        selectionPulse = VantaUiMotion.approach(selectionPulse,
+                focused == null ? 0.0f : 1.0f, 15.0f, animationDeltaSeconds, animations);
         if (focused != null) {
-            selectionPulse = animations
-                    ? selectionPulse + (1.0f - selectionPulse) * 0.22f
-                    : 1.0f;
             drawSelection(graphics, focused, preferences.accent.color(), selectionPulse);
             drawElementTag(graphics, mc, focused, preferences.accent.color());
-        } else {
-            selectionPulse = 0.0f;
         }
 
         if (toolbarRuntime != null) {

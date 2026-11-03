@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.components;
 
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -35,20 +36,14 @@ public final class VantaToggleSwitch extends AbstractWidget {
         boolean enabled = value.getAsBoolean();
         float target = enabled ? 1.0f : 0.0f;
         long now = System.nanoTime();
-        float delta = lastFrameNanos == 0L ? 1.0f / 60.0f
-                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        float deltaSeconds = VantaUiMotion.frameDeltaSeconds(lastFrameNanos, now);
         lastFrameNanos = now;
         float hoverTarget = isHovered() ? 1.0f : 0.0f;
-        if (!VantaClientPreferences.get().animations) {
-            transition = target;
-            hover = hoverTarget;
-        } else {
-            float factor = 1.0f - (float) Math.exp(-17.0f * delta);
-            transition += (target - transition) * factor;
-            hover += (hoverTarget - hover) * factor;
-            if (Math.abs(target - transition) < 0.01f) transition = target;
-            if (Math.abs(hoverTarget - hover) < 0.01f) hover = hoverTarget;
-        }
+        boolean animationsEnabled = VantaClientPreferences.get().animations;
+        transition = VantaUiMotion.approach(
+                transition, target, 17.0f, deltaSeconds, animationsEnabled);
+        hover = VantaUiMotion.approach(
+                hover, hoverTarget, 17.0f, deltaSeconds, animationsEnabled);
 
         int accent = VantaClientPreferences.get().accent.color();
         int track = mix(VantaUiTheme.TRACK, VantaUiTheme.SURFACE_HOVER, hover * 0.75f);

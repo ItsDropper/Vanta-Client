@@ -12,6 +12,7 @@ import name.vantaclient.client.hudeditor.HudSettingsPanel;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -48,6 +49,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
         verifyKeybindCaptureLifecycle(context);
+        verifyUiMotion(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -88,6 +90,44 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+
+    private static void verifyUiMotion(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            float atSixtyFps = 0.0f;
+            for (int frame = 0; frame < 60; frame++) {
+                atSixtyFps = VantaUiMotion.approach(
+                        atSixtyFps, 1.0f, 12.0f, 1.0f / 60.0f, true);
+            }
+
+            float atThirtyFps = 0.0f;
+            for (int frame = 0; frame < 30; frame++) {
+                atThirtyFps = VantaUiMotion.approach(
+                        atThirtyFps, 1.0f, 12.0f, 1.0f / 30.0f, true);
+            }
+
+            if (Math.abs(atSixtyFps - atThirtyFps) > 0.0002f) {
+                throw new AssertionError("UI easing must be frame-rate independent: 60 FPS="
+                        + atSixtyFps + ", 30 FPS=" + atThirtyFps);
+            }
+            if (VantaUiMotion.frameDeltaSeconds(0L, 500_000_000L)
+                    != VantaUiMotion.DEFAULT_FRAME_DELTA_SECONDS) {
+                throw new AssertionError("The first UI frame must use the nominal 60 FPS delta.");
+            }
+            if (VantaUiMotion.frameDeltaSeconds(1L, 100_000_001L)
+                    != VantaUiMotion.MAX_FRAME_DELTA_SECONDS) {
+                throw new AssertionError("Long UI frames must be capped to prevent animation jumps.");
+            }
+            if (VantaUiMotion.frameDeltaSeconds(100L, 90L) != 0.0f) {
+                throw new AssertionError("A non-monotonic frame timestamp must not produce negative delta.");
+            }
+            if (VantaUiMotion.approach(0.25f, 1.0f, 12.0f, 1.0f / 60.0f, false) != 1.0f) {
+                throw new AssertionError("Disabling interface animations must snap controls to their target.");
+            }
+            if (VantaUiMotion.approach(Float.NaN, 1.0f, 12.0f, 1.0f / 60.0f, true) != 1.0f) {
+                throw new AssertionError("UI motion must recover cleanly from a non-finite current value.");
+            }
+        });
+    }
 
     private static void verifyScrollbarThumbDragging(ClientGameTestContext context) {
         context.runOnClient(client -> {

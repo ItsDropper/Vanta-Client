@@ -66,9 +66,7 @@ public final class VantaUiRuntime {
             layout(font, screenWidth, screenHeight);
         }
         long now = System.nanoTime();
-        float deltaSeconds = lastFrameNanos == 0L
-                ? 1.0f / 60.0f
-                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        float deltaSeconds = VantaUiMotion.frameDeltaSeconds(lastFrameNanos, now);
         lastFrameNanos = now;
         float offsetX = screenWidth * 0.5f * (1.0f - uiScale);
         float offsetY = screenHeight * 0.5f * (1.0f - uiScale);
@@ -81,12 +79,10 @@ public final class VantaUiRuntime {
         hovered = root.hitTest(logicalMouseX, logicalMouseY);
         if (hovered != null) hovered.setHovered(true);
         boolean animationsEnabled = theme.animationsEnabled();
-        float hoverFactor = 1.0f;
-        float toggleFactor = 1.0f;
-        if (animationsEnabled) {
-            hoverFactor = 1.0f - (float) Math.exp(-VantaUiTheme.HOVER_RATE * deltaSeconds);
-            toggleFactor = 1.0f - (float) Math.exp(-VantaUiTheme.TOGGLE_RATE * deltaSeconds);
-        }
+        float hoverFactor = VantaUiMotion.interpolationFactor(
+                VantaUiTheme.HOVER_RATE, deltaSeconds, animationsEnabled);
+        float toggleFactor = VantaUiMotion.interpolationFactor(
+                VantaUiTheme.TOGGLE_RATE, deltaSeconds, animationsEnabled);
         root.animate(animationsEnabled, hoverFactor, toggleFactor);
 
         long renderStart = System.nanoTime();

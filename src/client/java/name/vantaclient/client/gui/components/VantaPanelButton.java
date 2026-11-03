@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.components;
 
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -105,17 +106,10 @@ public final class VantaPanelButton extends AbstractWidget {
         boolean hovered = isHovered();
         boolean activeSelection = selected.getAsBoolean();
         long now = System.nanoTime();
-        float delta = lastFrameNanos == 0L ? 1.0f / 60.0f
-                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        float deltaSeconds = VantaUiMotion.frameDeltaSeconds(lastFrameNanos, now);
         lastFrameNanos = now;
-        if (!VantaClientPreferences.get().animations) {
-            hoverAmount = hovered ? 1.0f : 0.0f;
-        } else {
-            float factor = 1.0f - (float) Math.exp(-18.0f * delta);
-            float target = hovered ? 1.0f : 0.0f;
-            hoverAmount += (target - hoverAmount) * factor;
-            if (Math.abs(target - hoverAmount) < 0.01f) hoverAmount = target;
-        }
+        hoverAmount = VantaUiMotion.approach(hoverAmount, hovered ? 1.0f : 0.0f,
+                18.0f, deltaSeconds, VantaClientPreferences.get().animations);
 
         int accentColor = accent.getAsInt();
         boolean filledAccent = accentSurface || (accentWhenSelected && activeSelection);
