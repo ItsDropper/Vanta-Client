@@ -76,28 +76,28 @@ public final class VantaWorldShareScreen extends Screen {
             case NO_WORLD -> {
                 content.add(VantaUiNode.eyebrow("NO ACTIVE WORLD"));
                 content.add(VantaUiNode.title("Open a singleplayer world first"));
-                content.add(VantaUiNode.text(
+                content.add(VantaUiNode.paragraph(
                         "Vanta can share an integrated singleplayer world while you are in-game.",
-                        VantaUiTheme.TEXT_SECONDARY));
+                        VantaUiTheme.TEXT_SECONDARY, 2));
             }
             case HOSTED -> {
                 content.add(VantaUiNode.eyebrow("LOCAL HOSTING ACTIVE"));
                 content.add(VantaUiNode.title("Your world is open to LAN"));
                 content.add(VantaUiNode.text("Port  " + status.port(),
                         VantaUiTheme.TEXT_PRIMARY));
-                content.add(VantaUiNode.text(
+                content.add(VantaUiNode.paragraph(
                         "Players on the same local network can find this world from Minecraft's Multiplayer screen.",
-                        VantaUiTheme.TEXT_SECONDARY));
-                content.add(VantaUiNode.text(
+                        VantaUiTheme.TEXT_SECONDARY, compact ? 4 : 2));
+                content.add(VantaUiNode.paragraph(
                         "To stop hosting, close the world and return to the title screen.",
-                        VantaUiTheme.TEXT_MUTED));
+                        VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
             }
             case NOT_HOSTED, FAILED -> {
                 content.add(VantaUiNode.eyebrow("LOCAL NETWORK"));
                 content.add(VantaUiNode.title("Share your current world"));
-                content.add(VantaUiNode.text(
+                content.add(VantaUiNode.paragraph(
                         "Open the integrated server to devices on your local network. Minecraft chooses an available port.",
-                        VantaUiTheme.TEXT_SECONDARY));
+                        VantaUiTheme.TEXT_SECONDARY, compact ? 4 : 2));
 
                 if (server != null) {
                     content.add(VantaUiNode.dropdown("Guest game mode", GAME_MODES,
@@ -110,24 +110,24 @@ public final class VantaWorldShareScreen extends Screen {
                     content.add(VantaUiNode.button("START LOCAL HOSTING", this::startHosting)
                             .height(36));
                 } else {
-                    content.add(VantaUiNode.text(
+                    content.add(VantaUiNode.paragraph(
                             "The singleplayer server is not ready. Return to the world and try again.",
-                            VantaUiTheme.TEXT_MUTED));
+                            VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
                 }
 
                 if (status.state() == VantaLanHostingService.State.FAILED) {
-                    content.add(VantaUiNode.text(
+                    content.add(VantaUiNode.paragraph(
                             "Minecraft could not open a LAN port. Check whether another service is using the network port, then retry.",
-                            VantaUiTheme.TEXT_MUTED));
+                            VantaUiTheme.TEXT_MUTED, compact ? 5 : 3));
                 }
             }
         }
 
         content.add(VantaUiNode.spacer(1).height(4));
         content.add(VantaUiNode.eyebrow("REMOTE PLAY"));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "Internet peer invitations are not implemented in this milestone. They need an authenticated signalling and relay or NAT-traversal service; this screen does not request or display public addresses.",
-                VantaUiTheme.TEXT_MUTED));
+                VantaUiTheme.TEXT_MUTED, compact ? 7 : 3));
         root.add(content);
         return root;
     }
