@@ -2,11 +2,17 @@ package name.vantaclient.mixin;
 
 import name.vantaclient.client.feature.SaturationFeature;
 import name.vantaclient.client.feature.PotionEffectsFeature;
+import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.hud.VanillaHudLayout;
 import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.gui.VantaNotificationManager;
 
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 
@@ -14,9 +20,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import net.minecraft.resources.Identifier;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.Minecraft;
 
 import java.util.List;
 
@@ -25,10 +28,7 @@ public class GuiMixin {
     private static final Identifier SATURATION_TEXTURE =
             Identifier.fromNamespaceAndPath("dropperutils", "textures/gui/saturation.png");
 
-    @Inject(
-            method = "renderFood",
-            at = @At("TAIL")
-    )
+    @Inject(method = "renderFood", at = @At("TAIL"))
     private void renderSaturation(
             GuiGraphics guiGraphics,
             Player player,
@@ -66,7 +66,7 @@ public class GuiMixin {
     )
     private void renderVantaNotifications(
             GuiGraphics guiGraphics,
-            net.minecraft.client.DeltaTracker deltaTracker,
+            DeltaTracker deltaTracker,
             CallbackInfo ci
     ) {
         Minecraft mc = Minecraft.getInstance();
@@ -81,7 +81,7 @@ public class GuiMixin {
     )
     private void renderPotionEffects(
             GuiGraphics guiGraphics,
-            net.minecraft.client.DeltaTracker deltaTracker,
+            DeltaTracker deltaTracker,
             CallbackInfo ci
     ) {
         if (!PotionEffectsFeature.INSTANCE.isEnabled()) {
@@ -99,5 +99,99 @@ public class GuiMixin {
             guiGraphics.drawString(mc.font, line, 5, y, 0xFFFFFF);
             y += 12;
         }
+    }
+
+    @Inject(method = "renderCrosshair", at = @At("HEAD"))
+    private void vanta$pushCrosshair(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.CROSSHAIR);
+    }
+
+    @Inject(method = "renderCrosshair", at = @At("TAIL"))
+    private void vanta$popCrosshair(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderItemHotbar", at = @At("HEAD"))
+    private void vanta$pushHotbar(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.HOTBAR);
+    }
+
+    @Inject(method = "renderItemHotbar", at = @At("TAIL"))
+    private void vanta$popHotbar(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderHearts", at = @At("HEAD"))
+    private void vanta$pushHealth(
+            GuiGraphics graphics, Player player, int x, int y, int lines,
+            int regeneratingHeartIndex, float maxHealth, int lastHealth,
+            int health, int absorption, boolean blinking, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.HEALTH);
+    }
+
+    @Inject(method = "renderHearts", at = @At("TAIL"))
+    private void vanta$popHealth(
+            GuiGraphics graphics, Player player, int x, int y, int lines,
+            int regeneratingHeartIndex, float maxHealth, int lastHealth,
+            int health, int absorption, boolean blinking, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderArmor", at = @At("HEAD"))
+    private static void vanta$pushArmor(
+            GuiGraphics graphics, Player player, int y, int x, int healthBarLines,
+            int arg5, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.ARMOR);
+    }
+
+    @Inject(method = "renderArmor", at = @At("TAIL"))
+    private static void vanta$popArmor(
+            GuiGraphics graphics, Player player, int y, int x, int healthBarLines,
+            int arg5, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderFood", at = @At("HEAD"))
+    private static void vanta$pushFood(
+            GuiGraphics graphics, Player player, int top, int right, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.FOOD);
+    }
+
+    @Inject(method = "renderFood", at = @At("TAIL"))
+    private static void vanta$popFood(
+            GuiGraphics graphics, Player player, int top, int right, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderAirBubbles", at = @At("HEAD"))
+    private static void vanta$pushAir(
+            GuiGraphics graphics, Player player, int heartCount, int top, int left, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.AIR);
+    }
+
+    @Inject(method = "renderAirBubbles", at = @At("TAIL"))
+    private static void vanta$popAir(
+            GuiGraphics graphics, Player player, int heartCount, int top, int left, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderEffects", at = @At("HEAD"))
+    private void vanta$pushEffects(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.EFFECTS);
+    }
+
+    @Inject(method = "renderEffects", at = @At("TAIL"))
+    private void vanta$popEffects(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderBossOverlay", at = @At("HEAD"))
+    private void vanta$pushBossBar(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.BOSS_BAR);
+    }
+
+    @Inject(method = "renderBossOverlay", at = @At("TAIL"))
+    private void vanta$popBossBar(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
     }
 }

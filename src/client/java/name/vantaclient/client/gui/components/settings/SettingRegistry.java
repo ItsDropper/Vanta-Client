@@ -12,6 +12,12 @@ public final class SettingRegistry {
     public static List<Setting> getSettings(Feature feature) {
         List<Setting> settings = new ArrayList<>();
 
+        if (feature == FlyBoostFeature.INSTANCE) {
+            settings.add(new SliderSetting("Singleplayer flight multiplier", 1.0, 3.0, "x",
+                    () -> (double) FlyBoostFeature.getMultiplier(),
+                    value -> FlyBoostFeature.setMultiplier(value.floatValue())));
+        }
+
         if (feature == ZoomFeature.INSTANCE) {
             settings.add(new SliderSetting("Zoom FOV", 1, 50, "",
                     () -> (double) ZoomFeature.getZoomFov(),

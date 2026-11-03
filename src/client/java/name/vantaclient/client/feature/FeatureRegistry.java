@@ -22,7 +22,9 @@ public class FeatureRegistry {
             PingHudFeature.INSTANCE,
             KeystrokesFeature.INSTANCE,
             CpsHudFeature.INSTANCE,
-            ChatTimestampsFeature.INSTANCE
+            ChatTimestampsFeature.INSTANCE,
+            VanillaHudFeature.INSTANCE,
+            FlyBoostFeature.INSTANCE
     );
 
     public static void loadConfigs() {

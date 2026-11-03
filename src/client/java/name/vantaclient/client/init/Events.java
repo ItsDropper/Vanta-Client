@@ -12,7 +12,6 @@ import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.hud.HudPerformanceCache;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.util.InGameOverlayCache;
-import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
@@ -74,6 +73,7 @@ public class Events {
             FarTerrainRenderer.tick(client);
             InGameOverlayCache.tick(client);
             VantaNotificationManager.tick();
+            FlyBoostFeature.tick(client);
 
             if (Keybinds.fullbrightKey.consumeClick()) {
                 FullbrightFeature.INSTANCE.toggle();

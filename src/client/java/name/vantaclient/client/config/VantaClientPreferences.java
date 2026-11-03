@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /** Persistent presentation preferences for the Vanta Client interface. */
@@ -22,6 +24,21 @@ public final class VantaClientPreferences {
         private final int color;
         Accent(int color) { this.color = color; }
         public int color() { return color; }
+    }
+
+    /** Normalized screen position and scale for a movable vanilla HUD component. */
+    public static final class HudPosition {
+        public float x;
+        public float y;
+        public float scale = 1.0f;
+
+        public HudPosition() {}
+
+        public HudPosition(float x, float y, float scale) {
+            this.x = x;
+            this.y = y;
+            this.scale = scale;
+        }
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -38,6 +55,7 @@ public final class VantaClientPreferences {
     public double uiScale = 1.0;
     public double panelOpacity = 0.85;
     public Set<String> favoriteMods = new HashSet<>();
+    public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
 
     private VantaClientPreferences() {}
 
@@ -70,6 +88,16 @@ public final class VantaClientPreferences {
             instance.hudGridSize = 16;
         }
         if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
+        if (instance.vanillaHudPositions == null) instance.vanillaHudPositions = new HashMap<>();
+        instance.vanillaHudPositions.entrySet().removeIf(entry -> entry.getValue() == null);
+        for (HudPosition position : instance.vanillaHudPositions.values()) {
+            if (!Float.isFinite(position.x)) position.x = 0.0f;
+            if (!Float.isFinite(position.y)) position.y = 0.0f;
+            if (!Float.isFinite(position.scale)) position.scale = 1.0f;
+            position.x = Math.max(0.0f, Math.min(1.0f, position.x));
+            position.y = Math.max(0.0f, Math.min(1.0f, position.y));
+            position.scale = Math.max(0.25f, Math.min(3.0f, position.scale));
+        }
     }
 
     public static void save() {

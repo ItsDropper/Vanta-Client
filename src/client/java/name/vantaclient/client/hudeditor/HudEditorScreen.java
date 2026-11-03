@@ -6,6 +6,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.feature.HudEditorFeature;
+import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
@@ -27,6 +29,8 @@ public class HudEditorScreen extends Screen {
 
     @Override
     protected void init() {
+        HudEditorFeature.INSTANCE.setEnabled(true);
+        HudManager.refreshVisibleElements();
         buildToolbar();
     }
 
@@ -164,8 +168,10 @@ public class HudEditorScreen extends Screen {
             fillRounded(graphics, x, y, w, h, 5, fill);
             drawRoundedOutline(graphics, x, y, w, h, 5, border, selected ? 2 : 1);
             if (!selected) {
-                String name = element.getClass().getSimpleName()
-                        .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
+                String name = element instanceof VanillaHudElement vanilla
+                        ? vanilla.getDisplayName()
+                        : element.getClass().getSimpleName()
+                                .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
                 int labelY = Math.max(4, y - 13);
                 graphics.fill(x, labelY, x + Minecraft.getInstance().font.width(name) + 10,
                         labelY + 11, 0xCC111A27);
@@ -188,13 +194,15 @@ public class HudEditorScreen extends Screen {
 
     private void drawElementTag(GuiGraphics graphics, Minecraft mc,
                                 HudElement element, int accent) {
-        String label = switch (element.getClass().getSimpleName()) {
-            case "ArmorHudElement" -> "ARMOR HUD";
-            case "DebugHudElement" -> "DEBUG HUD";
-            case "TotemCounterHudElement" -> "TOTEM COUNTER";
-            case "PotionEffectsHudElement" -> "POTION EFFECTS";
-            default -> "HUD ELEMENT";
-        };
+        String label = element instanceof VanillaHudElement vanilla
+                ? vanilla.getDisplayName().toUpperCase(java.util.Locale.ROOT)
+                : switch (element.getClass().getSimpleName()) {
+                    case "ArmorHudElement" -> "ARMOR HUD";
+                    case "DebugHudElement" -> "DEBUG HUD";
+                    case "TotemCounterHudElement" -> "TOTEM COUNTER";
+                    case "PotionEffectsHudElement" -> "POTION EFFECTS";
+                    default -> "HUD ELEMENT";
+                };
         int tagWidth = mc.font.width(label) + 16;
         int x = Math.max(8, Math.min(element.getX(), width - tagWidth - 8));
         int y = Math.max(76, element.getY() - 25);
@@ -321,6 +329,8 @@ public class HudEditorScreen extends Screen {
     public void removed() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
         HudSettingsPanel.clear();
+        HudEditorFeature.INSTANCE.setEnabled(false);
+        HudManager.refreshVisibleElements();
         super.removed();
     }
 

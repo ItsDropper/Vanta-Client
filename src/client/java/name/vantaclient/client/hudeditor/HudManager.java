@@ -9,6 +9,7 @@ import name.vantaclient.client.hud.PingHudElement;
 import name.vantaclient.client.hud.PotionEffectsHudElement;
 import name.vantaclient.client.hud.PerformanceHudElement;
 import name.vantaclient.client.hud.TotemCounterHudElement;
+import name.vantaclient.client.hud.VanillaHudElement;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
@@ -32,6 +33,9 @@ public class HudManager {
         add(new KeystrokesHudElement());
         add(new CpsHudElement());
         add(new PerformanceHudElement());
+        for (VanillaHudElement.Part part : VanillaHudElement.Part.values()) {
+            add(new VanillaHudElement(part));
+        }
     }
 
     public static void add(HudElement element) {
@@ -65,6 +69,7 @@ public class HudManager {
     }
 
     public static List<HudElement> getElements() {
+        init();
         return ELEMENTS;
     }
 }

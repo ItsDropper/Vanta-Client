@@ -5,6 +5,7 @@ import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.hud.ArmorHudElement;
+import name.vantaclient.client.hud.VanillaHudElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -91,6 +92,12 @@ public final class HudSettingsPanel {
                     value -> armor.setHorizontal(value.equals("Horizontal"))));
         }
 
+        if (selected instanceof VanillaHudElement) {
+            panel.add(VantaUiNode.text(
+                    "This is a vanilla HUD component. Enable VanillaHUD in settings to apply its position.",
+                    VantaUiTheme.TEXT_MUTED));
+        }
+
         panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
                 () -> selected == null ? 1.0 : selected.getScale(),
                 value -> { if (selected != null) selected.setScale((float) value); }));
@@ -132,6 +139,7 @@ public final class HudSettingsPanel {
 
     private static String selectedName() {
         if (selected == null) return "No element selected";
+        if (selected instanceof VanillaHudElement vanilla) return vanilla.getDisplayName();
         return switch (selected.getClass().getSimpleName()) {
             case "ArmorHudElement" -> "Armor HUD";
             case "DebugHudElement" -> "Debug HUD";
