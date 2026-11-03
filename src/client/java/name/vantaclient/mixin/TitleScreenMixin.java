@@ -10,6 +10,8 @@ import net.minecraft.client.gui.components.LogoRenderer;
 import net.minecraft.client.gui.components.SplashRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
+import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen;
+import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -37,6 +39,12 @@ public abstract class TitleScreenMixin {
 
     @Unique
     private AbstractButton vanta$creditsShortcut;
+
+    @Unique
+    private AbstractButton vanta$languageShortcut;
+
+    @Unique
+    private AbstractButton vanta$accessibilityShortcut;
 
     @Unique
     private long vanta$openedAt;
@@ -69,6 +77,23 @@ public abstract class TitleScreenMixin {
                         .bounds(Math.max(0, screen.width - 112), Math.max(0, screen.height - 52), 80, 22)
                         .build());
 
+        vanta$languageShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
+                .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
+                        Component.literal("Language").withStyle(
+                                style -> style.withFont(VantaMenuStyle.uiFont())),
+                        button -> client.setScreen(new LanguageSelectScreen(
+                                screen, client.options, client.getLanguageManager())))
+                        .bounds(0, 0, 104, 22)
+                        .build());
+
+        vanta$accessibilityShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
+                .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
+                        Component.literal("Accessibility").withStyle(
+                                style -> style.withFont(VantaMenuStyle.uiFont())),
+                        button -> client.setScreen(new AccessibilityOptionsScreen(screen, client.options)))
+                        .bounds(0, 0, 104, 22)
+                        .build());
+
         vanta$layoutButtons(screen);
     }
 
@@ -97,7 +122,13 @@ public abstract class TitleScreenMixin {
             button.setMessage(Component.literal(label).withStyle(
                     style -> style.withFont(VantaMenuStyle.uiFont())));
 
-            if (button == vanta$settingsShortcut || button == vanta$creditsShortcut) continue;
+            if (button == vanta$settingsShortcut || button == vanta$creditsShortcut
+                    || button == vanta$languageShortcut || button == vanta$accessibilityShortcut) continue;
+            if (normalized.contains("language") || normalized.contains("accessibility")) {
+                button.visible = false;
+                button.active = false;
+                continue;
+            }
             if (normalized.startsWith("copyright mojang")) {
                 button.visible = false;
                 button.active = false;
@@ -142,6 +173,13 @@ public abstract class TitleScreenMixin {
 
         int extraY = screenHeight - 80;
         int extraX = screenWidth - left - 27;
+        int utilityRowX = Math.max(0, screenWidth - left - 216);
+        if (vanta$languageShortcut != null) {
+            vanta$setBounds(vanta$languageShortcut, utilityRowX, extraY, 104, 22);
+        }
+        if (vanta$accessibilityShortcut != null) {
+            vanta$setBounds(vanta$accessibilityShortcut, utilityRowX + 112, extraY, 104, 22);
+        }
         if (vanta$creditsShortcut != null) {
             vanta$setBounds(vanta$creditsShortcut, Math.max(0, screenWidth - left - 90),
                     Math.max(0, screenHeight - 52), 80, 22);
