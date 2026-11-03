@@ -6,6 +6,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.feature.VanillaHudFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -93,8 +94,14 @@ public final class HudSettingsPanel {
         }
 
         if (selected instanceof VanillaHudElement) {
+            panel.add(VantaUiNode.toggle("Apply vanilla HUD positions",
+                    VanillaHudFeature.INSTANCE::isEnabled,
+                    enabled -> {
+                        VanillaHudFeature.INSTANCE.setEnabled(enabled);
+                        VanillaHudFeature.INSTANCE.saveConfig();
+                    }));
             panel.add(VantaUiNode.text(
-                    "This is a vanilla HUD component. Enable VanillaHUD in settings to apply its position.",
+                    "The selected vanilla component keeps its native rendering and uses the position set here.",
                     VantaUiTheme.TEXT_MUTED));
         }
 
