@@ -137,9 +137,9 @@ public final class VantaMenuStyle {
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
-        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + 51,
-                withAlpha(0xFFF5F7FC, alpha));
-        graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 78,
+        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + 49,
+                withAlpha(0xFFFFFFFF, alpha));
+        graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 83,
                 withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)));
 
     }
@@ -326,7 +326,7 @@ public final class VantaMenuStyle {
 
         private static net.minecraft.network.chat.Component brand() {
             return net.minecraft.network.chat.Component.literal("Vanta Client")
-                    .withStyle(style -> style.withFont(BRAND_FONT));
+                    .withStyle(style -> style.withFont(BRAND_FONT).withBold(true));
         }
 
         private static net.minecraft.network.chat.Component caption() {
