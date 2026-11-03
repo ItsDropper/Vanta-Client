@@ -7,13 +7,15 @@ version = project.mod_version
 group = project.maven_group
 
 repositories {
+	// Resolve common transitive libraries from Central before specialized mod repositories.
+	mavenCentral()
+
 	maven {
 		name = "Terraformers"
 		url = "https://maven.terraformersmc.com/"
 	}
 
 	maven { url = "https://maven.fabricmc.net/" }
-	mavenCentral()
 }
 
 loom {
