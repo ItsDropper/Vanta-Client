@@ -12,6 +12,13 @@ public final class SettingRegistry {
     public static List<Setting> getSettings(Feature feature) {
         List<Setting> settings = new ArrayList<>();
 
+        if (feature == ChatTimestampsFeature.INSTANCE) {
+            settings.add(new ChoiceSetting("Timestamp format",
+                    ChatTimestampsFeature.getFormats(),
+                    ChatTimestampsFeature::getFormatLabel,
+                    ChatTimestampsFeature::setFormat));
+        }
+
         if (feature == OgAnimationsFeature.INSTANCE) {
             settings.add(new ChoiceSetting("Animation profile",
                     List.of("Classic 1.8.9", "Soft Legacy"),

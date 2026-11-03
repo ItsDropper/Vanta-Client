@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 14;
+    public int configVersion = 15;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -36,6 +36,7 @@ public class DropperUtilsConfig {
     public boolean sprintToggleEnabled = false;
     public boolean sneakToggleEnabled = false;
     public boolean chatTimestamps = false;
+    public String chatTimestampFormat = "HH:mm";
     public boolean performanceOptimizer = false;
     public boolean farViewEnabled = false;
     public boolean farViewAdaptive = false;
@@ -142,6 +143,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 12) migrateV12();
                 if (INSTANCE.configVersion < 13) migrateV13();
                 if (INSTANCE.configVersion < 14) migrateV14();
+                if (INSTANCE.configVersion < 15) migrateV15();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -241,6 +243,13 @@ public class DropperUtilsConfig {
         INSTANCE.sprintWindowBeforeDisable = 7;
         INSTANCE.sprintWindowCaptured = false;
         INSTANCE.configVersion = 14;
+        save();
+    }
+
+    private static void migrateV15() {
+        System.out.println("[DropperUtils] Migrating config v14 -> v15");
+        INSTANCE.chatTimestampFormat = "HH:mm";
+        INSTANCE.configVersion = 15;
         save();
     }
 
