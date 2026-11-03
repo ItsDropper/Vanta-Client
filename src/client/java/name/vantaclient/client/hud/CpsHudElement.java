@@ -1,6 +1,7 @@
 package name.vantaclient.client.hud;
 
 import name.vantaclient.client.feature.CpsHudFeature;
+import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import net.minecraft.client.Minecraft;
@@ -13,10 +14,12 @@ public final class CpsHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().cpsHudScale;
     }
 
-    @Override public boolean shouldRender() { return CpsHudFeature.INSTANCE.isEnabled(); }
+    @Override public boolean shouldRender() {
+        return CpsHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled();
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
-        if (!CpsHudFeature.INSTANCE.isEnabled()) return;
+        if (!CpsHudFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
                 ? HudPerformanceCache.getCpsText()

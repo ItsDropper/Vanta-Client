@@ -10,6 +10,7 @@ on:
       - "src/client/java/name/vantaclient/client/config/VantaClientPreferences.java"
       - "src/client/java/name/vantaclient/client/config/DropperUtilsConfig.java"
       - "src/client/java/name/vantaclient/client/hudeditor/**"
+      - "src/client/java/name/vantaclient/client/hud/**"
       - "src/client/java/name/vantaclient/mixin/**"
       - "src/main/resources/dropperutils.mixins.json"
       - "src/client/resources/**"

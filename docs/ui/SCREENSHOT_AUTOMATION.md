@@ -8,7 +8,7 @@ The workflow launches the actual Minecraft 1.21.11 client with Vanta Client load
 
 Workflow: `.github/workflows/ui-screenshots.yml`
 
-It runs on UI, HUD editor, resource, GameTest and Gradle changes, and can be started manually from GitHub Actions.
+It runs on settings UI, HUD editor, HUD element/renderer, resource, GameTest and Gradle changes, and can be started manually from GitHub Actions.
 
 No local Minecraft installation, multiplayer server or authenticated Minecraft account is required. The test does not create a world or connect to a server.
 
@@ -39,7 +39,12 @@ Expected output: **36 PNG files**. The workflow independently asserts that exact
 
 ## Interaction smoke check
 
-Before capturing the screenshot matrix, the client GameTest creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes. This validates the scrollbar pointer-capture path in a real Minecraft client. It is a targeted smoke check, not exhaustive coverage of every control or nested-scroll combination.
+Before capturing the screenshot matrix, the client GameTest:
+- Creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes.
+- Verifies that overlapping/adjacent HUD background rectangles merge transitively, while a smaller configured connection distance keeps them separate.
+- Opens the HUD editor with the Keystrokes HUD selected and a background enabled, including when its in-game feature is disabled.
+
+These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.
 
 ## Artifacts
 

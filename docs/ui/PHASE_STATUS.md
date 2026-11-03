@@ -26,6 +26,8 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - `VantaIntegrationsScreen` remains the separate installed-mod and integration browser with legacy/manual presentation.
 - `VantaModrinthBrowserScreen` remains a separate screen with its own project cards and controls. Its network and installation work runs asynchronously.
 - The HUD editor toolbar and selected-element inspector use the shared runtime and theme. The draggable HUD canvas, selection outlines and hitboxes remain specialized rendering by design.
+- Every custom and vanilla HUD element has an independent, persisted background toggle. Backgrounds use a dark-gray fill at 80% opacity; touching/overlapping hitboxes are merged, and the inspector exposes a 0–24 px connection distance so nearby elements can form one continuous panel.
+- FPS, Ping, Keystrokes and CPS remain previewable/selectable in the HUD editor even while their in-game feature is disabled, so their positions and backgrounds can still be configured.
 
 ## Automated visual verification
 

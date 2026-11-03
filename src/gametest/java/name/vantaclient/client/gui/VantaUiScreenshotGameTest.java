@@ -106,19 +106,25 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyConnectedHudBackgrounds(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            var merged = HudBackgroundRenderer.mergeConnectedBounds(java.util.List.of(
+            var rectangles = java.util.List.of(
                     new HudBackgroundRenderer.Bounds(10, 10, 40, 20),
                     new HudBackgroundRenderer.Bounds(43, 10, 70, 20),
+                    new HudBackgroundRenderer.Bounds(73, 10, 90, 20),
                     new HudBackgroundRenderer.Bounds(10, 25, 40, 35)
-            ), 4);
+            );
+            var merged = HudBackgroundRenderer.mergeConnectedBounds(rectangles, 4);
             if (merged.size() != 2) {
-                throw new AssertionError("HUD backgrounds did not merge only the nearby hitboxes: " + merged);
+                throw new AssertionError("HUD backgrounds did not merge the transitive group: " + merged);
             }
             boolean joined = merged.stream().anyMatch(bounds ->
                     bounds.left() == 10 && bounds.top() == 10
-                            && bounds.right() == 70 && bounds.bottom() == 20);
+                            && bounds.right() == 90 && bounds.bottom() == 20);
             if (!joined) {
                 throw new AssertionError("Connected HUD background bounds were not unioned: " + merged);
+            }
+            var strict = HudBackgroundRenderer.mergeConnectedBounds(rectangles, 2);
+            if (strict.size() != 4) {
+                throw new AssertionError("The configured connection distance was not respected: " + strict);
             }
         });
     }
@@ -165,11 +171,16 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitForScreen(HudEditorScreen.class);
         context.runOnClient(client -> {
             HudManager.init();
-            if (!HudManager.getElements().isEmpty()) {
-                HudElement first = HudManager.getElements().get(0);
-                VantaClientPreferences.get().setHudBackgroundEnabled(first.getBackgroundId(), true);
-                HudSettingsPanel.setSelected(first);
+            HudElement editorPreview = HudManager.getElements().stream()
+                    .filter(element -> element.getBackgroundId().equals("KeystrokesHudElement"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Keystrokes HUD is missing from the editor registry."));
+            if (!editorPreview.shouldRender()) {
+                throw new AssertionError("Disabled HUD elements must remain previewable in the HUD editor.");
             }
+            VantaClientPreferences.get().setHudBackgroundEnabled(
+                    editorPreview.getBackgroundId(), true);
+            HudSettingsPanel.setSelected(editorPreview);
         });
         context.waitTicks(2);
 

@@ -1,6 +1,7 @@
 package name.vantaclient.client.hud;
 
 import name.vantaclient.client.feature.PingHudFeature;
+import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import net.minecraft.client.Minecraft;
@@ -13,10 +14,12 @@ public final class PingHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().pingHudScale;
     }
 
-    @Override public boolean shouldRender() { return PingHudFeature.INSTANCE.isEnabled(); }
+    @Override public boolean shouldRender() {
+        return PingHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled();
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
-        if (!PingHudFeature.INSTANCE.isEnabled()) return;
+        if (!PingHudFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
             graphics.drawString(mc.font, HudPerformanceCache.getPingText(), 0, 0, 0xFFF0F3FA);

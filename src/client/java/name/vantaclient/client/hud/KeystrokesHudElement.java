@@ -1,6 +1,7 @@
 package name.vantaclient.client.hud;
 
 import name.vantaclient.client.feature.KeystrokesFeature;
+import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,10 +16,12 @@ public final class KeystrokesHudElement extends HudElement {
         scale = name.vantaclient.client.config.DropperUtilsConfig.get().keystrokesHudScale;
     }
 
-    @Override public boolean shouldRender() { return KeystrokesFeature.INSTANCE.isEnabled(); }
+    @Override public boolean shouldRender() {
+        return KeystrokesFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled();
+    }
 
     @Override protected void renderElement(GuiGraphics graphics) {
-        if (!KeystrokesFeature.INSTANCE.isEnabled()) return;
+        if (!KeystrokesFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         drawKey(graphics, mc, mc.options.keyUp.isDown(), "W", KEY_SIZE, 0);
         drawKey(graphics, mc, mc.options.keyLeft.isDown(), "A", 0, KEY_SIZE + GAP);
