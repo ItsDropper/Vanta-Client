@@ -8,12 +8,17 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.Climate;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -49,7 +54,7 @@ public final class FarTerrainRenderer {
     private static final int ADAPTIVE_REFRESH_TICKS = 40;
     private static final int MAX_TILES_TO_SCHEDULE_PER_TICK = 6;
     private static final int MAX_QUEUED_TILE_JOBS = 96;
-    private static final int MAX_DRAW_QUADS = 320_000;
+    private static final int MAX_DRAW_QUADS = 192_000;
     private static final int MAX_DESIRED_TILES = 4096;
     private static final int SKIRT_MIN_DEPTH = 24;
 
@@ -83,6 +88,8 @@ public final class FarTerrainRenderer {
     private static int lastPlayerChunkX = Integer.MIN_VALUE;
     private static int lastPlayerChunkZ = Integer.MIN_VALUE;
     private static volatile String lastWorkerError = "";
+    private static double averageMeshSubmitMs;
+    private static int adaptiveDrawBudget = 72_000;
 
     private FarTerrainRenderer() {}
 
@@ -258,6 +265,8 @@ public final class FarTerrainRenderer {
         int scheduled = 0;
         ChunkGenerator generator = level.getChunkSource().getGenerator();
         RandomState randomState = level.getChunkSource().randomState();
+        BiomeSource biomeSource = generator.getBiomeSource();
+        Climate.Sampler climateSampler = randomState.sampler();
 
         for (TileKey key : orderedTiles) {
             if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
@@ -272,7 +281,8 @@ public final class FarTerrainRenderer {
                 WORKER.execute(() -> {
                     try {
                         if (taskRevision != revision || !DESIRED.contains(key)) return;
-                        TileMesh mesh = generateTile(key, generator, randomState, heightAccessor, seaLevel);
+                        TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
+                                biomeSource, climateSampler, seaLevel);
                         if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
                     } catch (RuntimeException error) {
                         FAILED.add(key);
@@ -291,6 +301,7 @@ public final class FarTerrainRenderer {
 
     private static TileMesh generateTile(TileKey key, ChunkGenerator generator,
                                          RandomState randomState, LevelHeightAccessor heightAccessor,
+                                         BiomeSource biomeSource, Climate.Sampler climateSampler,
                                          int seaLevel) {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
@@ -309,6 +320,11 @@ public final class FarTerrainRenderer {
                         Math.min(heightAccessor.getMaxY(), height));
                 int index = z * side + x;
                 heights[index] = height;
+                Holder<Biome> biome = biomeSource.getNoiseBiome(
+                        QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
+                        QuartPos.fromBlock(worldZ), climateSampler);
+                colors[index] = terrainColor(height, seaLevel,
+                        biome.value().getGrassColor(worldX, worldZ), biome.value().getWaterColor());
             }
         }
 
@@ -333,7 +349,7 @@ public final class FarTerrainRenderer {
                 double diffuse = Math.max(0.0,
                         (-dx * -0.42 + 1.0 * 0.82 + -dz * -0.38) / normalLength);
                 double brightness = 0.48 + diffuse * 0.52;
-                colors[index] = shadeColor(terrainColor(heights[index], seaLevel), brightness);
+                colors[index] = shadeColor(colors[index], brightness);
             }
         }
 
@@ -347,17 +363,26 @@ public final class FarTerrainRenderer {
         return 0xFF000000 | (red << 16) | (green << 8) | blue;
     }
 
-    private static int terrainColor(int height, int seaLevel) {
-        if (height <= seaLevel - 18) return 0xFF254F70;
-        if (height <= seaLevel - 5) return 0xFF347A9C;
+    private static int terrainColor(int height, int seaLevel, int grassColor, int waterColor) {
+        if (height <= seaLevel - 18) return blendRgb(0xFF244B69, opaqueRgb(waterColor), 0.38f);
+        if (height <= seaLevel - 5) return blendRgb(0xFF3A7F9C, opaqueRgb(waterColor), 0.52f);
         if (height <= seaLevel + 2) return 0xFFC2B17B;
         if (height >= seaLevel + 112) return 0xFFE1E4E2;
         if (height >= seaLevel + 76) return 0xFF888985;
+        return opaqueRgb(grassColor);
+    }
 
-        float elevation = Math.max(0.0f, Math.min(1.0f, (height - seaLevel) / 100.0f));
-        int red = Math.round(79 - elevation * 18);
-        int green = Math.round(133 - elevation * 24);
-        int blue = Math.round(65 - elevation * 12);
+    private static int opaqueRgb(int rgb) {
+        return 0xFF000000 | (rgb & 0x00FFFFFF);
+    }
+
+    private static int blendRgb(int first, int second, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int red = Math.round(((first >>> 16) & 0xFF) * (1.0f - t)
+                + ((second >>> 16) & 0xFF) * t);
+        int green = Math.round(((first >>> 8) & 0xFF) * (1.0f - t)
+                + ((second >>> 8) & 0xFF) * t);
+        int blue = Math.round((first & 0xFF) * (1.0f - t) + (second & 0xFF) * t);
         return 0xFF000000 | (red << 16) | (green << 8) | blue;
     }
 
@@ -397,6 +422,8 @@ public final class FarTerrainRenderer {
         double innerRadiusSquared = innerRadius * innerRadius;
         double outerRadiusSquared = outerRadius * outerRadius;
 
+        long renderStartNanos = System.nanoTime();
+        int drawBudget = getDrawBudget();
         PoseStack.Pose pose = context.matrices().last();
         if (context.consumers() == null) return;
         VertexConsumer consumer = context.consumers().getBuffer(RenderTypes.debugQuads());
@@ -404,7 +431,7 @@ public final class FarTerrainRenderer {
         for (TileKey key : orderedTiles) {
             TileMesh mesh = MESHES.get(key);
             if (mesh == null) continue;
-            if (drawnQuads >= MAX_DRAW_QUADS) break;
+            if (drawnQuads >= drawBudget) break;
 
             double tileCenterX = mesh.originX + mesh.spanBlocks * 0.5;
             double tileCenterZ = mesh.originZ + mesh.spanBlocks * 0.5;
@@ -425,10 +452,10 @@ public final class FarTerrainRenderer {
             int[] colors = mesh.colors;
             double step = (double) mesh.spanBlocks / resolution;
 
-            for (int z = 0; z < resolution && drawnQuads < MAX_DRAW_QUADS; z++) {
+            for (int z = 0; z < resolution && drawnQuads < drawBudget; z++) {
                 double z0 = mesh.originZ + z * step;
                 double z1 = mesh.originZ + (z + 1) * step;
-                for (int x = 0; x < resolution && drawnQuads < MAX_DRAW_QUADS; x++) {
+                for (int x = 0; x < resolution && drawnQuads < drawBudget; x++) {
                     double x0 = mesh.originX + x * step;
                     double x1 = mesh.originX + (x + 1) * step;
                     double centerX = (x0 + x1) * 0.5;
@@ -451,11 +478,35 @@ public final class FarTerrainRenderer {
                 }
             }
 
-            if (drawnQuads < MAX_DRAW_QUADS) {
+            if (drawnQuads < drawBudget) {
                 drawnQuads += emitSkirts(consumer, pose, mesh, cameraX, cameraY, cameraZ,
                         playerX, playerZ, innerRadiusSquared, outerRadiusSquared,
-                        drawnQuads, MAX_DRAW_QUADS);
+                        drawnQuads, drawBudget);
             }
+        }
+        updateDrawBudget((System.nanoTime() - renderStartNanos) / 1_000_000.0);
+    }
+
+    private static int getDrawBudget() {
+        int profileBudget = switch (FarViewFeature.getQuality()) {
+            case "PERFORMANCE" -> 36_000;
+            case "HIGH" -> 128_000;
+            case "ULTRA" -> MAX_DRAW_QUADS;
+            default -> 72_000;
+        };
+        return FarViewFeature.isAdaptiveEnabled()
+                ? Math.max(16_000, Math.min(profileBudget, adaptiveDrawBudget))
+                : profileBudget;
+    }
+
+    private static void updateDrawBudget(double renderMillis) {
+        if (!FarViewFeature.isAdaptiveEnabled()) return;
+        averageMeshSubmitMs = averageMeshSubmitMs == 0.0
+                ? renderMillis : averageMeshSubmitMs * 0.82 + renderMillis * 0.18;
+        if (averageMeshSubmitMs > 4.0) {
+            adaptiveDrawBudget = Math.max(16_000, (int) (adaptiveDrawBudget * 0.85));
+        } else if (averageMeshSubmitMs < 2.0) {
+            adaptiveDrawBudget = Math.min(192_000, adaptiveDrawBudget + 4_000);
         }
     }
 
@@ -574,6 +625,8 @@ public final class FarTerrainRenderer {
         activeLevel = null;
         revision++;
         lastWorkerError = "";
+        averageMeshSubmitMs = 0.0;
+        adaptiveDrawBudget = 72_000;
         DESIRED.clear();
         MESHES.clear();
         FAILED.clear();
