@@ -13,6 +13,7 @@ import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
+import name.vantaclient.client.integration.VantaLanHostingService;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -50,6 +51,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyHudHitboxGeometry(context);
         verifyKeybindCaptureLifecycle(context);
         verifyUiMotion(context);
+        verifyWorldShareStateWithoutWorld(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -86,10 +88,30 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         configureViewport(context, 960, 540, 2);
         captureIntegrationsLibrary(context, screen, "960x540-gui2");
 
+        configureViewport(context, 1280, 720, 1);
+        captureWorldShareScreen(context, screen, "1280x720-gui1");
+        configureViewport(context, 960, 540, 2);
+        captureWorldShareScreen(context, screen, "960x540-gui2");
+
         context.setScreen(() -> null);
         context.waitTicks(1);
     }
 
+
+    private static void verifyWorldShareStateWithoutWorld(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            VantaLanHostingService.Status status = VantaLanHostingService.status();
+            if (status.state() != VantaLanHostingService.State.NO_WORLD || status.port() != -1) {
+                throw new AssertionError("World sharing must report NO_WORLD when no integrated server exists: "
+                        + status);
+            }
+            VantaLanHostingService.Status start = VantaLanHostingService.start(
+                    net.minecraft.world.level.GameType.SURVIVAL, false);
+            if (start.state() != VantaLanHostingService.State.NO_WORLD || start.port() != -1) {
+                throw new AssertionError("World sharing must not try to publish a missing world: " + start);
+            }
+        });
+    }
 
     private static void verifyUiMotion(ClientGameTestContext context) {
         context.runOnClient(client -> {
@@ -637,6 +659,31 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         } catch (java.io.IOException exception) {
             throw new AssertionError("Could not verify integration details screenshot: "
                     + detailsScreenshot, exception);
+        }
+
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    private static void captureWorldShareScreen(ClientGameTestContext context,
+                                                 VantaSettingsScreen settingsScreen,
+                                                 String viewportLabel) {
+        VantaWorldShareScreen shareScreen = context.computeOnClient(
+                client -> new VantaWorldShareScreen(settingsScreen));
+        context.setScreen(() -> shareScreen);
+        context.waitForScreen(VantaWorldShareScreen.class);
+        context.waitTicks(3);
+
+        Path screenshot = context.takeScreenshot("vanta-world-share-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce world-sharing screenshot: " + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("World-sharing screenshot is unexpectedly small: " + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify world-sharing screenshot: " + screenshot, exception);
         }
 
         context.setScreen(() -> settingsScreen);

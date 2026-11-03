@@ -72,7 +72,7 @@ jobs:
           find build/run/clientGameTest/screenshots -type f -name '*.png' -maxdepth 1 -print
           count=$(find build/run/clientGameTest/screenshots -maxdepth 1 -type f -name '*.png' | wc -l)
           echo "Captured screenshot count: $count"
-          test "$count" -eq 46
+          test "$count" -eq 48
 
       - name: Upload Minecraft screenshots
         if: always()
