@@ -180,6 +180,9 @@ public final class VantaIntegrationsScreen extends Screen {
                 () -> modScanInProgress ? "SCANNING…" : filteredMods().size() + " / " + availableMods.size(),
                 VantaUiTheme.TEXT_MUTED));
         content.add(heading);
+        if (modScanInProgress) {
+            content.add(VantaUiNode.progressIndicator("Scanning local mod inventory").height(30));
+        }
 
         VantaUiNode cards = VantaUiNode.column(8, 8)
                 .flex(1)

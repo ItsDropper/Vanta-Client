@@ -159,6 +159,9 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 () -> busy ? "WORKING…" : trim(status, 24),
                 VantaUiTheme.TEXT_MUTED).flex(1).align(VantaUiNode.Alignment.END));
         main.add(heading);
+        if (busy) {
+            main.add(VantaUiNode.progressIndicator("Working…").height(30));
+        }
 
         VantaUiNode cards = VantaUiNode.column(8, 8)
                 .flex(1)
