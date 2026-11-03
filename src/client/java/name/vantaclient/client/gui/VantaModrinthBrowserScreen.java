@@ -81,13 +81,15 @@ public final class VantaModrinthBrowserScreen extends Screen {
         identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
         identity.add(VantaUiNode.title("Modrinth"));
         header.add(identity);
-        header.add(VantaUiNode.text("Minecraft "
-                + FabricLoader.getInstance().getModContainer("minecraft")
-                        .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
-                        .orElse("unknown"),
-                VantaUiTheme.TEXT_MUTED));
+        if (width >= WIDE_LAYOUT_THRESHOLD) {
+            header.add(VantaUiNode.text("Minecraft "
+                    + FabricLoader.getInstance().getModContainer("minecraft")
+                            .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
+                            .orElse("unknown"),
+                    VantaUiTheme.TEXT_MUTED));
+        }
         header.add(VantaUiNode.button("Back", VantaUiNode.Icon.OVERVIEW,
-                this::onClose).size(86, 30));
+                this::onClose).size(82, 30));
         root.add(header);
 
         if (!installedView) {
@@ -99,14 +101,14 @@ public final class VantaModrinthBrowserScreen extends Screen {
             search.add(VantaUiNode.textField("Search Fabric mods…",
                     () -> searchQuery,
                     value -> searchQuery = value,
-                    100).flex(1));
+                    100).flex(1).minSize(54, 30));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::search).size(84, 30).enabled(!busy));
+                    this::search).size(66, 30).enabled(!busy));
             search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
                 search();
-            }).size(64, 30).enabled(!busy));
+            }).size(46, 30).enabled(!busy));
             root.add(search);
         }
 
@@ -140,8 +142,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
         heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
         heading.add(VantaUiNode.spacer(1).flex(1));
         heading.add(VantaUiNode.dynamicText(
-                () -> busy ? "WORKING…" : trim(status, 54),
-                VantaUiTheme.TEXT_MUTED).width(310));
+                () -> busy ? "WORKING…" : trim(status, 24),
+                VantaUiTheme.TEXT_MUTED).flex(1).align(VantaUiNode.Alignment.END));
         main.add(heading);
 
         VantaUiNode cards = VantaUiNode.column(8, 8)
@@ -177,17 +179,17 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 .height(32)
                 .align(VantaUiNode.Alignment.CENTER);
         footer.add(VantaUiNode.button("Previous", () -> changePage(-1))
-                .size(78, 30).enabled(!busy && page > 0));
+                .size(64, 30).enabled(!busy && page > 0));
         footer.add(VantaUiNode.dynamicText(
-                () -> "PAGE " + (page + 1) + " / " + pageCount(),
-                VantaUiTheme.TEXT_MUTED));
+                () -> (page + 1) + " / " + pageCount(),
+                VantaUiTheme.TEXT_MUTED).width(34));
         footer.add(VantaUiNode.button("Next", () -> changePage(1))
-                .size(66, 30).enabled(!busy && page + 1 < pageCount()));
+                .size(50, 30).enabled(!busy && page + 1 < pageCount()));
         footer.add(VantaUiNode.spacer(1).flex(1));
         if (enableModId != null) {
-            footer.add(VantaUiNode.button("Enable now*",
+            footer.add(VantaUiNode.button("Enable*",
                     VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
-                    .size(116, 30).enabled(!busy));
+                    .size(88, 30).enabled(!busy));
         }
         main.add(footer);
         body.add(main);
@@ -240,8 +242,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 .background(VantaUiTheme.SURFACE_SELECTED)
                 .align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(trim(project.title(), 46), VantaUiTheme.TEXT_PRIMARY));
-        labels.add(VantaUiNode.text(trim(project.author(), 30), VantaUiTheme.TEXT_MUTED));
+        labels.add(VantaUiNode.text(trim(project.title(), 32), VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(trim(project.author(), 22), VantaUiTheme.TEXT_MUTED));
         top.add(labels);
         card.add(top);
         card.add(VantaUiNode.paragraph(trim(project.description(), 180),
@@ -274,8 +276,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 .background(VantaUiTheme.SURFACE_SELECTED)
                 .align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(trim(mod.name(), 46), VantaUiTheme.TEXT_PRIMARY));
-        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 48),
+        labels.add(VantaUiNode.text(trim(mod.name(), 32), VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 34),
                 VantaUiTheme.TEXT_MUTED));
         top.add(labels);
         card.add(top);
