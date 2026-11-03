@@ -77,7 +77,7 @@ public final class FarTerrainRenderer {
     private static int ticksUntilRefresh;
     private static int ticksUntilAdaptiveUpdate;
     private static int effectiveFarDistance = 512;
-    private static int lastResolution = -1;
+    private static int lastSampleSpacing = -1;
     private static int lastDetailDistance = -1;
     private static int lastConfiguredFarDistance = -1;
     private static int lastPlayerChunkX = Integer.MIN_VALUE;
@@ -120,13 +120,13 @@ public final class FarTerrainRenderer {
 
         int playerChunkX = client.player.chunkPosition().x;
         int playerChunkZ = client.player.chunkPosition().z;
-        int resolution = FarViewFeature.getSampleResolution();
+        int sampleSpacingChunks = FarViewFeature.getSampleSpacingChunks();
         int detailDistance = Math.max(2, FarViewController.getEffectiveRenderDistance());
         int configuredFarDistance = effectiveFarDistance;
 
         boolean movedEnough = Math.abs(playerChunkX - lastPlayerChunkX) >= 4
                 || Math.abs(playerChunkZ - lastPlayerChunkZ) >= 4;
-        boolean settingsChanged = resolution != lastResolution
+        boolean settingsChanged = sampleSpacingChunks != lastSampleSpacing
                 || detailDistance != lastDetailDistance
                 || configuredFarDistance != lastConfiguredFarDistance;
 
@@ -134,11 +134,11 @@ public final class FarTerrainRenderer {
             ticksUntilRefresh = DESIRED_REFRESH_TICKS;
             lastPlayerChunkX = playerChunkX;
             lastPlayerChunkZ = playerChunkZ;
-            lastResolution = resolution;
+            lastSampleSpacing = sampleSpacingChunks;
             lastDetailDistance = detailDistance;
             lastConfiguredFarDistance = configuredFarDistance;
             rebuildDesiredTiles(playerChunkX, playerChunkZ, detailDistance,
-                    configuredFarDistance, resolution);
+                    configuredFarDistance, sampleSpacingChunks);
         }
 
         scheduleMissingTiles(serverLevel);
@@ -172,7 +172,7 @@ public final class FarTerrainRenderer {
     }
 
     private static void rebuildDesiredTiles(int playerChunkX, int playerChunkZ,
-                                             int detailDistance, int farDistance, int resolution) {
+                                             int detailDistance, int farDistance, int sampleSpacingChunks) {
         Set<TileKey> nextDesired = new HashSet<>();
         int rootMinX = Math.floorDiv(playerChunkX - farDistance, ROOT_TILE_SIZE_CHUNKS)
                 * ROOT_TILE_SIZE_CHUNKS;
@@ -187,19 +187,19 @@ public final class FarTerrainRenderer {
             for (int rootZ = rootMinZ; rootZ <= rootMaxZ; rootZ += ROOT_TILE_SIZE_CHUNKS) {
                 collectLeaves(rootX, rootZ, ROOT_TILE_SIZE_CHUNKS,
                         playerChunkX, playerChunkZ, detailDistance, farDistance,
-                        resolution, nextDesired);
+                        sampleSpacingChunks, nextDesired);
             }
         }
 
         List<TileKey> sorted = new ArrayList<>(nextDesired);
         sorted.sort(Comparator.comparingDouble(key -> distanceSquaredToCenter(
                 key, playerChunkX + 0.5, playerChunkZ + 0.5)));
-
-        if (nextDesired.size() > MAX_DESIRED_TILES) {
-            nextDesired.removeIf(key -> distanceSquaredToCenter(key,
-                    playerChunkX + 0.5, playerChunkZ + 0.5)
-                    > (double) farDistance * farDistance * 0.92);
+        if (sorted.size() > MAX_DESIRED_TILES) {
+            sorted = new ArrayList<>(sorted.subList(0, MAX_DESIRED_TILES));
         }
+        nextDesired.clear();
+        nextDesired.addAll(sorted);
+
         DESIRED.clear();
         DESIRED.addAll(nextDesired);
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
@@ -208,7 +208,7 @@ public final class FarTerrainRenderer {
 
     private static void collectLeaves(int minChunkX, int minChunkZ, int size,
                                       int playerChunkX, int playerChunkZ,
-                                      int detailDistance, int farDistance, int resolution,
+                                      int detailDistance, int farDistance, int sampleSpacingChunks,
                                       Set<TileKey> output) {
         double nearestDistance = distanceToRectangle(playerChunkX + 0.5, playerChunkZ + 0.5,
                 minChunkX, minChunkZ, minChunkX + size, minChunkZ + size);
@@ -225,24 +225,23 @@ public final class FarTerrainRenderer {
         if (size > desiredSize && size > MIN_TILE_SIZE_CHUNKS) {
             int half = size / 2;
             collectLeaves(minChunkX, minChunkZ, half, playerChunkX, playerChunkZ,
-                    detailDistance, farDistance, resolution, output);
+                    detailDistance, farDistance, sampleSpacingChunks, output);
             collectLeaves(minChunkX + half, minChunkZ, half, playerChunkX, playerChunkZ,
-                    detailDistance, farDistance, resolution, output);
+                    detailDistance, farDistance, sampleSpacingChunks, output);
             collectLeaves(minChunkX, minChunkZ + half, half, playerChunkX, playerChunkZ,
-                    detailDistance, farDistance, resolution, output);
+                    detailDistance, farDistance, sampleSpacingChunks, output);
             collectLeaves(minChunkX + half, minChunkZ + half, half, playerChunkX, playerChunkZ,
-                    detailDistance, farDistance, resolution, output);
+                    detailDistance, farDistance, sampleSpacingChunks, output);
             return;
         }
 
-        int tileResolution = resolutionForDistance(centerDistance, resolution);
+        int tileResolution = resolutionForDistance(size, sampleSpacingChunks);
         output.add(new TileKey(minChunkX, minChunkZ, size, tileResolution));
     }
 
-    private static int resolutionForDistance(double distanceChunks, int profileResolution) {
-        if (distanceChunks >= 1536) return Math.max(4, profileResolution / 2);
-        if (distanceChunks >= 768) return Math.max(4, profileResolution * 3 / 4);
-        return profileResolution;
+    private static int resolutionForDistance(int tileSizeChunks, int targetSpacingChunks) {
+        int requested = (int) Math.ceil(tileSizeChunks / (double) targetSpacingChunks);
+        return Math.max(4, Math.min(64, requested));
     }
 
     private static int desiredTileSize(double distanceChunks) {
@@ -584,7 +583,7 @@ public final class FarTerrainRenderer {
         PENDING.removeIf(work -> work.revision != revision);
         lastPlayerChunkX = Integer.MIN_VALUE;
         lastPlayerChunkZ = Integer.MIN_VALUE;
-        lastResolution = -1;
+        lastSampleSpacing = -1;
         lastDetailDistance = -1;
         lastConfiguredFarDistance = -1;
         effectiveFarDistance = 512;

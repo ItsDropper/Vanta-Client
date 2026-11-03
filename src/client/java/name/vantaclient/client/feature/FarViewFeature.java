@@ -74,12 +74,13 @@ public final class FarViewFeature extends Feature {
         FarViewController.applyCurrentProfile();
     }
 
-    public static int getSampleResolution() {
+    /** Target grid-cell spacing for distant terrain, expressed in chunks. */
+    public static int getSampleSpacingChunks() {
         return switch (getQuality()) {
-            case "PERFORMANCE" -> 4;
-            case "HIGH" -> 12;
-            case "ULTRA" -> 16;
-            default -> 8;
+            case "PERFORMANCE" -> 64;
+            case "HIGH" -> 16;
+            case "ULTRA" -> 8;
+            default -> 32;
         };
     }
 
