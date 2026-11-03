@@ -144,7 +144,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Progress motion must be frame-rate independent: 60 FPS="
                         + atSixtyFps + ", 30 FPS=" + atThirtyFps);
             }
-            if (VantaUiMotion.advancePingPongPhase(0.25f, 1.0f / 60.0f, 0.9f, false) != 1.0f) {
+            if (VantaUiMotion.advancePingPongPhase(0.25f, 1.0f / 60.0f, 0.9f, false) != 0.5f) {
                 throw new AssertionError("Progress motion must remain static when animations are disabled.");
             }
             if (VantaUiMotion.advancePingPongPhase(Float.NaN, 1.0f / 60.0f, 0.9f, true) != 0.0f) {

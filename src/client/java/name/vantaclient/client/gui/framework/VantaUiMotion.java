@@ -43,11 +43,11 @@ public final class VantaUiMotion {
 
     /**
      * Advances an indeterminate ping-pong phase in the range [0, 2). A phase of
-     * 1 is returned when animations are disabled so progress remains stationary.
+     * 0.5 is returned when animations are disabled so progress remains centred.
      */
     public static float advancePingPongPhase(float phase, float deltaSeconds,
                                              float speedPerSecond, boolean animationsEnabled) {
-        if (!animationsEnabled) return 1.0f;
+        if (!animationsEnabled) return 0.5f;
         if (!Float.isFinite(phase) || !Float.isFinite(deltaSeconds)
                 || !Float.isFinite(speedPerSecond) || speedPerSecond <= 0.0f
                 || deltaSeconds <= 0.0f) {
