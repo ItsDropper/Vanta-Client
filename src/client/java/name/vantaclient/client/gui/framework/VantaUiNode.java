@@ -427,7 +427,6 @@ public final class VantaUiNode {
                         : child.intrinsicWidth(font);
                 int childWidth = constrain(requestedWidth, innerWidth,
                         child.minWidth, child.maxWidth);
-                Alignment effectiveAlignment = effectiveAlignment(child);
                 int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
                         ? child.intrinsicHeight(font)
                         : child.preferredHeight >= 0 ? child.preferredHeight
