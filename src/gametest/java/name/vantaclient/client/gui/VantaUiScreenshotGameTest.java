@@ -240,31 +240,89 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         HudEditorScreen editor = context.computeOnClient(client -> new HudEditorScreen(null));
         context.setScreen(() -> editor);
         context.waitForScreen(HudEditorScreen.class);
+        HudElement[] previewElements = new HudElement[2];
+        int[] originalPositions = new int[4];
+        boolean[] originalBackgrounds = new boolean[2];
+        boolean[] originalConnect = new boolean[1];
+        int[] originalConnectionGap = new int[1];
         context.runOnClient(client -> {
             HudManager.init();
-            HudElement editorPreview = HudManager.getElements().stream()
+            HudElement keystrokes = HudManager.getElements().stream()
                     .filter(element -> element.getBackgroundId().equals("KeystrokesHudElement"))
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("Keystrokes HUD is missing from the editor registry."));
-            if (!editorPreview.shouldRender()) {
+            HudElement fps = HudManager.getElements().stream()
+                    .filter(element -> element.getBackgroundId().equals("FpsHudElement"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("FPS HUD is missing from the editor registry."));
+            if (!keystrokes.shouldRender() || !fps.shouldRender()) {
                 throw new AssertionError("Disabled HUD elements must remain previewable in the HUD editor.");
             }
-            VantaClientPreferences.get().setHudBackgroundEnabled(
-                    editorPreview.getBackgroundId(), true);
-            HudSettingsPanel.setSelected(editorPreview);
+
+            previewElements[0] = keystrokes;
+            previewElements[1] = fps;
+            originalPositions[0] = keystrokes.getX();
+            originalPositions[1] = keystrokes.getY();
+            originalPositions[2] = fps.getX();
+            originalPositions[3] = fps.getY();
+
+            VantaClientPreferences preferences = VantaClientPreferences.get();
+            originalBackgrounds[0] = preferences.isHudBackgroundEnabled(keystrokes.getBackgroundId());
+            originalBackgrounds[1] = preferences.isHudBackgroundEnabled(fps.getBackgroundId());
+            originalConnect[0] = preferences.connectHudBackgrounds;
+            originalConnectionGap[0] = preferences.hudBackgroundConnectionGap;
+
+            preferences.connectHudBackgrounds = true;
+            preferences.hudBackgroundConnectionGap = 4;
+            keystrokes.move(90, 110);
+            fps.move(keystrokes.getX() + keystrokes.getHitboxWidth() + 2, keystrokes.getY());
+            preferences.setHudBackgroundEnabled(keystrokes.getBackgroundId(), true);
+            preferences.setHudBackgroundEnabled(fps.getBackgroundId(), true);
+
+            var connected = HudBackgroundRenderer.mergeConnectedBounds(List.of(
+                    new HudBackgroundRenderer.Bounds(
+                            keystrokes.getHitboxX(), keystrokes.getHitboxY(),
+                            keystrokes.getHitboxX() + keystrokes.getHitboxWidth(),
+                            keystrokes.getHitboxY() + keystrokes.getHitboxHeight()),
+                    new HudBackgroundRenderer.Bounds(
+                            fps.getHitboxX(), fps.getHitboxY(),
+                            fps.getHitboxX() + fps.getHitboxWidth(),
+                            fps.getHitboxY() + fps.getHitboxHeight())
+            ), preferences.hudBackgroundConnectionGap);
+            if (connected.size() != 1) {
+                throw new AssertionError("Adjacent HUD elements should share one connected background: "
+                        + connected);
+            }
+            HudSettingsPanel.setSelected(keystrokes);
         });
         context.waitTicks(2);
 
-        Path screenshot = context.takeScreenshot("vanta-hud-editor-" + viewportLabel);
-        if (!Files.isRegularFile(screenshot)) {
-            throw new AssertionError("Minecraft did not produce HUD editor screenshot: " + screenshot);
-        }
         try {
-            if (Files.size(screenshot) < 1_024L) {
-                throw new AssertionError("HUD editor screenshot is unexpectedly small: " + screenshot);
+            Path screenshot = context.takeScreenshot("vanta-hud-editor-" + viewportLabel);
+            if (!Files.isRegularFile(screenshot)) {
+                throw new AssertionError("Minecraft did not produce HUD editor screenshot: " + screenshot);
             }
-        } catch (java.io.IOException exception) {
-            throw new AssertionError("Could not verify HUD editor screenshot: " + screenshot, exception);
+            try {
+                if (Files.size(screenshot) < 1_024L) {
+                    throw new AssertionError("HUD editor screenshot is unexpectedly small: " + screenshot);
+                }
+            } catch (java.io.IOException exception) {
+                throw new AssertionError("Could not verify HUD editor screenshot: " + screenshot, exception);
+            }
+        } finally {
+            context.runOnClient(client -> {
+                VantaClientPreferences preferences = VantaClientPreferences.get();
+                for (int i = 0; i < previewElements.length; i++) {
+                    HudElement element = previewElements[i];
+                    if (element == null) continue;
+                    element.move(originalPositions[i * 2], originalPositions[i * 2 + 1]);
+                    preferences.setHudBackgroundEnabled(
+                            element.getBackgroundId(), originalBackgrounds[i]);
+                }
+                preferences.connectHudBackgrounds = originalConnect[0];
+                preferences.hudBackgroundConnectionGap = originalConnectionGap[0];
+                VantaClientPreferences.save();
+            });
         }
 
         context.setScreen(() -> settingsScreen);
