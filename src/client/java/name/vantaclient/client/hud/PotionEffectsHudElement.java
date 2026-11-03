@@ -107,17 +107,39 @@ public class PotionEffectsHudElement extends HudElement {
         DropperUtilsConfig.save();
     }
 
-    @Override public int getWidth() { return 125; }
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        int widestLabel = 0;
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            refreshPerformanceSnapshot(mc);
+            for (EffectSnapshot effect : performanceSnapshot) {
+                widestLabel = Math.max(widestLabel,
+                        Math.max(mc.font.width(effect.name()), mc.font.width(effect.duration())));
+            }
+        } else if (mc.player != null && mc.level != null) {
+            for (MobEffectInstance effect : mc.player.getActiveEffects()) {
+                String duration = MobEffectUtil.formatDuration(
+                        effect, 1.0F, mc.level.tickRateManager().tickrate()).getString();
+                widestLabel = Math.max(widestLabel,
+                        Math.max(mc.font.width(getEffectName(effect)), mc.font.width(duration)));
+            }
+        }
+        return 22 + widestLabel;
+    }
 
     @Override
     public int getHeight() {
+        Minecraft mc = Minecraft.getInstance();
+        int count;
         if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            Minecraft mc = Minecraft.getInstance();
             refreshPerformanceSnapshot(mc);
-            return Math.max(24, performanceSnapshot.size() * 24);
+            count = performanceSnapshot.size();
+        } else {
+            count = mc.player == null ? 0 : mc.player.getActiveEffects().size();
         }
-        if (Minecraft.getInstance().player == null) return 24;
-        return Math.max(24, Minecraft.getInstance().player.getActiveEffects().size() * 24);
+        if (count <= 0) return 24;
+        return (count - 1) * 24 + Math.max(18, 10 + mc.font.lineHeight);
     }
 
     private static String toRoman(int number) {

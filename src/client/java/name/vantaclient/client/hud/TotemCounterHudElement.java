@@ -29,15 +29,27 @@ public class TotemCounterHudElement extends HudElement {
         if (!TotemCounterFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
-        int count = PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getTotemCount()
-                : mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
         graphics.renderItem(TOTEM_ICON, 0, 0);
-        graphics.drawString(mc.font, String.valueOf(count), 20, 5, 0xFF00FF00);
+        graphics.drawString(mc.font, Integer.toString(getCount(mc)), 20, 5, 0xFF00FF00);
     }
 
-    @Override public int getWidth() { return 45; }
-    @Override public int getHeight() { return 35; }
+    private int getCount(Minecraft mc) {
+        if (mc.player == null) return 0;
+        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? HudPerformanceCache.getTotemCount()
+                : mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
+    }
+
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        return Math.max(16, 20 + mc.font.width(Integer.toString(getCount(mc))));
+    }
+
+    @Override
+    public int getHeight() {
+        return Math.max(16, 5 + Minecraft.getInstance().font.lineHeight);
+    }
 
     @Override
     public void savePosition() {

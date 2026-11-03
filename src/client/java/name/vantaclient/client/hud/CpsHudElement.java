@@ -21,10 +21,7 @@ public final class CpsHudElement extends HudElement {
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!CpsHudFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
-        String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getCpsText()
-                : "CPS  " + ClickRateTracker.getLeftCps() + " | " + ClickRateTracker.getRightCps();
-        graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
+        graphics.drawString(mc.font, getDisplayText(), 0, 0, 0xFFF0F3FA);
     }
 
     @Override public void savePosition() {
@@ -40,6 +37,16 @@ public final class CpsHudElement extends HudElement {
         name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
-    @Override public int getWidth() { return 86; }
-    @Override public int getHeight() { return 10; }
+    private String getDisplayText() {
+        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? HudPerformanceCache.getCpsText()
+                : "CPS  " + ClickRateTracker.getLeftCps() + " | " + ClickRateTracker.getRightCps();
+    }
+
+    @Override
+    public int getWidth() {
+        return Math.max(1, Minecraft.getInstance().font.width(getDisplayText()));
+    }
+
+    @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
 }

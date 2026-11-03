@@ -69,6 +69,17 @@ public final class PerformanceHudElement extends HudElement {
         DropperUtilsConfig.save();
     }
 
-    @Override public int getWidth() { return 130; }
-    @Override public int getHeight() { return 42; }
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        refreshSnapshot(mc);
+        return Math.max(mc.font.width("VANTA PERFORMANCE"),
+                Math.max(mc.font.width(fpsText),
+                        Math.max(mc.font.width(worldText), mc.font.width(tickText))));
+    }
+
+    @Override
+    public int getHeight() {
+        return 31 + Minecraft.getInstance().font.lineHeight;
+    }
 }

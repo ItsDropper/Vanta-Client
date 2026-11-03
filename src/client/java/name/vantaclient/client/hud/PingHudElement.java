@@ -21,16 +21,7 @@ public final class PingHudElement extends HudElement {
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!PingHudFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            graphics.drawString(mc.font, HudPerformanceCache.getPingText(), 0, 0, 0xFFF0F3FA);
-            return;
-        }
-        String value = "PING  --";
-        if (mc.player != null && mc.getConnection() != null) {
-            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
-            if (info != null) value = "PING  " + info.getLatency() + " ms";
-        }
-        graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
+        graphics.drawString(mc.font, getDisplayText(mc), 0, 0, 0xFFF0F3FA);
     }
 
     @Override public void savePosition() {
@@ -46,6 +37,22 @@ public final class PingHudElement extends HudElement {
         name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
-    @Override public int getWidth() { return 92; }
-    @Override public int getHeight() { return 10; }
+    private String getDisplayText(Minecraft mc) {
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            return HudPerformanceCache.getPingText();
+        }
+        if (mc.player != null && mc.getConnection() != null) {
+            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+            if (info != null) return "PING  " + info.getLatency() + " ms";
+        }
+        return "PING  --";
+    }
+
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        return Math.max(1, mc.font.width(getDisplayText(mc)));
+    }
+
+    @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
 }

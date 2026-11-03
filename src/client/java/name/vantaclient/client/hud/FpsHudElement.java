@@ -21,9 +21,7 @@ public final class FpsHudElement extends HudElement {
     @Override protected void renderElement(GuiGraphics graphics) {
         if (!FpsHudFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
-        String value = PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getFpsText() : "FPS  " + mc.getFps();
-        graphics.drawString(mc.font, value, 0, 0, 0xFFF0F3FA);
+        graphics.drawString(mc.font, getDisplayText(mc), 0, 0, 0xFFF0F3FA);
     }
 
     @Override public void savePosition() {
@@ -39,6 +37,16 @@ public final class FpsHudElement extends HudElement {
         name.vantaclient.client.config.DropperUtilsConfig.save();
     }
 
-    @Override public int getWidth() { return 76; }
-    @Override public int getHeight() { return 10; }
+    private String getDisplayText(Minecraft mc) {
+        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                ? HudPerformanceCache.getFpsText() : "FPS  " + mc.getFps();
+    }
+
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        return Math.max(1, mc.font.width(getDisplayText(mc)));
+    }
+
+    @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
 }

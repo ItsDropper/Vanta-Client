@@ -46,8 +46,18 @@ public class DebugHudElement extends HudElement {
         lastScanText = String.format("Last Scan: %.3f ms", AnchorStats.getLastScanTimeMs());
     }
 
-    @Override public int getWidth() { return 120; }
-    @Override public int getHeight() { return 35; }
+    @Override
+    public int getWidth() {
+        refreshSnapshot();
+        Minecraft mc = Minecraft.getInstance();
+        return Math.max(mc.font.width(trackedText),
+                Math.max(mc.font.width(averageScanText), mc.font.width(lastScanText)));
+    }
+
+    @Override
+    public int getHeight() {
+        return 22 + Minecraft.getInstance().font.lineHeight;
+    }
 
     @Override
     public void savePosition() {

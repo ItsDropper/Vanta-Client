@@ -172,9 +172,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             try {
                 armor.setHorizontal(true);
                 int expectedTopExpansion = Math.round(10 * armor.getScale());
-                if (armor.getHitboxY() != armor.getY() - expectedTopExpansion
-                        || armor.getHitboxHeight() != armor.getScaledHeight() + expectedTopExpansion) {
-                    throw new AssertionError("Horizontal armor HUD hitbox must include its durability labels.");
+                if (armor.getHeight() != 20
+                        || armor.getHitboxY() != armor.getY() - expectedTopExpansion
+                        || armor.getHitboxHeight() != armor.getScaledHeight() + expectedTopExpansion
+                        || armor.getWidth() < 82) {
+                    throw new AssertionError("Horizontal armor HUD hitbox must fit its actual label and bar area.");
                 }
                 if (!armor.isHovered(armor.getX() + 4, armor.getY() - Math.max(1, expectedTopExpansion / 2))) {
                     throw new AssertionError("The horizontal armor label area must be part of its draggable hitbox.");
@@ -182,8 +184,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
                 armor.setHorizontal(false);
                 if (armor.getHeight() != 86
-                        || armor.getHitboxHeight() != armor.getScaledHeight()) {
-                    throw new AssertionError("Vertical armor HUD hitbox must tightly fit its four rendered slots.");
+                        || armor.getHitboxHeight() != armor.getScaledHeight()
+                        || armor.getWidth() < 16) {
+                    throw new AssertionError("Vertical armor HUD hitbox must fit its four rendered slots and labels.");
                 }
             } finally {
                 armor.setHorizontal(originalOrientation);

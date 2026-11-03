@@ -99,12 +99,36 @@ public class ArmorHudElement extends HudElement {
         graphics.fill(drawX, drawY + 18, drawX + filled, drawY + 20, color);
     }
 
-    @Override public int getWidth() { return horizontal ? 85 : 50; }
+    @Override
+    public int getWidth() {
+        Minecraft mc = Minecraft.getInstance();
+        int widestDurabilityLabel = 0;
+        for (int index = 0; index < 4; index++) {
+            ItemStack item = PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                    ? HudPerformanceCache.getArmorStack(index)
+                    : mc.player == null ? ItemStack.EMPTY
+                    : mc.player.getItemBySlot(switch (index) {
+                        case 0 -> EquipmentSlot.HEAD;
+                        case 1 -> EquipmentSlot.CHEST;
+                        case 2 -> EquipmentSlot.LEGS;
+                        default -> EquipmentSlot.FEET;
+                    });
+            if (item.isEmpty()) continue;
+            String label = PerformanceOptimizerFeature.INSTANCE.isEnabled()
+                    ? HudPerformanceCache.getArmorDurabilityText(index)
+                    : Integer.toString(item.getMaxDamage() - item.getDamageValue());
+            widestDurabilityLabel = Math.max(widestDurabilityLabel, mc.font.width(label));
+        }
+        return horizontal
+                ? Math.max(82, 67 + widestDurabilityLabel)
+                : Math.max(16, 25 + widestDurabilityLabel);
+    }
 
     @Override
     public int getHeight() {
-        // Four vertical slots occupy 0..86 px (22 px spacing, 20 px final slot).
-        return horizontal ? 35 : 86;
+        // The horizontal layout uses a 10 px label above the 20 px armor/bar area.
+        // The vertical layout uses four 20 px slots separated by 2 px.
+        return horizontal ? 20 : 86;
     }
 
     @Override
