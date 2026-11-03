@@ -56,11 +56,20 @@ public final class VantaMenuStyle {
         if (Math.abs(target - current) < 0.012f) current = target;
         BUTTON_HOVER.put(button, current);
 
-        int idleAlpha = button.isActive() ? 0x32 : 0x18;
-        int hoverAlpha = button.isFocused() ? 0x66 : 0x52;
+        int idleAlpha = button.isActive() ? 0x42 : 0x24;
+        int hoverAlpha = button.isFocused() ? 0x72 : 0x62;
         int surfaceAlpha = Math.round(idleAlpha + (hoverAlpha - idleAlpha) * current);
         fillRounded(graphics, x, y, width, height, 5,
-                (surfaceAlpha << 24) | 0x00E5E9EF);
+                (surfaceAlpha << 24) | 0x00B7BEC8);
+
+        int borderAlpha = Math.round((button.isActive() ? 58 : 34)
+                + ((button.isFocused() ? 172 : 138) - (button.isActive() ? 58 : 34)) * current);
+        int border = withAlpha(0xFFDCE3EC, borderAlpha);
+        graphics.fill(x + 3, y, x + width - 3, y + 1, border);
+        graphics.fill(x + 3, y + height - 1, x + width - 3, y + height, border);
+        graphics.fill(x, y + 3, x + 1, y + height - 3, border);
+        graphics.fill(x + width - 1, y + 3, x + width, y + height - 3, border);
+
         if (current > 0.01f) {
             if (button.isFocused()) {
                 graphics.fill(x + 2, y + 5, x + 3, y + height - 5,
@@ -117,10 +126,10 @@ public final class VantaMenuStyle {
                                            int screenHeight, long elapsedMillis) {
         float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
         int alpha = Math.round(progress * 255.0f);
-        int x = brandLeft(screenWidth);
-        int y = Math.max(12, Math.round(screenHeight * 0.045f));
         int markWidth = screenWidth < 700 ? 42 : 56;
         int markHeight = screenWidth < 700 ? 31 : 41;
+        int x = (screenWidth - markWidth) / 2;
+        int y = Math.max(8, menuTop(screenHeight) - 104);
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
@@ -128,10 +137,10 @@ public final class VantaMenuStyle {
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
-        graphics.drawString(font, ComponentText.brand(), x - 1, y + 51,
-                withAlpha(0xFFF5F7FC, alpha), false);
-        graphics.drawString(font, ComponentText.caption(), x, y + 78,
-                withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)), false);
+        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + 51,
+                withAlpha(0xFFF5F7FC, alpha));
+        graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 78,
+                withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)));
 
     }
 
