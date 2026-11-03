@@ -354,7 +354,14 @@ private static String trim(String value, int maximumLength) {
         return value.substring(0, maximumLength - 1) + "…";
     }
 
-private void toggleFavorite(String id) {
+private void selectInstalledMod(String modId) {
+        if (modId == null || modId.isBlank()) return;
+        selection = Selection.INSTALLED_MOD;
+        selectedModId = modId;
+        rebuildRetainedUi();
+    }
+
+    private void toggleFavorite(String id) {
         if (!preferences.favoriteMods.add(id)) preferences.favoriteMods.remove(id);
         VantaClientPreferences.save();
         rebuildRetainedUi();
