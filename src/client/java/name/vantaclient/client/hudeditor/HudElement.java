@@ -66,7 +66,11 @@ public abstract class HudElement {
     }
 
     public void setScale(float value) {
-        scale = Math.max(0.25f, Math.min(value, 3.0f));
+        scale = clampScale(value);
+    }
+
+    protected static float clampScale(float value) {
+        return Float.isFinite(value) ? Math.max(0.25f, Math.min(value, 3.0f)) : 1.0f;
     }
 
     public int getScaledWidth() {
@@ -86,11 +90,7 @@ public abstract class HudElement {
     }
 
     public final void render(GuiGraphics graphics) {
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(getX(), getY());
-        graphics.pose().scale(scale);
-        renderElement(graphics);
-        graphics.pose().popMatrix();
+        renderScaled(graphics);
     }
 
     protected abstract void renderElement(GuiGraphics graphics);
@@ -102,11 +102,26 @@ public abstract class HudElement {
     public void savePosition() {
     }
 
+    /** Place this element in the center of the current GUI viewport and persist it. */
+    public final void centerOnScreen() {
+        Minecraft mc = Minecraft.getInstance();
+        int screenWidth = Math.max(1, mc.getWindow().getGuiScaledWidth());
+        int screenHeight = Math.max(1, mc.getWindow().getGuiScaledHeight());
+        int targetX = Math.max(0, (screenWidth - getScaledWidth()) / 2);
+        int targetY = Math.max(0, (screenHeight - getScaledHeight()) / 2);
+        xPercent = targetX / (float) screenWidth;
+        yPercent = targetY / (float) screenHeight;
+        savePosition();
+    }
+
     public final void renderScaled(GuiGraphics graphics) {
         graphics.pose().pushMatrix();
-        graphics.pose().translate(getX(), getY());
-        graphics.pose().scale(scale);
-        renderElement(graphics);
-        graphics.pose().popMatrix();
+        try {
+            graphics.pose().translate(getX(), getY());
+            graphics.pose().scale(scale);
+            renderElement(graphics);
+        } finally {
+            graphics.pose().popMatrix();
+        }
     }
 }

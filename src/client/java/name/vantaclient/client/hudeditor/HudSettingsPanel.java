@@ -108,6 +108,9 @@ public final class HudSettingsPanel {
         panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
                 () -> selected == null ? 1.0 : selected.getScale(),
                 value -> { if (selected != null) selected.setScale((float) value); }));
+        panel.add(VantaUiNode.button("Center element", () -> {
+            if (selected != null) selected.centerOnScreen();
+        }).height(30).tooltip("Move the selected HUD element to the center of the screen"));
 
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
         panel.add(VantaUiNode.eyebrow("ALIGNMENT"));

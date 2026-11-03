@@ -139,7 +139,7 @@ public class PotionEffectsHudElement extends HudElement {
 
     @Override
     public void setScale(float value) {
-        scale = Math.max(0.25f, Math.min(value, 3.0f));
+        super.setScale(value);
         DropperUtilsConfig.get().potionHudScale = scale;
         DropperUtilsConfig.save();
     }

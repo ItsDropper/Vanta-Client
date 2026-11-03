@@ -176,7 +176,7 @@ public final class FarTerrainRenderer {
                 && (tickMs <= 0.0 || tickMs < 12.0) && client.getFps() >= 100;
 
         if (overloaded) {
-            effectiveFarDistance = Math.max(64, effectiveFarDistance - 64);
+            effectiveFarDistance = Math.max(Math.min(64, target), effectiveFarDistance - 64);
         } else if (hasHeadroom && effectiveFarDistance < target) {
             effectiveFarDistance = Math.min(target, effectiveFarDistance + 32);
         }

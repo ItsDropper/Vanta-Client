@@ -264,6 +264,7 @@ public class HudEditorScreen extends Screen {
             return true;
         }
         if (event.button() == 0) {
+            HudMouseHandler.updateHover(mouseX, mouseY);
             HudElement hovered = HudMouseHandler.getHovered();
             if (hovered != null) {
                 HudMouseHandler.startDragging(hovered, mouseX, mouseY);
@@ -275,17 +276,20 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
-        boolean moved = HudMouseHandler.hasMoved();
-        HudMouseHandler.release();
-        HudSettingsPanel.mouseReleased();
-        if (toolbarRuntime != null) toolbarRuntime.mouseReleased(event.button());
-        boolean consumedByPanel = panelPointer || toolbarPointer;
-        panelPointer = false;
-        toolbarPointer = false;
-        if (!moved && !consumedByPanel) {
-            HudElement hovered = HudMouseHandler.getHovered();
-            if (hovered != null) HudSettingsPanel.setSelected(hovered);
+        if (event.button() == 0) {
+            boolean moved = HudMouseHandler.hasMoved();
+            boolean consumedByPanel = panelPointer || toolbarPointer;
+            HudMouseHandler.release();
+            HudSettingsPanel.mouseReleased();
+            panelPointer = false;
+            toolbarPointer = false;
+            if (!moved && !consumedByPanel) {
+                HudMouseHandler.updateHover(event.x(), event.y());
+                HudElement hovered = HudMouseHandler.getHovered();
+                if (hovered != null) HudSettingsPanel.setSelected(hovered);
+            }
         }
+        if (toolbarRuntime != null) toolbarRuntime.mouseReleased(event.button());
         return super.mouseReleased(event);
     }
 

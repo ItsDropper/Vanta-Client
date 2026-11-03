@@ -7,36 +7,40 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 ## Foundation
 
-<badge>Implemented</badge>
+<badge>Implemented; interaction coverage still expanding</badge>
 
 - Retained `VantaUiNode` tree, `VantaUiRuntime` layout/input/focus/scroll handling and centralized `VantaUiTheme` tokens.
 - Shared controls include buttons, toggles, sliders, dropdowns, text fields, text, tooltips and vector-style icons.
-- IBM Plex Sans is already bundled and wired through Minecraft's font-provider resources, with its OFL license.
-- UI scale and panel opacity are resolved through shared framework behavior rather than screen-specific duplicate transforms/colors.
+- IBM Plex Sans is bundled and wired through Minecraft's font-provider resources, with its OFL license.
+- UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
+- Remaining framework gaps include draggable scrollbar thumbs, independent dropdown popups, a keybind editor, dialog/progress primitives and dedicated layout/input unit tests.
 
 ## Production migration
 
-<badge>Implemented; visual QA ongoing</badge>
+<badge>Core settings migrated; other screens remain separate</badge>
 
-- `VantaSettingsScreen` is now the primary client settings screen, opened by the GUI key and Mod Menu entry.
+- `VantaSettingsScreen` is the primary client settings screen, opened by the GUI key and Mod Menu entry.
 - Built-in HUD, Visual, Combat and Misc feature categories use the shared framework and retain their existing feature/settings getters, setters and config persistence.
-- Appearance preferences are bound to the existing persisted preference model: accent, animations, compact layout, descriptions, UI scale and panel opacity.
+- Appearance preferences are bound to the persisted preference model: accent, animations, compact layout, descriptions, UI scale and panel opacity.
 - API-contributed mod settings use `VantaIntegrationSettingsScreen`, mapping BOOLEAN, INTEGER, DECIMAL, STRING and ENUM definitions to live framework controls.
-- The old `VantaIntegrationsScreen` is retained as the separate mod-library/browser surface. Its legacy built-in settings entry is no longer the primary settings route.
-- The HUD editor toolbar and selected-element inspector use the same `VantaUiRuntime`, theme and control components. HUD canvas hitboxes/selection outlines remain custom canvas rendering because they represent draggable game elements, not settings widgets.
+- `VantaIntegrationsScreen` remains the separate installed-mod and integration browser with legacy/manual presentation.
+- `VantaModrinthBrowserScreen` remains a separate screen with its own project cards and controls. Its network and installation work runs asynchronously.
+- The HUD editor toolbar and selected-element inspector use the shared runtime and theme. The draggable HUD canvas, selection outlines and hitboxes remain specialized rendering by design.
 
-## Visual verification
+## Automated visual verification
 
-<badge>Real screenshots captured and inspected</badge>
+<badge color="success">Latest screenshot workflow passed</badge>
 
-The GitHub Actions screenshot workflow launches Minecraft 1.21.11. Commit `601f804` passed the 16-image capture and count assertion, and visual review verified the compact HUD inspector below the toolbar at GUI scales 1 and 2. The expanded 32-image matrix passed on commit `b853a96` (GitHub Actions run [41539267292](https://github.com/ItsDropper/Vanta-Client/actions/runs/41539267292)). It covers all built-in categories, Appearance, a feature settings subpage and the HUD editor/inspector across four window/GUI-scale combinations. The artifact was downloaded and visually inspected; the compact toolbar/inspector no longer overlap, and the responsive content remains scrollable at smaller logical viewports.
+The inspected-main baseline, commit `5beed53`, passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)).
 
-## Remaining work / acceptance gates
+The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The latest 36-image artifact passed capture and count checks; its complete image set has not been independently reviewed in this status update.
 
-- Confirm the latest build and screenshot workflow after the final HUD toolbar alignment and subsequent settings-search changes.
-- Review the latest 16-image artifact, especially the HUD editor at 960×540 GUI scale 2.
-- Manually exercise search, feature toggles, feature sliders, addon enum/string controls, dropdown keyboard navigation, screen open/close and HUD drag/selection in a real game session.
-- Confirm behavior with the user's preferred GUI scale and actual HUD element configuration.
-- The separate Modrinth browser and mod-library shell remain independent screens; they are not part of the settings-page tree.
+## Remaining acceptance gates
 
-A successful compile or screenshot capture is not by itself proof of full functional acceptance.
+- Review the latest screenshot artifact, particularly the title screen and HUD editor at 960×540 GUI scale 2.
+- Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation, screen open/close and HUD dragging in a real game session.
+- Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
+- Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
+- The separate Modrinth browser and installed-mod library have not yet been fully migrated to the retained component tree.
+
+A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

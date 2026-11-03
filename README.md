@@ -1,89 +1,73 @@
 # Vanta Client
 
-A Minecraft 1.21.11 Fabric client mod with built-in HUD, visual and gameplay features, a unified settings panel, and a public addon integration API.
+Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines configurable HUD overlays, visual and gameplay utilities, a custom settings interface, a Modrinth browser, and a public addon API.
 
-## Features
+## Feature overview
 
-## HUD System
+### HUD and on-screen information
 
-DropperUtils includes a fully customizable HUD system:
+- FPS, ping, CPS, keystrokes, armor, totem counter, potion effects, debug and performance overlays.
+- A drag-and-drop HUD editor with saved positions, per-element scaling, grid alignment and snap-to-grid.
+- VanillaHUD positioning for the hotbar, crosshair, health, armor, hunger, air, status effects, boss bar, mount health, scoreboard, experience bar and vehicle jump bar.
+- Native vanilla rendering is retained for movable vanilla HUD components.
 
-* Custom HUD Editor
-* Drag and drop HUD positioning
-* Automatic HUD position saving
-* UI scale compatible positioning
-* Per-HUD customization panels
-* Adjustable HUD scaling
-* Modern HUD editor interface
+### Visual and quality-of-life features
 
-### Current HUDs
+- Fullbright, zoom, motion blur, nametag utilities and visual overlays.
+- FarView distant-terrain LOD for singleplayer worlds.
+- Chat timestamps and configurable animation profiles.
+- Sprint/sneak toggles and double-tap sprint controls.
+- Performance diagnostics and opt-in local CrashPatch diagnostics.
 
-* Totem Counter HUD
-* Armor HUD
-* Potion Effects HUD
-* Debug HUD
+### Combat and gameplay utilities
 
-## PvP Features
+- Respawn-anchor optimization and explosion prediction.
+- Low-fire and explosion-effect controls.
+- Saturation display and other client-side HUD utilities.
 
-### Anchor Optimizer
+Features can be enabled independently and retain their existing configuration. The available settings depend on the selected feature.
 
-* Faster anchor placement workflow
-* Improved anchor timing support
-* Explosion prediction
-* Optimized fast anchor techniques
+## FarView limitations
 
-### Other PvP Improvements
+FarView currently renders coarse **base terrain** generated from the integrated singleplayer server. It does not currently represent distant trees, structures, caves, or post-generation block edits. It does not extend multiplayer simulation distance or request full chunks across the configured far range. Its adaptive distance and quality settings are performance controls, not a guarantee of a particular frame rate.
 
-* Low Screen Fire
-* No Explosion Effects
-* No Fire Overlay
+## Mod library and hot-loading
 
-## Visual Features
+The in-game mod library discovers installed Fabric mods and can open compatible Mod Menu configuration screens or Vanta addon settings. The Modrinth browser searches and installs compatible Fabric projects with required dependencies.
 
-* Fullbright
-* Zoom
-* Customizable quality of life improvements
-* Lightweight visual enhancements
+The optional **Enable now** path is experimental. It is not a replacement for Fabric Loader: it cannot apply Mixins or access wideners and cannot guarantee rollback after a failed entrypoint. Restart Minecraft after changing a mod JAR or when a session-load attempt fails.
 
-## Vanta Client Settings
-
-The in-game panel provides:
-- Vanta Client appearance preferences and persistent UI customization
-- Built-in feature categories for HUD, Visual, Combat, and Misc
-- An installed-mod browser populated from Fabric Loader metadata
-- Direct configuration controls for mods that register with the Vanta Client API
-- Optional hand-off to Mod Menu for mods that provide their own config screens
-
-Mod Menu is optional. Vanta Client exposes its settings through Mod Menu's public API when it is installed.
-
-## Vanta Client Integration API
+## Vanta Client integration API
 
 Third-party Fabric mods can register typed settings through the public API. See [docs/API.md](docs/API.md) for the API v1 contract and integration example.
 
+Mod Menu is optional. When installed, Vanta exposes its settings through Mod Menu's public API and can hand off to compatible mods' own configuration screens.
+
 ## Installation
 
-1. Install Fabric Loader
-2. Install Fabric API
-3. Download Vanta Client
-4. Place the mod file into your `.minecraft/mods` folder
+1. Install Fabric Loader for Minecraft 1.21.11.
+2. Install Fabric API.
+3. Place the Vanta Client JAR in the instance's `.minecraft/mods` directory.
+4. Launch the game and open Vanta Client using its configured GUI key.
 
 ## Requirements
 
-* Minecraft 1.21.11
-* Fabric Loader
-* Fabric API
+- Minecraft 1.21.11
+- Fabric Loader
+- Fabric API
+- Java 21 runtime (provided by a compatible Minecraft launcher)
+
+Mod Menu is optional.
 
 ## Development
 
-Built with:
+The project uses Java 21, Fabric Loom and official Mojang mappings. Build with:
 
-* Java
-* Fabric API
-* Minecraft Client API
+```sh
+./gradlew build
+```
 
-## Contributing
-
-Suggestions, bug reports, and contributions are welcome.
+The UI screenshot workflow launches the real Minecraft client through Fabric Client GameTests. See [docs/ui/SCREENSHOT_AUTOMATION.md](docs/ui/SCREENSHOT_AUTOMATION.md).
 
 ## License
 

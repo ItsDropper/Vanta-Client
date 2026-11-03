@@ -161,6 +161,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
             try { return ModrinthBrowserService.search(query); }
             catch (Exception exception) { throw new java.util.concurrent.CompletionException(exception); }
         }).whenComplete((result, error) -> minecraft.execute(() -> {
+            if (closed) return;
             busy = false;
             if (error != null) {
                 status = "Search failed: " + safeMessage(error);
@@ -225,6 +226,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
             try { return ModrinthBrowserService.install(project.id()); }
             catch (Exception exception) { throw new java.util.concurrent.CompletionException(exception); }
         }).whenComplete((result, error) -> minecraft.execute(() -> {
+            if (closed) return;
             busy = false;
             if (error != null) {
                 status = "Install failed: " + safeMessage(error);

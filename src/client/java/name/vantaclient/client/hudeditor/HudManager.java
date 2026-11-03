@@ -13,10 +13,12 @@ import name.vantaclient.client.hud.VanillaHudElement;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class HudManager {
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
+    private static final List<HudElement> READ_ONLY_ELEMENTS = Collections.unmodifiableList(ELEMENTS);
     private static final List<HudElement> ACTIVE_ELEMENTS = new ArrayList<>();
     private static boolean initialized = false;
     private static boolean visibilityInitialized = false;
@@ -70,6 +72,6 @@ public class HudManager {
 
     public static List<HudElement> getElements() {
         init();
-        return ELEMENTS;
+        return READ_ONLY_ELEMENTS;
     }
 }

@@ -1,5 +1,7 @@
 package name.vantaclient.client.hudeditor;
 
+import java.util.List;
+
 public class HudMouseHandler {
 
     private static HudElement dragging;
@@ -58,8 +60,10 @@ public class HudMouseHandler {
 
         hovered = null;
 
-        for (HudElement element : HudManager.getElements()) {
-
+        List<HudElement> elements = HudManager.getElements();
+        // Rendering is forward-order, so the last overlapping element is visually on top.
+        for (int index = elements.size() - 1; index >= 0; index--) {
+            HudElement element = elements.get(index);
             if (element.isHovered(mouseX, mouseY)) {
                 hovered = element;
                 return;

@@ -28,7 +28,11 @@ public final class FarViewController {
     private FarViewController() {}
 
     public static void tick(Minecraft client) {
-        if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null) return;
+        if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null) {
+            // Restore the user's options when leaving a world, not only when manually disabling FarView.
+            disable();
+            return;
+        }
 
         captureOriginalOptions(client);
         updateAdaptiveDistance(client);
@@ -75,7 +79,7 @@ public final class FarViewController {
                 && (tickMs <= 0.0 || tickMs < 12.0) && client.getFps() >= 100;
 
         if (overloaded) {
-            adaptiveDistance = Math.max(MIN_ADAPTIVE_DISTANCE, adaptiveDistance - 2);
+            adaptiveDistance = Math.max(Math.min(MIN_ADAPTIVE_DISTANCE, target), adaptiveDistance - 2);
         } else if (hasHeadroom && adaptiveDistance < target) {
             adaptiveDistance = Math.min(target, adaptiveDistance + 1);
         }
