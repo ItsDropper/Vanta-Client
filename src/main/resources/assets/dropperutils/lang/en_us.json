@@ -2,6 +2,8 @@
   "key.dropperutils.fullbright": "Toggle Fullbright",
   "key.dropperutils.zoom": "Zoom",
   "key.dropperutils.gui": "Open Menu",
+  "key.dropperutils.sprint_toggle": "Toggle Sprint",
+  "key.dropperutils.sneak_toggle": "Toggle Sneak",
 
   "key.category.dropperutils.category": "DropperUtils"
 }
