@@ -20,15 +20,19 @@ The project uses official Mojang mappings and split main/client source sets. Cli
 
 ## 2. Actual screen ownership
 
-The active configuration entry point is \`VantaIntegrationsScreen\`, opened by the GUI key in the client event path. \`ClickGuiScreen.init()\` redirects to the unified screen; it is a legacy compatibility path, not the main user-facing ClickGUI.
+The GUI key opens `VantaIntegrationsScreen`, which owns the installed-mod library and selected-mod details. Its header links to `VantaSettingsScreen`, `VantaModrinthBrowserScreen` and `HudEditorScreen`. Built-in feature categories, feature settings and appearance preferences live in `VantaSettingsScreen`; third-party Mod Menu/config screens remain external handoffs.
 
+`ClickGuiScreen.init()` redirects to the unified integrations screen and is a legacy compatibility path, not the main user-facing ClickGUI. The HUD editor remains a distinct interaction surface because its canvas selection and dragging model differs from ordinary settings widgets.
 Other distinct screens include the Modrinth browser and \`HudEditorScreen\`. The HUD editor is a different interaction surface from the settings panel and should not be collapsed into ordinary settings widgets.
 
 ## 3. Current implementation
 
-- \`VantaIntegrationsScreen\` owns section navigation, built-in features, installed-mod discovery, integration settings, appearance preferences and library navigation. It draws its shell/content manually and registers Minecraft widgets for interactive controls.
-- \`VantaPanelButton\`, \`VantaToggleSwitch\` and \`FeatureSliderWidget\` independently implement appearance and interaction behavior.
-- The active built-in feature settings use \`Feature\`, \`FeatureRegistry\` and \`SettingRegistry\`; the public addon API exposes typed \`SettingDefinition\` values and must remain compatible.
+- `VantaSettingsScreen` uses `VantaUiNode`, `VantaUiRuntime` and `VantaUiTheme` for built-in HUD, Visual, Combat and Misc categories, feature settings and appearance preferences.
+- `VantaIntegrationsScreen` uses the retained runtime for installed-mod inventory, favorites, details and configuration handoff. Its former manual-widget renderer and duplicated settings branches have been removed.
+- `VantaModrinthBrowserScreen` also uses the retained runtime for discover/search, installed state, pagination and install actions; network work remains asynchronous.
+- Local mod inventory refresh enumerates JAR metadata on a worker thread and does not invoke entrypoints. Experimental session loading is a separate, explicit per-mod action.
+- The public addon API still exposes typed `SettingDefinition` values; `VantaIntegrationSettingsScreen` maps supported types into retained controls.
+- Older `VantaPanelButton`, `VantaToggleSwitch` and `FeatureSliderWidget` implementations remain for legacy/compatibility surfaces, not as the rendering foundation for active settings and library routes.
 - Legacy \`ClickGuiScreen\`, \`SettingsPanel\` and \`Setting\` implementations contain their own widget/render behavior and should not become the new framework template.
 - \`HudRenderer\` delegates to \`HudManager\`; \`HudElement\` objects own in-game HUD positioning/rendering; \`HudEditorScreen\` and \`HudMouseHandler\` separately manage editor presentation and pointer state.
 
@@ -36,12 +40,12 @@ Other distinct screens include the Modrinth browser and \`HudEditorScreen\`. The
 
 \`VantaClientPreferences\` persists accent preset, animation preference, compact mode, descriptions, UI scale, panel opacity, HUD grid/snap, and favorite mods. This is a useful existing source of truth, but the old renderer has additional hardcoded surfaces and state colors. Accent selection alone is not a complete theme system.
 
-The main settings panel uses a 920×540 logical design and coordinate conversion helpers in \`VantaPanelButton\`. The new framework must own one consistent mapping between Minecraft GUI-scaled mouse coordinates and layout coordinates. Do not apply independent widget and pose-stack scaling twice.
+The settings and library screens use `VantaUiRuntime` to map Minecraft GUI-scaled mouse coordinates into logical layout coordinates and apply one shared scale transform. The framework owns pointer hit-testing, focus, clipping, scrolling and floating dropdown overlays; screens should not layer a second widget-specific scaling conversion on top.
 
 ## 5. Highest-impact limitations
 
-1. The retained framework still needs broader interaction tests beyond screenshot coverage.
-2. The external Mod Menu screens supplied by third-party mods remain outside Vanta's visual and interaction framework.
+1. The retained framework still needs broader interaction tests beyond targeted smoke tests and screenshot coverage.
+2. Keybind editor, generic dialog/progress components and comprehensive layout/input tests remain unfinished.
 3. External mods that provide their own Mod Menu config screens remain outside Vanta's framework control.
 4. The HUD canvas selection/drag overlay intentionally remains specialized rendering; only its toolbar and inspector use the shared component runtime.
 5. Manual gameplay-session validation and performance profiling remain outstanding.
