@@ -12,6 +12,7 @@ import net.minecraft.client.gui.components.SplashRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import org.spongepowered.asm.mixin.Mixin;
@@ -160,9 +161,9 @@ public abstract class TitleScreenMixin {
 
 
     @Redirect(method = "render", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I"))
+            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;III)I"))
     private int vanta$hideVanillaCopyright(GuiGraphics graphics, Font font,
-                                           Component text, int x, int y, int color) {
+                                           FormattedCharSequence text, int x, int y, int color) {
         // Vanilla title-screen copyright is replaced by the Vanta footer.
         return 0;
     }
