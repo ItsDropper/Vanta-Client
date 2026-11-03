@@ -55,6 +55,8 @@ public final class FarTerrainRenderer {
     private static final int MAX_QUEUED_TILE_JOBS = 96;
     private static final int MAX_DRAW_QUADS = 96_000;
     private static final int MAX_DESIRED_TILES = 4096;
+    // Keep the CPU-side LOD cache bounded even at 2,048 chunks and ULTRA quality.
+    private static final long MAX_MESH_CACHE_BYTES = 48L * 1024L * 1024L;
     private static final int SKIRT_MIN_DEPTH = 24;
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
@@ -74,6 +76,7 @@ public final class FarTerrainRenderer {
     );
 
     private static final Map<TileKey, TileMesh> MESHES = new HashMap<>();
+    private static long cachedMeshBytes;
     private static List<TileKey> orderedTiles = List.of();
 
     private static ServerLevel activeLevel;
@@ -211,6 +214,7 @@ public final class FarTerrainRenderer {
         DESIRED.addAll(nextDesired);
         FAILED.removeIf(key -> !nextDesired.contains(key));
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
+        recalculateMeshCacheBytes();
         orderedTiles = List.copyOf(sorted);
     }
 
@@ -285,9 +289,17 @@ public final class FarTerrainRenderer {
                         TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
                                 biomeSource, climateSampler, seaLevel);
                         if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
-                    } catch (RuntimeException error) {
-                        FAILED.add(key);
-                        lastWorkerError = error.getClass().getSimpleName() + ": " + error.getMessage();
+                    } catch (RuntimeException | LinkageError error) {
+                        // A job from an old world revision must never poison the new world's tile state.
+                        if (taskRevision == revision && DESIRED.contains(key)) {
+                            FAILED.add(key);
+                            String message = error.getMessage();
+                            lastWorkerError = error.getClass().getSimpleName()
+                                    + (message == null || message.isBlank() ? "" : ": " + message);
+                            if (lastWorkerError.length() > 180) {
+                                lastWorkerError = lastWorkerError.substring(0, 177) + "...";
+                            }
+                        }
                     } finally {
                         PENDING.remove(workKey);
                     }
@@ -392,8 +404,25 @@ public final class FarTerrainRenderer {
             TileMesh mesh = COMPLETED.poll();
             if (mesh == null) break;
             if (DESIRED.contains(mesh.key)) {
-                MESHES.put(mesh.key, mesh);
+                TileMesh previous = MESHES.put(mesh.key, mesh);
+                if (previous != null) cachedMeshBytes -= previous.estimatedBytes();
+                cachedMeshBytes += mesh.estimatedBytes();
             }
+        }
+        trimMeshCache();
+    }
+
+    private static void recalculateMeshCacheBytes() {
+        cachedMeshBytes = 0L;
+        for (TileMesh mesh : MESHES.values()) cachedMeshBytes += mesh.estimatedBytes();
+    }
+
+    private static void trimMeshCache() {
+        if (cachedMeshBytes <= MAX_MESH_CACHE_BYTES) return;
+        // orderedTiles is nearest-first; discard the least useful distant meshes first.
+        for (int i = orderedTiles.size() - 1; i >= 0 && cachedMeshBytes > MAX_MESH_CACHE_BYTES; i--) {
+            TileMesh removed = MESHES.remove(orderedTiles.get(i));
+            if (removed != null) cachedMeshBytes -= removed.estimatedBytes();
         }
     }
 
@@ -633,6 +662,7 @@ public final class FarTerrainRenderer {
         adaptiveDrawBudget = 36_000;
         DESIRED.clear();
         MESHES.clear();
+        cachedMeshBytes = 0L;
         FAILED.clear();
         orderedTiles = List.of();
         COMPLETED.clear();
@@ -654,11 +684,17 @@ public final class FarTerrainRenderer {
         String suffix = lastWorkerError.isBlank() ? "" : " | worker warning: " + lastWorkerError;
         return "LOD tiles: " + MESHES.size() + "/" + DESIRED.size()
                 + " ready | " + WORKER.getQueue().size() + " queued | " + FAILED.size()
-                + " failed | range " + effectiveFarDistance + " chunks" + suffix;
+                + " failed | cache " + (cachedMeshBytes / (1024 * 1024)) + "/"
+                + (MAX_MESH_CACHE_BYTES / (1024 * 1024)) + " MiB | range "
+                + effectiveFarDistance + " chunks" + suffix;
     }
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
     private record TileMesh(TileKey key, int originX, int originZ, int spanBlocks,
-                            int[] heights, int[] colors) {}
+                            int[] heights, int[] colors) {
+        private long estimatedBytes() {
+            return ((long) heights.length + colors.length) * Integer.BYTES;
+        }
+    }
 }
