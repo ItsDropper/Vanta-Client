@@ -52,7 +52,10 @@ Fabric writes screenshots to `build/run/clientGameTest/screenshots/`; the workfl
 
 - Run [41537246163](https://github.com/ItsDropper/Vanta-Client/actions/runs/41537246163), commit `316b37e`: the original Minecraft client screenshot capture and 16-file assertion passed.
 - Run [41538706648](https://github.com/ItsDropper/Vanta-Client/actions/runs/41538706648), commit `601f804`: build and 16 screenshots passed. The screenshots were reviewed for the compact HUD inspector at GUI scales 1 and 2.
-- Run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221), commit `5beed53`: the current 36-image capture workflow passed.
+- Run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221), commit `5beed53`: the 36-image capture workflow passed.
+- Run [41720774378](https://github.com/ItsDropper/Vanta-Client/actions/runs/41720774378), commit `a25a09a`: build and the 36-image capture passed.
+- Run [41721290497](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290497), commit `6902953`: build and the 36-image capture passed.
+- Run [41721788364](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788364), commit `b23c391`: build and the 36-image capture passed, including the scrollbar-thumb drag assertion.
 
 ## Limits
 

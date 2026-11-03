@@ -82,7 +82,8 @@ public final class VantaClientPreferences {
         if (!Double.isFinite(instance.panelOpacity) || Math.abs(instance.panelOpacity - 0.92) < 0.0001) {
             instance.panelOpacity = 0.85;
         }
-        instance.panelOpacity = Math.max(0.85, Math.min(0.98, instance.panelOpacity));
+        // Keep config-load bounds aligned with the Appearance slider (0.72–0.98).
+        instance.panelOpacity = Math.max(0.72, Math.min(0.98, instance.panelOpacity));
         if (instance.hudGridSize != 8 && instance.hudGridSize != 16
                 && instance.hudGridSize != 24 && instance.hudGridSize != 32) {
             instance.hudGridSize = 16;

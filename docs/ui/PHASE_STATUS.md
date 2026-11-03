@@ -31,9 +31,13 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 <badge color="success">Latest screenshot workflow passed</badge>
 
-The inspected-main baseline, commit `5beed53`, passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)).
+The baseline commit `5beed53` passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the original 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)). Subsequent implementation batches also passed both workflows:
 
-The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Before taking screenshots, the client GameTest also drags a retained-framework scrollbar thumb and asserts that its content moves. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The latest 36-image artifact passed capture and count checks; its complete image set has not been independently reviewed in this status update.
+- `a25a09a`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41720774435) and [36-image screenshots](https://github.com/ItsDropper/Vanta-Client/actions/runs/41720774378).
+- `6902953`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290457) and [36-image screenshots](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290497).
+- `b23c391`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788283) and [36-image screenshots plus scrollbar-drag assertion](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788364).
+
+The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Before capturing, the client GameTest now drags a retained-framework scrollbar thumb and asserts that its content moves. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The automated workflow verifies screenshot capture and count; the complete latest image set has not been independently reviewed in this session.
 
 ## Remaining acceptance gates
 
