@@ -245,6 +245,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         boolean[] originalBackgrounds = new boolean[2];
         boolean[] originalConnect = new boolean[1];
         int[] originalConnectionGap = new int[1];
+        boolean[] originalSnapToGrid = new boolean[1];
         context.runOnClient(client -> {
             HudManager.init();
             HudElement keystrokes = HudManager.getElements().stream()
@@ -271,7 +272,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             originalBackgrounds[1] = preferences.isHudBackgroundEnabled(fps.getBackgroundId());
             originalConnect[0] = preferences.connectHudBackgrounds;
             originalConnectionGap[0] = preferences.hudBackgroundConnectionGap;
+            originalSnapToGrid[0] = preferences.hudSnapToGrid;
 
+            preferences.hudSnapToGrid = false;
             preferences.connectHudBackgrounds = true;
             preferences.hudBackgroundConnectionGap = 4;
             keystrokes.move(90, 110);
@@ -321,6 +324,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
                 preferences.connectHudBackgrounds = originalConnect[0];
                 preferences.hudBackgroundConnectionGap = originalConnectionGap[0];
+                preferences.hudSnapToGrid = originalSnapToGrid[0];
                 VantaClientPreferences.save();
             });
         }
