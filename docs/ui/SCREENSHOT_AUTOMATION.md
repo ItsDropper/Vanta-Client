@@ -35,9 +35,9 @@ All nine states are captured at four configurations:
 | 960 × 540 | 1 |
 | 960 × 540 | 2 |
 
-Expected output: **38 PNG files**. The workflow independently asserts that exactly 38 screenshots exist and each capture checks for a valid file of at least 1 KiB.
+Expected output: **40 PNG files**. The workflow independently asserts that exactly 40 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
-The 36-image matrix covers the title screen, seven settings pages and the HUD editor at four viewport/GUI-scale combinations. Two additional captures exercise the retained-mode Modrinth browser at 1280×720 GUI scale 1 (two-column cards) and 960×540 GUI scale 2 (single-column compact cards). These Modrinth captures use fixed local preview data and do not depend on the Modrinth API or CDN.
+The 36-image matrix covers the title screen, seven settings pages and the HUD editor at four viewport/GUI-scale combinations. Two additional captures exercise the retained-mode Modrinth browser at 1280×720 GUI scale 1 (two-column cards) and 960×540 GUI scale 2 (single-column compact cards). Two more exercise the retained-mode installed-mod library at the same desktop and compact sizes. All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
 
 ## Interaction smoke check
 
@@ -46,6 +46,7 @@ Before capturing the screenshot matrix, the client GameTest:
 - Verifies that overlapping HUD backgrounds are always unioned (preserving the 80% opacity), adjacent rectangles merge transitively at the configured distance, and a smaller distance keeps separated elements apart.
 - Opens the HUD editor with the Keystrokes HUD selected and a background enabled, including when its in-game feature is disabled.
 - Opens the retained-mode Modrinth browser with a fixed six-project preview dataset and captures both desktop and compact layouts without making network requests.
+- Opens the retained-mode installed-mod library with a fixed six-mod preview dataset and captures both desktop and compact layouts without reading a real mods folder.
 
 These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.
 

@@ -48,6 +48,6 @@ The screenshot matrix covers the title screen, seven settings states and the HUD
 - Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation, screen open/close and HUD dragging in a real game session.
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
 - Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
-- The Modrinth discovery/installation browser now uses the retained component tree, including dynamic project icons that do not rebuild the screen when they arrive. The parent Integrations/installed-mod management screen still uses its legacy widget/render implementation and remains a separate migration task.
+- The Modrinth discovery/installation browser and the main installed-mod library now use the retained component tree, including dynamic icons that do not rebuild the screen when they arrive. The installed-mod details/config route and built-in feature/integration settings still retain legacy widget/render code and are the remaining migration scope.
 
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

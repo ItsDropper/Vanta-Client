@@ -9,6 +9,7 @@ import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
+import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
@@ -69,6 +70,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         captureModrinthBrowser(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureModrinthBrowser(context, screen, "960x540-gui2");
+
+        configureViewport(context, 1280, 720, 1);
+        captureIntegrationsLibrary(context, screen, "1280x720-gui1");
+        configureViewport(context, 960, 540, 2);
+        captureIntegrationsLibrary(context, screen, "960x540-gui2");
 
         context.setScreen(() -> null);
         context.waitTicks(1);
@@ -304,6 +310,45 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
         } catch (java.io.IOException exception) {
             throw new AssertionError("Could not verify Modrinth screenshot: " + screenshot, exception);
+        }
+
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    private static void captureIntegrationsLibrary(ClientGameTestContext context,
+                                                     VantaSettingsScreen settingsScreen,
+                                                     String viewportLabel) {
+        List<ExperimentalModHotLoader.AvailableMod> previewMods = List.of(
+                new ExperimentalModHotLoader.AvailableMod("fabric-api", "Fabric API",
+                        "0.141.4+1.21.11", java.nio.file.Path.of("fabric-api.jar"), ""),
+                new ExperimentalModHotLoader.AvailableMod("sodium", "Sodium",
+                        "0.8.4", java.nio.file.Path.of("sodium.jar"), ""),
+                new ExperimentalModHotLoader.AvailableMod("lithium", "Lithium",
+                        "0.20.0", java.nio.file.Path.of("lithium.jar"), ""),
+                new ExperimentalModHotLoader.AvailableMod("modmenu", "Mod Menu",
+                        "16.0.0", java.nio.file.Path.of("modmenu.jar"), ""),
+                new ExperimentalModHotLoader.AvailableMod("indium", "Indium",
+                        "1.0.36", java.nio.file.Path.of("indium.jar"), ""),
+                new ExperimentalModHotLoader.AvailableMod("entityculling", "Entity Culling",
+                        "1.8.0", java.nio.file.Path.of("entityculling.jar"), "")
+        );
+        VantaIntegrationsScreen library = context.computeOnClient(
+                client -> new VantaIntegrationsScreen(settingsScreen, previewMods));
+        context.setScreen(() -> library);
+        context.waitForScreen(VantaIntegrationsScreen.class);
+        context.waitTicks(3);
+
+        Path screenshot = context.takeScreenshot("vanta-integrations-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce integrations screenshot: " + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("Integrations screenshot is unexpectedly small: " + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify integrations screenshot: " + screenshot, exception);
         }
 
         context.setScreen(() -> settingsScreen);

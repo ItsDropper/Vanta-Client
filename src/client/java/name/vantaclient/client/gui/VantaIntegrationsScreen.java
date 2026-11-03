@@ -21,7 +21,12 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.screens.Screen;
+import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import net.minecraft.network.chat.Component;
 
 import java.util.Comparator;
@@ -46,6 +51,8 @@ public class VantaIntegrationsScreen extends Screen {
     private enum Selection { NONE, BUILTIN_CATEGORY, BUILTIN_SETTINGS, INSTALLED_MOD }
 
     private final Screen parent;
+    private final List<ExperimentalModHotLoader.AvailableMod> previewMods;
+    private VantaUiRuntime runtime;
     private Section section = Section.MODS;
     private Selection selection = Selection.NONE;
     private Category selectedCategory = Category.HUD;
@@ -69,15 +76,26 @@ public class VantaIntegrationsScreen extends Screen {
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; failed initializers may leave changes until Minecraft restarts.";
 
     public VantaIntegrationsScreen(Screen parent) {
+        this(parent, null);
+    }
+
+    VantaIntegrationsScreen(Screen parent,
+                            List<ExperimentalModHotLoader.AvailableMod> previewMods) {
         super(Component.literal("Vanta Client"));
         this.parent = parent;
+        this.previewMods = previewMods == null ? null : List.copyOf(previewMods);
     }
 
     @Override
     protected void init() {
+        if (runtime != null) runtime.dispose();
+        runtime = null;
         preferences = VantaClientPreferences.get();
         openProgress = preferences.animations ? 0.0f : 1.0f;
-        if (!modListInitialized) {
+        if (previewMods != null && !modListInitialized) {
+            availableMods = previewMods;
+            modListInitialized = true;
+        } else if (!modListInitialized) {
             refreshModList();
             modListInitialized = true;
         } else if (modIconTextures.isEmpty() && !availableMods.isEmpty()) {
@@ -85,6 +103,11 @@ public class VantaIntegrationsScreen extends Screen {
             for (ExperimentalModHotLoader.AvailableMod mod : availableMods) {
                 loadModIcon(mod.id(), mod.path(), mod.iconPath());
             }
+        }
+        if (section == Section.MODS
+                && (selection == Selection.NONE || selection == Selection.INSTALLED_MOD)) {
+            rebuildRetainedUi();
+            return;
         }
         if (section == Section.MODS && selection == Selection.NONE) {
             modSearch = new EditBox(font, VantaPanelButton.layoutX(650),
@@ -212,6 +235,289 @@ public class VantaIntegrationsScreen extends Screen {
             studioOpen = false;
             rebuildWidgets();
         });
+    }
+
+    private void rebuildRetainedUi() {
+        if (runtime != null) runtime.dispose();
+        runtime = new VantaUiRuntime(buildRetainedRoot());
+        runtime.setScale((float) preferences.uiScale);
+        runtime.layout(font, width, height);
+    }
+
+    private VantaUiNode buildRetainedRoot() {
+        boolean compact = width < 760;
+        VantaUiNode root = VantaUiNode.column(12, 14)
+                .background(VantaUiTheme.CANVAS)
+                .clipToBounds();
+
+        VantaUiNode header = VantaUiNode.row(10, 0)
+                .height(52)
+                .background(VantaUiTheme.PANEL)
+                .padding(10)
+                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode identity = VantaUiNode.column(2, 0);
+        identity.add(VantaUiNode.eyebrow("VANTA CLIENT / MOD LIBRARY"));
+        identity.add(VantaUiNode.title(selection == Selection.INSTALLED_MOD
+                ? selectedModTitle() : "Installed mods"));
+        header.add(identity.flex(1));
+        if (!compact) {
+            header.add(VantaUiNode.button("Modrinth", VantaUiNode.Icon.SEARCH,
+                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this)))
+                    .size(112, 32));
+            header.add(VantaUiNode.button("HUD editor", VantaUiNode.Icon.HUD,
+                    () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                    .size(104, 32));
+            header.add(VantaUiNode.button("Settings", VantaUiNode.Icon.DISPLAY,
+                    () -> minecraft.setScreen(new VantaSettingsScreen(this)))
+                    .size(92, 32));
+        } else {
+            header.add(VantaUiNode.button("Modrinth", VantaUiNode.Icon.SEARCH,
+                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this)))
+                    .size(90, 30));
+            header.add(VantaUiNode.button("HUD", VantaUiNode.Icon.HUD,
+                    () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                    .size(54, 30));
+        }
+        header.add(VantaUiNode.button("Close", this::onClose).size(compact ? 48 : 62, 32));
+        root.add(header);
+
+        if (selection == Selection.INSTALLED_MOD) {
+            root.add(buildRetainedModDetails());
+            return root;
+        }
+
+        VantaUiNode toolbar = VantaUiNode.row(7, 0)
+                .height(38)
+                .align(VantaUiNode.Alignment.CENTER);
+        toolbar.add(VantaUiNode.textField("Search installed mods…",
+                () -> modSearchQuery, value -> modSearchQuery = value, 64)
+                .flex(1).minSize(70, 32));
+        toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
+                this::rebuildRetainedUi).size(66, 32));
+        toolbar.add(VantaUiNode.button("All", () -> {
+            favoritesOnly = false;
+            sidebarScroll = 0;
+            rebuildRetainedUi();
+        }).size(46, 32).selected(!favoritesOnly));
+        toolbar.add(VantaUiNode.button("★", () -> {
+            favoritesOnly = true;
+            sidebarScroll = 0;
+            rebuildRetainedUi();
+        }).size(42, 32).selected(favoritesOnly));
+        toolbar.add(VantaUiNode.button("Scan", this::scanAllMods).size(54, 32));
+        root.add(toolbar);
+
+        VantaUiNode content = VantaUiNode.column(8, 10)
+                .flex(1)
+                .background(VantaUiTheme.PANEL)
+                .padding(10);
+        VantaUiNode heading = VantaUiNode.row(8, 0)
+                .height(24)
+                .align(VantaUiNode.Alignment.CENTER);
+        List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
+        heading.add(VantaUiNode.eyebrow(favoritesOnly ? "FAVORITE MODS" : "MODS IN THIS INSTANCE"));
+        heading.add(VantaUiNode.spacer(1).flex(1));
+        heading.add(VantaUiNode.text(mods.size() + " / " + availableMods.size(),
+                VantaUiTheme.TEXT_MUTED));
+        content.add(heading);
+
+        VantaUiNode cards = VantaUiNode.column(8, 8)
+                .flex(1)
+                .background(VantaUiTheme.INPUT_SURFACE)
+                .padding(8)
+                .scrollable();
+        if (mods.isEmpty()) {
+            VantaUiNode empty = VantaUiNode.column(8, 12)
+                    .height(140)
+                    .background(VantaUiTheme.PANEL_RAISED)
+                    .align(VantaUiNode.Alignment.CENTER);
+            empty.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW).iconColor(VantaUiTheme.TEXT_MUTED));
+            empty.add(VantaUiNode.title(favoritesOnly ? "No favorite mods yet" : "Your mod library is empty"));
+            empty.add(VantaUiNode.paragraph(favoritesOnly
+                            ? "Mark a mod with the star to keep it in this list."
+                            : "Add Fabric mod JARs to this instance, then scan the mods folder.",
+                    VantaUiTheme.TEXT_MUTED, 2));
+            cards.add(empty);
+        } else {
+            addRetainedModCards(cards, mods, compact ? 1 : 3);
+        }
+        content.add(cards);
+        content.add(VantaUiNode.dynamicText(
+                () -> trim(hotLoadStatus, compact ? 66 : 108),
+                VantaUiTheme.TEXT_MUTED).height(26));
+        root.add(content);
+        return root;
+    }
+
+    private void addRetainedModCards(VantaUiNode cards,
+                                     List<ExperimentalModHotLoader.AvailableMod> mods,
+                                     int columns) {
+        Set<String> hotLoadedIds = new HashSet<>();
+        ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
+        for (int index = 0; index < mods.size(); index += columns) {
+            VantaUiNode row = VantaUiNode.row(8, 0)
+                    .height(132)
+                    .align(VantaUiNode.Alignment.STRETCH);
+            for (int column = 0; column < columns && index + column < mods.size(); column++) {
+                row.add(buildRetainedModCard(mods.get(index + column), hotLoadedIds));
+            }
+            if (columns > 1 && mods.size() - index < columns) {
+                for (int missing = mods.size() - index; missing < columns; missing++) {
+                    row.add(VantaUiNode.spacer(1).flex(1));
+                }
+            }
+            cards.add(row);
+        }
+    }
+
+    private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod mod,
+                                              Set<String> hotLoadedIds) {
+        boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
+        boolean sessionLoaded = hotLoadedIds.contains(mod.id());
+        VantaUiNode card = VantaUiNode.column(6, 9)
+                .flex(1)
+                .height(132)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(9);
+        VantaUiNode top = VantaUiNode.row(8, 0)
+                .height(38)
+                .align(VantaUiNode.Alignment.CENTER);
+        String initial = mod.name().isBlank() ? "?"
+                : mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
+        top.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
+                .size(34, 34)
+                .background(VantaUiTheme.SURFACE_SELECTED)
+                .align(VantaUiNode.Alignment.CENTER));
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(trim(mod.name(), 30), VantaUiTheme.TEXT_PRIMARY));
+        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 34),
+                VantaUiTheme.TEXT_MUTED));
+        top.add(labels);
+        card.add(top);
+        card.add(VantaUiNode.text(fabricLoaded ? "Enabled by Fabric"
+                        : sessionLoaded ? "Session-loaded · experimental"
+                        : "Installed · restart to load",
+                fabricLoaded ? 0xFF78D6A0
+                        : sessionLoaded ? 0xFFFFC978 : VantaUiTheme.TEXT_SECONDARY));
+        VantaUiNode actions = VantaUiNode.row(6, 0)
+                .height(28)
+                .align(VantaUiNode.Alignment.CENTER);
+        actions.add(VantaUiNode.button(preferences.favoriteMods.contains(mod.id()) ? "★" : "☆",
+                () -> toggleFavorite(mod.id())).size(30, 28));
+        actions.add(VantaUiNode.button("Details", () -> selectInstalledMod(mod.id()))
+                .size(62, 28));
+        if (!fabricLoaded && !sessionLoaded) {
+            actions.add(VantaUiNode.button("Hotload", () -> hotLoadMod(mod.id()))
+                    .size(68, 28));
+        } else {
+            actions.add(VantaUiNode.text("ACTIVE", VantaUiTheme.TEXT_MUTED).flex(1));
+        }
+        card.add(actions);
+        return card;
+    }
+
+    private VantaUiNode buildRetainedModDetails() {
+        ExperimentalModHotLoader.AvailableMod mod = availableMods.stream()
+                .filter(candidate -> candidate.id().equals(selectedModId))
+                .findFirst().orElse(null);
+        VantaUiNode details = VantaUiNode.column(10, 14)
+                .flex(1)
+                .background(VantaUiTheme.PANEL)
+                .padding(14)
+                .scrollable();
+        if (mod == null) {
+            details.add(VantaUiNode.title("Mod not found"));
+            details.add(VantaUiNode.text(
+                    "The mod JAR may have been removed or the folder was rescanned.",
+                    VantaUiTheme.TEXT_MUTED));
+        } else {
+            String initial = mod.name().isBlank() ? "?"
+                    : mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
+            VantaUiNode identity = VantaUiNode.row(12, 0)
+                    .height(64)
+                    .align(VantaUiNode.Alignment.CENTER);
+            identity.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
+                    .size(56, 56)
+                    .background(VantaUiTheme.SURFACE_SELECTED)
+                    .align(VantaUiNode.Alignment.CENTER));
+            VantaUiNode labels = VantaUiNode.column(4, 0).flex(1);
+            labels.add(VantaUiNode.title(mod.name()));
+            labels.add(VantaUiNode.text(mod.id() + "  ·  " + mod.version(),
+                    VantaUiTheme.TEXT_MUTED));
+            identity.add(labels);
+            details.add(identity);
+
+            ModDescriptor descriptor = integrations.stream()
+                    .filter(candidate -> candidate.id().equals(mod.id()))
+                    .findFirst().orElse(null);
+            Object configFactory = discoveredConfigFactories.get(mod.id());
+            if (descriptor != null) {
+                details.add(VantaUiNode.button("Open Vanta integration settings",
+                        VantaUiNode.Icon.DISPLAY,
+                        () -> minecraft.setScreen(new VantaIntegrationSettingsScreen(this, descriptor)))
+                        .height(34));
+            } else if (configFactory != null) {
+                details.add(VantaUiNode.button("Open mod settings",
+                        VantaUiNode.Icon.DISPLAY, () -> {
+                            Screen configScreen = ModConfigDiscovery.open(configFactory, this);
+                            if (configScreen != null) minecraft.setScreen(configScreen);
+                        }).height(34));
+            } else if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+                details.add(VantaUiNode.button("Open Mod Menu",
+                        VantaUiNode.Icon.DISPLAY, this::openModMenu).height(34));
+            } else {
+                details.add(VantaUiNode.paragraph(
+                        "This mod does not expose a settings screen that Vanta can safely open. "
+                                + "Install Mod Menu to discover supported configuration screens.",
+                        VantaUiTheme.TEXT_MUTED, 3));
+            }
+            details.add(VantaUiNode.paragraph(
+                    "JAR: " + mod.path().getFileName()
+                            + ". Mods loaded by Fabric cannot be safely unloaded at runtime. "
+                            + "Session hotloading is experimental and restart is the recovery path.",
+                    VantaUiTheme.TEXT_MUTED, 3));
+        }
+        details.add(VantaUiNode.button("Back to mod library", () -> {
+            selection = Selection.NONE;
+            selectedModId = null;
+            rebuildWidgets();
+        }).height(34));
+        return details;
+    }
+
+    private String selectedModTitle() {
+        return availableMods.stream().filter(mod -> mod.id().equals(selectedModId))
+                .map(ExperimentalModHotLoader.AvailableMod::name)
+                .findFirst().orElse("Mod details");
+    }
+
+    private void toggleFavorite(String id) {
+        if (!preferences.favoriteMods.add(id)) preferences.favoriteMods.remove(id);
+        VantaClientPreferences.save();
+        rebuildRetainedUi();
+    }
+
+    private void hotLoadMod(String id) {
+        ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
+        hotLoadStatus = result.summary();
+        notifyHotLoadResult(result);
+        refreshModList();
+        rebuildRetainedUi();
+    }
+
+    private void scanAllMods() {
+        ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
+        hotLoadStatus = result.summary();
+        notifyHotLoadResult(result);
+        List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
+                ExperimentalModHotLoader.getHotLoadedMods();
+        if (!hotLoaded.isEmpty()) {
+            hotLoadStatus += " Session mods: " + hotLoaded.stream()
+                    .map(mod -> mod.name() + (mod.version().isBlank() ? "" : " " + mod.version()))
+                    .limit(5).collect(java.util.stream.Collectors.joining(", ")) + ".";
+        }
+        refreshModList();
+        rebuildRetainedUi();
     }
 
     private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
@@ -763,6 +1069,7 @@ public class VantaIntegrationsScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        if (runtime != null) runtime.tick();
         if (preferences == null || !preferences.animations) {
             openProgress = 1.0f;
         } else {
@@ -772,6 +1079,13 @@ public class VantaIntegrationsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (runtime != null) {
+            graphics.fill(0, 0, width, height, 0x90070D16);
+            runtime.setScale((float) VantaClientPreferences.get().uiScale);
+            runtime.render(graphics, font, width, height, mouseX, mouseY);
+            super.render(graphics, mouseX, mouseY, partialTick);
+            return;
+        }
         int accent = preferences == null ? 0xFF718BFF : preferences.accent.color();
         float rawProgress = Math.min(1.0f, openProgress + 0.16f * partialTick);
         float easedProgress = 1.0f - (float) Math.pow(1.0f - rawProgress, 3.0);
@@ -1108,7 +1422,39 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button(), font)) return true;
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        boolean handled = runtime != null && runtime.mouseReleased(event.button());
+        return handled || super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (runtime != null && runtime.mouseDragged(event.x(), event.y(), event.button())) return true;
+        return super.mouseDragged(event);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        boolean shiftDown = (event.modifiers() & 1) != 0;
+        if (runtime != null && runtime.keyPressed(event.key(), shiftDown)) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (runtime != null && runtime.charTyped(event.codepoint())) return true;
+        return super.charTyped(event);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (runtime != null && runtime.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         double rawMouseX = mouseX;
         double rawMouseY = mouseY;
         mouseX = VantaPanelButton.unlayoutX(mouseX);
@@ -1159,6 +1505,10 @@ public class VantaIntegrationsScreen extends Screen {
 
     @Override
     public void removed() {
+        if (runtime != null) {
+            runtime.dispose();
+            runtime = null;
+        }
         releaseModIcons();
         super.removed();
     }
