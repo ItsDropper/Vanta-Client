@@ -37,6 +37,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private static final int ICON_MAX_DIMENSION = 512;
 
     private final Screen parent;
+    /** Optional deterministic data source used by the real-client UI screenshot test. */
+    private final List<ModrinthBrowserService.Project> initialProjects;
     private VantaUiRuntime runtime;
     private List<ModrinthBrowserService.Project> projects = List.of();
     private String searchQuery = "";
@@ -55,15 +57,27 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private long operationGeneration;
 
     public VantaModrinthBrowserScreen(Screen parent) {
+        this(parent, null);
+    }
+
+    VantaModrinthBrowserScreen(Screen parent,
+                               List<ModrinthBrowserService.Project> initialProjects) {
         super(Component.literal("Vanta Modrinth Library"));
         this.parent = parent;
+        this.initialProjects = initialProjects == null ? null : List.copyOf(initialProjects);
     }
 
     @Override
     protected void init() {
         closed = false;
-        rebuildUi();
-        search();
+        if (initialProjects == null) {
+            rebuildUi();
+            search();
+        } else {
+            projects = initialProjects;
+            status = projects.size() + " local preview projects. Network access is disabled for this UI test.";
+            rebuildUi();
+        }
     }
 
     private void rebuildUi() {

@@ -40,7 +40,7 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `6902953`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290457) and [36-image screenshots](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290497).
 - `b23c391`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788283) and [36-image screenshots plus scrollbar-drag assertion](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788364).
 
-The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Before capturing, the client GameTest now drags a retained-framework scrollbar thumb and asserts that its content moves. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The automated workflow verifies screenshot capture and count; the complete latest image set has not been independently reviewed in this session.
+The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations, plus two deterministic Modrinth browser captures (desktop two-column and compact one-column). Before capturing, the client GameTest now drags a retained-framework scrollbar thumb and asserts that its content moves. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The automated workflow verifies screenshot capture and count; the complete latest image set has not been independently reviewed in this session.
 
 ## Remaining acceptance gates
 
@@ -48,6 +48,6 @@ The screenshot matrix covers the title screen, seven settings states and the HUD
 - Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation, screen open/close and HUD dragging in a real game session.
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
 - Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
-- The separate Modrinth browser and installed-mod library have not yet been fully migrated to the retained component tree.
+- The Modrinth discovery/installation browser now uses the retained component tree, including dynamic project icons that do not rebuild the screen when they arrive. The parent Integrations/installed-mod management screen still uses its legacy widget/render implementation and remains a separate migration task.
 
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

@@ -9,6 +9,7 @@ import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
+import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 
@@ -62,6 +63,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         captureTitleScreen(context, screen, "960x540-gui2");
         capturePages(context, screen, "960x540-gui2");
         captureHudEditor(context, screen, "960x540-gui2");
+
+        configureViewport(context, 1280, 720, 1);
+        captureModrinthBrowser(context, screen, "1280x720-gui1");
+        configureViewport(context, 960, 540, 2);
+        captureModrinthBrowser(context, screen, "960x540-gui2");
 
         context.setScreen(() -> null);
         context.waitTicks(1);
@@ -249,6 +255,51 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
         } catch (java.io.IOException exception) {
             throw new AssertionError("Could not verify HUD editor screenshot: " + screenshot, exception);
+        }
+
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    private static void captureModrinthBrowser(ClientGameTestContext context,
+                                                VantaSettingsScreen settingsScreen,
+                                                String viewportLabel) {
+        List<ModrinthBrowserService.Project> previewProjects = java.util.List.of(
+                new ModrinthBrowserService.Project("fabric-api", "Fabric API",
+                        "Core hooks and compatibility layer used by Fabric mods.",
+                        "Fabric", "", 22_000_000),
+                new ModrinthBrowserService.Project("sodium", "Sodium",
+                        "Rendering optimisation for smoother frame pacing and higher performance.",
+                        "CaffeineMC", "", 18_000_000),
+                new ModrinthBrowserService.Project("lithium", "Lithium",
+                        "General-purpose game logic optimisation.",
+                        "CaffeineMC", "", 8_000_000),
+                new ModrinthBrowserService.Project("modmenu", "Mod Menu",
+                        "Browse installed mods and open the configuration screens they provide.",
+                        "Prospector", "", 35_000_000),
+                new ModrinthBrowserService.Project("indium", "Indium",
+                        "Rendering API compatibility for mods using Fabric rendering hooks.",
+                        "comp500", "", 4_000_000),
+                new ModrinthBrowserService.Project("entityculling", "Entity Culling",
+                        "Skip rendering entities and block entities that are not visible.",
+                        "tr7zw", "", 6_000_000)
+        );
+        VantaModrinthBrowserScreen browser = context.computeOnClient(
+                client -> new VantaModrinthBrowserScreen(settingsScreen, previewProjects));
+        context.setScreen(() -> browser);
+        context.waitForScreen(VantaModrinthBrowserScreen.class);
+        context.waitTicks(3);
+
+        Path screenshot = context.takeScreenshot("vanta-modrinth-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce Modrinth browser screenshot: " + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("Modrinth screenshot is unexpectedly small: " + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify Modrinth screenshot: " + screenshot, exception);
         }
 
         context.setScreen(() -> settingsScreen);
