@@ -103,7 +103,7 @@ public final class VantaMenuStyle {
         float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
         int alpha = Math.round(progress * 255.0f);
         int x = menuLeft(screenWidth);
-        int y = Math.max(24, Math.round(screenHeight * 0.13f));
+        int y = Math.max(12, Math.round(screenHeight * 0.055f));
         int markWidth = 48;
         int markHeight = 35;
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
@@ -217,14 +217,14 @@ public final class VantaMenuStyle {
 
     /** Replaces vanilla copyright/version text with a quiet client footer. */
     public static void renderFooter(GuiGraphics graphics, int screenWidth, int screenHeight) {
-        graphics.fill(0, screenHeight - 15, screenWidth, screenHeight, 0xB8070A10);
+        graphics.fill(0, screenHeight - 24, screenWidth, screenHeight, 0xD8070A10);
         Font font = Minecraft.getInstance().font;
-        graphics.drawString(font, ComponentText.footerLeft(), 12, screenHeight - 10,
+        graphics.drawString(font, ComponentText.footerLeft(), 12, screenHeight - 16,
                 0xFFAAB4C3, false);
         String right = "VANTA CLIENT";
         graphics.drawString(font, ComponentText.footerRight(right),
                 screenWidth - font.width(ComponentText.footerRight(right)) - 12,
-                screenHeight - 10, 0xFFAAB4C3, false);
+                screenHeight - 16, 0xFFAAB4C3, false);
     }
 
     private static String fitName(Font font, String value, int maxWidth) {
