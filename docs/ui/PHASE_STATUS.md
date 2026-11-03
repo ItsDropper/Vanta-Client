@@ -13,7 +13,8 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - Shared controls include buttons, toggles, sliders, dropdowns, text fields, text, tooltips and vector-style icons.
 - IBM Plex Sans is bundled and wired through Minecraft's font-provider resources, with its OFL license.
 - UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
-- Remaining framework gaps include independent dropdown popups, a keybind editor, dialog/progress primitives and a comprehensive layout/input unit-test suite.
+- Dropdowns now use bounded floating overlays outside parent clipping, without layout reflow; keyboard navigation and popup-local wheel scrolling are supported.
+- Remaining framework gaps include a keybind editor, dialog/progress primitives and a comprehensive layout/input unit-test suite.
 
 ## Production migration
 
@@ -45,13 +46,14 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `f58bf71`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729498033) and [40-image screenshots with two connected HUD backgrounds](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729498054).
 - `5209a47`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746806) and [42-image screenshots including installed-mod details at desktop and compact sizes](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746874).
 - `00bab4a`: [README/documentation build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729939536).
+- `3b253f3`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524196) and [42-image real-client screenshots with dropdown overlay regression test](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524317).
 
 The 42-image suite covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations, plus desktop and compact captures of the Modrinth browser, installed-mod library and selected-mod details view. The HUD editor capture enables the FPS and Keystrokes backgrounds, places their hitboxes 2 px apart, and asserts that they become one continuous background. The test restores the previous positions, background toggles, connection distance and snap-to-grid preference afterward. Other client GameTests cover connected-region geometry, armor hitbox dimensions and retained-framework scrollbar dragging. The workflow verifies real Minecraft screenshot production and exact count; the latest images have not been independently reviewed for visual quality in this session.
 
 ## Remaining acceptance gates
 
 - Review the latest screenshot artifact, particularly the title screen and HUD editor at 960×540 GUI scale 2.
-- Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation, screen open/close and HUD dragging in a real game session.
+- Manually exercise search, feature toggles, sliders, addon enum/string settings, dropdown popup positioning and scrolling, screen open/close and HUD dragging in a real game session.
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
 - Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
 - Review the latest 42-image artifact, particularly HUD background grouping, the HUD editor at 960×540 GUI scale 2, compact Modrinth cards and selected-mod details.

@@ -165,12 +165,44 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Dropdown popup did not escape its scrollable parent's scissor.");
             }
 
-            if (!runtime.mouseClicked(popup.x() + 12, popup.y() + 11, 0, client.font)) {
-                throw new AssertionError("Dropdown popup option did not receive the click.");
+            if (!runtime.mouseScrolled(popup.x() + popup.width() - 10,
+                    popup.y() + 10, -2.0)) {
+                throw new AssertionError("Dropdown popup did not capture its own mouse-wheel input.");
             }
-            if (!"Option 0".equals(selected[0]) || runtime.dropdownPopupBounds() != null) {
-                throw new AssertionError("Dropdown popup selection failed or the menu stayed open: "
-                        + selected[0]);
+            VantaUiNode.DropdownPopupBounds scrolledPopup = runtime.dropdownPopupBounds();
+            if (scrolledPopup == null || scrolledPopup.firstOption() != 2) {
+                throw new AssertionError("Scrolling the dropdown did not advance its visible option window: "
+                        + scrolledPopup);
+            }
+
+            if (!runtime.mouseClicked(scrolledPopup.x() + 12, scrolledPopup.y() + 11,
+                    0, client.font)) {
+                throw new AssertionError("Scrolled dropdown option did not receive the click.");
+            }
+            if (!"Option 2".equals(selected[0]) || runtime.dropdownPopupBounds() != null) {
+                throw new AssertionError("Scrolled dropdown option selection failed: " + selected[0]);
+            }
+
+            runtime.layout(client.font, 320, 220);
+            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+                throw new AssertionError("Dropdown did not reopen for keyboard interaction.");
+            }
+            runtime.layout(client.font, 320, 220);
+            if (!runtime.keyPressed(264, false) || !runtime.keyPressed(257, false)) {
+                throw new AssertionError("Dropdown did not accept keyboard navigation and confirmation.");
+            }
+            if (!"Option 3".equals(selected[0]) || runtime.dropdownPopupBounds() != null) {
+                throw new AssertionError("Keyboard dropdown selection failed: " + selected[0]);
+            }
+
+            runtime.layout(client.font, 320, 220);
+            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+                throw new AssertionError("Dropdown did not reopen for parent-scroll dismissal.");
+            }
+            runtime.layout(client.font, 320, 220);
+            if (!runtime.mouseScrolled(scroll.x() + 12, scroll.y() + 12, -1.0)
+                    || runtime.dropdownPopupBounds() != null) {
+                throw new AssertionError("Scrolling the parent viewport did not dismiss its dropdown.");
             }
             runtime.dispose();
         });

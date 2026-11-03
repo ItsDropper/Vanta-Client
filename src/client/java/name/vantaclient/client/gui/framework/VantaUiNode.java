@@ -936,15 +936,19 @@ public final class VantaUiNode {
                         highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
             }
             if (dropdownOptions.size() > bounds.visibleOptions()) {
-                String hint = (bounds.firstOption() + 1) + "–"
-                        + (bounds.firstOption() + bounds.visibleOptions())
-                        + " / " + dropdownOptions.size();
-                String shownHint = fitText(font, hint, Math.max(0, bounds.width() - 12), UI_FONT);
-                if (!shownHint.isEmpty()) {
-                    graphics.drawString(font, styledText(shownHint, UI_FONT),
-                            bounds.x() + bounds.width() - textWidth(font, shownHint, UI_FONT) - 6,
-                            bounds.y() + bounds.height() - 10, VantaUiTheme.TEXT_MUTED);
-                }
+                int trackX = bounds.x() + bounds.width() - 4;
+                int trackY = bounds.y() + 4;
+                int trackHeight = Math.max(1, bounds.height() - 8);
+                int maximumOffset = dropdownOptions.size() - bounds.visibleOptions();
+                int thumbHeight = Math.max(12,
+                        trackHeight * bounds.visibleOptions() / dropdownOptions.size());
+                int thumbTravel = Math.max(0, trackHeight - thumbHeight);
+                int thumbTop = trackY + (maximumOffset == 0 ? 0
+                        : thumbTravel * bounds.firstOption() / maximumOffset);
+                graphics.fill(trackX, trackY, trackX + 2, trackY + trackHeight,
+                        VantaUiTheme.BORDER_SUBTLE);
+                graphics.fill(trackX, thumbTop, trackX + 2, thumbTop + thumbHeight,
+                        VantaUiTheme.TEXT_MUTED);
             }
             return true;
         }

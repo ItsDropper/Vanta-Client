@@ -43,6 +43,7 @@ The 36-image matrix covers the title screen, seven settings pages and the HUD ed
 
 Before capturing the screenshot matrix, the client GameTest:
 - Creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes.
+- Opens a 12-option dropdown near the bottom of a clipped scroll container, verifies that its floating popup stays within the viewport without reflowing the parent, scrolls popup options, selects by mouse and keyboard, and verifies that scrolling the parent dismisses the popup.
 - Verifies that overlapping HUD backgrounds are always unioned (preserving the 80% opacity), adjacent rectangles merge transitively at the configured distance, and a smaller distance keeps separated elements apart.
 - Opens the HUD editor with FPS and Keystrokes backgrounds enabled, places their hitboxes 2 px apart, confirms they merge into one background, and restores their original position and background preferences after capture.
 - Verifies the armor HUD's hitbox includes its horizontal durability label and accurately covers the vertical slot stack.

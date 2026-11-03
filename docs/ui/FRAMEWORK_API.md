@@ -111,7 +111,7 @@ The runtime owns focus, slider pointer capture, hover, dropdown-open state and f
 
 ## Layout invalidation
 
-The runtime automatically remeasures when screen dimensions change. It also invalidates for internal interactions that change component geometry, such as scrolling or dropdown expansion.
+The runtime automatically remeasures when screen dimensions change. It also invalidates for internal interactions that change component geometry, such as scrolling. Opening a dropdown does not change the control's measured height or reflow its parent.
 
 Call \`runtime.invalidateLayout()\` after a screen changes a node's visibility, child list or size-affecting state. The node tree does not currently subscribe to arbitrary observable state changes and cannot infer those mutations.
 
@@ -121,7 +121,8 @@ If the screen replaces the entire composition, dispose the old runtime and creat
 
 - Pointer coordinates are already in Minecraft's GUI-scaled coordinate space.
 - The runtime routes input through the same node tree used for rendering.
-- Parent clip bounds constrain both render and hit testing.
+- Parent clip bounds constrain normal child rendering and hit testing.
+- Open dropdown menus render in a separate overlay pass above parent scissor regions. The popup stays within the logical viewport, shows at most eight options at once, and supports independent wheel scrolling without resizing the source control.
 - Tab / Shift+Tab traverse interactive nodes in tree order.
 - Enter / Space activates the focused button/toggle or confirms an open dropdown.
 - Arrow keys adjust focused sliders and dropdowns.
@@ -137,7 +138,7 @@ The prototype exposes a smoothed CPU-side command-submission timer. It measures 
 ## Current limitations
 
 - Scroll containers support wheel scrolling, clipped pointer input and draggable scrollbar thumbs. The screenshot GameTest includes a targeted thumb-drag smoke assertion, but this is not a comprehensive input-test suite.
-- Dropdown options render in the expanded component and rely on the parent scroll viewport for large lists; no independent virtualized popup list exists.
+- Dropdowns render bounded floating popups outside parent clipping, do not reflow their containing layout, and support wheel scrolling, mouse selection and keyboard navigation. Lists are windowed to at most eight visible options; this is not a virtualized data model.
 - There is no generic icon, keybind editor, dialog, notification, progress or color-picker component yet.
 - The runtime is not a Compose replacement. It does not implement compiler transforms, recomposition effects, coroutine state or general-purpose modifier semantics.
 - No automated layout/input unit test suite has been added; build success only confirms compilation.

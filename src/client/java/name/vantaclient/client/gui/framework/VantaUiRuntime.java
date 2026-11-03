@@ -209,9 +209,10 @@ public final class VantaUiRuntime {
         double logicalMouseY = (mouseY - offsetY) / uiScale;
         if (root.scrollDropdownAt(logicalMouseX, logicalMouseY, amount,
                 Math.max(1, lastWidth), Math.max(1, lastHeight))) return true;
+        boolean popupClosed = root.closeDropdownsExcept(null);
         boolean handled = root.scrollAt(logicalMouseX, logicalMouseY, amount);
-        if (handled) lastWidth = -1;
-        return handled;
+        if (handled || popupClosed) lastWidth = -1;
+        return handled || popupClosed;
     }
 
     public boolean keyPressed(int keyCode, boolean shiftDown) {
