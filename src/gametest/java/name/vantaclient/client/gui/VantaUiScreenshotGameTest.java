@@ -2,6 +2,7 @@ package name.vantaclient.client.gui;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.gui.screens.TitleScreen;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
@@ -35,23 +36,51 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         configureViewport(context, 1280, 720, 1);
         context.setScreen(() -> screen);
         context.waitForScreen(VantaSettingsScreen.class);
+        captureTitleScreen(context, screen, "1280x720-gui1");
         capturePages(context, screen, "1280x720-gui1");
         captureHudEditor(context, screen, "1280x720-gui1");
 
         configureViewport(context, 1280, 720, 2);
+        captureTitleScreen(context, screen, "1280x720-gui2");
         capturePages(context, screen, "1280x720-gui2");
         captureHudEditor(context, screen, "1280x720-gui2");
 
         configureViewport(context, 960, 540, 1);
+        captureTitleScreen(context, screen, "960x540-gui1");
         capturePages(context, screen, "960x540-gui1");
         captureHudEditor(context, screen, "960x540-gui1");
 
         configureViewport(context, 960, 540, 2);
+        captureTitleScreen(context, screen, "960x540-gui2");
         capturePages(context, screen, "960x540-gui2");
         captureHudEditor(context, screen, "960x540-gui2");
 
         context.setScreen(() -> null);
         context.waitTicks(1);
+    }
+
+    private static void captureTitleScreen(ClientGameTestContext context,
+                                            VantaSettingsScreen settingsScreen,
+                                            String viewportLabel) {
+        TitleScreen titleScreen = context.computeOnClient(client -> new TitleScreen());
+        context.setScreen(() -> titleScreen);
+        context.waitForScreen(TitleScreen.class);
+        context.waitTicks(4);
+
+        Path screenshot = context.takeScreenshot("vanta-menu-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce title menu screenshot: " + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("Title menu screenshot is unexpectedly small: " + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify title menu screenshot: " + screenshot, exception);
+        }
+
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
     }
 
     private static void captureHudEditor(ClientGameTestContext context,

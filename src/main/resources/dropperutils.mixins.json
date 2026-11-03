@@ -14,7 +14,9 @@
     "ScreenEffectRendererMixin",
     "AnchorInteractionMixin",
     "AnchorBlockUpdateMixin",
-    "LightTextureMixin"
+    "LightTextureMixin",
+    "AbstractButtonMixin",
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
