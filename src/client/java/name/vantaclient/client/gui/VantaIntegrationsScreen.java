@@ -52,6 +52,7 @@ public class VantaIntegrationsScreen extends Screen {
 
     private final Screen parent;
     private final List<ExperimentalModHotLoader.AvailableMod> previewMods;
+    private final String previewSelectedModId;
     private VantaUiRuntime runtime;
     private Section section = Section.MODS;
     private Selection selection = Selection.NONE;
@@ -81,9 +82,16 @@ public class VantaIntegrationsScreen extends Screen {
 
     VantaIntegrationsScreen(Screen parent,
                             List<ExperimentalModHotLoader.AvailableMod> previewMods) {
+        this(parent, previewMods, null);
+    }
+
+    VantaIntegrationsScreen(Screen parent,
+                            List<ExperimentalModHotLoader.AvailableMod> previewMods,
+                            String previewSelectedModId) {
         super(Component.literal("Vanta Client"));
         this.parent = parent;
         this.previewMods = previewMods == null ? null : List.copyOf(previewMods);
+        this.previewSelectedModId = previewSelectedModId;
     }
 
     @Override
@@ -94,6 +102,11 @@ public class VantaIntegrationsScreen extends Screen {
         openProgress = preferences.animations ? 0.0f : 1.0f;
         if (previewMods != null && !modListInitialized) {
             availableMods = previewMods;
+            if (previewSelectedModId != null && availableMods.stream()
+                    .anyMatch(mod -> mod.id().equals(previewSelectedModId))) {
+                selectedModId = previewSelectedModId;
+                selection = Selection.INSTALLED_MOD;
+            }
             modListInitialized = true;
         } else if (!modListInitialized) {
             refreshModList();

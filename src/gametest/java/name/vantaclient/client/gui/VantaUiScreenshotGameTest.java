@@ -413,6 +413,27 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             throw new AssertionError("Could not verify integrations screenshot: " + screenshot, exception);
         }
 
+        VantaIntegrationsScreen details = context.computeOnClient(
+                client -> new VantaIntegrationsScreen(settingsScreen, previewMods, "sodium"));
+        context.setScreen(() -> details);
+        context.waitForScreen(VantaIntegrationsScreen.class);
+        context.waitTicks(3);
+
+        Path detailsScreenshot = context.takeScreenshot("vanta-integration-details-" + viewportLabel);
+        if (!Files.isRegularFile(detailsScreenshot)) {
+            throw new AssertionError("Minecraft did not produce integration details screenshot: "
+                    + detailsScreenshot);
+        }
+        try {
+            if (Files.size(detailsScreenshot) < 1_024L) {
+                throw new AssertionError("Integration details screenshot is unexpectedly small: "
+                        + detailsScreenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify integration details screenshot: "
+                    + detailsScreenshot, exception);
+        }
+
         context.setScreen(() -> settingsScreen);
         context.waitForScreen(VantaSettingsScreen.class);
     }
