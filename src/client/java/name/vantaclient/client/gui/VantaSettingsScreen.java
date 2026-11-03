@@ -477,12 +477,28 @@ public final class VantaSettingsScreen extends Screen {
         row.add(VantaUiNode.dynamicText(
                 () -> mapping.getTranslatedKeyMessage().getString(),
                 VantaUiTheme.TEXT_SECONDARY));
+        if (hasBindingConflict(mapping)) {
+            row.add(VantaUiNode.text("CONFLICT", 0xFFFFC978)
+                    .tooltip("This shortcut is also assigned to another Minecraft or Vanta action."));
+        }
         row.add(VantaUiNode.button(pendingKeyCapture == mapping ? "WAITING…" : "Change",
                 () -> beginKeyCapture(mapping))
                 .size(88, 30).enabled(pendingKeyCapture == null));
         row.add(VantaUiNode.button("Reset", () -> resetKeyMapping(mapping))
                 .size(62, 30).enabled(pendingKeyCapture == null));
         panel.add(row);
+    }
+
+    boolean hasBindingConflict(KeyMapping mapping) {
+        if (mapping == null || mapping.isUnbound()) return false;
+        String binding = mapping.saveString();
+        for (KeyMapping candidate : Minecraft.getInstance().options.keyMappings) {
+            if (candidate != mapping && !candidate.isUnbound()
+                    && candidate.saveString().equals(binding)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void beginKeyCapture(KeyMapping mapping) {

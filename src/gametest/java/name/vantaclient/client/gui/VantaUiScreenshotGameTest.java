@@ -268,9 +268,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Vanta key mappings were not registered before the Controls test.");
             }
             String originalKey = mapping.saveString();
+            String conflictingKey = Keybinds.fullbrightKey.saveString();
             VantaSettingsScreen screen = new VantaSettingsScreen(null);
-            client.setScreen(screen);
             try {
+                mapping.setKey(InputConstants.getKey(conflictingKey));
+                KeyMapping.resetMapping();
+                if (!screen.hasBindingConflict(mapping)) {
+                    throw new AssertionError("The Controls page did not detect a duplicate Minecraft/Vanta binding.");
+                }
+                mapping.setKey(InputConstants.getKey(originalKey));
+                KeyMapping.resetMapping();
+                client.setScreen(screen);
+
                 screen.beginKeyCapture(mapping);
                 KeyEvent xKey = new KeyEvent(GLFW.GLFW_KEY_X, GLFW.GLFW_KEY_X, 0);
                 if (!Keybinds.isCaptureActive() || !screen.keyPressed(xKey)) {
@@ -304,8 +313,6 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 if (!screen.keyPressed(backspace)) {
                     throw new AssertionError("Backspace was not handled as the unbind command.");
                 }
-                InputConstants.Key unbound = InputConstants.Type.KEYSYM
-                        .getOrCreate(GLFW.GLFW_KEY_UNKNOWN);
                 if (!mapping.isUnbound()) {
                     throw new AssertionError("Backspace did not unbind the selected Vanta shortcut.");
                 }
