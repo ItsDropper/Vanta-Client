@@ -328,6 +328,7 @@ public final class FarTerrainRenderer {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
         int[] colors = new int[side * side];
+        int[] waterColors = new int[side * side];
         int originX = key.chunkX * 16;
         int originZ = key.chunkZ * 16;
         int spanBlocks = key.sizeChunks * 16;
@@ -345,6 +346,8 @@ public final class FarTerrainRenderer {
                 Holder<Biome> biome = biomeSource.getNoiseBiome(
                         QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
                         QuartPos.fromBlock(worldZ), climateSampler);
+                int waterColor = opaqueRgb(biome.value().getWaterColor());
+                waterColors[index] = blendRgb(0xFF28566D, waterColor, 0.58f);
                 colors[index] = terrainColor(height, seaLevel,
                         biome.value().getGrassColor(worldX, worldZ), biome.value().getWaterColor());
             }
@@ -375,7 +378,8 @@ public final class FarTerrainRenderer {
             }
         }
 
-        return new TileMesh(key, originX, originZ, spanBlocks, heights, colors);
+        return new TileMesh(key, originX, originZ, spanBlocks, seaLevel,
+                heights, colors, waterColors);
     }
 
     private static int shadeColor(int color, double brightness) {
@@ -496,6 +500,7 @@ public final class FarTerrainRenderer {
             int side = resolution + 1;
             int[] heights = mesh.heights;
             int[] colors = mesh.colors;
+            int[] waterColors = mesh.waterColors;
             double step = (double) mesh.spanBlocks / resolution;
 
             for (int z = 0; z < resolution && drawnQuads < drawBudget; z++) {
@@ -515,11 +520,26 @@ public final class FarTerrainRenderer {
                     int i10 = i00 + 1;
                     int i01 = i00 + side;
                     int i11 = i01 + 1;
-                    emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
-                            x0, heights[i00], z0, colors[i00],
-                            x0, heights[i01], z1, colors[i01],
-                            x1, heights[i11], z1, colors[i11],
-                            x1, heights[i10], z0, colors[i10]);
+                    boolean submerged = heights[i00] < mesh.seaLevel
+                            && heights[i10] < mesh.seaLevel
+                            && heights[i01] < mesh.seaLevel
+                            && heights[i11] < mesh.seaLevel;
+                    if (submerged) {
+                        // Distant water is a single opaque, biome-tinted sea-level surface.
+                        // Full transparency is intentionally left to the nearby vanilla renderer.
+                        double waterY = mesh.seaLevel + 0.04;
+                        emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
+                                x0, waterY, z0, waterColors[i00],
+                                x0, waterY, z1, waterColors[i01],
+                                x1, waterY, z1, waterColors[i11],
+                                x1, waterY, z0, waterColors[i10]);
+                    } else {
+                        emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
+                                x0, heights[i00], z0, colors[i00],
+                                x0, heights[i01], z1, colors[i01],
+                                x1, heights[i11], z1, colors[i11],
+                                x1, heights[i10], z0, colors[i10]);
+                    }
                     drawnQuads++;
                 }
             }
@@ -623,10 +643,10 @@ public final class FarTerrainRenderer {
 
     private static void emitQuad(VertexConsumer consumer, PoseStack.Pose pose,
                                  double cameraX, double cameraY, double cameraZ,
-                                 double x0, int y0, double z0, int color0,
-                                 double x1, int y1, double z1, int color1,
-                                 double x2, int y2, double z2, int color2,
-                                 double x3, int y3, double z3, int color3) {
+                                 double x0, double y0, double z0, int color0,
+                                 double x1, double y1, double z1, int color1,
+                                 double x2, double y2, double z2, int color2,
+                                 double x3, double y3, double z3, int color3) {
         putVertex(consumer, pose, x0 - cameraX, y0 - cameraY, z0 - cameraZ, color0);
         putVertex(consumer, pose, x1 - cameraX, y1 - cameraY, z1 - cameraZ, color1);
         putVertex(consumer, pose, x2 - cameraX, y2 - cameraY, z2 - cameraZ, color2);
@@ -707,9 +727,9 @@ public final class FarTerrainRenderer {
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
     private record TileMesh(TileKey key, int originX, int originZ, int spanBlocks,
-                            int[] heights, int[] colors) {
+                            int seaLevel, int[] heights, int[] colors, int[] waterColors) {
         private long estimatedBytes() {
-            return ((long) heights.length + colors.length) * Integer.BYTES;
+            return ((long) heights.length + colors.length + waterColors.length) * Integer.BYTES;
         }
     }
 }
