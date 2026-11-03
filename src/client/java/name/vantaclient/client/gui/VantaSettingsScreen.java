@@ -9,6 +9,7 @@ import name.vantaclient.client.feature.FarViewFeature;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.gui.components.settings.BooleanSetting;
+import name.vantaclient.client.gui.components.settings.ChoiceSetting;
 import name.vantaclient.client.gui.components.settings.Setting;
 import name.vantaclient.client.gui.components.settings.SettingRegistry;
 import name.vantaclient.client.gui.components.settings.SliderSetting;
@@ -332,7 +333,8 @@ public final class VantaSettingsScreen extends Screen {
         }
         return SettingRegistry.getSettings(feature).stream().anyMatch(setting -> {
             String name = setting instanceof SliderSetting slider ? slider.getName()
-                    : setting instanceof BooleanSetting toggle ? toggle.getName() : "";
+                    : setting instanceof BooleanSetting toggle ? toggle.getName()
+                    : setting instanceof ChoiceSetting choice ? choice.getName() : "";
             return name.toLowerCase(Locale.ROOT).contains(searchQuery);
         });
     }
@@ -379,6 +381,9 @@ public final class VantaSettingsScreen extends Screen {
             } else if (setting instanceof BooleanSetting toggle) {
                 panel.add(VantaUiNode.toggle(toggle.getName(),
                         () -> safeBoolean(toggle), toggle.getSetter()::accept));
+            } else if (setting instanceof ChoiceSetting choice) {
+                panel.add(VantaUiNode.dropdown(choice.getName(), choice.getOptions(),
+                        choice.getGetter(), choice.getSetter()::accept));
             }
         }
         content.add(panel);

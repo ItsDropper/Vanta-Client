@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 12;
+    public int configVersion = 13;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -41,8 +41,10 @@ public class DropperUtilsConfig {
     public boolean farViewAdaptive = false;
     public boolean vanillaHud = false;
     public boolean flyBoost = false;
+    public boolean ogAnimations = false;
 
     public float flyBoostMultiplier = 1.5f;
+    public String ogAnimationPreset = "CLASSIC_1_8";
 
     public float fpsHudX = 0.02f;
     public float fpsHudY = 0.34f;
@@ -135,6 +137,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 10) migrateV10();
                 if (INSTANCE.configVersion < 11) migrateV11();
                 if (INSTANCE.configVersion < 12) migrateV12();
+                if (INSTANCE.configVersion < 13) migrateV13();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();

@@ -8,6 +8,7 @@ import name.vantaclient.client.integration.BuiltInIntegration;
 import name.vantaclient.client.init.Events;
 import name.vantaclient.client.init.HudRegistration;
 import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.init.VantaClientCommands;
 import name.vantaclient.client.util.FarTerrainRenderer;
 
 public class DropperUtilsClient implements ClientModInitializer {
@@ -20,6 +21,7 @@ public class DropperUtilsClient implements ClientModInitializer {
 		BuiltInIntegration.register();
 
 		Keybinds.register();
+		VantaClientCommands.register();
 		HudRegistration.register();
 		FarTerrainRenderer.register();
 		Events.register();

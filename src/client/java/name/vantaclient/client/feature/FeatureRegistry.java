@@ -24,7 +24,8 @@ public class FeatureRegistry {
             CpsHudFeature.INSTANCE,
             ChatTimestampsFeature.INSTANCE,
             VanillaHudFeature.INSTANCE,
-            FlyBoostFeature.INSTANCE
+            FlyBoostFeature.INSTANCE,
+            OgAnimationsFeature.INSTANCE
     );
 
     public static void loadConfigs() {

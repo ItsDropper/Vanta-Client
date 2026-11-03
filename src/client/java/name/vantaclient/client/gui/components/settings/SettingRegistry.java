@@ -12,6 +12,13 @@ public final class SettingRegistry {
     public static List<Setting> getSettings(Feature feature) {
         List<Setting> settings = new ArrayList<>();
 
+        if (feature == OgAnimationsFeature.INSTANCE) {
+            settings.add(new ChoiceSetting("Animation profile",
+                    List.of("CLASSIC_1_8", "SOFT_LEGACY"),
+                    () -> OgAnimationsFeature.getPreset().name(),
+                    OgAnimationsFeature::setPreset));
+        }
+
         if (feature == FlyBoostFeature.INSTANCE) {
             settings.add(new SliderSetting("Singleplayer flight multiplier", 1.0, 3.0, "x",
                     () -> (double) FlyBoostFeature.getMultiplier(),

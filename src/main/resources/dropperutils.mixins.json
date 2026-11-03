@@ -20,7 +20,8 @@
     "TitleScreenMixin",
     "MouseHandlerMixin",
     "ChatComponentMixin",
-    "accessor.ScreenAccessor"
+    "accessor.ScreenAccessor",
+    "OgAnimationsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
