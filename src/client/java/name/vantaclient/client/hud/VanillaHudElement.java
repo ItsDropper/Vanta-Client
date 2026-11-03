@@ -18,7 +18,9 @@ public final class VanillaHudElement extends HudElement {
         EFFECTS("Status Effects", 124, 80),
         BOSS_BAR("Boss Bar", 182, 20),
         MOUNT_HEALTH("Mount Health", 182, 18),
-        SCOREBOARD("Scoreboard", 160, 180);
+        SCOREBOARD("Scoreboard", 160, 180),
+        EXPERIENCE("Experience Bar", 182, 12),
+        JUMP_BAR("Vehicle Jump Bar", 182, 12);
 
         private final String label;
         private final int width;
@@ -41,7 +43,7 @@ public final class VanillaHudElement extends HudElement {
                 case FOOD, AIR -> screenWidth / 2 + 10;
                 case EFFECTS -> screenWidth - width - 4;
                 case SCOREBOARD -> screenWidth - width - 8;
-                case MOUNT_HEALTH -> (screenWidth - width) / 2;
+                case MOUNT_HEALTH, EXPERIENCE, JUMP_BAR -> (screenWidth - width) / 2;
             };
         }
 
@@ -56,6 +58,7 @@ public final class VanillaHudElement extends HudElement {
                 case BOSS_BAR -> 10;
                 case MOUNT_HEALTH -> screenHeight - 60;
                 case SCOREBOARD -> (screenHeight - height) / 2;
+                case EXPERIENCE, JUMP_BAR -> screenHeight - 31;
             };
         }
     }
@@ -163,6 +166,14 @@ public final class VanillaHudElement extends HudElement {
                     int y = 23 + row * 12;
                     graphics.fill(8, y, width - 8, y + 5, 0x889BAEC8);
                 }
+            }
+            case EXPERIENCE -> {
+                graphics.fill(2, 3, width - 2, 8, 0xFF252C35);
+                graphics.fill(2, 3, width / 2, 8, 0xFF65B86D);
+            }
+            case JUMP_BAR -> {
+                graphics.fill(2, 3, width - 2, 8, 0xFF252C35);
+                graphics.fill(2, 3, width / 3, 8, 0xFF65A9E8);
             }
         }
     }

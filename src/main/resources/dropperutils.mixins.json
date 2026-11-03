@@ -23,7 +23,10 @@
     "accessor.ScreenAccessor",
     "OgAnimationsMixin",
     "EntityRendererMixin",
-    "MinecraftCrashReportMixin"
+    "MinecraftCrashReportMixin",
+    "ExperienceBarRendererMixin",
+    "JumpableVehicleBarRendererMixin",
+    "ContextualBarRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
