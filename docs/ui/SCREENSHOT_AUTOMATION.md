@@ -44,7 +44,8 @@ The 36-image matrix covers the title screen, seven settings pages and the HUD ed
 Before capturing the screenshot matrix, the client GameTest:
 - Creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes.
 - Verifies that overlapping HUD backgrounds are always unioned (preserving the 80% opacity), adjacent rectangles merge transitively at the configured distance, and a smaller distance keeps separated elements apart.
-- Opens the HUD editor with the Keystrokes HUD selected and a background enabled, including when its in-game feature is disabled.
+- Opens the HUD editor with FPS and Keystrokes backgrounds enabled, places their hitboxes 2 px apart, confirms they merge into one background, and restores their original position and background preferences after capture.
+- Verifies the armor HUD's hitbox includes its horizontal durability label and accurately covers the vertical slot stack.
 - Opens the retained-mode Modrinth browser with a fixed six-project preview dataset and captures both desktop and compact layouts without making network requests.
 - Opens the retained-mode installed-mod library with a fixed six-mod preview dataset and captures both desktop and compact layouts without reading a real mods folder.
 - Opens a selected mod's details/configuration-routing view with the same local fixture and captures it at desktop and compact sizes.
@@ -66,10 +67,13 @@ Fabric writes screenshots to `build/run/clientGameTest/screenshots/`; the workfl
 - Run [41720774378](https://github.com/ItsDropper/Vanta-Client/actions/runs/41720774378), commit `a25a09a`: build and the 36-image capture passed.
 - Run [41721290497](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721290497), commit `6902953`: build and the 36-image capture passed.
 - Run [41721788364](https://github.com/ItsDropper/Vanta-Client/actions/runs/41721788364), commit `b23c391`: build and the 36-image capture passed, including the scrollbar-thumb drag assertion.
+- Run [41723780313](https://github.com/ItsDropper/Vanta-Client/actions/runs/41723780313), commit `51ea19e`: build and 36 screenshots passed with the first connected-background regression check.
+- Run [41729498054](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729498054), commit `f58bf71`: build and 40 screenshots passed; the HUD editor screenshot includes two connected panels.
+- Run [41729746874](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746874), commit `5209a47`: build and all 42 screenshots passed, including the installed-mod details route.
 
 ## Limits
 
 - This validates real Minecraft GUI rendering and Screen lifecycle, not GPU performance in a representative gameplay world.
 - Captures are static states. They do not exercise every mouse/keyboard interaction or automatically judge visual quality.
-- The screenshot workflow does not capture the full Modrinth browser or every installed-mod state.
+- Modrinth and installed-mod screens are captured with deterministic preview fixtures. The suite does not cover every network result, JAR state or third-party configuration screen.
 - Manual gameplay interaction and final design acceptance remain separate checks.
