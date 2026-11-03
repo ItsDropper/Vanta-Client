@@ -18,7 +18,8 @@ public class FeatureRegistry {
             PotionEffectsFeature.INSTANCE,
             FpsHudFeature.INSTANCE,
             PingHudFeature.INSTANCE,
-            KeystrokesFeature.INSTANCE
+            KeystrokesFeature.INSTANCE,
+            CpsHudFeature.INSTANCE
     );
 
     public static void loadConfigs() {
