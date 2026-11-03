@@ -267,7 +267,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (mapping == null) {
                 throw new AssertionError("Vanta key mappings were not registered before the Controls test.");
             }
-            InputConstants.Key originalKey = mapping.getKey();
+            String originalKey = mapping.saveString();
             VantaSettingsScreen screen = new VantaSettingsScreen(null);
             client.setScreen(screen);
             try {
@@ -276,7 +276,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 if (!Keybinds.isCaptureActive() || !screen.keyPressed(xKey)) {
                     throw new AssertionError("Keyboard key capture did not enter its active state.");
                 }
-                if (!mapping.getKey().equals(InputConstants.getKey(xKey))) {
+                if (!mapping.saveString().equals(InputConstants.getKey(xKey).getName())) {
                     throw new AssertionError("The selected keyboard binding was not applied.");
                 }
                 if (!Keybinds.isCaptureActive()) {
@@ -291,7 +291,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 if (!screen.keyPressed(escape) || !Keybinds.isCaptureActive()) {
                     throw new AssertionError("Escape did not cancel capture while retaining release suppression.");
                 }
-                if (!mapping.getKey().equals(InputConstants.getKey(xKey))) {
+                if (!mapping.saveString().equals(InputConstants.getKey(xKey).getName())) {
                     throw new AssertionError("Cancelling a capture changed the current binding.");
                 }
                 if (!screen.keyReleased(escape) || Keybinds.isCaptureActive()) {
@@ -306,14 +306,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
                 InputConstants.Key unbound = InputConstants.Type.KEYSYM
                         .getOrCreate(GLFW.GLFW_KEY_UNKNOWN);
-                if (!mapping.getKey().equals(unbound)) {
+                if (!mapping.isUnbound()) {
                     throw new AssertionError("Backspace did not unbind the selected Vanta shortcut.");
                 }
                 if (!screen.keyReleased(backspace) || Keybinds.isCaptureActive()) {
                     throw new AssertionError("Unbind capture guard did not clear on key release.");
                 }
             } finally {
-                mapping.setKey(originalKey);
+                mapping.setKey(InputConstants.getKey(originalKey));
                 KeyMapping.resetMapping();
                 client.options.save();
                 Keybinds.setCaptureActive(false);
