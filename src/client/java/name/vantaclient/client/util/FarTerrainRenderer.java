@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.server.MinecraftServer;
@@ -18,7 +17,7 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.Climate;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -94,6 +93,7 @@ public final class FarTerrainRenderer {
     private FarTerrainRenderer() {}
 
     public static void register() {
+        FarTerrainRenderType.initialize();
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
     }
 
@@ -426,7 +426,7 @@ public final class FarTerrainRenderer {
         int drawBudget = getDrawBudget();
         PoseStack.Pose pose = context.matrices().last();
         if (context.consumers() == null) return;
-        VertexConsumer consumer = context.consumers().getBuffer(RenderTypes.debugQuads());
+        VertexConsumer consumer = context.consumers().getBuffer(FarTerrainRenderType.TYPE);
         int drawnQuads = 0;
         for (TileKey key : orderedTiles) {
             TileMesh mesh = MESHES.get(key);
