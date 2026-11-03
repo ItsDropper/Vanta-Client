@@ -169,8 +169,8 @@ public abstract class TitleScreenMixin {
                     bounds[0], bounds[1], bounds[2], bounds[3]);
         }
 
-        int utilityY = Math.max(8, screenHeight - 58);
-        int utilityStart = Math.max(8, screenWidth - 244);
+        int utilityY = Math.max(8, screenHeight - 88);
+        int utilityStart = 8;
         if (vanta$languageShortcut != null) {
             vanta$setBounds(vanta$languageShortcut, utilityStart, utilityY, 104, 24);
         }
@@ -179,7 +179,7 @@ public abstract class TitleScreenMixin {
         }
         if (vanta$creditsShortcut != null) {
             vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 100),
-                    Math.max(8, screenHeight - 52), 92, 22);
+                    Math.max(8, screenHeight - 58), 92, 22);
         }
 
         for (AbstractButton button : secondary) {
