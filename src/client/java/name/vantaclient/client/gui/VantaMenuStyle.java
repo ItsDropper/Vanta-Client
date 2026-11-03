@@ -119,8 +119,8 @@ public final class VantaMenuStyle {
         int alpha = Math.round(progress * 255.0f);
         int x = brandLeft(screenWidth);
         int y = Math.max(12, Math.round(screenHeight * 0.045f));
-        int markWidth = 66;
-        int markHeight = 48;
+        int markWidth = screenWidth < 700 ? 42 : 56;
+        int markHeight = screenWidth < 700 ? 31 : 41;
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
