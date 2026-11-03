@@ -44,7 +44,7 @@ public abstract class TitleScreenMixin {
         if (bounds != null) {
             vanta$settingsShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
                     .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
-                            Component.literal("Client settings").withStyle(
+                            Component.literal("Open Vanta Client settings").withStyle(
                                     style -> style.withFont(VantaMenuStyle.uiFont())),
                             button -> client.setScreen(new VantaSettingsScreen(screen)))
                             .bounds(bounds[0], bounds[1], bounds[2], bounds[3])
