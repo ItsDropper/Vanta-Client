@@ -14,7 +14,7 @@ public final class SettingRegistry {
 
         if (feature == OgAnimationsFeature.INSTANCE) {
             settings.add(new ChoiceSetting("Animation profile",
-                    List.of("CLASSIC_1_8", "SOFT_LEGACY"),
+                    List.of("Classic 1.8.9", "Soft Legacy"),
                     () -> OgAnimationsFeature.getPreset().name(),
                     OgAnimationsFeature::setPreset));
         }
