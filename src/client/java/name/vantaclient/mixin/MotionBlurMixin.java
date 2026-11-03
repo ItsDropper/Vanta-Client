@@ -2,6 +2,7 @@ package name.vantaclient.mixin;
 
 import com.mojang.blaze3d.resource.CrossFrameResourcePool;
 import name.vantaclient.client.feature.MotionBlurFeature;
+import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.util.MotionBlurRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Final;
@@ -17,7 +18,8 @@ public class MotionBlurMixin {
 
     @Inject(method = "renderLevel", at = @At("TAIL"))
     private void dropperutils$renderMotionBlur(CallbackInfo ci) {
-        if (MotionBlurFeature.INSTANCE.isEnabled()) {
+        if (MotionBlurFeature.INSTANCE.isEnabled()
+                && !PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
             MotionBlurRenderer.render(this.resourcePool);
         } else {
             MotionBlurRenderer.reset();

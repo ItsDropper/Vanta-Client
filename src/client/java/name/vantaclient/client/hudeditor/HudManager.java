@@ -7,6 +7,7 @@ import name.vantaclient.client.hud.FpsHudElement;
 import name.vantaclient.client.hud.KeystrokesHudElement;
 import name.vantaclient.client.hud.PingHudElement;
 import name.vantaclient.client.hud.PotionEffectsHudElement;
+import name.vantaclient.client.hud.PerformanceHudElement;
 import name.vantaclient.client.hud.TotemCounterHudElement;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -28,6 +29,7 @@ public class HudManager {
         add(new PingHudElement());
         add(new KeystrokesHudElement());
         add(new CpsHudElement());
+        add(new PerformanceHudElement());
     }
 
     public static void add(HudElement element) {

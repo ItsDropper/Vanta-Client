@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.util.AnchorOptimizer;
+import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.SprintSneakToggles;
 import net.minecraft.world.item.Items;
@@ -16,6 +17,7 @@ public class Events {
 
     public static void register() {
 
+        ClientTickEvents.START_CLIENT_TICK.register(client -> ClientPerformanceMetrics.beginClientTick());
 
         FullbrightFeature.INSTANCE.setEnabled(
                 DropperUtilsConfig.get().fullbright
@@ -93,5 +95,7 @@ public class Events {
             AnchorPrediction.tick();
             ExplosionEffects.tick();
         });
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
     }
 }

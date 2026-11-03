@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 8;
+    public int configVersion = 9;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -36,6 +36,7 @@ public class DropperUtilsConfig {
     public boolean sprintToggleEnabled = false;
     public boolean sneakToggleEnabled = false;
     public boolean chatTimestamps = false;
+    public boolean performanceOptimizer = false;
 
     public float fpsHudX = 0.02f;
     public float fpsHudY = 0.34f;
@@ -73,6 +74,9 @@ public class DropperUtilsConfig {
     public float debugHudScale = 1.0f;
     public float potionHudScale = 1.0f;
     public float totemCounterScale = 1.0f;
+    public float performanceHudX = 0.02f;
+    public float performanceHudY = 0.10f;
+    public float performanceHudScale = 1.0f;
 
     public float debugHudX = 0.01f;
     public float debugHudY = 0.30f;
@@ -116,6 +120,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 6) migrateV6();
                 if (INSTANCE.configVersion < 7) migrateV7();
                 if (INSTANCE.configVersion < 8) migrateV8();
+                if (INSTANCE.configVersion < 9) migrateV9();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -170,6 +175,12 @@ public class DropperUtilsConfig {
     private static void migrateV8() {
         System.out.println("[DropperUtils] Migrating config v7 -> v8");
         INSTANCE.configVersion = 8;
+        save();
+    }
+
+    private static void migrateV9() {
+        System.out.println("[DropperUtils] Migrating config v8 -> v9");
+        INSTANCE.configVersion = 9;
         save();
     }
 
