@@ -13,6 +13,7 @@ import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
