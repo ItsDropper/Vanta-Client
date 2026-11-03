@@ -5,11 +5,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.model.player.PlayerModel;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerSkin;
+import net.minecraft.world.entity.player.PlayerModelType;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -26,6 +30,8 @@ public final class VantaMenuStyle {
 
     private static UUID cachedProfileId;
     private static Supplier<PlayerSkin> cachedSkinLookup;
+    private static PlayerModel cachedPlayerModel;
+    private static PlayerModelType cachedPlayerModelType;
 
     private VantaMenuStyle() {}
 
@@ -111,18 +117,22 @@ public final class VantaMenuStyle {
         String playerName = client.getUser().getName();
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
-        int width = Math.min(204, Math.max(164, screenWidth / 3));
-        int x = screenWidth - width - Math.max(22, menuLeft(screenWidth));
-        int y = Math.max(90, screenHeight / 2 - 48);
+        int width = Math.min(232, Math.max(176, screenWidth / 2));
+        int height = 116;
+        int x = screenWidth - width - Math.max(18, menuLeft(screenWidth) / 2);
+        int y = Math.max(82, screenHeight / 2 - 54);
         int alpha = Math.round(255.0f * easeOut(Math.min(1.0f,
                 Math.max(0.0f, elapsedMillis / 480.0f))));
 
-        fillRounded(graphics, x, y, width, 88, 8, withAlpha(0xFF111722, Math.round(alpha * 0.56f)));
-        fillRounded(graphics, x + 1, y + 1, width - 2, 86, 7,
-                withAlpha(0xFF1A2230, Math.round(alpha * 0.26f)));
+        fillRounded(graphics, x, y, width, height, 9,
+                withAlpha(0xFF101722, Math.round(alpha * 0.66f)));
+        fillRounded(graphics, x + 1, y + 1, width - 2, height - 2, 8,
+                withAlpha(0xFF1A2432, Math.round(alpha * 0.20f)));
 
-        int avatarX = x + 14;
-        int avatarY = y + 17;
+        int previewLeft = x + 8;
+        int previewTop = y + 7;
+        int previewRight = x + Math.min(86, width / 2);
+        int previewBottom = y + height - 5;
         boolean skinDrawn = false;
         if (profileId != null) {
             try {
@@ -132,34 +142,63 @@ public final class VantaMenuStyle {
                             ? activeProfile : new GameProfile(profileId, playerName);
                     cachedSkinLookup = client.getSkinManager().createLookup(skinProfile, false);
                 }
+
                 PlayerSkin skin = cachedSkinLookup.get();
                 if (skin != null && skin.body() != null) {
-                    Identifier texture = skin.body().texturePath();
-                    graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
-                            avatarX, avatarY, 8.0f, 8.0f, 34, 34, 64, 64, 64, 64);
-                    graphics.blit(RenderPipelines.GUI_TEXTURED, texture,
-                            avatarX, avatarY, 40.0f, 8.0f, 34, 34, 64, 64, 64, 64);
+                    PlayerModelType modelType = skin.model();
+                    if (cachedPlayerModel == null || cachedPlayerModelType != modelType) {
+                        boolean slim = modelType == PlayerModelType.SLIM;
+                        cachedPlayerModel = new PlayerModel(
+                                client.getEntityModels().bakeLayer(
+                                        slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER),
+                                slim);
+                        cachedPlayerModelType = modelType;
+                    }
+
+                    AvatarRenderState pose = new AvatarRenderState();
+                    pose.skin = skin;
+                    pose.hatVisible = true;
+                    pose.jacketVisible = true;
+                    pose.leftPantsLegVisible = true;
+                    pose.rightPantsLegVisible = true;
+                    pose.leftSleeveVisible = true;
+                    pose.rightSleeveVisible = true;
+                    cachedPlayerModel.setupAnim(pose);
+                    float idleYaw = (float) Math.sin(elapsedMillis / 1900.0) * 7.0f;
+                    cachedPlayerModel.head.yRot = (float) Math.toRadians(idleYaw);
+                    cachedPlayerModel.head.xRot = (float) Math.toRadians(-3.0f);
+                    graphics.submitSkinRenderState(cachedPlayerModel,
+                            skin.body().texturePath(), 27.0f, -4.0f, idleYaw,
+                            0.0f, previewLeft, previewTop, previewRight, previewBottom);
                     skinDrawn = true;
                 }
             } catch (RuntimeException ignored) {
                 cachedSkinLookup = null;
+                cachedPlayerModel = null;
+                cachedPlayerModelType = null;
             }
         }
 
         if (!skinDrawn) {
-            fillRounded(graphics, avatarX, avatarY, 34, 34, 6,
+            fillRounded(graphics, previewLeft + 20, previewTop + 24, 32, 42, 7,
                     withAlpha(0xFF303B4C, alpha));
-            graphics.drawCenteredString(client.font, "?", avatarX + 17, avatarY + 12,
-                    withAlpha(0xFFE0E6EF, alpha));
+            graphics.drawCenteredString(client.font, "?", previewLeft + 36,
+                    previewTop + 39, withAlpha(0xFFE0E6EF, alpha));
         }
 
-        graphics.drawString(client.font, ComponentText.account(), x + 60, y + 18,
+        int textX = x + Math.min(94, width / 2 + 12);
+        int textWidth = width - (textX - x) - 10;
+        graphics.drawString(client.font, ComponentText.account(), textX, y + 24,
                 withAlpha(0xFF9AA8BA, alpha), false);
-        String safeName = playerName.length() > 16 ? playerName.substring(0, 16) : playerName;
-        graphics.drawString(client.font, ComponentText.playerName(safeName), x + 60, y + 35,
+        String safeName = fitName(client.font, playerName, textWidth);
+        graphics.drawString(client.font, ComponentText.playerName(safeName), textX, y + 44,
                 withAlpha(0xFFF2F5FA, alpha), false);
         graphics.drawString(client.font, ComponentText.profileState(profileId != null),
-                x + 60, y + 54, withAlpha(0xFF9AA8BA, alpha), false);
+                textX, y + 65, withAlpha(0xFF9AA8BA, alpha), false);
+        graphics.fill(textX, y + 83, x + width - 12, y + 84,
+                withAlpha(0x465C6C82, alpha));
+        graphics.drawString(client.font, ComponentText.profileHint(),
+                textX, y + 91, withAlpha(0xFF8794A6, alpha), false);
     }
 
     /** Replaces vanilla copyright/version text with a quiet client footer. */
@@ -172,6 +211,17 @@ public final class VantaMenuStyle {
         graphics.drawString(font, ComponentText.footerRight(right),
                 screenWidth - font.width(ComponentText.footerRight(right)) - 12,
                 screenHeight - 10, 0xFFAAB4C3, false);
+    }
+
+    private static String fitName(Font font, String value, int maxWidth) {
+        String candidate = value == null || value.isBlank() ? "Offline profile" : value;
+        while (!candidate.isEmpty() && font.width(ComponentText.playerName(candidate)) > maxWidth) {
+            candidate = candidate.substring(0, candidate.length() - 1);
+        }
+        if (value != null && candidate.length() < value.length() && candidate.length() > 1) {
+            candidate = candidate.substring(0, candidate.length() - 1) + "…";
+        }
+        return candidate;
     }
 
     private static int withAlpha(int color, int alpha) {
@@ -222,6 +272,11 @@ public final class VantaMenuStyle {
         private static net.minecraft.network.chat.Component playerName(String name) {
             return net.minecraft.network.chat.Component.literal(name)
                     .withStyle(style -> style.withFont(UI_FONT));
+        }
+
+        private static net.minecraft.network.chat.Component profileHint() {
+            return net.minecraft.network.chat.Component.literal("MINECRAFT PROFILE")
+                    .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
         private static net.minecraft.network.chat.Component profileState(boolean available) {
