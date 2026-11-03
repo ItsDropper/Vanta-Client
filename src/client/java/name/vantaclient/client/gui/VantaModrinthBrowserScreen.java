@@ -87,7 +87,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                         .orElse("unknown"),
                 VantaUiTheme.TEXT_MUTED));
         header.add(VantaUiNode.button("Back", VantaUiNode.Icon.OVERVIEW,
-                this::onClose).height(30));
+                this::onClose).size(86, 30));
         root.add(header);
 
         if (!installedView) {
@@ -101,12 +101,12 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     value -> searchQuery = value,
                     100).flex(1));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::search).height(30).enabled(!busy));
+                    this::search).size(84, 30).enabled(!busy));
             search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
                 search();
-            }).height(30).enabled(!busy));
+            }).size(64, 30).enabled(!busy));
             root.add(search);
         }
 
@@ -140,8 +140,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
         heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
         heading.add(VantaUiNode.spacer(1).flex(1));
         heading.add(VantaUiNode.dynamicText(
-                () -> busy ? "WORKING…" : status,
-                VantaUiTheme.TEXT_MUTED));
+                () -> busy ? "WORKING…" : trim(status, 54),
+                VantaUiTheme.TEXT_MUTED).width(310));
         main.add(heading);
 
         VantaUiNode cards = VantaUiNode.column(8, 8)
@@ -177,17 +177,17 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 .height(32)
                 .align(VantaUiNode.Alignment.CENTER);
         footer.add(VantaUiNode.button("Previous", () -> changePage(-1))
-                .height(30).enabled(!busy && page > 0));
+                .size(78, 30).enabled(!busy && page > 0));
         footer.add(VantaUiNode.dynamicText(
                 () -> "PAGE " + (page + 1) + " / " + pageCount(),
                 VantaUiTheme.TEXT_MUTED));
         footer.add(VantaUiNode.button("Next", () -> changePage(1))
-                .height(30).enabled(!busy && page + 1 < pageCount()));
+                .size(66, 30).enabled(!busy && page + 1 < pageCount()));
         footer.add(VantaUiNode.spacer(1).flex(1));
         if (enableModId != null) {
             footer.add(VantaUiNode.button("Enable now*",
                     VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
-                    .height(30).enabled(!busy));
+                    .size(116, 30).enabled(!busy));
         }
         main.add(footer);
         body.add(main);
@@ -232,17 +232,13 @@ public final class VantaModrinthBrowserScreen extends Screen {
         VantaUiNode top = VantaUiNode.row(8, 0)
                 .height(42)
                 .align(VantaUiNode.Alignment.CENTER);
-        Identifier icon = projectIconTextures.get(project.id());
-        if (icon != null) {
-            top.add(VantaUiNode.image(icon).size(38, 38));
-        } else {
-            String initial = project.title().isBlank() ? "?" :
-                    project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-            top.add(VantaUiNode.text(initial, VantaUiTheme.TEXT_PRIMARY)
-                    .size(38, 38)
-                    .background(VantaUiTheme.SURFACE_SELECTED)
-                    .align(VantaUiNode.Alignment.CENTER));
-        }
+        String initial = project.title().isBlank() ? "?" :
+                project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+        top.add(VantaUiNode.dynamicImage(
+                () -> projectIconTextures.get(project.id()), initial)
+                .size(38, 38)
+                .background(VantaUiTheme.SURFACE_SELECTED)
+                .align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
         labels.add(VantaUiNode.text(trim(project.title(), 46), VantaUiTheme.TEXT_PRIMARY));
         labels.add(VantaUiNode.text(trim(project.author(), 30), VantaUiTheme.TEXT_MUTED));
@@ -508,7 +504,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
             }).thenAccept(bytes -> minecraft.execute(() -> {
                 if (closed || generation != (int) iconGeneration
                         || projects.stream().noneMatch(candidate -> candidate.id().equals(project.id()))) return;
-                if (registerProjectIcon(project.id(), bytes)) rebuildUi();
+                registerProjectIcon(project.id(), bytes);
             }));
         }
     }

@@ -40,6 +40,7 @@ public final class VantaUiNode {
     private String label = "";
     private Icon icon;
     private Identifier texture;
+    private Supplier<Identifier> textureSupplier;
     private Identifier textFont = UI_FONT;
     private Supplier<String> textSupplier;
     private String tooltip = "";
@@ -166,6 +167,19 @@ public final class VantaUiNode {
         if (texture == null) throw new IllegalArgumentException("Image texture cannot be null.");
         VantaUiNode node = new VantaUiNode(Kind.IMAGE, null);
         node.texture = texture;
+        node.size(24, 24);
+        return node;
+    }
+
+    /**
+     * Image node whose texture can become available after layout without rebuilding the UI tree.
+     * The fallback is rendered in the same bounds until the supplier returns a texture.
+     */
+    public static VantaUiNode dynamicImage(Supplier<Identifier> texture, String fallback) {
+        if (texture == null) throw new IllegalArgumentException("Dynamic image requires a texture supplier.");
+        VantaUiNode node = new VantaUiNode(Kind.IMAGE, null);
+        node.textureSupplier = texture;
+        node.label = fallback == null ? "" : fallback;
         node.size(24, 24);
         return node;
     }
@@ -588,8 +602,20 @@ public final class VantaUiNode {
                 }
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
-            case IMAGE -> graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x, y,
-                    0.0f, 0.0f, width, height, 962, 702, 962, 702);
+            case IMAGE -> {
+                Identifier resolvedTexture = textureSupplier == null ? texture : textureSupplier.get();
+                if (resolvedTexture != null) {
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, resolvedTexture, x, y,
+                            0.0f, 0.0f, width, height, 962, 702, 962, 702);
+                } else if (!label.isBlank()) {
+                    String fallback = fitText(font, label, Math.max(0, width - 4), UI_FONT);
+                    int textWidth = textWidth(font, fallback, UI_FONT);
+                    graphics.drawString(font, styledText(fallback, UI_FONT),
+                            x + (width - textWidth) / 2,
+                            y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2),
+                            textColor);
+                }
+            }
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
                 if (selected) {
