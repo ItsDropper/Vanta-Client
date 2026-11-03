@@ -41,7 +41,7 @@ The main settings panel uses a 920×540 logical design and coordinate conversion
 ## 5. Highest-impact limitations
 
 1. The retained framework still needs broader interaction tests beyond screenshot coverage.
-2. The separate mod-library and Modrinth browser surfaces retain their own presentation code.
+2. The external Mod Menu screens supplied by third-party mods remain outside Vanta's visual and interaction framework.
 3. External mods that provide their own Mod Menu config screens remain outside Vanta's framework control.
 4. The HUD canvas selection/drag overlay intentionally remains specialized rendering; only its toolbar and inspector use the shared component runtime.
 5. Manual gameplay-session validation and performance profiling remain outstanding.

@@ -1,6 +1,6 @@
 # Vanta UI Framework — Phase Status
 
-**Updated:** 2026-11-03  
+**Updated:** 2026-11-04  
 **Branch:** `main`
 
 This status distinguishes implemented code, successful CI, screenshot inspection and manual gameplay validation.
@@ -24,9 +24,8 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - Built-in HUD, Visual, Combat and Misc feature categories use the shared framework and retain their existing feature/settings getters, setters and config persistence.
 - Appearance preferences are bound to the persisted preference model: accent, animations, compact layout, descriptions, UI scale and panel opacity.
 - API-contributed mod settings use `VantaIntegrationSettingsScreen`, mapping BOOLEAN, INTEGER, DECIMAL, STRING and ENUM definitions to live framework controls.
-- `VantaIntegrationsScreen` now uses the retained component tree for the installed-mod library and selected-mod details/config routing. The main library retains favorites, search, scan, Fabric/session load states, hotload actions and mod-settings handoff. Some older fallback rendering code remains in the class, but the primary route uses the shared runtime.
+- `VantaIntegrationsScreen` now has a single retained-mode implementation for the installed-mod library and selected-mod details/config routing. The old manual renderer and duplicated widget path have been removed. The library retains favorites, search, refresh, Fabric/session load states, explicit per-mod hotload actions and mod-settings handoff. Local JAR inventory enumeration runs asynchronously; the Refresh action does not execute third-party entrypoints.
 - `VantaModrinthBrowserScreen` also uses the retained component tree. Search, project icons, pagination, install and experimental session-load work retain their asynchronous handling; icon arrival does not rebuild the screen or steal search focus.
-- API-contributed mod settings use `VantaIntegrationSettingsScreen`, which is also backed by the shared runtime.
 - The HUD editor toolbar and selected-element inspector use the shared runtime and theme. The draggable HUD canvas, selection outlines and hitboxes remain specialized rendering by design.
 - Every custom and vanilla HUD element has an independent, persisted background toggle. Backgrounds use a dark-gray fill at 80% opacity. Overlapping hitboxes are always unioned to prevent compounded alpha; the inspector can optionally bridge nearby hitboxes with a configurable 0–24 px connection distance.
 - FPS, Ping, Keystrokes and CPS remain previewable/selectable in the HUD editor even while their in-game feature is disabled, so their positions and backgrounds can still be configured.
@@ -47,6 +46,7 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `5209a47`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746806) and [42-image screenshots including installed-mod details at desktop and compact sizes](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729746874).
 - `00bab4a`: [README/documentation build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41729939536).
 - `3b253f3`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524196) and [42-image real-client screenshots with dropdown overlay regression test](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732524317).
+- `fb63556`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732997610) and [42-image screenshots with popup wheel/keyboard/parent-scroll tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41732997617).
 
 The 42-image suite covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations, plus desktop and compact captures of the Modrinth browser, installed-mod library and selected-mod details view. The HUD editor capture enables the FPS and Keystrokes backgrounds, places their hitboxes 2 px apart, and asserts that they become one continuous background. The test restores the previous positions, background toggles, connection distance and snap-to-grid preference afterward. Other client GameTests cover connected-region geometry, armor hitbox dimensions and retained-framework scrollbar dragging. The workflow verifies real Minecraft screenshot production and exact count; the latest images have not been independently reviewed for visual quality in this session.
 
@@ -57,7 +57,7 @@ The 42-image suite covers the title screen, seven settings states and the HUD ed
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay.
 - Confirm UI behavior with the user's preferred GUI scale and actual mod-library contents.
 - Review the latest 42-image artifact, particularly HUD background grouping, the HUD editor at 960×540 GUI scale 2, compact Modrinth cards and selected-mod details.
-- Exercise mod search, favorites, scan, details/config handoff, hotload error recovery, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation and screen open/close in a real game session.
+- Exercise mod search, favorites, read-only inventory refresh, per-mod hotload error recovery, details/config handoff, feature toggles, sliders, addon enum/string settings, dropdown keyboard navigation and screen open/close in a real game session.
 - Verify HUD hit-testing/drag behavior and FarView option restoration in gameplay. CI does not replace this manual acceptance.
 
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.

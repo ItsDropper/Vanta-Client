@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarFile;
+import java.util.concurrent.CompletableFuture;
 
 /** Installed-mod library and details view, backed exclusively by the retained Vanta UI runtime. */
 public final class VantaIntegrationsScreen extends Screen {
@@ -47,6 +48,8 @@ public final class VantaIntegrationsScreen extends Screen {
     private String modSearchQuery = "";
     private boolean favoritesOnly;
     private boolean modListInitialized;
+    private boolean screenActive;
+    private boolean modScanInProgress;
     private VantaClientPreferences preferences;
     private String hotLoadStatus = "Experimental best-effort execution. Only try JARs you trust; restart Minecraft to recover from failed initializers.";
 
@@ -70,6 +73,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     @Override
     protected void init() {
+        screenActive = true;
         if (runtime != null) runtime.dispose();
         runtime = null;
         preferences = VantaClientPreferences.get();
@@ -87,22 +91,20 @@ public final class VantaIntegrationsScreen extends Screen {
             modListInitialized = true;
         } else if (modIconTextures.isEmpty() && !availableMods.isEmpty()) {
             // A child screen transition releases the old GPU textures; reload them on return.
-            for (ExperimentalModHotLoader.AvailableMod mod : availableMods) {
-                loadModIcon(mod.id(), mod.path(), mod.iconPath());
-            }
+            reloadModIcons();
         }
 
         rebuildRetainedUi();
     }
 
-private void rebuildRetainedUi() {
+    private void rebuildRetainedUi() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRetainedRoot());
         runtime.setScale((float) preferences.uiScale);
         runtime.layout(font, width, height);
     }
 
-private VantaUiNode buildRetainedRoot() {
+    private VantaUiNode buildRetainedRoot() {
         boolean compact = width < 760;
         VantaUiNode root = VantaUiNode.column(12, 14)
                 .background(VantaUiTheme.CANVAS)
@@ -160,7 +162,8 @@ private VantaUiNode buildRetainedRoot() {
             favoritesOnly = true;
             rebuildRetainedUi();
         }).size(42, 32).selected(favoritesOnly));
-        toolbar.add(VantaUiNode.button("Scan", this::scanAllMods).size(54, 32));
+        toolbar.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
+                .size(72, 32).enabled(!modScanInProgress));
         root.add(toolbar);
 
         VantaUiNode content = VantaUiNode.column(8, 10)
@@ -173,7 +176,8 @@ private VantaUiNode buildRetainedRoot() {
         List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
         heading.add(VantaUiNode.eyebrow(favoritesOnly ? "FAVORITE MODS" : "MODS IN THIS INSTANCE"));
         heading.add(VantaUiNode.spacer(1).flex(1));
-        heading.add(VantaUiNode.text(mods.size() + " / " + availableMods.size(),
+        heading.add(VantaUiNode.dynamicText(
+                () -> modScanInProgress ? "SCANNING…" : filteredMods().size() + " / " + availableMods.size(),
                 VantaUiTheme.TEXT_MUTED));
         content.add(heading);
 
@@ -187,11 +191,17 @@ private VantaUiNode buildRetainedRoot() {
                     .height(140)
                     .background(VantaUiTheme.PANEL_RAISED)
                     .align(VantaUiNode.Alignment.CENTER);
-            empty.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW).iconColor(VantaUiTheme.TEXT_MUTED));
-            empty.add(VantaUiNode.title(favoritesOnly ? "No favorite mods yet" : "Your mod library is empty"));
-            empty.add(VantaUiNode.paragraph(favoritesOnly
+            empty.add(VantaUiNode.icon(modScanInProgress
+                    ? VantaUiNode.Icon.SEARCH : VantaUiNode.Icon.OVERVIEW)
+                    .iconColor(VantaUiTheme.TEXT_MUTED));
+            empty.add(VantaUiNode.title(modScanInProgress
+                    ? "Reading installed mods"
+                    : favoritesOnly ? "No favorite mods yet" : "Your mod library is empty"));
+            empty.add(VantaUiNode.paragraph(modScanInProgress
+                            ? "Checking the mods folder and reading Fabric metadata…"
+                            : favoritesOnly
                             ? "Mark a mod with the star to keep it in this list."
-                            : "Add Fabric mod JARs to this instance, then scan the mods folder.",
+                            : "Add Fabric mod JARs to this instance, then refresh the library.",
                     VantaUiTheme.TEXT_MUTED, 2));
             cards.add(empty);
         } else {
@@ -205,7 +215,7 @@ private VantaUiNode buildRetainedRoot() {
         return root;
     }
 
-private void addRetainedModCards(VantaUiNode cards,
+    private void addRetainedModCards(VantaUiNode cards,
                                      List<ExperimentalModHotLoader.AvailableMod> mods,
                                      int columns) {
         Set<String> hotLoadedIds = new HashSet<>();
@@ -226,7 +236,7 @@ private void addRetainedModCards(VantaUiNode cards,
         }
     }
 
-private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod mod,
+    private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod mod,
                                               Set<String> hotLoadedIds) {
         boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
         boolean sessionLoaded = hotLoadedIds.contains(mod.id());
@@ -264,7 +274,7 @@ private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod m
                 .size(62, 28));
         if (!fabricLoaded && !sessionLoaded) {
             actions.add(VantaUiNode.button("Hotload", () -> hotLoadMod(mod.id()))
-                    .size(68, 28));
+                    .size(68, 28).enabled(!modScanInProgress));
         } else {
             actions.add(VantaUiNode.text("ACTIVE", VantaUiTheme.TEXT_MUTED).flex(1));
         }
@@ -272,7 +282,7 @@ private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod m
         return card;
     }
 
-private VantaUiNode buildRetainedModDetails() {
+    private VantaUiNode buildRetainedModDetails() {
         ExperimentalModHotLoader.AvailableMod mod = availableMods.stream()
                 .filter(candidate -> candidate.id().equals(selectedModId))
                 .findFirst().orElse(null);
@@ -341,20 +351,20 @@ private VantaUiNode buildRetainedModDetails() {
         return details;
     }
 
-private String selectedModTitle() {
+    private String selectedModTitle() {
         return availableMods.stream().filter(mod -> mod.id().equals(selectedModId))
                 .map(ExperimentalModHotLoader.AvailableMod::name)
                 .findFirst().orElse("Mod details");
     }
 
-private static String trim(String value, int maximumLength) {
+    private static String trim(String value, int maximumLength) {
         if (value == null || maximumLength <= 0) return "";
         if (value.length() <= maximumLength) return value;
         if (maximumLength == 1) return "…";
         return value.substring(0, maximumLength - 1) + "…";
     }
 
-private void selectInstalledMod(String modId) {
+    private void selectInstalledMod(String modId) {
         if (modId == null || modId.isBlank()) return;
         selection = Selection.INSTALLED_MOD;
         selectedModId = modId;
@@ -367,7 +377,8 @@ private void selectInstalledMod(String modId) {
         rebuildRetainedUi();
     }
 
-private void hotLoadMod(String id) {
+    private void hotLoadMod(String id) {
+        if (modScanInProgress) return;
         ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
         hotLoadStatus = result.summary();
         notifyHotLoadResult(result);
@@ -375,22 +386,15 @@ private void hotLoadMod(String id) {
         rebuildRetainedUi();
     }
 
-private void scanAllMods() {
-        ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
-        hotLoadStatus = result.summary();
-        notifyHotLoadResult(result);
-        List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
-                ExperimentalModHotLoader.getHotLoadedMods();
-        if (!hotLoaded.isEmpty()) {
-            hotLoadStatus += " Session mods: " + hotLoaded.stream()
-                    .map(mod -> mod.name() + (mod.version().isBlank() ? "" : " " + mod.version()))
-                    .limit(5).collect(java.util.stream.Collectors.joining(", ")) + ".";
-        }
+    /** Refreshes the local JAR inventory only. It never executes third-party entrypoints. */
+    private void refreshInstalledMods() {
+        if (modScanInProgress) return;
+        hotLoadStatus = "Refreshing the local mod inventory…";
         refreshModList();
         rebuildRetainedUi();
     }
 
-private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
+    private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
         String query = modSearchQuery == null ? "" : modSearchQuery.trim().toLowerCase(Locale.ROOT);
         return availableMods.stream().filter(mod -> {
             if (favoritesOnly && !preferences.favoriteMods.contains(mod.id())) return false;
@@ -400,10 +404,39 @@ private List<ExperimentalModHotLoader.AvailableMod> filteredMods() {
         }).toList();
     }
 
-private void refreshModList() {
+    private void refreshModList() {
         integrations = VantaClientApi.getRegisteredMods();
         discoveredConfigFactories = ModConfigDiscovery.discover();
-        availableMods = ExperimentalModHotLoader.getAvailableMods();
+        startAvailableModScan();
+    }
+
+    /**
+     * Enumerates the mods folder away from the render thread. Dynamic textures are still
+     * decoded/registered on the client thread after the immutable inventory result arrives.
+     */
+    private void startAvailableModScan() {
+        if (modScanInProgress) return;
+        modScanInProgress = true;
+        CompletableFuture.supplyAsync(ExperimentalModHotLoader::getAvailableMods)
+                .whenComplete((result, error) -> minecraft.execute(() -> {
+                    modScanInProgress = false;
+                    if (error != null) {
+                        Throwable cause = error;
+                        while (cause.getCause() != null) cause = cause.getCause();
+                        hotLoadStatus = "Could not refresh installed mods: "
+                                + (cause.getMessage() == null
+                                ? cause.getClass().getSimpleName() : cause.getMessage());
+                    } else {
+                        availableMods = result == null ? List.of() : List.copyOf(result);
+                    }
+                    if (screenActive) {
+                        reloadModIcons();
+                        rebuildRetainedUi();
+                    }
+                }));
+    }
+
+    private void reloadModIcons() {
         for (Identifier texture : modIconTextures.values()) {
             minecraft.getTextureManager().release(texture);
         }
@@ -413,7 +446,7 @@ private void refreshModList() {
         }
     }
 
-private void loadModIcon(String modId, Path jarPath, String iconPath) {
+    private void loadModIcon(String modId, Path jarPath, String iconPath) {
         if (iconPath == null || iconPath.isBlank() || iconPath.startsWith("/")
                 || iconPath.contains("..") || iconPath.contains("\\")) return;
         try (JarFile jar = new JarFile(jarPath.toFile())) {
@@ -448,7 +481,7 @@ private void loadModIcon(String modId, Path jarPath, String iconPath) {
         }
     }
 
-private void notifyHotLoadResult(ExperimentalModHotLoader.Result result) {
+    private void notifyHotLoadResult(ExperimentalModHotLoader.Result result) {
         if (result.loaded() > 0 && result.failed() == 0) {
             VantaNotificationManager.success("Session load complete",
                     "Loaded " + result.loaded() + " mod(s). Runtime loading remains experimental.");
@@ -461,7 +494,7 @@ private void notifyHotLoadResult(ExperimentalModHotLoader.Result result) {
         }
     }
 
-private void openModMenu() {
+    private void openModMenu() {
         try {
             Class<?> integration = Class.forName(
                     "name.vantaclient.client.integration.VantaModMenuIntegration");
@@ -539,6 +572,7 @@ private void openModMenu() {
 
     @Override
     public void removed() {
+        screenActive = false;
         if (runtime != null) {
             runtime.dispose();
             runtime = null;
