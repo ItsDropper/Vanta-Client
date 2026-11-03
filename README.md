@@ -8,6 +8,8 @@ Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines confi
 
 - FPS, ping, CPS, keystrokes, armor, totem counter, potion effects, debug and performance overlays.
 - A drag-and-drop HUD editor with saved positions, per-element scaling, grid alignment and snap-to-grid.
+- Optional per-HUD hitbox backgrounds for custom and vanilla HUD elements. Enable **Show dark background** in the selected element's inspector to draw its actual bounds using dark gray at 80% opacity.
+- **Connect nearby backgrounds** merges overlapping panels and can bridge adjacent hitboxes; set the connection distance from 0–24 GUI pixels. Overlaps are always drawn once, so opacity does not compound.
 - VanillaHUD positioning for the hotbar, crosshair, health, armor, hunger, air, status effects, boss bar, mount health, scoreboard, experience bar and vehicle jump bar.
 - Native vanilla rendering is retained for movable vanilla HUD components.
 
