@@ -2,6 +2,7 @@ package name.vantaclient.client.gui;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.Minecraft;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
@@ -217,7 +218,7 @@ public final class VantaMenuStyle {
 
     /** Replaces vanilla copyright/version text with a quiet client footer. */
     public static void renderFooter(GuiGraphics graphics, int screenWidth, int screenHeight) {
-        graphics.fill(0, screenHeight - 24, screenWidth, screenHeight, 0xD8070A10);
+        graphics.fill(0, screenHeight - 24, screenWidth, screenHeight, 0xFF070A10);
         Font font = Minecraft.getInstance().font;
         graphics.drawString(font, ComponentText.footerLeft(), 12, screenHeight - 16,
                 0xFFAAB4C3, false);
@@ -305,7 +306,7 @@ public final class VantaMenuStyle {
         }
 
         private static net.minecraft.network.chat.Component footerLeft() {
-            return net.minecraft.network.chat.Component.literal("VANTA CLIENT  /  FABRIC")
+            return net.minecraft.network.chat.Component.literal("VANTA CLIENT  /  MINECRAFT " + SharedConstants.getCurrentVersion().getName())
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
