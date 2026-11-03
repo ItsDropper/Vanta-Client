@@ -111,8 +111,9 @@ public final class VantaPanelButton extends AbstractWidget {
                 ? mixColor(accent.getAsInt(), 0xFF6599FF, hoverAmount * 0.22f)
                 : mixColor(0xFF171C26, 0xFF252F40, hoverAmount);
         if (active && !filledAccent) background = mixColor(background, 0xFF1D304D, 0.82f);
-        int border = filledAccent ? mixColor(accent.getAsInt(), 0xFF8DB2FF, hoverAmount * 0.35f)
-                : mixColor(0xFF2A3040, accent.getAsInt(), active ? 0.52f : hoverAmount * 0.36f);
+        int border = filledAccent
+                ? mixColor(0xFF737C88, accent.getAsInt(), hoverAmount * 0.22f)
+                : mixColor(0xFF424850, 0xFF78818D, hoverAmount * 0.65f);
         fillRounded(graphics, getX(), getY(), width, height, 10, border);
         fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 9, background);
 
@@ -129,7 +130,8 @@ public final class VantaPanelButton extends AbstractWidget {
         int textX = accentSurface
                 ? getX() + (width - Minecraft.getInstance().font.width(visibleLabel)) / 2
                 : getX() + 10;
-        graphics.drawString(Minecraft.getInstance().font, visibleLabel,
+        graphics.drawString(Minecraft.getInstance().font,
+                Component.literal(visibleLabel).withStyle(style -> style.withBold(true)),
                 textX, getY() + (height - 8) / 2, filledAccent ? 0xFFFFFFFF : textColor);
     }
 
