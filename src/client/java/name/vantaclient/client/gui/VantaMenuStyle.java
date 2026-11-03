@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerSkin;
 
@@ -17,9 +18,9 @@ import java.util.function.Supplier;
 public final class VantaMenuStyle {
     private static final Identifier VANTA_MARK = Identifier.fromNamespaceAndPath(
             "dropperutils", "textures/gui/vanta_logo_transparent.png");
-    private static final Identifier BRAND_FONT = Identifier.fromNamespaceAndPath("vanta", "brand");
-    private static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
-    private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
+    private static final FontDescription BRAND_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "brand"));
+    private static final FontDescription UI_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "ui"));
+    private static final FontDescription CAPTION_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "caption"));
     private static final int MARK_TEXTURE_WIDTH = 962;
     private static final int MARK_TEXTURE_HEIGHT = 702;
 
@@ -50,7 +51,7 @@ public final class VantaMenuStyle {
         }
     }
 
-    public static Identifier uiFont() {
+    public static FontDescription uiFont() {
         return UI_FONT;
     }
 
@@ -83,11 +84,6 @@ public final class VantaMenuStyle {
         int alpha = Math.round(progress * 255.0f);
         int x = menuLeft(screenWidth);
         int y = Math.max(24, Math.round(screenHeight * 0.13f));
-        float slide = (1.0f - progress) * 8.0f;
-
-        graphics.pose().pushPose();
-        graphics.pose().translate(0.0, slide, 0.0);
-
         int markWidth = 48;
         int markHeight = 35;
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
@@ -102,7 +98,6 @@ public final class VantaMenuStyle {
         graphics.drawString(font, ComponentText.caption(), x, y + 64,
                 withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)), false);
 
-        graphics.pose().popPose();
     }
 
     /** Shows the active launcher profile and its resolved skin texture; never substitutes a hard-coded name. */
