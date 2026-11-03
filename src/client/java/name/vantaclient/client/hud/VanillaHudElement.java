@@ -16,7 +16,9 @@ public final class VanillaHudElement extends HudElement {
         FOOD("Hunger", 91, 10),
         AIR("Air", 91, 10),
         EFFECTS("Status Effects", 124, 80),
-        BOSS_BAR("Boss Bar", 182, 20);
+        BOSS_BAR("Boss Bar", 182, 20),
+        MOUNT_HEALTH("Mount Health", 182, 18),
+        SCOREBOARD("Scoreboard", 160, 180);
 
         private final String label;
         private final int width;
@@ -38,6 +40,8 @@ public final class VanillaHudElement extends HudElement {
                 case CROSSHAIR -> screenWidth / 2 - width / 2;
                 case FOOD, AIR -> screenWidth / 2 + 10;
                 case EFFECTS -> screenWidth - width - 4;
+                case SCOREBOARD -> screenWidth - width - 8;
+                case MOUNT_HEALTH -> (screenWidth - width) / 2;
             };
         }
 
@@ -50,6 +54,8 @@ public final class VanillaHudElement extends HudElement {
                 case AIR -> screenHeight - 59;
                 case EFFECTS -> 4;
                 case BOSS_BAR -> 10;
+                case MOUNT_HEALTH -> screenHeight - 60;
+                case SCOREBOARD -> (screenHeight - height) / 2;
             };
         }
     }
@@ -142,6 +148,21 @@ public final class VanillaHudElement extends HudElement {
                 graphics.fill(2, 4, width - 2, 8, 0xFF6A2837);
                 graphics.fill(2, 4, width - 28, 8, 0xFFB64D66);
                 graphics.fill(2, 12, width - 2, 16, 0xFF6A2837);
+            }
+            case MOUNT_HEALTH -> {
+                for (int i = 0; i < 10; i++) {
+                    int x = 2 + i * 18;
+                    graphics.fill(x, 2, x + 16, 10, 0xAA9BAEC8);
+                    graphics.fill(x, 12, x + 16, 14, 0x665D6C82);
+                }
+            }
+            case SCOREBOARD -> {
+                graphics.fill(2, 2, width - 2, height - 2, 0x88465368);
+                graphics.fill(8, 10, width - 8, 13, 0xFFD0D9E6);
+                for (int row = 0; row < 12; row++) {
+                    int y = 23 + row * 12;
+                    graphics.fill(8, y, width - 8, y + 5, 0x889BAEC8);
+                }
             }
         }
     }

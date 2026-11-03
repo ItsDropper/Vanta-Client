@@ -185,6 +185,29 @@ public class GuiMixin {
         VanillaHudLayout.pop(graphics);
     }
 
+
+    @Inject(method = "renderVehicleHealth", at = @At("HEAD"))
+    private void vanta$pushMountHealth(GuiGraphics graphics, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.MOUNT_HEALTH);
+    }
+
+    @Inject(method = "renderVehicleHealth", at = @At("TAIL"))
+    private void vanta$popMountHealth(GuiGraphics graphics, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
+    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"))
+    private void vanta$pushScoreboard(
+            GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.push(graphics, VanillaHudElement.Part.SCOREBOARD);
+    }
+
+    @Inject(method = "renderScoreboardSidebar", at = @At("TAIL"))
+    private void vanta$popScoreboard(
+            GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        VanillaHudLayout.pop(graphics);
+    }
+
     @Inject(method = "renderBossOverlay", at = @At("HEAD"))
     private void vanta$pushBossBar(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         VanillaHudLayout.push(graphics, VanillaHudElement.Part.BOSS_BAR);
