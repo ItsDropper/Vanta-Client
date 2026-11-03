@@ -5,14 +5,13 @@ import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.mixin.accessor.ScreenAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.LogoRenderer;
 import net.minecraft.client.gui.components.SplashRenderer;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import org.spongepowered.asm.mixin.Mixin;
@@ -37,6 +36,9 @@ public abstract class TitleScreenMixin {
     private AbstractButton vanta$settingsShortcut;
 
     @Unique
+    private AbstractButton vanta$creditsShortcut;
+
+    @Unique
     private long vanta$openedAt;
 
     @Inject(method = "init", at = @At("TAIL"))
@@ -58,6 +60,14 @@ public abstract class TitleScreenMixin {
                             .bounds(bounds[0], bounds[1], bounds[2], bounds[3])
                             .build());
         }
+
+        vanta$creditsShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
+                .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
+                        Component.literal("Credits").withStyle(
+                                style -> style.withFont(VantaMenuStyle.uiFont())),
+                        button -> client.setScreen(new CreditsAndAttributionScreen(screen)))
+                        .bounds(Math.max(0, screen.width - 112), Math.max(0, screen.height - 52), 80, 22)
+                        .build());
 
         vanta$layoutButtons(screen);
     }
@@ -87,7 +97,12 @@ public abstract class TitleScreenMixin {
             button.setMessage(Component.literal(label).withStyle(
                     style -> style.withFont(VantaMenuStyle.uiFont())));
 
-            if (button == vanta$settingsShortcut) continue;
+            if (button == vanta$settingsShortcut || button == vanta$creditsShortcut) continue;
+            if (normalized.startsWith("copyright mojang")) {
+                button.visible = false;
+                button.active = false;
+                continue;
+            }
             if (normalized.contains("singleplayer") || normalized.contains("single player")) {
                 singleplayer = button;
             } else if (normalized.contains("multiplayer")) {
@@ -113,7 +128,7 @@ public abstract class TitleScreenMixin {
             y += buttonHeight + gap;
         }
 
-        int secondaryY = top + 3 * (buttonHeight + gap) - gap + 10;
+        int secondaryY = top + 3 * (buttonHeight + gap) - gap + 3;
         int halfWidth = Math.max(60, (width - 8) / 2);
         if (options != null) vanta$setBounds(options, left, secondaryY, halfWidth, 27);
         if (quit != null) vanta$setBounds(quit, left + halfWidth + 8, secondaryY,
@@ -125,8 +140,13 @@ public abstract class TitleScreenMixin {
                     bounds[0], bounds[1], bounds[2], bounds[3]);
         }
 
-        int extraY = screenHeight - 49;
+        int extraY = screenHeight - 80;
         int extraX = screenWidth - left - 27;
+        if (vanta$creditsShortcut != null) {
+            vanta$setBounds(vanta$creditsShortcut, Math.max(0, screenWidth - left - 90),
+                    Math.max(0, screenHeight - 52), 80, 22);
+        }
+
         for (AbstractButton button : secondary) {
             if (button == options || button == quit) continue;
             vanta$setBounds(button, extraX, extraY, 26, 26);
@@ -159,14 +179,6 @@ public abstract class TitleScreenMixin {
         // Intentionally suppress the Minecraft logo; Vanta owns the title-screen identity.
     }
 
-
-    @Redirect(method = "render", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;III)I"))
-    private int vanta$hideVanillaCopyright(GuiGraphics graphics, Font font,
-                                           FormattedCharSequence text, int x, int y, int color) {
-        // Vanilla title-screen copyright is replaced by the Vanta footer.
-        return 0;
-    }
 
     @Inject(method = "render", at = @At("TAIL"))
     private void vanta$renderVantaMenu(GuiGraphics graphics, int mouseX, int mouseY,
