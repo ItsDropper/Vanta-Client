@@ -22,7 +22,8 @@
     "ChatComponentMixin",
     "accessor.ScreenAccessor",
     "OgAnimationsMixin",
-    "EntityRendererMixin"
+    "EntityRendererMixin",
+    "MinecraftCrashReportMixin"
   ],
   "injectors": {
     "defaultRequire": 1

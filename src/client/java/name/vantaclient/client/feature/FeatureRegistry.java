@@ -27,7 +27,8 @@ public class FeatureRegistry {
             VanillaHudFeature.INSTANCE,
             FlyBoostFeature.INSTANCE,
             OgAnimationsFeature.INSTANCE,
-            DisableDoubleTapSprintFeature.INSTANCE
+            DisableDoubleTapSprintFeature.INSTANCE,
+            CrashPatchFeature.INSTANCE
     );
 
     public static void loadConfigs() {

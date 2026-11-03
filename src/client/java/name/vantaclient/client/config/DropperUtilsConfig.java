@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 16;
+    public int configVersion = 17;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -44,6 +44,7 @@ public class DropperUtilsConfig {
     public boolean flyBoost = false;
     public boolean ogAnimations = false;
     public boolean nametagHidePlayers = false;
+    public boolean crashPatchDiagnostics = false;
     public boolean disableDoubleTapSprint = false;
 
     public float flyBoostMultiplier = 1.5f;
@@ -147,6 +148,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 14) migrateV14();
                 if (INSTANCE.configVersion < 15) migrateV15();
                 if (INSTANCE.configVersion < 16) migrateV16();
+                if (INSTANCE.configVersion < 17) migrateV17();
                 fixBrokenHudPositions();
             } else {
                 INSTANCE = new DropperUtilsConfig();
@@ -261,6 +263,13 @@ public class DropperUtilsConfig {
         INSTANCE.nametagScale = 1.0f;
         INSTANCE.nametagHidePlayers = false;
         INSTANCE.configVersion = 16;
+        save();
+    }
+
+    private static void migrateV17() {
+        System.out.println("[DropperUtils] Migrating config v16 -> v17");
+        INSTANCE.crashPatchDiagnostics = false;
+        INSTANCE.configVersion = 17;
         save();
     }
 
