@@ -76,20 +76,23 @@ public class Events {
             FlyBoostFeature.tick(client);
             DisableDoubleTapSprintFeature.tick(client);
 
-            if (Keybinds.fullbrightKey.consumeClick()) {
+            boolean captureActive = Keybinds.isCaptureActive();
+            boolean gameplayInputAllowed = client.screen == null && !captureActive;
+
+            if (Keybinds.fullbrightKey.consumeClick() && gameplayInputAllowed) {
                 FullbrightFeature.INSTANCE.toggle();
             }
-
-
-
-            if (Keybinds.guiKey.consumeClick()) {
+            if (Keybinds.guiKey.consumeClick() && gameplayInputAllowed) {
                 client.setScreen(new VantaSettingsScreen(null));
             }
 
-
-            ZoomFeature.INSTANCE.tick(Keybinds.zoomKey);
-            if (Keybinds.sprintToggleKey.consumeClick()) SprintSneakToggles.toggleSprint();
-            if (Keybinds.sneakToggleKey.consumeClick()) SprintSneakToggles.toggleSneak();
+            ZoomFeature.INSTANCE.tick(Keybinds.zoomKey, !gameplayInputAllowed);
+            if (Keybinds.sprintToggleKey.consumeClick() && gameplayInputAllowed) {
+                SprintSneakToggles.toggleSprint();
+            }
+            if (Keybinds.sneakToggleKey.consumeClick() && gameplayInputAllowed) {
+                SprintSneakToggles.toggleSneak();
+            }
             SprintSneakToggles.tick(client);
 
             if (client.player != null) {

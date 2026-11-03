@@ -14,6 +14,16 @@ public class Keybinds {
     public static KeyMapping sprintToggleKey;
     public static KeyMapping sneakToggleKey;
 
+    private static boolean captureActive;
+
+    public static boolean isCaptureActive() {
+        return captureActive;
+    }
+
+    public static void setCaptureActive(boolean active) {
+        captureActive = active;
+    }
+
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(
                     Identifier.fromNamespaceAndPath(

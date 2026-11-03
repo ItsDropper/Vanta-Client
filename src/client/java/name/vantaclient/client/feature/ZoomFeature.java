@@ -18,8 +18,12 @@ public class ZoomFeature extends Feature {
     }
 
     public void tick(KeyMapping zoomKey) {
+        tick(zoomKey, false);
+    }
+
+    public void tick(KeyMapping zoomKey, boolean suppressInput) {
         boolean wasZooming = zooming;
-        zooming = isEnabled() && zoomKey.isDown();
+        zooming = !suppressInput && isEnabled() && zoomKey.isDown();
 
         if (wasZooming && !zooming) {
             scrollSteps = 0;

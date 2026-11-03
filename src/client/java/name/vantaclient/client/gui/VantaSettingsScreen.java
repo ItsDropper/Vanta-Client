@@ -8,6 +8,10 @@ import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.feature.FarViewFeature;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
+import name.vantaclient.client.init.Keybinds;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
+import org.lwjgl.glfw.GLFW;
 import name.vantaclient.client.gui.components.settings.BooleanSetting;
 import name.vantaclient.client.gui.components.settings.ChoiceSetting;
 import name.vantaclient.client.gui.components.settings.Setting;
@@ -30,7 +34,7 @@ import java.util.Locale;
 
 /** The live, retained-mode settings workspace for Vanta Client. */
 public final class VantaSettingsScreen extends Screen {
-    private enum Page { OVERVIEW, HUD, VISUAL, COMBAT, MISC, APPEARANCE }
+    private enum Page { OVERVIEW, HUD, VISUAL, COMBAT, MISC, APPEARANCE, CONTROLS }
 
     private final Screen parent;
     private VantaUiRuntime runtime;
@@ -38,6 +42,9 @@ public final class VantaSettingsScreen extends Screen {
     private Feature selectedFeature;
     private String searchQuery = "";
     private String pendingSearch = "";
+    private KeyMapping pendingKeyCapture;
+    private int capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+    private int capturedMouseButton = -1;
 
     public VantaSettingsScreen(Screen parent) {
         super(Component.literal("Vanta Client Settings"));
@@ -65,8 +72,13 @@ public final class VantaSettingsScreen extends Screen {
             case 4 -> Page.MISC;
             case 5 -> Page.APPEARANCE;
             case 6 -> Page.VISUAL;
+            case 7 -> Page.CONTROLS;
             default -> throw new IllegalArgumentException("Unknown settings page: " + targetPage);
         };
+        pendingKeyCapture = null;
+        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+        capturedMouseButton = -1;
+        Keybinds.setCaptureActive(false);
         selectedFeature = targetPage == 6
                 ? FeatureRegistry.FEATURES.stream()
                         .filter(feature -> !SettingRegistry.getSettings(feature).isEmpty())
@@ -117,6 +129,7 @@ public final class VantaSettingsScreen extends Screen {
             navigation.add(compactNav(Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
             navigation.add(compactNav(Page.MISC, VantaUiNode.Icon.SPARK));
             navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
+            navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
             navigation = VantaUiNode.column(5, 10).width(154).background(VantaUiTheme.PANEL);
             navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
@@ -126,6 +139,7 @@ public final class VantaSettingsScreen extends Screen {
             navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
             navigation.add(nav("Miscellaneous", Page.MISC, VantaUiNode.Icon.SPARK));
             navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
+            navigation.add(nav("Controls", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
             navigation.add(VantaUiNode.spacer(1).flex(1));
             navigation.add(VantaUiNode.eyebrow("TOOLS"));
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
@@ -151,6 +165,7 @@ public final class VantaSettingsScreen extends Screen {
             case COMBAT -> "Combat";
             case MISC -> "Miscellaneous";
             case APPEARANCE -> "Appearance";
+            case CONTROLS -> "Controls";
         };
         return VantaUiNode.button("", icon, () -> {
             page = target;
@@ -177,6 +192,7 @@ public final class VantaSettingsScreen extends Screen {
         switch (page) {
             case OVERVIEW -> addOverview(content);
             case APPEARANCE -> addAppearance(content);
+            case CONTROLS -> addControls(content);
             case HUD, VISUAL, COMBAT, MISC -> addFeatureCategory(content);
         }
     }
@@ -406,6 +422,108 @@ public final class VantaSettingsScreen extends Screen {
         }
     }
 
+    private void addControls(VantaUiNode content) {
+        content.add(VantaUiNode.eyebrow("INPUT / KEYBINDINGS"));
+        content.add(VantaUiNode.title("Controls"));
+        content.add(VantaUiNode.paragraph(
+                "Customize Vanta's built-in shortcuts. Vanilla Minecraft bindings remain in Options → Controls. "
+                        + "Choose Change, then press a key or click a mouse button. Escape cancels; Backspace unbinds.",
+                VantaUiTheme.TEXT_SECONDARY, 3));
+
+        VantaUiNode panel = VantaUiNode.column(8, 12)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(12);
+        addKeybindRow(panel, "Open Vanta settings",
+                "Open the Vanta settings workspace.", Keybinds.guiKey);
+        panel.add(divider());
+        addKeybindRow(panel, "Fullbright",
+                "Toggle the Fullbright feature.", Keybinds.fullbrightKey);
+        panel.add(divider());
+        addKeybindRow(panel, "Zoom",
+                "Hold to zoom the camera.", Keybinds.zoomKey);
+        panel.add(divider());
+        addKeybindRow(panel, "Toggle sprint",
+                "Toggle the Vanta sprint state.", Keybinds.sprintToggleKey);
+        panel.add(divider());
+        addKeybindRow(panel, "Toggle sneak",
+                "Toggle the Vanta sneak state.", Keybinds.sneakToggleKey);
+        content.add(panel);
+
+        if (pendingKeyCapture != null) {
+            VantaUiNode waiting = VantaUiNode.row(8, 10)
+                    .height(42)
+                    .background(VantaUiTheme.SURFACE_SELECTED)
+                    .align(VantaUiNode.Alignment.CENTER);
+            waiting.add(VantaUiNode.dynamicText(
+                    () -> "Waiting for input: " + pendingKeyCapture.getTranslatedKeyMessage().getString(),
+                    VantaUiTheme.TEXT_PRIMARY).flex(1));
+            waiting.add(VantaUiNode.button("Cancel", this::cancelKeyCapture).height(28));
+            content.add(waiting);
+        }
+        content.add(VantaUiNode.text(
+                "These are the five Vanta mappings currently registered. Feature-specific key bindings are not defined yet.",
+                VantaUiTheme.TEXT_MUTED));
+    }
+
+    private void addKeybindRow(VantaUiNode panel, String label,
+                               String description, KeyMapping mapping) {
+        VantaUiNode row = VantaUiNode.row(10, 6)
+                .height(42)
+                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(label));
+        labels.add(VantaUiNode.text(description, VantaUiTheme.TEXT_MUTED));
+        row.add(labels);
+        row.add(VantaUiNode.dynamicText(
+                () -> mapping.getTranslatedKeyMessage().getString(),
+                VantaUiTheme.TEXT_SECONDARY));
+        row.add(VantaUiNode.button(pendingKeyCapture == mapping ? "WAITING…" : "Change",
+                () -> beginKeyCapture(mapping))
+                .size(88, 30).enabled(pendingKeyCapture == null));
+        row.add(VantaUiNode.button("Reset", () -> resetKeyMapping(mapping))
+                .size(62, 30).enabled(pendingKeyCapture == null));
+        panel.add(row);
+    }
+
+    private void beginKeyCapture(KeyMapping mapping) {
+        if (mapping == null || pendingKeyCapture != null) return;
+        pendingKeyCapture = mapping;
+        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+        capturedMouseButton = -1;
+        Keybinds.setCaptureActive(true);
+        rebuildUi();
+    }
+
+    private void cancelKeyCapture() {
+        pendingKeyCapture = null;
+        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+        capturedMouseButton = -1;
+        Keybinds.setCaptureActive(false);
+        rebuildUi();
+    }
+
+    private void completeKeyCapture(InputConstants.Key key, int keyboardKey, int mouseButton) {
+        KeyMapping mapping = pendingKeyCapture;
+        if (mapping == null || key == null) return;
+        mapping.setKey(key);
+        KeyMapping.resetMapping();
+        Minecraft.getInstance().options.save();
+        pendingKeyCapture = null;
+        capturedKeyCode = keyboardKey;
+        capturedMouseButton = mouseButton;
+        Keybinds.setCaptureActive(
+                keyboardKey != GLFW.GLFW_KEY_UNKNOWN || mouseButton >= 0);
+        rebuildUi();
+    }
+
+    private void resetKeyMapping(KeyMapping mapping) {
+        if (mapping == null || pendingKeyCapture != null) return;
+        mapping.setKey(mapping.getDefaultKey());
+        KeyMapping.resetMapping();
+        Minecraft.getInstance().options.save();
+        rebuildUi();
+    }
+
     private void addAppearance(VantaUiNode content) {
         VantaClientPreferences preferences = VantaClientPreferences.get();
         content.add(VantaUiNode.eyebrow("PREFERENCES / INTERFACE"));
@@ -514,12 +632,22 @@ public final class VantaSettingsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (pendingKeyCapture != null) {
+            completeKeyCapture(InputConstants.Type.MOUSE.getOrCreate(event.button()),
+                    GLFW.GLFW_KEY_UNKNOWN, event.button());
+            return true;
+        }
         if (runtime != null && runtime.mouseClicked(event.x(), event.y(), event.button(), font)) return true;
         return super.mouseClicked(event, doubleClick);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (capturedMouseButton == event.button()) {
+            capturedMouseButton = -1;
+            Keybinds.setCaptureActive(false);
+            return true;
+        }
         boolean handled = runtime != null && runtime.mouseReleased(event.button());
         return handled || super.mouseReleased(event);
     }
@@ -538,9 +666,34 @@ public final class VantaSettingsScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (pendingKeyCapture != null) {
+            if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+                capturedKeyCode = GLFW.GLFW_KEY_ESCAPE;
+                pendingKeyCapture = null;
+                Keybinds.setCaptureActive(true);
+                rebuildUi();
+            } else if (event.key() == GLFW.GLFW_KEY_BACKSPACE) {
+                completeKeyCapture(
+                        InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_UNKNOWN),
+                        GLFW.GLFW_KEY_BACKSPACE, -1);
+            } else {
+                completeKeyCapture(InputConstants.getKey(event), event.key(), -1);
+            }
+            return true;
+        }
         boolean shiftDown = (event.modifiers() & 1) != 0;
         if (runtime != null && runtime.keyPressed(event.key(), shiftDown)) return true;
         return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean keyReleased(KeyEvent event) {
+        if (capturedKeyCode == event.key()) {
+            capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+            Keybinds.setCaptureActive(false);
+            return true;
+        }
+        return super.keyReleased(event);
     }
 
     @Override
@@ -551,6 +704,10 @@ public final class VantaSettingsScreen extends Screen {
 
     @Override
     public void removed() {
+        pendingKeyCapture = null;
+        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
+        capturedMouseButton = -1;
+        Keybinds.setCaptureActive(false);
         if (runtime != null) runtime.dispose();
         super.removed();
     }
