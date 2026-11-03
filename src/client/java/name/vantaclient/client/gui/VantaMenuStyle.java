@@ -306,7 +306,7 @@ public final class VantaMenuStyle {
         }
 
         private static net.minecraft.network.chat.Component footerLeft() {
-            return net.minecraft.network.chat.Component.literal("VANTA CLIENT  /  MINECRAFT " + SharedConstants.getCurrentVersion().getName())
+            return net.minecraft.network.chat.Component.literal("VANTA CLIENT  /  MINECRAFT " + SharedConstants.getCurrentVersion().id())
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
