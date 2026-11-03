@@ -82,7 +82,7 @@ public final class VantaMenuStyle {
         int width = menuButtonWidth(screenWidth);
         int top = menuTop(screenHeight);
         int y = top + 3 * 35 + 12 + 35;
-        return new int[]{left, Math.min(screenHeight - 52, y), width, 22};
+        return new int[]{left, Math.min(screenHeight - 52, y), Math.max(width, Math.min(220, screenWidth - left - 24)), 22};
     }
 
     public static int menuLeft(int screenWidth) {
@@ -209,7 +209,7 @@ public final class VantaMenuStyle {
                 withAlpha(0xFFF2F5FA, alpha), false);
         graphics.drawString(client.font, ComponentText.profileState(profileId != null),
                 textX, y + 56, withAlpha(0xFF9AA8BA, alpha), false);
-        graphics.fill(textX, y + 83, x + width - 12, y + 72,
+        graphics.fill(textX, y + 68, x + width - 12, y + 69,
                 withAlpha(0x465C6C82, alpha));
         graphics.drawString(client.font, ComponentText.profileHint(),
                 textX, y + 79, withAlpha(0xFF8794A6, alpha), false);
