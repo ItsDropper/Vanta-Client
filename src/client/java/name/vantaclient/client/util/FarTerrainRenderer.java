@@ -53,7 +53,7 @@ public final class FarTerrainRenderer {
     private static final int ADAPTIVE_REFRESH_TICKS = 40;
     private static final int MAX_TILES_TO_SCHEDULE_PER_TICK = 6;
     private static final int MAX_QUEUED_TILE_JOBS = 96;
-    private static final int MAX_DRAW_QUADS = 192_000;
+    private static final int MAX_DRAW_QUADS = 96_000;
     private static final int MAX_DESIRED_TILES = 4096;
     private static final int SKIRT_MIN_DEPTH = 24;
 
@@ -88,7 +88,7 @@ public final class FarTerrainRenderer {
     private static int lastPlayerChunkZ = Integer.MIN_VALUE;
     private static volatile String lastWorkerError = "";
     private static double averageMeshSubmitMs;
-    private static int adaptiveDrawBudget = 72_000;
+    private static int adaptiveDrawBudget = 36_000;
 
     private FarTerrainRenderer() {}
 
@@ -209,6 +209,7 @@ public final class FarTerrainRenderer {
 
         DESIRED.clear();
         DESIRED.addAll(nextDesired);
+        FAILED.removeIf(key -> !nextDesired.contains(key));
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
         orderedTiles = List.copyOf(sorted);
     }
@@ -438,7 +439,10 @@ public final class FarTerrainRenderer {
             double tileDx = tileCenterX - playerX;
             double tileDz = tileCenterZ - playerZ;
             double tileDistanceSquared = tileDx * tileDx + tileDz * tileDz;
-            if (tileDistanceSquared > outerRadiusSquared * 1.08) continue;
+            double tileHalfSpan = mesh.spanBlocks * 0.5;
+            double nearestDx = Math.max(0.0, Math.abs(tileDx) - tileHalfSpan);
+            double nearestDz = Math.max(0.0, Math.abs(tileDz) - tileHalfSpan);
+            if (nearestDx * nearestDx + nearestDz * nearestDz > outerRadiusSquared) continue;
             double tileDistance = Math.sqrt(tileDistanceSquared);
             if (hasHorizontalForward && tileDistance > 1.0) {
                 double angularRadius = Math.atan2(mesh.spanBlocks * 0.72, tileDistance);
@@ -489,13 +493,13 @@ public final class FarTerrainRenderer {
 
     private static int getDrawBudget() {
         int profileBudget = switch (FarViewFeature.getQuality()) {
-            case "PERFORMANCE" -> 36_000;
-            case "HIGH" -> 128_000;
+            case "PERFORMANCE" -> 18_000;
+            case "HIGH" -> 64_000;
             case "ULTRA" -> MAX_DRAW_QUADS;
-            default -> 72_000;
+            default -> 36_000;
         };
         return FarViewFeature.isAdaptiveEnabled()
-                ? Math.max(16_000, Math.min(profileBudget, adaptiveDrawBudget))
+                ? Math.max(12_000, Math.min(profileBudget, adaptiveDrawBudget))
                 : profileBudget;
     }
 
@@ -504,9 +508,9 @@ public final class FarTerrainRenderer {
         averageMeshSubmitMs = averageMeshSubmitMs == 0.0
                 ? renderMillis : averageMeshSubmitMs * 0.82 + renderMillis * 0.18;
         if (averageMeshSubmitMs > 4.0) {
-            adaptiveDrawBudget = Math.max(16_000, (int) (adaptiveDrawBudget * 0.85));
+            adaptiveDrawBudget = Math.max(12_000, (int) (adaptiveDrawBudget * 0.85));
         } else if (averageMeshSubmitMs < 2.0) {
-            adaptiveDrawBudget = Math.min(192_000, adaptiveDrawBudget + 4_000);
+            adaptiveDrawBudget = Math.min(MAX_DRAW_QUADS, adaptiveDrawBudget + 4_000);
         }
     }
 
@@ -626,7 +630,7 @@ public final class FarTerrainRenderer {
         revision++;
         lastWorkerError = "";
         averageMeshSubmitMs = 0.0;
-        adaptiveDrawBudget = 72_000;
+        adaptiveDrawBudget = 36_000;
         DESIRED.clear();
         MESHES.clear();
         FAILED.clear();
