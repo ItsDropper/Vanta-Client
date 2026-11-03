@@ -32,9 +32,11 @@ public class HudEditorScreen extends Screen {
 
     private void buildToolbar() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
+        int toolbarWidth = Math.min(520, Math.max(340, width - 24));
+        boolean showGridControl = width >= 560;
         VantaUiNode root = VantaUiNode.row(0, 0).height(52);
         root.add(VantaUiNode.spacer(1).flex(1));
-        VantaUiNode toolbar = VantaUiNode.row(10, 10).width(430).height(48)
+        VantaUiNode toolbar = VantaUiNode.row(10, 10).width(toolbarWidth).height(48)
                 .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.START);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
@@ -44,12 +46,22 @@ public class HudEditorScreen extends Screen {
         labels.add(VantaUiNode.text("Drag elements to position", VantaUiTheme.TEXT_SECONDARY));
         toolbar.add(labels);
         toolbar.add(VantaUiNode.spacer(1).flex(1));
+        if (showGridControl) {
+            toolbar.add(VantaUiNode.toggle("Grid",
+                    () -> VantaClientPreferences.get().hudShowGrid,
+                    value -> {
+                        VantaClientPreferences.get().hudShowGrid = value;
+                        VantaClientPreferences.save();
+                    }).width(76).tooltip("Show or hide the alignment grid")
+                    .align(VantaUiNode.Alignment.CENTER));
+        }
         toolbar.add(VantaUiNode.toggle("Snap",
                 () -> VantaClientPreferences.get().hudSnapToGrid,
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(84).tooltip("Snap moved elements to the alignment grid")
+                }).width(showGridControl ? 84 : 72)
+                .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaUiNode.button("Done", this::onClose).height(30)
                 .align(VantaUiNode.Alignment.CENTER));
@@ -92,7 +104,20 @@ public class HudEditorScreen extends Screen {
             toolbarRuntime.render(graphics, font, width, height, mouseX, mouseY);
         }
         HudSettingsPanel.render(graphics, mouseX, mouseY);
+        drawInteractionHint(graphics, mc);
         super.render(graphics, mouseX, mouseY, delta);
+    }
+
+    private void drawInteractionHint(GuiGraphics graphics, Minecraft mc) {
+        String hint = HudSettingsPanel.isOpen()
+                ? "ADJUST SETTINGS  ·  DRAG TO REPOSITION  ·  ESC TO EXIT"
+                : "DRAG TO MOVE  ·  CLICK TO EDIT  ·  ESC TO EXIT";
+        int width = mc.font.width(hint) + 28;
+        int x = (this.width - width) / 2;
+        int y = this.height - 30;
+        fillRounded(graphics, x, y, width, 22, 7, 0xD9161B23);
+        drawRoundedOutline(graphics, x, y, width, 22, 7, 0x665D6878, 1);
+        graphics.drawCenteredString(mc.font, hint, this.width / 2, y + 7, 0xFFD2D8E2);
     }
 
     private void drawGrid(GuiGraphics graphics, int spacing, float opacity) {
