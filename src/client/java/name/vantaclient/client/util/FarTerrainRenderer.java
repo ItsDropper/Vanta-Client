@@ -61,6 +61,7 @@ public final class FarTerrainRenderer {
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
+    private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> DESIRED = ConcurrentHashMap.newKeySet();
     private static final ConcurrentLinkedQueue<TileMesh> COMPLETED = new ConcurrentLinkedQueue<>();
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(
@@ -213,6 +214,14 @@ public final class FarTerrainRenderer {
         DESIRED.clear();
         DESIRED.addAll(nextDesired);
         FAILED.removeIf(key -> !nextDesired.contains(key));
+        // Re-admit an intentionally evicted tile only after it moves into the
+        // inner 65% of the active radius. This prevents a 20-tick rebuild loop
+        // from regenerating distant tiles that the memory cap immediately evicts.
+        double reentryDistance = farDistance * 0.65;
+        double reentryDistanceSquared = reentryDistance * reentryDistance;
+        CACHE_EVICTED.removeIf(key -> !nextDesired.contains(key)
+                || distanceSquaredToCenter(key, playerChunkX, playerChunkZ)
+                <= reentryDistanceSquared);
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
         recalculateMeshCacheBytes();
         orderedTiles = List.copyOf(sorted);
@@ -275,7 +284,7 @@ public final class FarTerrainRenderer {
 
         for (TileKey key : orderedTiles) {
             if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
-            if (MESHES.containsKey(key) || FAILED.contains(key)) continue;
+            if (MESHES.containsKey(key) || FAILED.contains(key) || CACHE_EVICTED.contains(key)) continue;
             WorkKey workKey = new WorkKey(key, revision);
             if (!PENDING.add(workKey)) continue;
 
@@ -421,8 +430,12 @@ public final class FarTerrainRenderer {
         if (cachedMeshBytes <= MAX_MESH_CACHE_BYTES) return;
         // orderedTiles is nearest-first; discard the least useful distant meshes first.
         for (int i = orderedTiles.size() - 1; i >= 0 && cachedMeshBytes > MAX_MESH_CACHE_BYTES; i--) {
-            TileMesh removed = MESHES.remove(orderedTiles.get(i));
-            if (removed != null) cachedMeshBytes -= removed.estimatedBytes();
+            TileKey key = orderedTiles.get(i);
+            TileMesh removed = MESHES.remove(key);
+            if (removed != null) {
+                cachedMeshBytes -= removed.estimatedBytes();
+                CACHE_EVICTED.add(key);
+            }
         }
     }
 
@@ -664,6 +677,7 @@ public final class FarTerrainRenderer {
         MESHES.clear();
         cachedMeshBytes = 0L;
         FAILED.clear();
+        CACHE_EVICTED.clear();
         orderedTiles = List.of();
         COMPLETED.clear();
         WORKER.getQueue().clear();
@@ -684,7 +698,8 @@ public final class FarTerrainRenderer {
         String suffix = lastWorkerError.isBlank() ? "" : " | worker warning: " + lastWorkerError;
         return "LOD tiles: " + MESHES.size() + "/" + DESIRED.size()
                 + " ready | " + WORKER.getQueue().size() + " queued | " + FAILED.size()
-                + " failed | cache " + (cachedMeshBytes / (1024 * 1024)) + "/"
+                + " failed | " + CACHE_EVICTED.size() + " memory-evicted | cache "
+                + (cachedMeshBytes / (1024 * 1024)) + "/"
                 + (MAX_MESH_CACHE_BYTES / (1024 * 1024)) + " MiB | range "
                 + effectiveFarDistance + " chunks" + suffix;
     }
