@@ -8,6 +8,8 @@ on:
       - "gradle.properties"
       - "src/client/java/name/vantaclient/client/gui/**"
       - "src/client/java/name/vantaclient/client/hudeditor/**"
+      - "src/client/java/name/vantaclient/mixin/**"
+      - "src/main/resources/dropperutils.mixins.json"
       - "src/client/resources/**"
       - "src/gametest/**"
       - ".github/workflows/ui-screenshots.yml"
