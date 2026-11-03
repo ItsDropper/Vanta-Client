@@ -74,6 +74,8 @@ public final class VantaUiNode {
     private boolean scrollable;
     private boolean clipChildren;
     private Alignment alignment = Alignment.STRETCH;
+    private Alignment childAlignment = Alignment.STRETCH;
+    private boolean alignmentExplicit;
     private Justification justification = Justification.START;
     private boolean visible = true;
     private boolean enabled = true;
@@ -287,7 +289,12 @@ public final class VantaUiNode {
     }
     public VantaUiNode flex(float value) { flex = Math.max(0.0f, value); return this; }
     public VantaUiNode align(Alignment value) {
-        alignment = value == null ? Alignment.STRETCH : value;
+        Alignment resolved = value == null ? Alignment.STRETCH : value;
+        if (kind == Kind.CONTAINER) childAlignment = resolved;
+        else {
+            alignment = resolved;
+            alignmentExplicit = true;
+        }
         return this;
     }
     public VantaUiNode justify(Justification value) {
@@ -413,21 +420,22 @@ public final class VantaUiNode {
 
         if (direction == Direction.STACK) {
             for (VantaUiNode child : layoutChildren) {
+                Alignment effectiveAlignment = effectiveAlignment(child);
                 int requestedWidth = child.preferredWidth >= 0
                         ? child.preferredWidth
-                        : child.alignment == Alignment.STRETCH ? innerWidth
+                        : effectiveAlignment == Alignment.STRETCH ? innerWidth
                         : child.intrinsicWidth(font);
                 int childWidth = constrain(requestedWidth, innerWidth,
                         child.minWidth, child.maxWidth);
                 int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
                         ? child.intrinsicHeight(font)
                         : child.preferredHeight >= 0 ? child.preferredHeight
-                        : child.alignment == Alignment.STRETCH ? innerHeight
+                        : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
                 int childHeight = constrain(requestedHeight, innerHeight,
                         child.minHeight, child.maxHeight);
-                int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
-                int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
+                int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
+                int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
                 child.arrange(childX, childY, childWidth, childHeight, font);
             }
             return;
@@ -486,28 +494,34 @@ public final class VantaUiNode {
             int primary = primarySizes[i];
 
             if (direction == Direction.COLUMN) {
+                Alignment effectiveAlignment = effectiveAlignment(child);
                 int requestedWidth = child.preferredWidth >= 0
                         ? child.preferredWidth
-                        : child.alignment == Alignment.STRETCH ? innerWidth
+                        : effectiveAlignment == Alignment.STRETCH ? innerWidth
                         : child.intrinsicWidth(font);
                 int childWidth = constrain(requestedWidth, innerWidth,
                         child.minWidth, child.maxWidth);
-                int childX = alignedOffset(innerX, innerWidth, childWidth, child.alignment);
+                int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
                 child.arrange(childX, cursor, childWidth, primary, font);
                 cursor += primary + gap + distributedGap;
             } else {
+                Alignment effectiveAlignment = effectiveAlignment(child);
                 int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
                         ? child.intrinsicHeight(font)
                         : child.preferredHeight >= 0 ? child.preferredHeight
-                        : child.alignment == Alignment.STRETCH ? innerHeight
+                        : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
                 int childHeight = constrain(requestedHeight, innerHeight,
                         child.minHeight, child.maxHeight);
-                int childY = alignedOffset(innerY, innerHeight, childHeight, child.alignment);
+                int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
                 child.arrange(cursor, childY, primary, childHeight, font);
                 cursor += primary + gap + distributedGap;
             }
         }
+    }
+
+    private Alignment effectiveAlignment(VantaUiNode child) {
+        return child.alignmentExplicit ? child.alignment : childAlignment;
     }
 
     private static int constrain(int desired, int available, int minimum, int maximum) {
