@@ -37,6 +37,10 @@ All nine states are captured at four configurations:
 
 Expected output: **36 PNG files**. The workflow independently asserts that exactly 36 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
+## Interaction smoke check
+
+Before capturing the screenshot matrix, the client GameTest creates a scrollable retained-mode panel, drags its scrollbar thumb from top to bottom, and asserts that the content position changes. This validates the scrollbar pointer-capture path in a real Minecraft client. It is a targeted smoke check, not exhaustive coverage of every control or nested-scroll combination.
+
 ## Artifacts
 
 - `vanta-ui-screenshots`: PNGs, retained for 14 days.

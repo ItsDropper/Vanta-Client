@@ -13,6 +13,7 @@ public final class VantaUiRuntime {
 
     private VantaUiNode focused;
     private VantaUiNode activeSlider;
+    private VantaUiNode activeScrollbar;
     private VantaUiNode hovered;
     private VantaUiNode pendingFocusReveal;
     private int lastWidth = -1;
@@ -124,6 +125,15 @@ public final class VantaUiRuntime {
         double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
         mouseX = (mouseX - offsetX) / uiScale;
         mouseY = (mouseY - offsetY) / uiScale;
+        VantaUiNode scrollTarget = root.beginScrollbarDrag(mouseX, mouseY);
+        if (scrollTarget != null) {
+            if (root.closeDropdownsExcept(null)) lastWidth = -1;
+            setFocused(null);
+            activeSlider = null;
+            activeScrollbar = scrollTarget;
+            return true;
+        }
+
         VantaUiNode target = root.hitTest(mouseX, mouseY);
         boolean dropdownClosed = root.closeDropdownsExcept(target);
         setFocused(target);
@@ -147,14 +157,27 @@ public final class VantaUiRuntime {
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int button) {
-        if (activeSlider == null || button != 0) return false;
+        if (button != 0) return false;
+        if (activeScrollbar != null) {
+            double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
+            activeScrollbar.dragScrollbar((mouseY - offsetY) / uiScale);
+            lastWidth = -1;
+            return true;
+        }
+        if (activeSlider == null) return false;
         double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
         activeSlider.drag((mouseX - offsetX) / uiScale);
         return true;
     }
 
     public boolean mouseReleased(int button) {
-        if (button != 0 || activeSlider == null) return false;
+        if (button != 0) return false;
+        if (activeScrollbar != null) {
+            activeScrollbar.endScrollbarDrag();
+            activeScrollbar = null;
+            return true;
+        }
+        if (activeSlider == null) return false;
         activeSlider = null;
         return true;
     }
@@ -200,6 +223,8 @@ public final class VantaUiRuntime {
 
     public void dispose() {
         activeSlider = null;
+        if (activeScrollbar != null) activeScrollbar.endScrollbarDrag();
+        activeScrollbar = null;
         if (focused != null) focused.setFocused(false);
         focused = null;
         hovered = null;

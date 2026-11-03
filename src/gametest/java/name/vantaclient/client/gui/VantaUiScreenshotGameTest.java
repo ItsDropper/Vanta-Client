@@ -6,6 +6,8 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
+import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +31,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
+        verifyScrollbarThumbDragging(context);
 
         VantaSettingsScreen screen = context.computeOnClient(
                 client -> new VantaSettingsScreen(null));
@@ -57,6 +60,44 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
         context.setScreen(() -> null);
         context.waitTicks(1);
+    }
+
+
+    private static void verifyScrollbarThumbDragging(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            VantaUiNode scroll = VantaUiNode.column(2, 4)
+                    .width(220).height(120).scrollable();
+            VantaUiNode firstRow = VantaUiNode.text("First scroll row");
+            scroll.add(firstRow);
+            for (int index = 1; index < 16; index++) {
+                scroll.add(VantaUiNode.text("Scrollable row " + index));
+            }
+
+            VantaUiRuntime runtime = new VantaUiRuntime(scroll);
+            runtime.layout(client.font, 320, 220);
+            int initialY = firstRow.y();
+            int viewportHeight = scroll.height() - 8;
+            int contentHeight = 16 * 14 + 15 * 2;
+            int thumbHeight = Math.min(viewportHeight,
+                    Math.max(12, viewportHeight * viewportHeight / contentHeight));
+            int trackX = scroll.x() + scroll.width() - 2;
+            int trackTop = scroll.y() + 4;
+            double thumbCenter = trackTop + thumbHeight / 2.0;
+            double bottomThumbCenter = trackTop + viewportHeight - thumbHeight / 2.0;
+
+            if (!runtime.mouseClicked(trackX, thumbCenter, 0, client.font)) {
+                throw new AssertionError("Scrollable UI did not capture the scrollbar thumb.");
+            }
+            if (!runtime.mouseDragged(trackX, bottomThumbCenter, 0)) {
+                throw new AssertionError("Scrollbar thumb did not retain pointer capture.");
+            }
+            runtime.mouseReleased(0);
+            runtime.layout(client.font, 320, 220);
+            if (firstRow.y() >= initialY) {
+                throw new AssertionError("Dragging the scrollbar thumb did not scroll the content.");
+            }
+            runtime.dispose();
+        });
     }
 
     private static void captureTitleScreen(ClientGameTestContext context,

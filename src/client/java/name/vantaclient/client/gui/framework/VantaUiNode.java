@@ -85,6 +85,7 @@ public final class VantaUiNode {
     private boolean focused;
     private int scrollOffset;
     private int contentHeight;
+    private int scrollDragPointerOffset;
 
     private int x;
     private int y;
@@ -810,16 +811,77 @@ public final class VantaUiNode {
     private static void ring(GuiGraphics g,float cx,float cy,float radius,int color){
         float px=cx+radius,py=cy;for(int a=15;a<=360;a+=15){double rad=Math.toRadians(a);float nx=cx+(float)Math.cos(rad)*radius,ny=cy+(float)Math.sin(rad)*radius;line(g,px,py,nx,ny,color,1,1);px=nx;py=ny;}
     }
+    private int scrollViewportHeight() {
+        return Math.max(1, height - padding * 2);
+    }
+
+    private int scrollMaxOffset() {
+        return Math.max(0, contentHeight - scrollViewportHeight());
+    }
+
+    private int scrollThumbHeight() {
+        int viewportHeight = scrollViewportHeight();
+        if (contentHeight <= viewportHeight) return viewportHeight;
+        return Math.min(viewportHeight,
+                Math.max(12, viewportHeight * viewportHeight / Math.max(1, contentHeight)));
+    }
+
+    private int scrollThumbTop() {
+        int maxScroll = scrollMaxOffset();
+        int trackTravel = Math.max(0, scrollViewportHeight() - scrollThumbHeight());
+        return y + padding + (maxScroll == 0 ? 0 : trackTravel * scrollOffset / maxScroll);
+    }
+
     private void renderScrollbar(GuiGraphics graphics) {
-        int innerHeight = Math.max(1, height - padding * 2);
-        if (contentHeight <= innerHeight || innerHeight <= 8) return;
+        int innerHeight = scrollViewportHeight();
+        if (scrollMaxOffset() <= 0 || innerHeight <= 8) return;
         int trackX = x + width - 3;
         int trackTop = y + padding;
-        int thumbHeight = Math.max(12, innerHeight * innerHeight / contentHeight);
-        int maxScroll = contentHeight - innerHeight;
-        int thumbY = trackTop + (innerHeight - thumbHeight) * scrollOffset / maxScroll;
+        int thumbTop = scrollThumbTop();
+        int thumbHeight = scrollThumbHeight();
         graphics.fill(trackX, trackTop, trackX + 2, trackTop + innerHeight, VantaUiTheme.BORDER_SUBTLE);
-        graphics.fill(trackX, thumbY, trackX + 2, thumbY + thumbHeight, VantaUiTheme.TEXT_MUTED);
+        graphics.fill(trackX, thumbTop, trackX + 2, thumbTop + thumbHeight, VantaUiTheme.TEXT_MUTED);
+    }
+
+    /** Starts pointer capture only when the visible scrollbar thumb is grabbed. */
+    VantaUiNode beginScrollbarDrag(double mouseX, double mouseY) {
+        if (!visible || !enabled || !contains(mouseX, mouseY)) return null;
+        // Children are clipped to the content viewport, but this node's own scrollbar
+        // is intentionally drawn on the viewport's right edge outside that clip.
+        if (containsClip(mouseX, mouseY)) {
+            for (int index = children.size() - 1; index >= 0; index--) {
+                VantaUiNode target = children.get(index).beginScrollbarDrag(mouseX, mouseY);
+                if (target != null) return target;
+            }
+        }
+        int maxScroll = scrollMaxOffset();
+        int viewportHeight = scrollViewportHeight();
+        if (!scrollable || maxScroll <= 0 || viewportHeight <= 8
+                || viewportHeight - scrollThumbHeight() <= 0) return null;
+
+        int trackX = x + width - 3;
+        if (mouseX < trackX - 5 || mouseX > trackX + 7
+                || mouseY < y + padding || mouseY >= y + height - padding) {
+            return null;
+        }
+        int thumbTop = scrollThumbTop();
+        int thumbHeight = scrollThumbHeight();
+        if (mouseY < thumbTop || mouseY >= thumbTop + thumbHeight) return null;
+
+        scrollDragPointerOffset = (int) Math.round(mouseY - thumbTop);
+        return this;
+    }
+
+    void dragScrollbar(double mouseY) {
+        int maxScroll = scrollMaxOffset();
+        int trackTravel = scrollViewportHeight() - scrollThumbHeight();
+        if (!scrollable || maxScroll <= 0 || trackTravel <= 0) return;
+        double normalized = (mouseY - (y + padding) - scrollDragPointerOffset) / trackTravel;
+        scrollOffset = clamp((int) Math.round(normalized * maxScroll), 0, maxScroll);
+    }
+
+    void endScrollbarDrag() {
+        scrollDragPointerOffset = 0;
     }
 
     void tick() {

@@ -13,7 +13,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - Shared controls include buttons, toggles, sliders, dropdowns, text fields, text, tooltips and vector-style icons.
 - IBM Plex Sans is bundled and wired through Minecraft's font-provider resources, with its OFL license.
 - UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
-- Remaining framework gaps include draggable scrollbar thumbs, independent dropdown popups, a keybind editor, dialog/progress primitives and dedicated layout/input unit tests.
+- Remaining framework gaps include independent dropdown popups, a keybind editor, dialog/progress primitives and a comprehensive layout/input unit-test suite.
 
 ## Production migration
 
@@ -33,7 +33,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 The inspected-main baseline, commit `5beed53`, passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)).
 
-The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The latest 36-image artifact passed capture and count checks; its complete image set has not been independently reviewed in this status update.
+The screenshot matrix covers the title screen, seven settings states and the HUD editor/inspector across four window-size / GUI-scale combinations. Before taking screenshots, the client GameTest also drags a retained-framework scrollbar thumb and asserts that its content moves. Earlier visual review verified that the compact inspector sits below the toolbar at GUI scales 1 and 2. The latest 36-image artifact passed capture and count checks; its complete image set has not been independently reviewed in this status update.
 
 ## Remaining acceptance gates
 

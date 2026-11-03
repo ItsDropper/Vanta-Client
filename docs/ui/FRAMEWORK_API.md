@@ -136,7 +136,7 @@ The prototype exposes a smoothed CPU-side command-submission timer. It measures 
 
 ## Current limitations
 
-- Scroll containers support wheel scrolling and a visual scrollbar; scrollbar thumb dragging is not implemented.
+- Scroll containers support wheel scrolling, clipped pointer input and draggable scrollbar thumbs. The screenshot GameTest includes a targeted thumb-drag smoke assertion, but this is not a comprehensive input-test suite.
 - Dropdown options render in the expanded component and rely on the parent scroll viewport for large lists; no independent virtualized popup list exists.
 - There is no generic icon, keybind editor, dialog, notification, progress or color-picker component yet.
 - The runtime is not a Compose replacement. It does not implement compiler transforms, recomposition effects, coroutine state or general-purpose modifier semantics.
