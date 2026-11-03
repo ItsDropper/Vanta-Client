@@ -38,6 +38,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
         verifyScrollbarThumbDragging(context);
+        verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
 
@@ -113,6 +114,63 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             runtime.layout(client.font, 320, 220);
             if (firstRow.y() >= initialY) {
                 throw new AssertionError("Dragging the scrollbar thumb did not scroll the content.");
+            }
+            runtime.dispose();
+        });
+    }
+
+    private static void verifyDropdownPopupOverlay(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            String[] selected = {"Option 0"};
+            List<String> options = java.util.stream.IntStream.range(0, 12)
+                    .mapToObj(index -> "Option " + index)
+                    .toList();
+
+            VantaUiNode scroll = VantaUiNode.column(2, 6)
+                    .width(240).height(110).scrollable();
+            for (int index = 0; index < 6; index++) {
+                scroll.add(VantaUiNode.text("Setting row " + index).height(22));
+            }
+            VantaUiNode dropdown = VantaUiNode.dropdown("Display mode", options,
+                    () -> selected[0], value -> selected[0] = value).height(32);
+            scroll.add(dropdown);
+
+            VantaUiNode root = VantaUiNode.column(0, 0).add(scroll);
+            VantaUiRuntime runtime = new VantaUiRuntime(root);
+            runtime.layout(client.font, 320, 220);
+            int originalHeight = dropdown.height();
+            int scrollX = scroll.x() + 12;
+            int scrollY = scroll.y() + scroll.height() - 10;
+            runtime.mouseScrolled(scrollX, scrollY, -30.0);
+            runtime.layout(client.font, 320, 220);
+
+            double controlX = dropdown.x() + dropdown.width() - 12;
+            double controlY = dropdown.y() + 12;
+            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+                throw new AssertionError("Dropdown control did not open.");
+            }
+            runtime.layout(client.font, 320, 220);
+            VantaUiNode.DropdownPopupBounds popup = runtime.dropdownPopupBounds();
+            if (popup == null || popup.visibleOptions() <= 0 || popup.width() <= 0
+                    || popup.y() < 0 || popup.y() + popup.height() > 220) {
+                throw new AssertionError("Dropdown popup was not positioned inside the viewport: " + popup);
+            }
+            if (dropdown.height() != originalHeight) {
+                throw new AssertionError("Opening a dropdown must not expand or reflow its parent layout.");
+            }
+
+            int clipTop = scroll.y() + 6;
+            int clipBottom = scroll.y() + scroll.height() - 6;
+            if (popup.y() >= clipTop && popup.y() + popup.height() <= clipBottom) {
+                throw new AssertionError("Dropdown popup did not escape its scrollable parent's scissor.");
+            }
+
+            if (!runtime.mouseClicked(popup.x() + 12, popup.y() + 11, 0, client.font)) {
+                throw new AssertionError("Dropdown popup option did not receive the click.");
+            }
+            if (!"Option 0".equals(selected[0]) || runtime.dropdownPopupBounds() != null) {
+                throw new AssertionError("Dropdown popup selection failed or the menu stayed open: "
+                        + selected[0]);
             }
             runtime.dispose();
         });

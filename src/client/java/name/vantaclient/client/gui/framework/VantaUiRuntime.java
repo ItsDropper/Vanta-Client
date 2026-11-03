@@ -95,6 +95,8 @@ public final class VantaUiRuntime {
         graphics.pose().scale(uiScale, uiScale);
         try {
             root.render(graphics, font, theme, logicalMouseX, logicalMouseY);
+            root.renderDropdownPopup(graphics, font, theme,
+                    logicalMouseX, logicalMouseY, layoutWidth, layoutHeight);
             renderTooltip(graphics, font, layoutWidth, layoutHeight);
         } finally {
             graphics.pose().popMatrix();
@@ -115,6 +117,12 @@ public final class VantaUiRuntime {
         return averageUiRenderNanos;
     }
 
+    /** Returns the current floating dropdown bounds in logical GUI coordinates, if open. */
+    public VantaUiNode.DropdownPopupBounds dropdownPopupBounds() {
+        return root.dropdownPopupBounds(
+                Math.max(1, lastWidth), Math.max(1, lastHeight));
+    }
+
     public void tick() {
         root.tick();
     }
@@ -125,6 +133,18 @@ public final class VantaUiRuntime {
         double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
         mouseX = (mouseX - offsetX) / uiScale;
         mouseY = (mouseY - offsetY) / uiScale;
+
+        VantaUiNode popupTarget = root.dropdownPopupAt(
+                mouseX, mouseY, Math.max(1, lastWidth), Math.max(1, lastHeight));
+        if (popupTarget != null) {
+            setFocused(popupTarget);
+            int option = popupTarget.dropdownOptionAt(
+                    mouseY, Math.max(1, lastWidth), Math.max(1, lastHeight));
+            popupTarget.selectDropdownOption(option);
+            lastWidth = -1;
+            return true;
+        }
+
         VantaUiNode scrollTarget = root.beginScrollbarDrag(mouseX, mouseY);
         if (scrollTarget != null) {
             if (root.closeDropdownsExcept(null)) lastWidth = -1;
@@ -185,8 +205,11 @@ public final class VantaUiRuntime {
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
         double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
         double offsetY = lastHeight * 0.5 * (1.0 - uiScale);
-        boolean handled = root.scrollAt((mouseX - offsetX) / uiScale,
-                (mouseY - offsetY) / uiScale, amount);
+        double logicalMouseX = (mouseX - offsetX) / uiScale;
+        double logicalMouseY = (mouseY - offsetY) / uiScale;
+        if (root.scrollDropdownAt(logicalMouseX, logicalMouseY, amount,
+                Math.max(1, lastWidth), Math.max(1, lastHeight))) return true;
+        boolean handled = root.scrollAt(logicalMouseX, logicalMouseY, amount);
         if (handled) lastWidth = -1;
         return handled;
     }

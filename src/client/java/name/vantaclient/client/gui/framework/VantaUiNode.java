@@ -30,6 +30,10 @@ public final class VantaUiNode {
     public enum Alignment { START, CENTER, END, STRETCH }
     public enum Justification { START, CENTER, END, SPACE_BETWEEN }
 
+    /** Logical-screen bounds for a floating dropdown popup. */
+    public record DropdownPopupBounds(int x, int y, int width, int height,
+                                      int firstOption, int visibleOptions) {}
+
     private final Kind kind;
     private final Direction direction;
     private final List<VantaUiNode> children = new ArrayList<>();
@@ -110,6 +114,7 @@ public final class VantaUiNode {
     private List<String> dropdownOptions = List.of();
     private boolean dropdownOpen;
     private int dropdownHighlight;
+    private int dropdownScrollOffset;
 
     private VantaUiNode(Kind kind, Direction direction) {
         this.kind = kind;
@@ -370,11 +375,6 @@ public final class VantaUiNode {
     }
 
     int intrinsicHeight(Font font) {
-        if (kind == Kind.DROPDOWN && dropdownOpen) {
-            int expanded = VantaUiTheme.CONTROL_HEIGHT
-                    + dropdownOptions.size() * 22;
-            return clamp(expanded, minHeight, maxHeight);
-        }
         if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
         int measured = switch (kind) {
             case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
@@ -443,9 +443,7 @@ public final class VantaUiNode {
                         : child.intrinsicWidth(font);
                 int childWidth = constrain(requestedWidth, innerWidth,
                         child.minWidth, child.maxWidth);
-                int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
-                        ? child.intrinsicHeight(font)
-                        : child.preferredHeight >= 0 ? child.preferredHeight
+                int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
                         : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
                 int childHeight = constrain(requestedHeight, innerHeight,
@@ -522,9 +520,7 @@ public final class VantaUiNode {
                 cursor += primary + gap + distributedGap;
             } else {
                 Alignment effectiveAlignment = effectiveAlignment(child);
-                int requestedHeight = child.kind == Kind.DROPDOWN && child.dropdownOpen
-                        ? child.intrinsicHeight(font)
-                        : child.preferredHeight >= 0 ? child.preferredHeight
+                int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
                         : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
                 int childHeight = constrain(requestedHeight, innerHeight,
@@ -716,34 +712,7 @@ public final class VantaUiNode {
                 if (focused && enabled) graphics.fill(boxX, y + controlHeight - 2, x + width,
                         y + controlHeight, accent);
 
-                if (dropdownOpen) {
-                    int visibleOptions = dropdownOptions.size();
-                    int menuTop = y + controlHeight;
-                    VantaUiTheme.fillRounded(graphics, x, menuTop, width, visibleOptions * 22,
-                            VantaUiTheme.RADIUS_MEDIUM, VantaUiTheme.PANEL_RAISED);
-                    graphics.fill(x, menuTop, x + width, menuTop + 1, VantaUiTheme.BORDER);
-                    int hoveredOption = -1;
-                    if (over && mouseY >= menuTop) {
-                        int candidate = (mouseY - menuTop) / 22;
-                        if (candidate < visibleOptions) hoveredOption = candidate;
-                    }
-                    for (int i = 0; i < visibleOptions; i++) {
-                        int optionY = menuTop + i * 22;
-                        String option = dropdownOptions.get(i);
-                        boolean highlighted = hoveredOption >= 0
-                                ? i == hoveredOption : i == dropdownHighlight;
-                        if (highlighted) {
-                            VantaUiTheme.fillRounded(graphics, x + 2, optionY + 1, width - 4, 20,
-                                    VantaUiTheme.RADIUS_SMALL, VantaUiTheme.withAlpha(accent, 58));
-                        }
-                        if (option.equals(selected)) {
-                            graphics.fill(x + 1, optionY, x + 3, optionY + 22, accent);
-                        }
-                        String optionText = fitText(font, option, Math.max(0, width - 18), UI_FONT);
-                        graphics.drawString(font, styledText(optionText, UI_FONT), x + 9, optionY + 7,
-                                highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
-                    }
-                }
+                // Floating options render after the complete tree to escape parent scissors.
             }
             case TEXT_FIELD -> {
                 int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
@@ -837,6 +806,166 @@ public final class VantaUiNode {
     private static void ring(GuiGraphics g,float cx,float cy,float radius,int color){
         float px=cx+radius,py=cy;for(int a=15;a<=360;a+=15){double rad=Math.toRadians(a);float nx=cx+(float)Math.cos(rad)*radius,ny=cy+(float)Math.sin(rad)*radius;line(g,px,py,nx,ny,color,1,1);px=nx;py=ny;}
     }
+    /** Finds the open dropdown popup in this subtree, if any. */
+    DropdownPopupBounds dropdownPopupBounds(int viewportWidth, int viewportHeight) {
+        if (!visible || width <= 0 || height <= 0) return null;
+        if (kind == Kind.DROPDOWN && dropdownOpen) {
+            int boxWidth = Math.min(width, Math.min(150, Math.max(72, width / 2)));
+            int popupWidth = Math.min(boxWidth, Math.max(1, viewportWidth - 16));
+            int visibleOptions = Math.max(1, Math.min(
+                    Math.min(8, dropdownOptions.size()), Math.max(1, (viewportHeight - 16) / 22)));
+            int popupHeight = visibleOptions * 22;
+            int firstOption = clamp(dropdownScrollOffset, 0,
+                    Math.max(0, dropdownOptions.size() - visibleOptions));
+            int popupX = Math.max(8, Math.min(
+                    Math.max(8, viewportWidth - popupWidth - 8),
+                    x + width - popupWidth));
+            int belowTop = y + VantaUiTheme.CONTROL_HEIGHT;
+            int belowSpace = viewportHeight - belowTop - 8;
+            int aboveSpace = y - 8;
+            int desiredTop = belowSpace >= popupHeight || belowSpace >= aboveSpace
+                    ? belowTop : y - popupHeight;
+            int maximumTop = Math.max(8, viewportHeight - popupHeight - 8);
+            int popupY = Math.max(8, Math.min(maximumTop, desiredTop));
+            return new DropdownPopupBounds(
+                    popupX, popupY, popupWidth, popupHeight, firstOption, visibleOptions);
+        }
+        for (int index = children.size() - 1; index >= 0; index--) {
+            DropdownPopupBounds bounds = children.get(index)
+                    .dropdownPopupBounds(viewportWidth, viewportHeight);
+            if (bounds != null) return bounds;
+        }
+        return null;
+    }
+
+    VantaUiNode dropdownPopupAt(double mouseX, double mouseY,
+                                int viewportWidth, int viewportHeight) {
+        if (!visible) return null;
+        if (kind == Kind.DROPDOWN && dropdownOpen) {
+            DropdownPopupBounds bounds = dropdownPopupBounds(viewportWidth, viewportHeight);
+            if (bounds != null && mouseX >= bounds.x() && mouseX < bounds.x() + bounds.width()
+                    && mouseY >= bounds.y() && mouseY < bounds.y() + bounds.height()) {
+                return this;
+            }
+        }
+        for (int index = children.size() - 1; index >= 0; index--) {
+            VantaUiNode target = children.get(index)
+                    .dropdownPopupAt(mouseX, mouseY, viewportWidth, viewportHeight);
+            if (target != null) return target;
+        }
+        return null;
+    }
+
+    int dropdownOptionAt(double mouseY, int viewportWidth, int viewportHeight) {
+        DropdownPopupBounds bounds = dropdownPopupBounds(viewportWidth, viewportHeight);
+        if (bounds == null || mouseY < bounds.y() || mouseY >= bounds.y() + bounds.height()) return -1;
+        int visibleIndex = (int) ((mouseY - bounds.y()) / 22.0);
+        int optionIndex = bounds.firstOption() + visibleIndex;
+        return optionIndex >= 0 && optionIndex < dropdownOptions.size() ? optionIndex : -1;
+    }
+
+    void selectDropdownOption(int optionIndex) {
+        if (kind != Kind.DROPDOWN || !dropdownOpen) return;
+        if (optionIndex >= 0 && optionIndex < dropdownOptions.size()) {
+            dropdownHighlight = optionIndex;
+            if (dropdownSetter != null) dropdownSetter.accept(dropdownOptions.get(optionIndex));
+        }
+        dropdownOpen = false;
+        dropdownScrollOffset = 0;
+    }
+
+    boolean scrollDropdownAt(double mouseX, double mouseY, double amount,
+                             int viewportWidth, int viewportHeight) {
+        if (!visible) return false;
+        if (kind == Kind.DROPDOWN && dropdownOpen) {
+            DropdownPopupBounds bounds = dropdownPopupBounds(viewportWidth, viewportHeight);
+            if (bounds != null && mouseX >= bounds.x() && mouseX < bounds.x() + bounds.width()
+                    && mouseY >= bounds.y() && mouseY < bounds.y() + bounds.height()) {
+                int maxOffset = Math.max(0, dropdownOptions.size() - bounds.visibleOptions());
+                dropdownScrollOffset = clamp(
+                        dropdownScrollOffset - (int) Math.round(amount), 0, maxOffset);
+                dropdownHighlight = clamp(dropdownHighlight, dropdownScrollOffset,
+                        Math.max(dropdownScrollOffset,
+                                dropdownScrollOffset + bounds.visibleOptions() - 1));
+                return true;
+            }
+        }
+        for (int index = children.size() - 1; index >= 0; index--) {
+            if (children.get(index).scrollDropdownAt(
+                    mouseX, mouseY, amount, viewportWidth, viewportHeight)) return true;
+        }
+        return false;
+    }
+
+    boolean renderDropdownPopup(GuiGraphics graphics, Font font, VantaUiTheme theme,
+                                int mouseX, int mouseY, int viewportWidth, int viewportHeight) {
+        if (!visible) return false;
+        if (kind == Kind.DROPDOWN && dropdownOpen) {
+            DropdownPopupBounds bounds = dropdownPopupBounds(viewportWidth, viewportHeight);
+            if (bounds == null) return false;
+            int accent = theme.accent();
+            VantaUiTheme.fillRounded(graphics, bounds.x() + 2, bounds.y() + 3,
+                    bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM, 0x55000000);
+            VantaUiTheme.fillRounded(graphics, bounds.x(), bounds.y(),
+                    bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
+                    VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
+            VantaUiTheme.outlineRounded(graphics, bounds.x(), bounds.y(),
+                    bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
+                    VantaUiTheme.BORDER);
+            String selected = dropdownValue == null ? "" : dropdownValue.get();
+            for (int visibleIndex = 0; visibleIndex < bounds.visibleOptions(); visibleIndex++) {
+                int optionIndex = bounds.firstOption() + visibleIndex;
+                int optionY = bounds.y() + visibleIndex * 22;
+                String option = dropdownOptions.get(optionIndex);
+                boolean hoveredOption = mouseX >= bounds.x() && mouseX < bounds.x() + bounds.width()
+                        && mouseY >= optionY && mouseY < optionY + 22;
+                boolean highlighted = hoveredOption || optionIndex == dropdownHighlight;
+                if (highlighted) {
+                    VantaUiTheme.fillRounded(graphics,
+                            bounds.x() + 2, optionY + 1, bounds.width() - 4, 20,
+                            VantaUiTheme.RADIUS_SMALL, VantaUiTheme.withAlpha(accent, 58));
+                }
+                if (option.equals(selected)) {
+                    graphics.fill(bounds.x() + 1, optionY + 3,
+                            bounds.x() + 3, optionY + 19, accent);
+                }
+                String optionText = fitText(font, option,
+                        Math.max(0, bounds.width() - 18), UI_FONT);
+                graphics.drawString(font, styledText(optionText, UI_FONT),
+                        bounds.x() + 9, optionY + 7,
+                        highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
+            }
+            if (dropdownOptions.size() > bounds.visibleOptions()) {
+                String hint = (bounds.firstOption() + 1) + "–"
+                        + (bounds.firstOption() + bounds.visibleOptions())
+                        + " / " + dropdownOptions.size();
+                String shownHint = fitText(font, hint, Math.max(0, bounds.width() - 12), UI_FONT);
+                if (!shownHint.isEmpty()) {
+                    graphics.drawString(font, styledText(shownHint, UI_FONT),
+                            bounds.x() + bounds.width() - textWidth(font, shownHint, UI_FONT) - 6,
+                            bounds.y() + bounds.height() - 10, VantaUiTheme.TEXT_MUTED);
+                }
+            }
+            return true;
+        }
+        for (int index = children.size() - 1; index >= 0; index--) {
+            if (children.get(index).renderDropdownPopup(
+                    graphics, font, theme, mouseX, mouseY, viewportWidth, viewportHeight)) return true;
+        }
+        return false;
+    }
+
+    private void revealDropdownHighlight(int visibleOptions) {
+        int shown = Math.max(1, visibleOptions);
+        if (dropdownHighlight < dropdownScrollOffset) {
+            dropdownScrollOffset = dropdownHighlight;
+        } else if (dropdownHighlight >= dropdownScrollOffset + shown) {
+            dropdownScrollOffset = dropdownHighlight - shown + 1;
+        }
+        dropdownScrollOffset = clamp(dropdownScrollOffset, 0,
+                Math.max(0, dropdownOptions.size() - shown));
+    }
+
     private int scrollViewportHeight() {
         return Math.max(1, height - padding * 2);
     }
@@ -992,9 +1121,11 @@ public final class VantaUiNode {
                 if (mouseY < controlBottom || !dropdownOpen) {
                     if (dropdownOpen) {
                         dropdownOpen = false;
+                        dropdownScrollOffset = 0;
                     } else {
                         dropdownHighlight = Math.max(0, selectedDropdownIndex());
                         dropdownOpen = true;
+                        dropdownScrollOffset = Math.max(0, dropdownHighlight - 7);
                     }
                 } else {
                     int optionIndex = (int) ((mouseY - controlBottom) / 22.0);
@@ -1111,9 +1242,11 @@ public final class VantaUiNode {
                         dropdownSetter.accept(dropdownOptions.get(dropdownHighlight));
                     }
                     dropdownOpen = false;
+                    dropdownScrollOffset = 0;
                 } else {
                     dropdownHighlight = Math.max(0, selectedDropdownIndex());
                     dropdownOpen = true;
+                    dropdownScrollOffset = Math.max(0, dropdownHighlight - 7);
                 }
             }
             case TEXT_FIELD -> { }
@@ -1130,6 +1263,7 @@ public final class VantaUiNode {
             if (dropdownOpen) {
                 int maxIndex = dropdownOptions.size() - 1;
                 dropdownHighlight = Math.max(0, Math.min(maxIndex, dropdownHighlight + direction));
+                revealDropdownHighlight(8);
             } else {
                 cycleDropdown(direction);
             }
@@ -1212,6 +1346,7 @@ public final class VantaUiNode {
     boolean closeDropdown() {
         if (kind != Kind.DROPDOWN || !dropdownOpen) return false;
         dropdownOpen = false;
+        dropdownScrollOffset = 0;
         return true;
     }
 
@@ -1219,6 +1354,7 @@ public final class VantaUiNode {
         boolean changed = false;
         if (kind == Kind.DROPDOWN && this != keepOpen && dropdownOpen) {
             dropdownOpen = false;
+            dropdownScrollOffset = 0;
             changed = true;
         }
         for (VantaUiNode child : children) {
