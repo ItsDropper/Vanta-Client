@@ -16,7 +16,8 @@
     "AnchorBlockUpdateMixin",
     "LightTextureMixin",
     "AbstractButtonMixin",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "accessor.ScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

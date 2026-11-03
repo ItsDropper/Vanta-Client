@@ -1,0 +1,13 @@
+package name.vantaclient.mixin.accessor;
+
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.Screen;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Invoker;
+
+/** Exposes Screen's inherited widget-registration method to the title-screen mixin. */
+@Mixin(Screen.class)
+public interface ScreenAccessor {
+    @Invoker("addRenderableWidget")
+    GuiEventListener vanta$addRenderableWidget(GuiEventListener widget);
+}
