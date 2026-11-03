@@ -109,7 +109,7 @@ public final class VantaMenuStyle {
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
-                MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT);
+                MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT, withAlpha(0xFFFFFFFF, alpha));
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
