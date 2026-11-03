@@ -171,12 +171,12 @@ public final class VantaMenuStyle {
 
                     AvatarRenderState pose = new AvatarRenderState();
                     pose.skin = skin;
-                    pose.hatVisible = true;
-                    pose.jacketVisible = true;
-                    pose.leftPantsLegVisible = true;
-                    pose.rightPantsLegVisible = true;
-                    pose.leftSleeveVisible = true;
-                    pose.rightSleeveVisible = true;
+                    pose.showHat = true;
+                    pose.showJacket = true;
+                    pose.showLeftPants = true;
+                    pose.showRightPants = true;
+                    pose.showLeftSleeve = true;
+                    pose.showRightSleeve = true;
                     cachedPlayerModel.setupAnim(pose);
                     float idleYaw = (float) Math.sin(elapsedMillis / 1900.0) * 7.0f;
                     cachedPlayerModel.head.yRot = (float) Math.toRadians(idleYaw);
