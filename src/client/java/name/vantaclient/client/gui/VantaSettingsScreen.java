@@ -499,7 +499,7 @@ public final class VantaSettingsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0xE6090C10);
+        graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
         if (runtime != null) {
             runtime.setScale((float) VantaClientPreferences.get().uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);

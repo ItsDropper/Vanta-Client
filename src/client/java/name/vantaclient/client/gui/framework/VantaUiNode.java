@@ -553,7 +553,7 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
+        if (background != 0) VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
@@ -591,28 +591,32 @@ public final class VantaUiNode {
                     0.0f, 0.0f, width, height, 962, 702, 962, 702);
             case SPACER, CONTAINER -> { }
             case BUTTON -> {
-                int selectedSurface = mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f);
-                int surface = selected ? selectedSurface
-                        : mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount);
-                int border = selected || focused ? mixColor(0xFF68717D, accent, 0.30f)
-                        : mixColor(0xFF424850, 0xFF737C88, hoverAmount);
-                fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM, border);
-                if (selected || over || focused) {
-                    fillRounded(graphics, x + 1, y + 1, width - 2, height - 2,
-                            VantaUiTheme.RADIUS_MEDIUM - 1, surface);
+                if (selected) {
+                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                            VantaUiTheme.withAlpha(accent, 46));
+                } else if (over) {
+                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                            VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
+                                    Math.round(110.0f + 45.0f * hoverAmount)));
+                } else if (focused) {
+                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                            VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER, 76));
                 }
-                if (selected || focused) fillRounded(graphics, x, y + 5, 2, Math.max(0, height - 10), 1, accent);
                 int labelX = x, labelWidth = width;
                 if (icon != null) {
                     drawIcon(graphics, icon, x + 10, y + (height - 16) / 2, 16, 16,
-                            selected ? accent : VantaUiTheme.TEXT_SECONDARY);
-                    labelX = x + 34; labelWidth = width - 42;
+                            selected ? accent : over ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
+                    labelX = x + 34;
+                    labelWidth = width - 42;
                 }
                 String shownLabel = fitText(font, label, Math.max(0, labelWidth - 8), UI_FONT);
-                int textX = icon == null ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
+                int textX = icon == null
+                        ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
+                int color = !enabled ? VantaUiTheme.TEXT_MUTED
+                        : selected || over || focused ? VantaUiTheme.TEXT_PRIMARY
+                        : VantaUiTheme.TEXT_SECONDARY;
                 graphics.drawString(font, styledText(shownLabel, UI_FONT, true), textX,
-                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
-                        enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
+                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, color);
             }
             case TOGGLE -> {
                 String shownLabel = fitText(font, label, Math.max(0, width - 52), UI_FONT);
@@ -624,10 +628,11 @@ public final class VantaUiNode {
                         : value ? accent : VantaUiTheme.TRACK;
                 int trackX = x + width - 42;
                 int trackY = y + (height - 18) / 2;
-                fillRounded(graphics, trackX, trackY, 38, 18, 9, trackColor);
+                VantaUiTheme.fillRounded(graphics, trackX, trackY, 38, 18, 9, trackColor);
                 int knobX = trackX + 3 + Math.round(19.0f * animatedToggle);
-                fillRounded(graphics, knobX, trackY + 3, 13, 12, 6, VantaUiTheme.WHITE);
-                if (focused) graphics.fill(trackX - 2, trackY - 2, trackX + 40, trackY + 20, VantaUiTheme.withAlpha(accent, 70));
+                VantaUiTheme.fillRounded(graphics, knobX, trackY + 3, 13, 12, 6, VantaUiTheme.WHITE);
+                if (focused) VantaUiTheme.fillRounded(graphics, trackX, y + height - 2, 38, 2, 1,
+                        VantaUiTheme.withAlpha(accent, 180));
             }
             case SLIDER -> {
                 double value = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
@@ -648,10 +653,10 @@ public final class VantaUiNode {
                 graphics.drawString(font, styledText(valueText, UI_FONT), x + width - valueWidth, y + 2, valueColor);
                 int trackY = y + 28;
                 int knobX = x + (int) Math.round((width - 8) * normalized);
-                fillRounded(graphics, x, trackY, width, 4, 2, VantaUiTheme.TRACK);
-                fillRounded(graphics, x, trackY, Math.max(4, knobX + 4 - x), 4, 2,
+                VantaUiTheme.fillRounded(graphics, x, trackY, width, 4, 2, VantaUiTheme.TRACK);
+                VantaUiTheme.fillRounded(graphics, x, trackY, Math.max(4, knobX + 4 - x), 4, 2,
                         enabled ? accent : VantaUiTheme.TEXT_MUTED);
-                fillRounded(graphics, knobX - 2, trackY - 4, 12, 12, 6,
+                VantaUiTheme.fillRounded(graphics, knobX - 2, trackY - 4, 12, 12, 6,
                         !enabled ? VantaUiTheme.TEXT_MUTED
                                 : focused || over ? VantaUiTheme.WHITE : 0xFFD5DFEC);
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
@@ -664,7 +669,7 @@ public final class VantaUiNode {
                 graphics.drawString(font, styledText(dropdownLabel, UI_FONT), x,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
-                fillRounded(graphics, boxX, y + 2, x + width - boxX, controlHeight - 4,
+                VantaUiTheme.fillRounded(graphics, boxX, y + 2, x + width - boxX, controlHeight - 4,
                         VantaUiTheme.RADIUS_SMALL,
                         enabled ? mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount)
                                 : VantaUiTheme.INPUT_SURFACE);
@@ -682,7 +687,7 @@ public final class VantaUiNode {
                 if (dropdownOpen) {
                     int visibleOptions = dropdownOptions.size();
                     int menuTop = y + controlHeight;
-                    fillRounded(graphics, x, menuTop, width, visibleOptions * 22,
+                    VantaUiTheme.fillRounded(graphics, x, menuTop, width, visibleOptions * 22,
                             VantaUiTheme.RADIUS_MEDIUM, VantaUiTheme.PANEL_RAISED);
                     graphics.fill(x, menuTop, x + width, menuTop + 1, VantaUiTheme.BORDER);
                     int hoveredOption = -1;
@@ -696,7 +701,7 @@ public final class VantaUiNode {
                         boolean highlighted = hoveredOption >= 0
                                 ? i == hoveredOption : i == dropdownHighlight;
                         if (highlighted) {
-                            fillRounded(graphics, x + 2, optionY + 1, width - 4, 20,
+                            VantaUiTheme.fillRounded(graphics, x + 2, optionY + 1, width - 4, 20,
                                     VantaUiTheme.RADIUS_SMALL, VantaUiTheme.withAlpha(accent, 58));
                         }
                         if (option.equals(selected)) {
@@ -710,11 +715,10 @@ public final class VantaUiNode {
             }
             case TEXT_FIELD -> {
                 int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
-                fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_SMALL, fieldBackground);
-                fillRounded(graphics, x, y, width, 2, VantaUiTheme.RADIUS_SMALL,
-                        focused ? accent : VantaUiTheme.BORDER);
-                fillRounded(graphics, x, y + height - 2, width, 2, VantaUiTheme.RADIUS_SMALL,
-                        focused ? accent : VantaUiTheme.BORDER_SUBTLE);
+                VantaUiTheme.fillRounded(graphics, x, y, width, height,
+                        VantaUiTheme.RADIUS_MEDIUM, fieldBackground);
+                if (focused) VantaUiTheme.fillRounded(graphics, x + 7, y + height - 2,
+                        Math.max(0, width - 14), 2, 1, accent);
 
                 String value = currentInput();
                 int availableWidth = Math.max(0, width - 18);
@@ -801,28 +805,6 @@ public final class VantaUiNode {
     private static void ring(GuiGraphics g,float cx,float cy,float radius,int color){
         float px=cx+radius,py=cy;for(int a=15;a<=360;a+=15){double rad=Math.toRadians(a);float nx=cx+(float)Math.cos(rad)*radius,ny=cy+(float)Math.sin(rad)*radius;line(g,px,py,nx,ny,color,1,1);px=nx;py=ny;}
     }
-    /**
-     * Draws a rounded rectangle using a small set of horizontal spans.
-     * This avoids a custom GPU pipeline while keeping panel/control corners consistent.
-     */
-    private static void fillRounded(GuiGraphics graphics, int x, int y, int width, int height,
-                                    int radius, int color) {
-        if (width <= 0 || height <= 0) return;
-        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
-        if (r == 0) {
-            graphics.fill(x, y, x + width, y + height, color);
-            return;
-        }
-        graphics.fill(x + r, y, x + width - r, y + height, color);
-        for (int row = 0; row < r; row++) {
-            int dy = r - row;
-            int inset = r - (int) Math.floor(Math.sqrt((double) r * r - (double) dy * dy));
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-            graphics.fill(x + inset, y + height - row - 1,
-                    x + width - inset, y + height - row, color);
-        }
-    }
-
     private void renderScrollbar(GuiGraphics graphics) {
         int innerHeight = Math.max(1, height - padding * 2);
         if (contentHeight <= innerHeight || innerHeight <= 8) return;

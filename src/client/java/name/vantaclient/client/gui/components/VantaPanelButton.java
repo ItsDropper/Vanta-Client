@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.components;
 
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -20,6 +21,7 @@ public final class VantaPanelButton extends AbstractWidget {
     private final IntSupplier accent;
     private String label;
     private float hoverAmount;
+    private long lastFrameNanos;
     private final boolean accentSurface;
     private final boolean accentWhenSelected;
 
@@ -101,55 +103,49 @@ public final class VantaPanelButton extends AbstractWidget {
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = isHovered();
-        boolean active = selected.getAsBoolean();
-        float target = hovered ? 1.0f : 0.0f;
-        hoverAmount += (target - hoverAmount) * 0.24f;
-        if (Math.abs(target - hoverAmount) < 0.015f) hoverAmount = target;
-
-        boolean filledAccent = accentSurface || (accentWhenSelected && active);
-        int background = filledAccent
-                ? mixColor(accent.getAsInt(), 0xFF6599FF, hoverAmount * 0.22f)
-                : mixColor(0xFF171C26, 0xFF252F40, hoverAmount);
-        if (active && !filledAccent) background = mixColor(background, 0xFF1D304D, 0.82f);
-        int border = filledAccent
-                ? mixColor(0xFF737C88, accent.getAsInt(), hoverAmount * 0.22f)
-                : mixColor(0xFF424850, 0xFF78818D, hoverAmount * 0.65f);
-        fillRounded(graphics, getX(), getY(), width, height, 10, border);
-        fillRounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2, 9, background);
+        boolean activeSelection = selected.getAsBoolean();
+        long now = System.nanoTime();
+        float delta = lastFrameNanos == 0L ? 1.0f / 60.0f
+                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        lastFrameNanos = now;
+        if (!VantaClientPreferences.get().animations) {
+            hoverAmount = hovered ? 1.0f : 0.0f;
+        } else {
+            float factor = 1.0f - (float) Math.exp(-18.0f * delta);
+            float target = hovered ? 1.0f : 0.0f;
+            hoverAmount += (target - hoverAmount) * factor;
+            if (Math.abs(target - hoverAmount) < 0.01f) hoverAmount = target;
+        }
 
         int accentColor = accent.getAsInt();
-        if (active && !filledAccent) {
-            fillRounded(graphics, getX() + 2, getY() + 3, 3, height - 6, 2, accentColor);
-        } else if (!filledAccent && hoverAmount > 0.08f) {
-            fillRounded(graphics, getX() + 2, getY() + 5, 2, height - 10, 1,
-                    mixColor(0xFF252D3B, accentColor, hoverAmount * 0.7f));
+        boolean filledAccent = accentSurface || (accentWhenSelected && activeSelection);
+        if (filledAccent) {
+            VantaUiTheme.fillRounded(graphics, getX(), getY(), width, height, 9,
+                    VantaUiTheme.withAlpha(mixColor(accentColor, 0xFFFFFFFF, hoverAmount * 0.10f),
+                            isActive() ? 226 : 110));
+        } else if (activeSelection) {
+            VantaUiTheme.fillRounded(graphics, getX(), getY(), width, height, 9,
+                    VantaUiTheme.withAlpha(mixColor(VantaUiTheme.PANEL_RAISED, accentColor, 0.16f), 148));
+        } else if (hovered) {
+            VantaUiTheme.fillRounded(graphics, getX(), getY(), width, height, 9,
+                    VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
+                            Math.round(110.0f + 45.0f * hoverAmount)));
         }
 
-        int textColor = active ? 0xFFF7F9FF : hovered ? 0xFFF0F4FC : 0xFFAAB4C5;
+        int textColor = !isActive() ? VantaUiTheme.TEXT_MUTED
+                : filledAccent ? VantaUiTheme.WHITE
+                : activeSelection || hovered ? VantaUiTheme.TEXT_PRIMARY
+                : VantaUiTheme.TEXT_SECONDARY;
         String visibleLabel = Minecraft.getInstance().font.plainSubstrByWidth(label, Math.max(0, width - 16));
-        int textX = accentSurface
-                ? getX() + (width - Minecraft.getInstance().font.width(visibleLabel)) / 2
-                : getX() + 10;
+        int textX = getX() + Math.max(8,
+                (width - Minecraft.getInstance().font.width(visibleLabel)) / 2);
         graphics.drawString(Minecraft.getInstance().font,
-                Component.literal(visibleLabel).withStyle(style -> style.withBold(true)),
-                textX, getY() + (height - 8) / 2, filledAccent ? 0xFFFFFFFF : textColor);
+                Component.literal(visibleLabel).withStyle(style ->
+                        style.withBold(activeSelection || filledAccent)),
+                textX, getY() + (height - 8) / 2, textColor);
     }
 
-    private static void fillRounded(GuiGraphics graphics, int x, int y, int width,
-                                    int height, int radius, int color) {
-        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= height - r) {
-                double dy = row - (height - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-        }
-    }
+
 
     private static int mixColor(int from, int to, float amount) {
         float t = Math.max(0.0f, Math.min(1.0f, amount));

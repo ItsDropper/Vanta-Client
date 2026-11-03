@@ -10,6 +10,7 @@
     "ShaderManagerAccessor",
     "ZoomScrollMixin",
     "GuiMixin",
+    "NotificationScreenMixin",
     "ParticleEngineMixin",
     "ScreenEffectRendererMixin",
     "AnchorInteractionMixin",

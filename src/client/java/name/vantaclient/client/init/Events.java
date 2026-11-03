@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.gui.VantaSettingsScreen;
+import name.vantaclient.client.gui.VantaNotificationManager;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.hud.HudPerformanceCache;
@@ -72,6 +73,7 @@ public class Events {
             FarViewController.tick(client);
             FarTerrainRenderer.tick(client);
             InGameOverlayCache.tick(client);
+            VantaNotificationManager.tick();
 
             if (Keybinds.fullbrightKey.consumeClick()) {
                 FullbrightFeature.INSTANCE.toggle();

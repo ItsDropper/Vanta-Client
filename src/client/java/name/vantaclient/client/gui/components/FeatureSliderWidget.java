@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.components;
 
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -58,22 +59,22 @@ public abstract class FeatureSliderWidget extends AbstractSliderButton {
         boolean hovered = isHovered();
         int accent = VantaClientPreferences.get().accent.color();
 
-        graphics.drawString(minecraft.font, name, getX(), getY(), 0xFFE8ECF4);
+        graphics.drawString(minecraft.font, name, getX(), getY(), VantaUiTheme.TEXT_PRIMARY);
         String valueText = getValueText();
         int valueWidth = minecraft.font.width(valueText);
         graphics.drawString(minecraft.font, valueText,
-                getX() + width - valueWidth, getY(), 0xFF9BA6B8);
+                getX() + width - valueWidth, getY(), VantaUiTheme.TEXT_SECONDARY);
 
         int trackY = getY() + 15;
         int trackLeft = getX();
         int trackRight = getX() + width;
         int filledWidth = (int) ((width - 8) * Math.max(0.0, Math.min(1.0, value)));
-        graphics.fill(trackLeft, trackY, trackRight, trackY + 3, 0xFF303744);
-        graphics.fill(trackLeft, trackY, trackLeft + filledWidth + 4, trackY + 3, accent);
+        VantaUiTheme.fillRounded(graphics, trackLeft, trackY, trackRight - trackLeft, 4, 2,
+                VantaUiTheme.TRACK);
+        VantaUiTheme.fillRounded(graphics, trackLeft, trackY, Math.max(4, filledWidth + 4), 4, 2, accent);
 
         int knobX = Math.max(trackLeft, Math.min(trackRight - 8, trackLeft + filledWidth));
-        int knobColor = hovered ? 0xFFFFFFFF : 0xFFE1E7F1;
-        graphics.fill(knobX - 1, trackY - 4, knobX + 9, trackY + 7, 0x552A3342);
-        graphics.fill(knobX, trackY - 3, knobX + 8, trackY + 6, knobColor);
+        int knobColor = hovered ? VantaUiTheme.WHITE : 0xFFE1E7F1;
+        VantaUiTheme.fillRounded(graphics, knobX, trackY - 3, 8, 8, 4, knobColor);
     }
 }

@@ -369,7 +369,7 @@ public final class VantaUiPrototypeScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0xD90A0D12);
+        graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
         if (runtime != null) runtime.render(graphics, font, width, height, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, partialTick);
     }

@@ -12,6 +12,7 @@ import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.gui.components.VantaPanelButton;
 import name.vantaclient.client.gui.components.VantaToggleSwitch;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.gui.GuiGraphics;
@@ -138,6 +139,7 @@ public class VantaIntegrationsScreen extends Screen {
                         filterY, 154, 26, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad();
                     hotLoadStatus = result.summary();
+                    notifyHotLoadResult(result);
                     List<ExperimentalModHotLoader.HotLoadedMod> hotLoaded =
                             ExperimentalModHotLoader.getHotLoadedMods();
                     if (!hotLoaded.isEmpty()) {
@@ -322,6 +324,7 @@ public class VantaIntegrationsScreen extends Screen {
                 addPanelButton("Hotload", x + cardWidth - 61, y + 7, 54, 19, () -> {
                     ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
                     hotLoadStatus = result.summary();
+                    notifyHotLoadResult(result);
                     refreshModList();
                     rebuildWidgets();
                 });
@@ -590,6 +593,19 @@ public class VantaIntegrationsScreen extends Screen {
         });
     }
 
+    private void notifyHotLoadResult(ExperimentalModHotLoader.Result result) {
+        if (result.loaded() > 0 && result.failed() == 0) {
+            VantaNotificationManager.success("Session load complete",
+                    "Loaded " + result.loaded() + " mod(s). Runtime loading remains experimental.");
+        } else if (result.failed() > 0) {
+            VantaNotificationManager.error("Session load failed",
+                    "Some mod entrypoints failed. Review the scan details and restart Minecraft.");
+        } else if (result.skipped() > 0) {
+            VantaNotificationManager.warning("No mods loaded",
+                    "These JARs are not eligible for session loading. Restart Minecraft to load normal mods.");
+        }
+    }
+
     private void openModMenu() {
         try {
             Class<?> integration = Class.forName(
@@ -600,6 +616,8 @@ public class VantaIntegrationsScreen extends Screen {
             minecraft.setScreen(modsScreen);
         } catch (ReflectiveOperationException | LinkageError exception) {
             System.err.println("[Vanta Client] Could not open Mod Menu: " + exception.getMessage());
+            VantaNotificationManager.warning("Mod Menu unavailable",
+                    "Could not open this mod's settings screen. Check the installed Mod Menu version.");
         }
     }
 
@@ -729,37 +747,34 @@ public class VantaIntegrationsScreen extends Screen {
             graphics.pose().translate(0.0f, 7.0f * (1.0f - easedProgress));
         }
         int left = 20, top = 18, right = 940, bottom = 522;
-        drawRoundedCard(graphics, left - 6, top - 6, right - left + 12,
-                bottom - top + 12, 0x55000000, 20);
-        drawRoundedCard(graphics, left - 2, top - 2, right - left + 4,
-                bottom - top + 4, 0x99000000, 18);
-        float panelOpacity = preferences == null ? 0.92f : (float) preferences.panelOpacity;
+        drawRoundedCard(graphics, left - 3, top - 3, right - left + 6,
+                bottom - top + 6, 0x44000000, 19);
+        float panelOpacity = preferences == null ? 0.88f : (float) preferences.panelOpacity;
         drawRoundedCard(graphics, left, top, right - left, bottom - top,
-                withAlpha(0xFF10141C, panelOpacity), 15);
-        drawRoundedCard(graphics, left + 1, top + 1, right - left - 2, 3, accent, 2);
+                withAlpha(VantaUiTheme.PANEL, panelOpacity), 16);
         drawRoundedCard(graphics, left + 1, top + 4, right - left - 2, 49,
-                withAlpha(0xFF151B26, panelOpacity), 13);
+                withAlpha(VantaUiTheme.PANEL_RAISED, panelOpacity), 14);
         drawRoundedCard(graphics, left + 12, top + 12, SIDEBAR_WIDTH + 12,
-                bottom - top - 24, withAlpha(0xFF171D27, panelOpacity), 14);
+                bottom - top - 24, withAlpha(VantaUiTheme.PANEL_RAISED, panelOpacity), 15);
         graphics.fill(left + 12 + SIDEBAR_WIDTH + 14, top + 20,
-                left + 13 + SIDEBAR_WIDTH + 14, bottom - 20, 0xFF2A303C);
+                left + 13 + SIDEBAR_WIDTH + 14, bottom - 20, VantaUiTheme.BORDER_SUBTLE);
         drawRoundedCard(graphics, left + 12 + SIDEBAR_WIDTH + 20, top + 62,
                 right - (left + 12 + SIDEBAR_WIDTH + 20) - 12,
-                bottom - top - 74, withAlpha(0xFF121720, panelOpacity), 14);
-        graphics.fill(left + 12, top + 61, right - 12, top + 62, 0xFF252B36);
+                bottom - top - 74, withAlpha(VantaUiTheme.PANEL, panelOpacity), 15);
+        graphics.fill(left + 12, top + 61, right - 12, top + 62, VantaUiTheme.BORDER_SUBTLE);
 
         drawVantaBrandMark(graphics, 34, 28, accent);
         graphics.drawString(font, "VANTA CLIENT", 72, 31, accent);
         graphics.drawString(font, "FABRIC CLIENT", 72, 46, 0xFF7F8CA1);
-        graphics.drawString(font, "MODS & OPTIONS", 34, 63, 0xFF858A98);
-        graphics.drawString(font, "PERSONALIZATION", 34, 117, 0xFF858A98);
+        graphics.drawString(font, "MODS & OPTIONS", 34, 63, VantaUiTheme.TEXT_MUTED);
+        graphics.drawString(font, "PERSONALIZATION", 34, 117, VantaUiTheme.TEXT_MUTED);
         if (section == Section.SETTINGS) {
             graphics.drawString(font, "LOCAL CONFIGURATION", 760, 34, 0xFF778296);
         }
         if (section == Section.MODS) {
-            graphics.drawString(font, "MOD LIBRARY", 34, 166, 0xFF858A98);
+            graphics.drawString(font, "MOD LIBRARY", 34, 166, VantaUiTheme.TEXT_MUTED);
         }
-        drawRoundedCard(graphics, 34, 454, 184, 42, 0xFF202A38, 11);
+        drawRoundedCard(graphics, 34, 454, 184, 42, VantaUiTheme.SURFACE, 11);
         drawRoundedCard(graphics, 42, 461, 28, 28, mixColor(0xFF26364C, accent, 0.24f), 9);
         drawRoundedCard(graphics, 43, 462, 26, 26, 0xFF151E2A, 8);
         graphics.drawCenteredString(font, "V", 56, 471, accent);
@@ -771,35 +786,34 @@ public class VantaIntegrationsScreen extends Screen {
         graphics.drawString(font, section == Section.SETTINGS
                 ? "Appearance and interface preferences"
                 : "Built-in features and installed integrations",
-                contentX(), 43, 0xFF8D98AA);
+                contentX(), 43, VantaUiTheme.TEXT_SECONDARY);
         if (section == Section.MODS && selection == Selection.NONE) {
-            drawRoundedCard(graphics, 648, 20, 196, 28, 0xFF303744, 9);
-            drawRoundedCard(graphics, 649, 21, 194, 26, 0xFF1B222B, 8);
+            drawRoundedCard(graphics, 648, 20, 196, 28, VantaUiTheme.INPUT_SURFACE, 10);
             graphics.drawString(font, "⌕", 658, 29, 0xFF7F8DA2);
         }
-        graphics.fill(contentX() - 8, 98, right - 14, 99, 0xFF252B36);
+        graphics.fill(contentX() - 8, 98, right - 14, 99, VantaUiTheme.BORDER_SUBTLE);
 
         if (section == Section.SETTINGS) {
             int cardX = contentX() - 8;
             int cardWidth = contentWidth() + 8;
-            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 42, 0xFF1B2330, 14);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 42, 0xFF171F2B, 14);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 88, cardWidth, 42, 0xFF1B2330, 14);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 132, cardWidth, 42, 0xFF171F2B, 14);
-            drawRoundedCard(graphics, cardX, CONTENT_TOP + 178, cardWidth, 42, 0xFF1B2330, 14);
-            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 9, 0xFFE8ECF4);
-            graphics.drawString(font, "Choose the highlight colour used across Vanta.", contentX(), CONTENT_TOP + 23, 0xFF8792A4);
-            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 53, 0xFFE8ECF4);
-            graphics.drawString(font, "Animate panel, navigation and control feedback.", contentX(), CONTENT_TOP + 67, 0xFF8792A4);
-            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 97, 0xFFE8ECF4);
-            graphics.drawString(font, "Reduce vertical spacing in feature lists.", contentX(), CONTENT_TOP + 111, 0xFF8792A4);
-            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 141, 0xFFE8ECF4);
-            graphics.drawString(font, "Show explanatory text where integrations provide it.", contentX(), CONTENT_TOP + 155, 0xFF8792A4);
-            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 187, 0xFFE8ECF4);
-            graphics.drawString(font, "Adjust the overall interface size.", contentX(), CONTENT_TOP + 201, 0xFF8792A4);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP, cardWidth, 42, VantaUiTheme.PANEL_RAISED, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 44, cardWidth, 42, VantaUiTheme.PANEL_RAISED, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 88, cardWidth, 42, VantaUiTheme.PANEL_RAISED, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 132, cardWidth, 42, VantaUiTheme.PANEL_RAISED, 12);
+            drawRoundedCard(graphics, cardX, CONTENT_TOP + 178, cardWidth, 42, VantaUiTheme.PANEL_RAISED, 12);
+            graphics.drawString(font, "Accent colour", contentX(), CONTENT_TOP + 9, VantaUiTheme.TEXT_PRIMARY);
+            graphics.drawString(font, "Choose the highlight colour used across Vanta.", contentX(), CONTENT_TOP + 23, VantaUiTheme.TEXT_SECONDARY);
+            graphics.drawString(font, "Interface animations", contentX(), CONTENT_TOP + 53, VantaUiTheme.TEXT_PRIMARY);
+            graphics.drawString(font, "Animate panel, navigation and control feedback.", contentX(), CONTENT_TOP + 67, VantaUiTheme.TEXT_SECONDARY);
+            graphics.drawString(font, "Compact layout", contentX(), CONTENT_TOP + 97, VantaUiTheme.TEXT_PRIMARY);
+            graphics.drawString(font, "Reduce vertical spacing in feature lists.", contentX(), CONTENT_TOP + 111, VantaUiTheme.TEXT_SECONDARY);
+            graphics.drawString(font, "Setting descriptions", contentX(), CONTENT_TOP + 141, VantaUiTheme.TEXT_PRIMARY);
+            graphics.drawString(font, "Show explanatory text where integrations provide it.", contentX(), CONTENT_TOP + 155, VantaUiTheme.TEXT_SECONDARY);
+            graphics.drawString(font, "UI scale / spacing", contentX(), CONTENT_TOP + 187, VantaUiTheme.TEXT_PRIMARY);
+            graphics.drawString(font, "Adjust the overall interface size.", contentX(), CONTENT_TOP + 201, VantaUiTheme.TEXT_SECONDARY);
         } else if (selection == Selection.BUILTIN_CATEGORY) {
             graphics.drawString(font, selectedCategory.name(), contentX(), 66, 0xFFE8EAF0);
-            graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, 0xFF9296A3);
+            graphics.drawString(font, "Built-in Vanta Client features", contentX(), 86, VantaUiTheme.TEXT_SECONDARY);
             List<Feature> features = FeatureRegistry.FEATURES.stream()
                     .filter(feature -> feature.getCategory() == selectedCategory).toList();
             int visibleRows = visibleRows(rowHeight());
@@ -808,28 +822,25 @@ public class VantaIntegrationsScreen extends Screen {
             for (int i = firstSetting; i < end; i++) {
                 Feature feature = features.get(i);
                 drawRoundedCard(graphics, contentX() - 8, y - 10, contentWidth() + 8,
-                        rowHeight() - 4, 0xFF171D27, 12);
-                if (feature.isEnabled()) {
-                    graphics.fill(contentX() - 8, y - 7, contentX() - 5,
-                            y + rowHeight() - 13, accent);
-                }
-                graphics.drawString(font, feature.getName(), contentX(), y, 0xFFE8ECF4);
+                        rowHeight() - 4,
+                        feature.isEnabled() ? VantaUiTheme.SURFACE_SELECTED : VantaUiTheme.PANEL_RAISED, 12);
+                graphics.drawString(font, feature.getName(), contentX(), y, VantaUiTheme.TEXT_PRIMARY);
                 if (preferences.showDescriptions && !feature.getDescription().isBlank()) {
                     drawWrappedText(graphics, feature.getDescription(), contentX(), y + 13,
-                            contentWidth() - 210, 0xFF858A98, 2);
+                            contentWidth() - 210, VantaUiTheme.TEXT_MUTED, 2);
                 }
                 y += rowHeight();
             }
         } else if (selection == Selection.BUILTIN_SETTINGS && selectedFeature != null) {
-            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, 0xFFE8ECF4);
+            graphics.drawString(font, selectedFeature.getName() + " settings", contentX(), 66, VantaUiTheme.TEXT_PRIMARY);
             drawWrappedText(graphics, selectedFeature.getDescription(), contentX(), 86,
-                    contentWidth() - 12, 0xFF929CAF, 2);
+                    contentWidth() - 12, VantaUiTheme.TEXT_SECONDARY, 2);
             List<name.vantaclient.client.gui.components.settings.Setting> featureSettings =
                     name.vantaclient.client.gui.components.settings.SettingRegistry.getSettings(selectedFeature);
             int y = CONTENT_TOP + 8;
             for (int i = firstSetting; i < Math.min(featureSettings.size(), firstSetting + visibleRows(34)); i++) {
                 drawRoundedCard(graphics, contentX() - 8, y - 3, Math.min(340, contentWidth() + 8),
-                        31, 0xFF171D27, 11);
+                        31, VantaUiTheme.PANEL_RAISED, 11);
                 y += 34;
             }
         } else if (selection == Selection.INSTALLED_MOD) {
@@ -838,7 +849,7 @@ public class VantaIntegrationsScreen extends Screen {
                     .findFirst().orElse(null);
             if (mod != null) {
                 drawRoundedCard(graphics, contentX() - 8, 58, contentWidth() + 8, 62,
-                        0xFF1A202B, 12);
+                        VantaUiTheme.PANEL_RAISED, 12);
                 drawRoundedCard(graphics, contentX() + 2, 68, 42, 42, 0xFF252F40, 10);
                 Identifier detailIcon = modIconTextures.get(selectedModId);
                 if (detailIcon != null) {
@@ -854,13 +865,13 @@ public class VantaIntegrationsScreen extends Screen {
                         contentX() + 54, 68, 0xFFF0F3F9);
                 drawWrappedText(graphics, mod.getMetadata().getId() + "  •  " +
                         mod.getMetadata().getVersion().getFriendlyString(), contentX() + 54, 84,
-                        contentWidth() - 72, 0xFF9296A3, 1);
+                        contentWidth() - 72, VantaUiTheme.TEXT_SECONDARY, 1);
                 ModDescriptor descriptor = integrations.stream()
                         .filter(entry -> entry.id().equals(selectedModId)).findFirst().orElse(null);
                 String description = descriptor != null ? descriptor.description() : mod.getMetadata().getDescription();
                 if (preferences.showDescriptions && description != null && !description.isBlank()) {
                     drawWrappedText(graphics, description, contentX() + 54, 99,
-                            contentWidth() - 72, 0xFF858A98, 1);
+                            contentWidth() - 72, VantaUiTheme.TEXT_MUTED, 1);
                 }
                 if (descriptor == null) {
                     boolean hasDiscoveredSettings = discoveredConfigFactories.containsKey(selectedModId);
@@ -881,7 +892,7 @@ public class VantaIntegrationsScreen extends Screen {
                         graphics.drawString(font, setting.name(), contentX(), y, 0xFFE8EAF0);
                         if (preferences.showDescriptions && !setting.description().isBlank()) {
                             drawWrappedText(graphics, setting.description(), contentX(), y + 13,
-                            contentWidth() - 210, 0xFF858A98, 2);
+                            contentWidth() - 210, VantaUiTheme.TEXT_MUTED, 2);
                         }
                         y += rowHeight();
                     }
@@ -891,7 +902,7 @@ public class VantaIntegrationsScreen extends Screen {
             List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
             graphics.drawString(font, "Installed mods", contentX(), 66, 0xFFE8EAF0);
             graphics.drawString(font, mods.size() + " matching mods · " + availableMods.size() + " total",
-                    contentX(), 86, 0xFF9296A3);
+                    contentX(), 86, VantaUiTheme.TEXT_SECONDARY);
             graphics.drawString(font, "Four-column library · settings per mod · hot-loading is experimental",
                     contentX(), CONTENT_TOP + 22, 0xFFB3B6C0);
             int columns = 4;
@@ -906,7 +917,7 @@ public class VantaIntegrationsScreen extends Screen {
             ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
             if (mods.isEmpty()) {
                 drawRoundedCard(graphics, contentX(), startY + 8, contentWidth(), 116,
-                        0xFF1A222E, 14);
+                        VantaUiTheme.PANEL_RAISED, 14);
                 drawRoundedCard(graphics, contentX() + 16, startY + 25, 38, 38,
                         0xFF27364A, 11);
                 graphics.drawCenteredString(font, "＋", contentX() + 35, startY + 37, accent);
@@ -931,18 +942,14 @@ public class VantaIntegrationsScreen extends Screen {
                 hover += ((hovered ? 1.0f : 0.0f) - hover) * 0.22f;
                 if (Math.abs((hovered ? 1.0f : 0.0f) - hover) < 0.015f) hover = hovered ? 1.0f : 0.0f;
                 modCardHover.put(mod.id(), hover);
-                drawRoundedCard(graphics, x + 2, y + 4, cardWidth, cardHeight,
-                        0x44000000, 13);
+                drawRoundedCard(graphics, x + 1, y + 2, cardWidth, cardHeight,
+                        0x33000000, 13);
                 drawRoundedCard(graphics, x, y, cardWidth, cardHeight,
-                        mixColor(0xFF303A49, accent, 0.10f + hover * 0.22f), 13);
-                drawRoundedCard(graphics, x + 1, y + 1, cardWidth - 2, cardHeight - 2,
-                        mixColor(0xFF1B222E, 0xFF27364B, hover), 12);
+                        withAlpha(mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.05f + hover * 0.08f),
+                                preferences.panelOpacity), 13);
                 drawRoundedCard(graphics, x + 7, y + 7, cardWidth - 14, 62,
-                        mixColor(0xFF202A38, 0xFF29384C, hover), 11);
-                // A restrained accent rail gives each tile the same strong bottom
-                // edge as the reference without turning the whole card into a button.
-                drawRoundedCard(graphics, x + 8, y + cardHeight - 5, cardWidth - 16, 3,
-                        withAlpha(accent, 0.72f + hover * 0.28f), 2);
+                        withAlpha(mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hover),
+                                0.82f), 11);
                 Identifier iconTexture = modIconTextures.get(mod.id());
                 int iconSize = 42;
                 int iconX = x + (cardWidth - iconSize) / 2;
@@ -971,8 +978,7 @@ public class VantaIntegrationsScreen extends Screen {
         if (studioOpen && section == Section.MODS) {
             int panelAlpha = (int) (Math.max(0.85, Math.min(0.98, preferences.panelOpacity)) * 255.0);
             drawRoundedCard(graphics, 736, 72, 192, 164,
-                    (panelAlpha << 24) | 0x00151B27, 12);
-            drawRoundedCard(graphics, 736, 72, 192, 2, accent, 1);
+                    withAlpha(VantaUiTheme.PANEL_RAISED, panelAlpha / 255.0f), 13);
             graphics.drawString(font, "STUDIO", 750, 84, 0xFFF1F4FA);
             graphics.drawString(font, "Live interface controls", 750, 98, 0xFF8E9AAF);
             graphics.drawString(font, "Panel opacity", 750, 130, 0xFFB8C1D0);
@@ -990,9 +996,8 @@ public class VantaIntegrationsScreen extends Screen {
     }
 
     private void drawVantaBrandMark(GuiGraphics graphics, int x, int y, int accent) {
-        drawRoundedCard(graphics, x + 2, y + 3, 30, 30, 0x55000000, 10);
-        drawRoundedCard(graphics, x, y, 30, 30, mixColor(0xFF25344A, accent, 0.28f), 10);
-        drawRoundedCard(graphics, x + 1, y + 1, 28, 28, 0xFF151E2B, 9);
+        drawRoundedCard(graphics, x, y, 30, 30,
+                mixColor(VantaUiTheme.PANEL_RAISED, accent, 0.18f), 10);
         String[] mark = {"10001", "10001", "01010", "01010", "00100"};
         int cell = 3;
         int gap = 1;

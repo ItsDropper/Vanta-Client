@@ -3,6 +3,7 @@ package name.vantaclient.mixin;
 import name.vantaclient.client.feature.SaturationFeature;
 import name.vantaclient.client.feature.PotionEffectsFeature;
 import name.vantaclient.client.util.InGameOverlayCache;
+import name.vantaclient.client.gui.VantaNotificationManager;
 
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
@@ -57,6 +58,21 @@ public class GuiMixin {
                     9
             );
         }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At("TAIL")
+    )
+    private void renderVantaNotifications(
+            GuiGraphics guiGraphics,
+            net.minecraft.client.DeltaTracker deltaTracker,
+            CallbackInfo ci
+    ) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.options.hideGui || mc.screen != null) return;
+        VantaNotificationManager.render(guiGraphics,
+                mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
     }
 
     @Inject(

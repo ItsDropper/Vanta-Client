@@ -80,7 +80,7 @@ public class HudEditorScreen extends Screen {
         entrance = animations ? entrance + (1.0f - entrance) * 0.18f : 1.0f;
         if (Math.abs(1.0f - entrance) < 0.01f) entrance = 1.0f;
 
-        graphics.fill(0, 0, width, height, 0x99080C13);
+        graphics.fill(0, 0, width, height, VantaUiTheme.withAlpha(VantaUiTheme.CANVAS, 164));
         if (preferences.hudShowGrid) drawGrid(graphics, preferences.hudGridSize, entrance);
 
         HudMouseHandler.updateHover(mouseX, mouseY);
@@ -115,8 +115,8 @@ public class HudEditorScreen extends Screen {
         int width = mc.font.width(hint) + 28;
         int x = (this.width - width) / 2;
         int y = this.height - 30;
-        fillRounded(graphics, x, y, width, 22, 7, 0xD9161B23);
-        drawRoundedOutline(graphics, x, y, width, 22, 7, 0x665D6878, 1);
+        fillRounded(graphics, x, y, width, 22, 9,
+                VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
         graphics.drawCenteredString(mc.font, hint, this.width / 2, y + 7, 0xFFD2D8E2);
     }
 

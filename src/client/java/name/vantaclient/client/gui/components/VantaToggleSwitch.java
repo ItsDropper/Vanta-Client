@@ -1,5 +1,7 @@
 package name.vantaclient.client.gui.components;
 
+import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -17,6 +19,7 @@ public final class VantaToggleSwitch extends AbstractWidget {
     private final Consumer<Boolean> setter;
     private float transition;
     private float hover;
+    private long lastFrameNanos;
 
     public VantaToggleSwitch(int x, int y, BooleanSupplier value, Consumer<Boolean> setter) {
         super(VantaPanelButton.layoutX(x), VantaPanelButton.layoutY(y),
@@ -31,24 +34,33 @@ public final class VantaToggleSwitch extends AbstractWidget {
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         boolean enabled = value.getAsBoolean();
         float target = enabled ? 1.0f : 0.0f;
-        transition += (target - transition) * 0.28f;
-        if (Math.abs(target - transition) < 0.01f) transition = target;
+        long now = System.nanoTime();
+        float delta = lastFrameNanos == 0L ? 1.0f / 60.0f
+                : Math.max(0.0f, Math.min(0.05f, (now - lastFrameNanos) / 1_000_000_000.0f));
+        lastFrameNanos = now;
         float hoverTarget = isHovered() ? 1.0f : 0.0f;
-        hover += (hoverTarget - hover) * 0.24f;
+        if (!VantaClientPreferences.get().animations) {
+            transition = target;
+            hover = hoverTarget;
+        } else {
+            float factor = 1.0f - (float) Math.exp(-17.0f * delta);
+            transition += (target - transition) * factor;
+            hover += (hoverTarget - hover) * factor;
+            if (Math.abs(target - transition) < 0.01f) transition = target;
+            if (Math.abs(hoverTarget - hover) < 0.01f) hover = hoverTarget;
+        }
 
-        int accent = name.vantaclient.client.config.VantaClientPreferences.get().accent.color();
-        int track = mix(0xFF303744, 0xFF3B4658, hover * 0.7f);
-        track = mix(track, accent, transition * 0.92f);
-        int border = mix(0xFF414B5A, accent, transition * 0.65f);
-        rounded(graphics, getX(), getY(), width, height, height / 2, border);
-        rounded(graphics, getX() + 1, getY() + 1, width - 2, height - 2,
-                Math.max(1, height / 2 - 1), track);
+        int accent = VantaClientPreferences.get().accent.color();
+        int track = mix(VantaUiTheme.TRACK, VantaUiTheme.SURFACE_HOVER, hover * 0.75f);
+        track = mix(track, accent, transition * 0.90f);
+        VantaUiTheme.fillRounded(graphics, getX(), getY(), width, height, height / 2, track);
 
         int knobSize = Math.max(8, height - 8);
         int travel = width - knobSize - 8;
         int knobX = getX() + 4 + Math.round(travel * transition);
         int knobY = getY() + (height - knobSize) / 2;
-        rounded(graphics, knobX, knobY, knobSize, knobSize, knobSize / 2, 0xFFFFFFFF);
+        VantaUiTheme.fillRounded(graphics, knobX, knobY, knobSize, knobSize,
+                knobSize / 2, VantaUiTheme.WHITE);
     }
 
     @Override
@@ -65,21 +77,7 @@ public final class VantaToggleSwitch extends AbstractWidget {
                 Component.literal(value.getAsBoolean() ? "Enabled" : "Disabled"));
     }
 
-    private static void rounded(GuiGraphics graphics, int x, int y, int width,
-                                int height, int radius, int color) {
-        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= height - r) {
-                double dy = row - (height - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-        }
-    }
+
 
     private static int mix(int from, int to, float amount) {
         float t = Math.max(0.0f, Math.min(1.0f, amount));
