@@ -85,7 +85,7 @@ public final class VantaMenuStyle {
         int gap = menuButtonGap(screenHeight);
         int top = menuTop(screenHeight);
         int y = top + 3 * (buttonHeight + gap) + 8 + 27 + 6;
-        return new int[]{left, Math.min(screenHeight - 30, y), width, 24};
+        return new int[]{left, Math.min(screenHeight - 48, y), width, 24};
     }
 
     public static int menuLeft(int screenWidth) {
@@ -178,9 +178,10 @@ public final class VantaMenuStyle {
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
         int width = Math.min(236, Math.max(190, Math.round(screenWidth * 0.43f)));
-        int height = 100;
+        boolean compact = screenHeight < 320;
+        int height = compact ? 88 : 100;
         int x = Math.max(12, screenWidth - width - Math.max(18, Math.round(screenWidth * 0.045f)));
-        int y = Math.max(18, Math.round(screenHeight * 0.16f));
+        int y = compact ? 8 : Math.max(18, Math.round(screenHeight * 0.16f));
         int alpha = Math.round(255.0f * easeOut(Math.min(1.0f,
                 Math.max(0.0f, elapsedMillis / 480.0f))));
 
@@ -228,7 +229,7 @@ public final class VantaMenuStyle {
                     cachedPlayerModel.head.yRot = (float) Math.toRadians(idleYaw);
                     cachedPlayerModel.head.xRot = (float) Math.toRadians(-3.0f);
                     graphics.submitSkinRenderState(cachedPlayerModel,
-                            skin.body().texturePath(), 40.0f, -4.0f, idleYaw,
+                            skin.body().texturePath(), compact ? 34.0f : 40.0f, -4.0f, idleYaw,
                             0.0f, previewLeft, previewTop, previewRight, previewBottom);
                     skinDrawn = true;
                 }
@@ -248,14 +249,14 @@ public final class VantaMenuStyle {
 
         int textX = x + Math.min(88, width / 2 + 8);
         int textWidth = width - (textX - x) - 10;
-        graphics.drawString(client.font, ComponentText.account(), textX, y + 20,
+        graphics.drawString(client.font, ComponentText.account(), textX, y + (compact ? 15 : 20),
                 withAlpha(0xFF9AA8BA, alpha), false);
         String safeName = fitName(client.font, playerName, textWidth);
-        graphics.drawString(client.font, ComponentText.playerName(safeName), textX, y + 38,
+        graphics.drawString(client.font, ComponentText.playerName(safeName), textX, y + (compact ? 31 : 38),
                 withAlpha(0xFFF2F5FA, alpha), false);
         graphics.drawString(client.font, ComponentText.profileState(profileId != null),
                 textX, y + 56, withAlpha(0xFF9AA8BA, alpha), false);
-        graphics.fill(textX, y + 68, x + width - 12, y + 69,
+        graphics.fill(textX, y + (compact ? 57 : 68), x + width - 12, y + (compact ? 58 : 69),
                 withAlpha(0x465C6C82, alpha));
         graphics.drawString(client.font, ComponentText.profileHint(),
                 textX, y + 79, withAlpha(0xFF8794A6, alpha), false);
@@ -346,7 +347,7 @@ public final class VantaMenuStyle {
 
         private static net.minecraft.network.chat.Component profileState(boolean available) {
             return net.minecraft.network.chat.Component.literal(
-                    available ? "ACTIVE PROFILE" : "PROFILE UNAVAILABLE")
+                    available ? "ACTIVE PROFILE" : "PROFILE OFFLINE")
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
