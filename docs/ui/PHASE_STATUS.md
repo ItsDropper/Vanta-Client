@@ -15,6 +15,11 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
 - Dropdowns now use bounded floating overlays outside parent clipping, without layout reflow; keyboard navigation and popup-local wheel scrolling are supported.
 - Remaining framework gaps include reusable modal dialogs and a comprehensive layout/input unit-test suite. Progress indicators are indeterminate because the Modrinth installer does not expose transfer callbacks. The Controls page edits the five registered Vanta mappings; no feature-level keybinding model currently exists.
+- The framework, legacy native widgets, title-screen controls and HUD-editor chrome now share cached fourth-order superellipse geometry. Existing rounded helper names remain compatibility aliases; scanline insets are precomputed and no shader is required.
+- Semantic notification colors are centralized in `VantaUiTheme`, and keyboard-focused buttons receive an explicit accent outline distinct from hover.
+- HUD-editor element guides now use the exact persisted/rendered hitbox rectangle; selection emphasis remains a separate outer outline.
+- HUD background hitbox collection and connected-region merging use reusable primitive scratch arrays on the render thread. The normal path no longer creates temporary lists, queues or rectangle records per frame; scratch storage grows only if a layout exceeds its initial capacity.
+- The title screen keeps Minecraft's vanilla panorama and original button actions while routing its surface geometry through the shared theme.
 
 ## Production migration
 
