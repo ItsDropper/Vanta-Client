@@ -85,6 +85,25 @@ public final class FarTerrainLodMath {
         return 0;
     }
 
+    /**
+     * Adjusts FarView's draw budget with bounded steps to avoid frame-to-frame oscillation.
+     * The caller controls adjustment cadence; this policy only responds to smoothed render cost.
+     */
+    public static int adjustDrawBudget(int currentBudget, double averageRenderMs,
+                                       int minimumBudget, int maximumBudget) {
+        int minimum = Math.max(1, minimumBudget);
+        int maximum = Math.max(minimum, maximumBudget);
+        int bounded = Math.max(minimum, Math.min(maximum, currentBudget));
+        if (!Double.isFinite(averageRenderMs)) return bounded;
+        if (averageRenderMs > 4.0) {
+            return Math.max(minimum, (int) Math.round(bounded * 0.85));
+        }
+        if (averageRenderMs < 2.0) {
+            return Math.min(maximum, bounded + 2_000);
+        }
+        return bounded;
+    }
+
     public static int desiredTileSizeForDistanceSquared(double distanceSquared) {
         if (distanceSquared < 64.0 * 64.0) return 8;
         if (distanceSquared < 128.0 * 128.0) return 16;
