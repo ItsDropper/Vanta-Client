@@ -85,11 +85,7 @@ public class HudManager {
         return READ_ONLY_ELEMENTS;
     }
 
-    /**
-     * Visible HUD elements from the most recent client-tick refresh.
-     * Render passes can consume this snapshot without reevaluating feature predicates.
-     */
-    /** Revision advanced once per manager visibility refresh/client tick. */
+    /** Revision advanced whenever the manager refreshes its active HUD/layout snapshot. */
     public static long getLayoutRevision() {
         return layoutRevision;
     }
