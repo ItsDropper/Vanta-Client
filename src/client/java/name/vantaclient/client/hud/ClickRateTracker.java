@@ -9,6 +9,7 @@ public final class ClickRateTracker {
     private static final Deque<Long> RIGHT = new ArrayDeque<>();
     private static volatile int snapshotLeftCps;
     private static volatile int snapshotRightCps;
+    private static volatile String snapshotText = "CPS  0 | 0";
 
     private ClickRateTracker() {}
 
@@ -33,6 +34,7 @@ public final class ClickRateTracker {
         long now = System.nanoTime();
         snapshotLeftCps = count(LEFT, now);
         snapshotRightCps = count(RIGHT, now);
+        snapshotText = "CPS  " + snapshotLeftCps + " | " + snapshotRightCps;
     }
 
     public static int getSnapshotLeftCps() {
@@ -41,6 +43,10 @@ public final class ClickRateTracker {
 
     public static int getSnapshotRightCps() {
         return snapshotRightCps;
+    }
+
+    public static String getSnapshotText() {
+        return snapshotText;
     }
 
     private static void record(Deque<Long> clicks) {
