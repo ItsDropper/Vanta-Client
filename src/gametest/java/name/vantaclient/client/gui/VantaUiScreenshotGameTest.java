@@ -678,6 +678,22 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Visible-band tile fast path crossed a render-distance boundary.");
             }
 
+            if (!FarTerrainLodMath.isWorkObsolete(3L, 4L, true)
+                    || !FarTerrainLodMath.isWorkObsolete(4L, 4L, false)
+                    || FarTerrainLodMath.isWorkObsolete(4L, 4L, true)) {
+                throw new AssertionError("FarView queued-job validity did not respect world revision and desired tiles.");
+            }
+
+            if (FarTerrainLodMath.workerBackoffMillis(0.0, 0.0, 120) != 0
+                    || FarTerrainLodMath.workerBackoffMillis(10.0, 10.0, 120) != 0
+                    || FarTerrainLodMath.workerBackoffMillis(17.0, 10.0, 75) != 8
+                    || FarTerrainLodMath.workerBackoffMillis(24.0, 10.0, 75) != 20
+                    || FarTerrainLodMath.workerBackoffMillis(10.0, 42.0, 120) != 40
+                    || FarTerrainLodMath.workerBackoffMillis(10.0, 10.0, 40) != 20
+                    || FarTerrainLodMath.workerBackoffMillis(10.0, 10.0, 25) != 40) {
+                throw new AssertionError("FarView worker backoff did not follow the measured client load tiers.");
+            }
+
             int[] expectedSizes = {8, 16, 32, 64, 128, 256, 512};
             double[] distances = {63.0, 64.0, 128.0, 256.0, 512.0, 1024.0, 1536.0};
             for (int index = 0; index < distances.length; index++) {
