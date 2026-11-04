@@ -20,6 +20,7 @@ import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.init.FeatureKeybinds;
+import name.vantaclient.client.feature.FeatureRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.input.KeyEvent;
@@ -475,10 +476,26 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             String originalKey = mapping.saveString();
             String conflictingKey = Keybinds.fullbrightKey.saveString();
             List<FeatureKeybinds.Binding> featureBindings = FeatureKeybinds.bindings();
-            if (featureBindings.isEmpty()
+            if (featureBindings.size() != FeatureRegistry.FEATURES.size()
                     || featureBindings.stream().map(FeatureKeybinds.Binding::feature).distinct().count()
                     != featureBindings.size()) {
                 throw new AssertionError("Every registered feature must have exactly one feature shortcut.");
+            }
+            for (FeatureKeybinds.Binding binding : featureBindings) {
+                if (FeatureKeybinds.mappingFor(binding.feature()) != binding.mapping()) {
+                    throw new AssertionError("Feature keybinding lookup returned a different mapping.");
+                }
+                boolean foundInOptions = false;
+                for (KeyMapping candidate : client.options.keyMappings) {
+                    if (candidate == binding.mapping()) {
+                        foundInOptions = true;
+                        break;
+                    }
+                }
+                if (!foundInOptions) {
+                    throw new AssertionError("Feature shortcut was not registered with Minecraft options: "
+                            + binding.feature().getName());
+                }
             }
             FeatureKeybinds.Binding featureBinding = featureBindings.getFirst();
             String originalFeatureKey = featureBinding.mapping().saveString();
