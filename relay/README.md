@@ -23,7 +23,7 @@ TURN credentials are generated per approved join request, use coturn's HMAC-SHA1
 
 ## Run locally
 
-Requires Go 1.23 or newer.
+For local builds, use Go 1.27 or newer (the container image and CI use Go 1.27).
 
 ```sh
 cd relay
