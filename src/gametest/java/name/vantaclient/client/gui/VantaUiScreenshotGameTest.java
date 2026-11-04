@@ -15,6 +15,8 @@ import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.integration.VantaLanHostingService;
 import name.vantaclient.client.integration.net.LoopbackTcpBridge;
+import name.vantaclient.client.integration.net.VantaRelayClient;
+import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -52,6 +54,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
+        verifyRelayEndpointValidation(context);
         verifyScrollbarThumbDragging(context);
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
@@ -106,6 +109,38 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+
+    private static void verifyRelayEndpointValidation(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            String secure = VantaRelayClient.normalizeBaseUrl("https://relay.example.net");
+            if (!"https://relay.example.net/".equals(secure)) {
+                throw new AssertionError("HTTPS relay origin was not normalized: " + secure);
+            }
+            String local = VantaRelayClient.normalizeBaseUrl("http://localhost:8080");
+            if (!"http://localhost:8080/".equals(local)) {
+                throw new AssertionError("Loopback HTTP development origin was not normalized: " + local);
+            }
+            assertInvalidRelayEndpoint("http://relay.example.net");
+            assertInvalidRelayEndpoint("wss://relay.example.net");
+            assertInvalidRelayEndpoint("https://relay.example.net/path");
+            assertInvalidRelayEndpoint("https://user:password@relay.example.net");
+            assertInvalidRelayEndpoint("https://relay.example.net/?token=secret");
+
+            if (VantaRemoteSessionManager.shouldCancelPendingGuestJoin()
+                    || VantaRemoteSessionManager.isHosting()) {
+                throw new AssertionError("Remote session manager must start without active sessions.");
+            }
+        });
+    }
+
+    private static void assertInvalidRelayEndpoint(String value) {
+        try {
+            VantaRelayClient.normalizeBaseUrl(value);
+            throw new AssertionError("Relay endpoint must be rejected: " + value);
+        } catch (IllegalArgumentException expected) {
+            // Invalid endpoints are rejected before network activity begins.
+        }
+    }
 
     private static void verifyWorldShareStateWithoutWorld(ClientGameTestContext context) {
         context.runOnClient(client -> {

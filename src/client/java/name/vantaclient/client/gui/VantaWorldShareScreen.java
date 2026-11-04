@@ -38,7 +38,6 @@ public final class VantaWorldShareScreen extends Screen {
     private GameType selectedGameType = GameType.SURVIVAL;
     private boolean allowCommands;
     private long lastSessionRevision = -1L;
-    private boolean connectionHandoffStarted;
 
     public VantaWorldShareScreen(Screen parent) {
         super(Component.literal("Vanta World Sharing"));
@@ -119,6 +118,9 @@ public final class VantaWorldShareScreen extends Screen {
         content.add(VantaUiNode.text(
                 "The relay forwards Minecraft TCP traffic without interpreting packets. Its operator can still see connection metadata and source network addresses.",
                 VantaUiTheme.TEXT_MUTED));
+        content.add(VantaUiNode.paragraph(
+                "Remote hosting also publishes the world to your local network. Nearby devices may discover and join it through normal Minecraft LAN discovery.",
+                VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
         if (!localStatus.isBlank()) {
             content.add(VantaUiNode.paragraph(localStatus,
                     VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
@@ -171,7 +173,8 @@ public final class VantaWorldShareScreen extends Screen {
                         .height(compact ? 66 : 38)
                         .align(VantaUiNode.Alignment.CENTER);
                 VantaUiNode guestInfo = VantaUiNode.column(2, 0).flex(1);
-                guestInfo.add(VantaUiNode.text(guest.playerName(), VantaUiTheme.TEXT_PRIMARY));
+                guestInfo.add(VantaUiNode.text("Claims name: " + guest.playerName(),
+                        VantaUiTheme.TEXT_PRIMARY));
                 guestInfo.add(VantaUiNode.text(guest.approving()
                                 ? "Approval sent; opening stream…"
                                 : "Waiting for your approval",
@@ -388,7 +391,7 @@ public final class VantaWorldShareScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (VantaRemoteSessionManager.snapshot().guestBusy() && !connectionHandoffStarted) {
+        if (VantaRemoteSessionManager.shouldCancelPendingGuestJoin()) {
             VantaRemoteSessionManager.stopJoining();
         }
         if (minecraft != null) minecraft.setScreen(parent);
@@ -396,8 +399,8 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     /**
-     * ConnectScreen replaces this screen after host approval. Preserve the tunnel
-     * during that screen transition; an explicit Back action cancels the join.
+     * ConnectScreen replaces this screen after host approval. Screen replacement
+     * does not invoke onClose; only an explicit Back action cancels a pending join.
      */
     @Override
     public boolean isPauseScreen() {

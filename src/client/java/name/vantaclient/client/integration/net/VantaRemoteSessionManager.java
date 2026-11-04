@@ -374,6 +374,13 @@ public final class VantaRemoteSessionManager {
         });
     }
 
+    /** True while a join is waiting for approval or the local Minecraft connection is still being established. */
+    public static boolean shouldCancelPendingGuestJoin() {
+        synchronized (LOCK) {
+            return guestBusy || (guestSession != null && !guestWorldJoined);
+        }
+    }
+
     public static void stopJoining() {
         final GuestSession old;
         final VantaRelayClient.GuestDecisionConnection decision;
