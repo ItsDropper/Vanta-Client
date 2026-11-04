@@ -11,6 +11,7 @@ import name.vantaclient.client.hud.PotionEffectsHudElement;
 import name.vantaclient.client.hud.TotemCounterHudElement;
 import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.ClickRateTracker;
+import name.vantaclient.client.hud.PingHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
@@ -78,6 +79,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyTotemCounterSnapshotPolicy(context);
         verifyArmorHudSnapshotPolicy(context);
         verifyClickRateSnapshot(context);
+        verifyPingHudSnapshotPolicy(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -891,6 +893,28 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyPingHudSnapshotPolicy(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            Object world = new Object();
+            Object player = new Object();
+            Object connection = new Object();
+            if (PingHudElement.shouldRefreshPingSnapshot(
+                    100L, 100L, world, world, player, player, connection, connection)
+                    || !PingHudElement.shouldRefreshPingSnapshot(
+                    100L, 101L, world, world, player, player, connection, connection)
+                    || !PingHudElement.shouldRefreshPingSnapshot(
+                    100L, 100L, world, new Object(), player, player, connection, connection)
+                    || !PingHudElement.shouldRefreshPingSnapshot(
+                    100L, 100L, world, world, player, new Object(), connection, connection)
+                    || !PingHudElement.shouldRefreshPingSnapshot(
+                    100L, 100L, world, world, player, player, connection, new Object())
+                    || !PingHudElement.shouldRefreshPingSnapshot(
+                    101L, 100L, world, world, player, player, connection, connection)) {
+                throw new AssertionError("Ping HUD snapshot failed tick, world, player, connection, or rewind invalidation.");
             }
         });
     }
