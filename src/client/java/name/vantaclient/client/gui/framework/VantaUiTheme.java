@@ -151,50 +151,19 @@ public final class VantaUiTheme {
         }
     }
 
-    /** Crisp one-pixel rounded outline; no dark offset plate or side box. */
+    /**
+     * Compatibility alias for older Vanta widgets. All native controls now share
+     * the same cached superellipse geometry as the retained component framework.
+     */
     public static void outlineRounded(GuiGraphics graphics, int x, int y, int width,
                                       int height, int radius, int color) {
-        if (graphics == null || width <= 1 || height <= 1 || color == 0) return;
-        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
-        if (r == 0) {
-            graphics.fill(x, y, x + width, y + 1, color);
-            graphics.fill(x, y + height - 1, x + width, y + height, color);
-            graphics.fill(x, y + 1, x + 1, y + height - 1, color);
-            graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
-            return;
-        }
-        for (int row = 0; row < height; row++) {
-            int distanceFromCorner = row < r ? r - row
-                    : row >= height - r ? row - (height - r - 1) : 0;
-            int inset = distanceFromCorner == 0 ? 0
-                    : r - (int) Math.floor(Math.sqrt((double) r * r
-                    - (double) distanceFromCorner * distanceFromCorner));
-            if (row == 0 || row == height - 1) {
-                graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-            } else {
-                graphics.fill(x + inset, y + row, x + inset + 1, y + row + 1, color);
-                graphics.fill(x + width - inset - 1, y + row,
-                        x + width - inset, y + row + 1, color);
-            }
-        }
+        outlineSquircle(graphics, x, y, width, height, radius, color, 1);
     }
 
-    /** Shared rounded fill used by Vanta-native controls and floating surfaces. */
+    /** Compatibility alias retained for existing native widgets. */
     public static void fillRounded(GuiGraphics graphics, int x, int y, int width,
                                    int height, int radius, int color) {
-        if (graphics == null || width <= 0 || height <= 0 || color == 0) return;
-        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
-        if (r == 0) {
-            graphics.fill(x, y, x + width, y + height, color);
-            return;
-        }
-        graphics.fill(x + r, y, x + width - r, y + height, color);
-        for (int row = 0; row < r; row++) {
-            int dy = r - row;
-            int inset = r - (int) Math.floor(Math.sqrt((double) r * r - (double) dy * dy));
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-            graphics.fill(x + inset, y + height - row - 1,
-                    x + width - inset, y + height - row, color);
-        }
+        fillSquircle(graphics, x, y, width, height, radius, color);
     }
+
 }
