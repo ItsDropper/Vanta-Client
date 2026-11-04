@@ -2,6 +2,7 @@ package name.vantaclient.client.integration.net;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.net.URI;
@@ -10,10 +11,15 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -33,6 +39,12 @@ public final class VantaRelayClient {
     /** Wire DTO: keep the relay's ISO-8601 expiry as text; Gson does not need to reflect into java.time. */
     public record RelayEvent(String type, String requestId, String playerName,
                              String reason, String expiresAt) {}
+    public record RelaySignal(String type, String sdp, String candidate,
+                              String sdpMid, Integer sdpMLineIndex) {}
+
+    private static final int MAX_SIGNAL_SDP_CHARS = 48 * 1024;
+    private static final int MAX_SIGNAL_CANDIDATE_CHARS = 4 * 1024;
+    private static final int MAX_SIGNAL_MESSAGE_CHARS = 64 * 1024;
 
     private record CreateRoomResponse(String roomCode, String hostToken, String expiresAt) {}
     private record JoinResponse(String requestId, String guestToken, String expiresAt) {}
@@ -113,6 +125,22 @@ public final class VantaRelayClient {
         requireTicket(ticket);
         String path = "/v1/guest/data/" + ticket.roomCode() + "/" + ticket.requestId();
         return WebSocketDuplexConnection.connect(httpClient, webSocketUri(path), ticket.guestToken());
+    }
+
+    public SignalConnection connectHostSignal(Room room, String requestId) throws IOException {
+        requireRoom(room);
+        String path = "/v1/host/signal/" + room.code() + "/" + validateRequestId(requestId);
+        SignalListener listener = new SignalListener(true);
+        java.net.http.WebSocket socket = connectWebSocket(path, room.hostToken(), listener);
+        return new SignalConnection(socket, listener, true);
+    }
+
+    public SignalConnection connectGuestSignal(JoinTicket ticket) throws IOException {
+        requireTicket(ticket);
+        String path = "/v1/guest/signal/" + ticket.roomCode() + "/" + ticket.requestId();
+        SignalListener listener = new SignalListener(false);
+        java.net.http.WebSocket socket = connectWebSocket(path, ticket.guestToken(), listener);
+        return new SignalConnection(socket, listener, false);
     }
 
     private JsonObject post(String path, String body) throws IOException {
@@ -347,6 +375,244 @@ public final class VantaRelayClient {
                 socket.abort();
             }
         }
+    }
+
+    /**
+     * Authenticated, request-scoped SDP/ICE signalling. The host may send one
+     * offer; the guest may send one answer. Either peer can trickle ICE. The
+     * server's ready event is required before starting negotiation.
+     */
+    public static final class SignalConnection implements AutoCloseable {
+        private final java.net.http.WebSocket socket;
+        private final SignalListener listener;
+        private final boolean hostSide;
+
+        private SignalConnection(java.net.http.WebSocket socket, SignalListener listener,
+                                  boolean hostSide) {
+            this.socket = socket;
+            this.listener = listener;
+            this.hostSide = hostSide;
+        }
+
+        public void awaitReady(Duration timeout) throws IOException {
+            listener.awaitReady(timeout);
+        }
+
+        public RelaySignal receive(Duration timeout) throws IOException {
+            return listener.receive(timeout);
+        }
+
+        public void sendOffer(String sdp) throws IOException {
+            if (!hostSide) throw new IOException("Only the host may send the WebRTC offer.");
+            send(new RelaySignal("offer", sdp, null, null, null));
+        }
+
+        public void sendAnswer(String sdp) throws IOException {
+            if (hostSide) throw new IOException("Only the guest may send the WebRTC answer.");
+            send(new RelaySignal("answer", sdp, null, null, null));
+        }
+
+        public void sendIce(String candidate, String sdpMid, int sdpMLineIndex)
+                throws IOException {
+            send(new RelaySignal("ice", null, candidate, sdpMid, sdpMLineIndex));
+        }
+
+        public boolean isOpen() {
+            return listener.isOpen();
+        }
+
+        private void send(RelaySignal signal) throws IOException {
+            validateSignal(signal, hostSide, false);
+            if (!listener.isOpen()) throw new IOException("Relay signalling connection is closed.");
+            try {
+                socket.sendText(GSON.toJson(signal), true).get(5, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Relay signalling send was interrupted.", exception);
+            } catch (ExecutionException | TimeoutException exception) {
+                throw new IOException("Could not send WebRTC signalling message.", exception);
+            }
+        }
+
+        @Override
+        public void close() {
+            listener.closeLocally();
+            try {
+                socket.sendClose(java.net.http.WebSocket.NORMAL_CLOSURE, "signalling complete")
+                        .get(2, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+                socket.abort();
+            }
+        }
+    }
+
+    private static final class SignalListener implements java.net.http.WebSocket.Listener {
+        private static final Set<String> ALLOWED_FIELDS =
+                Set.of("type", "sdp", "candidate", "sdpMid", "sdpMLineIndex");
+
+        private final boolean hostSide;
+        private final StringBuilder text = new StringBuilder();
+        private final BlockingQueue<Object> incoming = new ArrayBlockingQueue<>(128);
+        private final CompletableFuture<Void> ready = new CompletableFuture<>();
+        private final AtomicReference<IOException> failure = new AtomicReference<>();
+        private volatile boolean connected;
+        private volatile boolean locallyClosed;
+
+        private SignalListener(boolean hostSide) {
+            this.hostSide = hostSide;
+        }
+
+        private boolean isOpen() {
+            return connected && !locallyClosed && failure.get() == null;
+        }
+
+        private void awaitReady(Duration timeout) throws IOException {
+            try {
+                ready.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Waiting for both WebRTC signalling peers was interrupted.", exception);
+            } catch (ExecutionException | TimeoutException exception) {
+                throw new IOException("The other peer did not become ready for WebRTC negotiation.", exception);
+            }
+        }
+
+        private RelaySignal receive(Duration timeout) throws IOException {
+            final Object event;
+            try {
+                event = incoming.poll(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Waiting for WebRTC signalling was interrupted.", exception);
+            }
+            if (event instanceof IOException error) throw error;
+            if (event instanceof RelaySignal signal) return signal;
+            IOException error = failure.get();
+            if (error != null) throw error;
+            throw new IOException("Timed out waiting for a WebRTC signalling message.");
+        }
+
+        private void closeLocally() {
+            locallyClosed = true;
+            ready.completeExceptionally(new IOException("WebRTC signalling was closed."));
+        }
+
+        private void fail(Throwable cause, java.net.http.WebSocket socket) {
+            IOException error = cause instanceof IOException io
+                    ? io : new IOException("WebRTC signalling connection failed.", cause);
+            if (!failure.compareAndSet(null, error)) return;
+            ready.completeExceptionally(error);
+            incoming.clear();
+            incoming.offer(error);
+            if (!locallyClosed) socket.abort();
+        }
+
+        @Override
+        public void onOpen(java.net.http.WebSocket webSocket) {
+            connected = true;
+            webSocket.request(1);
+        }
+
+        @Override
+        public synchronized java.util.concurrent.CompletionStage<?> onText(
+                java.net.http.WebSocket webSocket, CharSequence data, boolean last) {
+            if (text.length() + data.length() > MAX_SIGNAL_MESSAGE_CHARS) {
+                fail(new IOException("Relay signalling message exceeded its size limit."), webSocket);
+                return CompletableFuture.completedFuture(null);
+            }
+            text.append(data);
+            if (last) {
+                try {
+                    JsonObject object = JsonParser.parseString(text.toString()).getAsJsonObject();
+                    for (String key : object.keySet()) {
+                        if (!ALLOWED_FIELDS.contains(key)) {
+                            throw new IOException("Relay sent an unknown signalling field.");
+                        }
+                    }
+                    RelaySignal signal = GSON.fromJson(object, RelaySignal.class);
+                    validateSignal(signal, hostSide, true);
+                    if ("ready".equals(signal.type())) {
+                        ready.complete(null);
+                    } else if (!incoming.offer(signal)) {
+                        throw new IOException("Relay signalling receive queue is full.");
+                    }
+                } catch (RuntimeException | IOException exception) {
+                    fail(exception, webSocket);
+                } finally {
+                    text.setLength(0);
+                }
+            }
+            webSocket.request(1);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public void onError(java.net.http.WebSocket webSocket, Throwable error) {
+            connected = false;
+            fail(error, webSocket);
+        }
+
+        @Override
+        public java.util.concurrent.CompletionStage<?> onClose(
+                java.net.http.WebSocket webSocket, int statusCode, String reason) {
+            connected = false;
+            if (!locallyClosed) fail(new IOException("The other peer closed WebRTC signalling."), webSocket);
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    private static void validateSignal(RelaySignal signal, boolean hostSide, boolean incoming)
+            throws IOException {
+        if (signal == null || signal.type() == null) {
+            throw new IOException("Relay sent an empty signalling message.");
+        }
+        String type = signal.type();
+        if ("ready".equals(type) && incoming) {
+            if (hasSignalPayload(signal)) throw new IOException("Relay sent an invalid ready event.");
+            return;
+        }
+        if ("offer".equals(type) && !hostSide && incoming) {
+            validateSdp(signal);
+            return;
+        }
+        if ("answer".equals(type) && hostSide && incoming) {
+            validateSdp(signal);
+            return;
+        }
+        if ("offer".equals(type) && hostSide && !incoming) {
+            validateSdp(signal);
+            return;
+        }
+        if ("answer".equals(type) && !hostSide && !incoming) {
+            validateSdp(signal);
+            return;
+        }
+        if ("ice".equals(type)) {
+            if (signal.candidate() == null || !signal.candidate().startsWith("candidate:")
+                    || signal.candidate().length() > MAX_SIGNAL_CANDIDATE_CHARS
+                    || signal.sdpMid() == null || signal.sdpMid().isBlank()
+                    || signal.sdpMid().length() > 256 || signal.sdpMLineIndex() == null
+                    || signal.sdpMLineIndex() < 0 || signal.sdpMLineIndex() > 255
+                    || signal.sdp() != null) {
+                throw new IOException("Relay sent an invalid ICE candidate.");
+            }
+            return;
+        }
+        throw new IOException("Relay sent a signalling message for the wrong peer role.");
+    }
+
+    private static void validateSdp(RelaySignal signal) throws IOException {
+        if (signal.sdp() == null || signal.sdp().isBlank()
+                || signal.sdp().length() > MAX_SIGNAL_SDP_CHARS
+                || !signal.sdp().contains("v=0") || signal.candidate() != null
+                || signal.sdpMid() != null || signal.sdpMLineIndex() != null) {
+            throw new IOException("Relay sent an invalid SDP description.");
+        }
+    }
+
+    private static boolean hasSignalPayload(RelaySignal signal) {
+        return signal.sdp() != null || signal.candidate() != null || signal.sdpMid() != null
+                || signal.sdpMLineIndex() != null;
     }
 
     private static final class WebSocketJsonListener implements java.net.http.WebSocket.Listener {
