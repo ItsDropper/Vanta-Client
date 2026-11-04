@@ -894,7 +894,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             try {
                 HudEditorFeature.INSTANCE.setEnabled(true);
                 HudManager.refreshVisibleElements();
-                List<HudElement> vanillaElements = HudManager.getVanillaElements();
+                List<VanillaHudElement> vanillaElements = HudManager.getVanillaElements();
                 if (vanillaElements.size() != VanillaHudElement.Part.values().length) {
                     throw new AssertionError("The vanilla HUD registry must contain each vanilla element exactly once.");
                 }
