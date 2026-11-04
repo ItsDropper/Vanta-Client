@@ -769,15 +769,28 @@ func (s *Server) attachData(w http.ResponseWriter, r *http.Request, current *roo
 		return
 	}
 
+	// Once the host has confirmed an established WebRTC DataChannel, the
+	// WebSocket data relay must not become a second, parallel gameplay path.
+	// Check before upgrade so stale/competing fallback attempts receive a clear
+	// HTTP conflict instead of briefly opening another transport.
+	request.mu.Lock()
+	available := request.state == "approved" && time.Now().Before(request.expiresAt) &&
+		!request.p2pStarted
+	request.mu.Unlock()
+	if !available {
+		writeError(w, http.StatusConflict, "data_transport_not_available")
+		return
+	}
+
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
 
 	request.mu.Lock()
-	if request.state != "approved" || time.Now().After(request.expiresAt) {
+	if request.state != "approved" || time.Now().After(request.expiresAt) || request.p2pStarted {
 		request.mu.Unlock()
-		_ = conn.Close(websocket.StatusPolicyViolation, "request not approved or expired")
+		_ = conn.Close(websocket.StatusPolicyViolation, "request transport is no longer available")
 		return
 	}
 	if isHost {
