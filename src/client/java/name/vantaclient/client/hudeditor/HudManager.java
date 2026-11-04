@@ -19,8 +19,8 @@ import java.util.List;
 public class HudManager {
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
     private static final List<HudElement> READ_ONLY_ELEMENTS = Collections.unmodifiableList(ELEMENTS);
-    private static final List<HudElement> VANILLA_ELEMENTS = new ArrayList<>();
-    private static final List<HudElement> READ_ONLY_VANILLA_ELEMENTS =
+    private static final List<VanillaHudElement> VANILLA_ELEMENTS = new ArrayList<>();
+    private static final List<VanillaHudElement> READ_ONLY_VANILLA_ELEMENTS =
             Collections.unmodifiableList(VANILLA_ELEMENTS);
     private static final List<HudElement> ACTIVE_ELEMENTS = new ArrayList<>();
     private static final List<HudElement> READ_ONLY_ACTIVE_ELEMENTS =
@@ -47,8 +47,8 @@ public class HudManager {
 
     public static void add(HudElement element) {
         ELEMENTS.add(element);
-        if (element instanceof VanillaHudElement) {
-            VANILLA_ELEMENTS.add(element);
+        if (element instanceof VanillaHudElement vanilla) {
+            VANILLA_ELEMENTS.add(vanilla);
         }
         visibilityInitialized = false;
     }
@@ -96,7 +96,7 @@ public class HudManager {
     }
 
     /** Vanilla layout entries remain available even when they are not editor-visible. */
-    public static List<HudElement> getVanillaElements() {
+    public static List<VanillaHudElement> getVanillaElements() {
         init();
         return READ_ONLY_VANILLA_ELEMENTS;
     }
