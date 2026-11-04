@@ -22,7 +22,7 @@ Vanta uses an explicitly configured relay for room creation, host approval, and 
 3. The guest waits for host approval. Rejection, expiry, cancellation and relay errors are handled by the session manager.
 4. After approval, Vanta fetches ICE configuration using the guest's request-scoped bearer token and negotiates a WebRTC DataChannel (or the WebSocket fallback). It then opens a TCP listener bound only to `127.0.0.1`.
 5. Vanilla Minecraft's `ConnectScreen` connects to that local port. The loopback bridge forwards the byte stream to the host's relay tunnel.
-6. Minecraft's normal login and online-mode authentication remain in the connection path. The relay does not authenticate Minecraft accounts.
+6. The integrated server's login path accepts unauthenticated players, so a server-observed UUID alone is not account proof. Vanta saves a profile only after vanilla validates and installs a non-expired Mojang-signed player chat-session key bound to that UUID. If no valid key arrives, the guest can only be treated as an unverified, manually approved connection and is not added to the saved-profile list. The relay itself never authenticates Minecraft accounts.
 
 The loopback listener is not exposed to the LAN or the public Internet. The host tunnel always targets the local integrated-server port; it does not accept a caller-supplied destination.
 
@@ -49,7 +49,7 @@ See [relay/README.md](../../relay/README.md) for local and Docker deployment ins
 - The configured relay operator can observe connection metadata and source network addresses. Do not use a relay you do not trust.
 - The relay forwards Minecraft TCP traffic without interpreting packet contents. The pre-login handshake is not equivalent to an end-to-end encrypted session; Minecraft's normal authentication and encryption flow remains owned by Minecraft.
 - The LAN publishing step also makes the integrated server discoverable to devices on the host's local network. The Vanta UI discloses this before remote hosting starts.
-- The host sees a guest-provided player name for approval. That name is not authenticated by the relay; Minecraft's own login later verifies the connecting account.
+- The host sees a guest-provided name and UUID claim for approval; neither is trusted as account identity. Minecraft's integrated server accepts unauthenticated logins, so Vanta waits for the separately validated Mojang-signed player public-key session before saving a UUID. A missing or expired session key leaves the guest unverified and does not create a saved profile.
 - The client does not display or persist the host's public IP, relay bearer tokens, guest tokens, SDP or ICE candidates.
 - Closing the world, stopping remote hosting, cancelling a guest join, disconnecting Minecraft or exiting the client tears down the corresponding tunnels and control sockets.
 
@@ -66,7 +66,7 @@ No default Vanta-operated signalling or TURN service is configured in this repos
 1. Deploy the Go signalling relay at an HTTPS origin and configure `VANTA_STUN_URLS`, `VANTA_TURN_URLS`, and `VANTA_TURN_SHARED_SECRET` against an operational STUN/TURN deployment.
 2. Run two separate Minecraft clients with the same relay origin configured.
 3. Create an invite, request access, approve and reject guests, and verify the claimed name is clearly presented as unverified.
-4. Verify normal Minecraft authentication, guest profile UUID matching, per-world whitelist persistence and revocation, multiple guests, large chunk/resource transfers, connection loss, relay restart, world closure and cancellation.
+4. Verify the Mojang-signed player-key flow, UUID binding, per-world saved-profile persistence and revocation. Confirm that a guest with no valid session key is never persisted as verified and that every request still requires host approval. Then test multiple guests, large chunk/resource transfers, connection loss, relay restart, world closure and cancellation.
 5. Verify firewall behaviour and that the guest bridge binds only to loopback on Windows and Linux.
 6. Verify the selected ICE candidate pair (direct vs TURN), confirm fallback behaviour, and review client and relay logs for accidental credential disclosure.
 
