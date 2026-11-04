@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public final class VantaRemoteSessionManager {
     public record PendingGuest(String requestId, String playerName, boolean approving) {}
+    public record ConnectedGuest(String requestId, String playerName) {}
 
     public record Snapshot(
             String hostStatus,
@@ -52,6 +53,7 @@ public final class VantaRemoteSessionManager {
     });
     private static final Map<String, PendingGuest> PENDING = new LinkedHashMap<>();
     private static final Map<String, TcpStreamTunnel> HOST_TUNNELS = new LinkedHashMap<>();
+    private static final Map<String, ConnectedGuest> ACTIVE_GUESTS = new LinkedHashMap<>();
 
     private static long revision;
     private static long hostGeneration;
@@ -81,7 +83,7 @@ public final class VantaRemoteSessionManager {
                     hostBusy,
                     host != null,
                     List.copyOf(PENDING.values()),
-                    HOST_TUNNELS.size(),
+                    ACTIVE_GUESTS.size(),
                     guestStatus,
                     guestBusy,
                     guestSession != null);
@@ -93,6 +95,13 @@ public final class VantaRemoteSessionManager {
             return revision;
         }
     }
+
+    public static List<ConnectedGuest> connectedGuests() {
+        synchronized (LOCK) {
+            return List.copyOf(ACTIVE_GUESTS.values());
+        }
+    }
+
 
     /** Creates a short-lived room and authenticated host control socket. */
     public static void startHosting(String endpoint, MinecraftServer server, int serverPort) {
@@ -122,6 +131,7 @@ public final class VantaRemoteSessionManager {
             hostStatus = "Creating a private invite room…";
             PENDING.clear();
             HOST_TUNNELS.clear();
+            ACTIVE_GUESTS.clear();
             bumpRevisionLocked();
         }
 
@@ -181,6 +191,11 @@ public final class VantaRemoteSessionManager {
             hostStatus = "Approving " + pending.playerName() + " and opening their stream…";
             bumpRevisionLocked();
         }
+        final String approvedPlayerName;
+        synchronized (LOCK) {
+            PendingGuest approved = PENDING.get(requestId);
+            approvedPlayerName = approved == null ? "Guest" : approved.playerName();
+        }
 
         final boolean relayOnly = VantaClientPreferences.get().remoteMaximumIpPrivacy;
         executeIo(() -> {
@@ -220,7 +235,13 @@ public final class VantaRemoteSessionManager {
                     }
                     HOST_TUNNELS.put(requestId, tunnel);
                     PENDING.remove(requestId);
-                    if (tunnel.isClosed()) HOST_TUNNELS.remove(requestId);
+                    if (tunnel.isClosed()) {
+                        HOST_TUNNELS.remove(requestId);
+                        ACTIVE_GUESTS.remove(requestId);
+                    } else {
+                        ACTIVE_GUESTS.put(requestId,
+                                new ConnectedGuest(requestId, approvedPlayerName));
+                    }
                     hostStatus = "Guest connected using " + transport + ".";
                     bumpRevisionLocked();
                 }
@@ -236,6 +257,19 @@ public final class VantaRemoteSessionManager {
                 }
             }
         });
+    }
+
+    /** Disconnects one active guest without closing the host's integrated world. */
+    public static void kickGuest(String requestId) {
+        final TcpStreamTunnel tunnel;
+        synchronized (LOCK) {
+            tunnel = HOST_TUNNELS.remove(requestId);
+            if (tunnel == null) return;
+            ACTIVE_GUESTS.remove(requestId);
+            hostStatus = "Disconnected " + ACTIVE_GUESTS.size() + " remaining guest(s).";
+            bumpRevisionLocked();
+        }
+        executeIo(tunnel::close);
     }
 
     public static void rejectGuest(String requestId) {
@@ -274,6 +308,7 @@ public final class VantaRemoteSessionManager {
             PENDING.clear();
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
+            ACTIVE_GUESTS.clear();
             hostStatus = "Remote hosting stopped. Your local world remains open.";
             bumpRevisionLocked();
         }
@@ -554,6 +589,7 @@ public final class VantaRemoteSessionManager {
             PENDING.clear();
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
+            ACTIVE_GUESTS.clear();
             hostStatus = "Relay control connection lost. Remote guests were disconnected; "
                     + "your local world remains open. "
                     + safeMessage(error, "connection closed");
@@ -569,6 +605,7 @@ public final class VantaRemoteSessionManager {
         synchronized (LOCK) {
             if (generation != hostGeneration) return;
             if (HOST_TUNNELS.remove(requestId) != null) {
+                ACTIVE_GUESTS.remove(requestId);
                 hostStatus = "A remote guest disconnected.";
                 bumpRevisionLocked();
             }

@@ -201,6 +201,19 @@ public final class VantaWorldShareScreen extends Screen {
                         .size(64, 30).enabled(!guest.approving()));
                 content.add(request);
             }
+            for (VantaRemoteSessionManager.ConnectedGuest guest
+                    : VantaRemoteSessionManager.connectedGuests()) {
+                VantaUiNode active = VantaUiNode.row(8, 4)
+                        .height(38)
+                        .align(VantaUiNode.Alignment.CENTER);
+                active.add(VantaUiNode.text(guest.playerName(),
+                        VantaUiTheme.TEXT_PRIMARY).flex(1));
+                active.add(VantaUiNode.text("CONNECTED", VantaUiTheme.TEXT_MUTED));
+                active.add(VantaUiNode.button("KICK",
+                        () -> VantaRemoteSessionManager.kickGuest(guest.requestId()))
+                        .size(62, 30));
+                content.add(active);
+            }
             content.add(VantaUiNode.button("STOP REMOTE HOSTING",
                     VantaRemoteSessionManager::stopHosting).height(34));
         } else if (session.hostBusy()) {
