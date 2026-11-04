@@ -58,6 +58,8 @@ public final class VantaClientPreferences {
     public String remoteRelayEndpoint = "";
     /** Restrict WebRTC ICE to TURN relay candidates to avoid exposing the peer's home IP. */
     public boolean remoteMaximumIpPrivacy = false;
+    /** Approved Minecraft profile UUIDs, keyed by the normalized save-root path. */
+    public Map<String, Set<String>> remoteWorldWhitelists = new HashMap<>();
     public Set<String> favoriteMods = new HashSet<>();
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
@@ -102,6 +104,22 @@ public final class VantaClientPreferences {
         if (instance.hudGridSize != 8 && instance.hudGridSize != 16
                 && instance.hudGridSize != 24 && instance.hudGridSize != 32) {
             instance.hudGridSize = 16;
+        }
+        if (instance.remoteWorldWhitelists == null) {
+            instance.remoteWorldWhitelists = new HashMap<>();
+        }
+        instance.remoteWorldWhitelists.entrySet().removeIf(entry ->
+                entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null);
+        for (Set<String> profileIds : instance.remoteWorldWhitelists.values()) {
+            Set<String> normalized = new HashSet<>();
+            for (String profileId : profileIds) {
+                if (profileId != null && profileId.matches(
+                        "(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                    normalized.add(profileId.toLowerCase(java.util.Locale.ROOT));
+                }
+            }
+            profileIds.clear();
+            profileIds.addAll(normalized);
         }
         if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
         if (instance.vanillaHudPositions == null) instance.vanillaHudPositions = new HashMap<>();

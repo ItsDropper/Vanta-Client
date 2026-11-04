@@ -42,7 +42,7 @@ public final class VantaRelayClient {
                              Instant expiresAt) {}
     /** Wire DTO: keep the relay's ISO-8601 expiry as text; Gson does not need to reflect into java.time. */
     public record RelayEvent(String type, String requestId, String playerName,
-                             String reason, String expiresAt) {}
+                             String playerUUID, String reason, String expiresAt) {}
     public record RelaySignal(String type, String sdp, String candidate,
                               String sdpMid, Integer sdpMLineIndex) {}
 
@@ -85,12 +85,28 @@ public final class VantaRelayClient {
     }
 
     public JoinTicket requestJoin(String roomCode, String playerName) throws IOException {
+        return requestJoin(roomCode, playerName, null);
+    }
+
+    /**
+     * Sends the local Minecraft profile UUID as an untrusted claim. The host
+     * saves it only after the integrated server reports the joined GameProfile.
+     */
+    public JoinTicket requestJoin(String roomCode, String playerName, String playerUUID)
+            throws IOException {
         String normalizedCode = validateRoomCode(roomCode);
         if (playerName == null || !playerName.matches("[A-Za-z0-9_]{1,16}")) {
             throw new IOException("Enter a valid Minecraft player name.");
         }
+        if (playerUUID != null && !playerUUID.matches(
+                "(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            throw new IOException("The local Minecraft profile UUID is invalid.");
+        }
         JsonObject body = new JsonObject();
         body.addProperty("playerName", playerName);
+        if (playerUUID != null) {
+            body.addProperty("playerUUID", playerUUID.toLowerCase(java.util.Locale.ROOT));
+        }
         JsonObject response = post("/v1/rooms/" + normalizedCode + "/requests", GSON.toJson(body));
         String requestId = requiredString(response, "requestId");
         String token = requiredString(response, "guestToken");
