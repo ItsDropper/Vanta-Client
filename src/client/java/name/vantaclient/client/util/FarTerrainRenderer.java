@@ -190,6 +190,10 @@ public final class FarTerrainRenderer {
     }
 
     private static void updateWorkerBackoff(Minecraft client) {
+        if (!FarViewFeature.isAdaptiveEnabled()) {
+            workerBackoffNanos = 0L;
+            return;
+        }
         int backoffMillis = FarTerrainLodMath.workerBackoffMillis(
                 ClientPerformanceMetrics.getAverageWorldRenderMs(),
                 ClientPerformanceMetrics.getAverageClientTickMs(),
