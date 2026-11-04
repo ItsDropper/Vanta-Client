@@ -36,8 +36,6 @@ public class PotionEffectsHudElement extends HudElement {
     protected void renderElement(GuiGraphics graphics) {
         if (!PotionEffectsFeature.INSTANCE.isEnabled() && !HudEditorFeature.INSTANCE.isEnabled()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null) return;
-
         refreshSnapshot(mc);
         renderSnapshot(graphics);
     }
