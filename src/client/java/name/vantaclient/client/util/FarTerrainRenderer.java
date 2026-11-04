@@ -339,7 +339,7 @@ public final class FarTerrainRenderer {
                                          ChunkGenerator generator, RandomState randomState,
                                          LevelHeightAccessor heightAccessor, BiomeSource biomeSource,
                                          Climate.Sampler climateSampler, int seaLevel,
-                                         boolean waterSurfaceEnabled) {
+                                         boolean waterSurfaceEnabled, long generationStartedNanos) {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
         int[] colors = new int[side * side];
@@ -403,7 +403,9 @@ public final class FarTerrainRenderer {
             }
         }
 
-        return new TileMesh(key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
+        return new TileMesh(job.workKey.revision(),
+                (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
+                key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
                 heights, colors, waterColors);
     }
 
@@ -441,7 +443,9 @@ public final class FarTerrainRenderer {
         for (int i = 0; i < 24; i++) {
             TileMesh mesh = COMPLETED.poll();
             if (mesh == null) break;
-            if (DESIRED.contains(mesh.key)) {
+            if (!FarTerrainLodMath.isWorkObsolete(
+                    mesh.revision, revision, DESIRED.contains(mesh.key))) {
+                recordTileGeneration(mesh.generationMillis);
                 TileMesh previous = MESHES.put(mesh.key, mesh);
                 if (previous != null) cachedMeshBytes -= previous.estimatedBytes();
                 cachedMeshBytes += mesh.estimatedBytes();
@@ -819,9 +823,9 @@ public final class FarTerrainRenderer {
                 if (isObsolete()) return;
                 long generationStartedNanos = System.nanoTime();
                 TileMesh mesh = generateTile(this, workKey.key(), generator, randomState,
-                        heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
+                        heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled,
+                        generationStartedNanos);
                 if (mesh != null && !isObsolete()) {
-                    recordTileGeneration((System.nanoTime() - generationStartedNanos) / 1_000_000.0);
                     COMPLETED.add(mesh);
                     generated = true;
                 }
@@ -848,7 +852,8 @@ public final class FarTerrainRenderer {
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
-    private record TileMesh(TileKey key, int originX, int originZ, int spanBlocks,
+    private record TileMesh(long revision, double generationMillis,
+                            TileKey key, int originX, int originZ, int spanBlocks,
                             int seaLevel, boolean waterSurfaceEnabled,
                             int[] heights, int[] colors, int[] waterColors) {
         private long estimatedBytes() {
