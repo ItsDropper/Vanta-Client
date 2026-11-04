@@ -194,7 +194,9 @@ public class ArmorHudElement extends HudElement {
     }
 
     public void setHorizontal(boolean value) {
+        if (horizontal == value) return;
         horizontal = value;
+        invalidateLayoutMeasurements();
         DropperUtilsConfig.get().armorHudHorizontal = value;
         DropperUtilsConfig.save();
     }
