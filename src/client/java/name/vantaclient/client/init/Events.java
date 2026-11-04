@@ -1,6 +1,9 @@
 package name.vantaclient.client.init;
 
 import name.vantaclient.client.feature.*;
+import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import name.vantaclient.client.util.AnchorPrediction;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -24,6 +27,9 @@ public class Events {
     public static void register() {
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> ClientPerformanceMetrics.beginClientTick());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> VantaRemoteSessionManager.shutdown());
+        ClientPlayConnectionEvents.JOIN.register((handler, client) -> VantaRemoteSessionManager.onGuestJoined());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VantaRemoteSessionManager.onGuestDisconnected());
 
         FullbrightFeature.INSTANCE.setEnabled(
                 DropperUtilsConfig.get().fullbright
@@ -117,6 +123,7 @@ public class Events {
             HudManager.refreshVisibleElements();
         });
 
+        ClientTickEvents.END_CLIENT_TICK.register(VantaRemoteSessionManager::tick);
         ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
     }
 }

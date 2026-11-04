@@ -21,11 +21,13 @@ public final class TcpStreamTunnel implements AutoCloseable {
     private final LoopbackTcpBridge.DuplexConnection remote;
     private final AtomicBoolean closed = new AtomicBoolean();
     private final AtomicInteger finishedDirections = new AtomicInteger();
+    private final Runnable onClosed;
 
-    private TcpStreamTunnel(Socket localSocket, LoopbackTcpBridge.DuplexConnection remote)
-            throws IOException {
+    private TcpStreamTunnel(Socket localSocket, LoopbackTcpBridge.DuplexConnection remote,
+                            Runnable onClosed) throws IOException {
         this.localSocket = localSocket;
         this.remote = remote;
+        this.onClosed = onClosed == null ? () -> {} : onClosed;
         try {
             Thread.ofVirtual().name("Vanta host tunnel " + IDS.incrementAndGet() + " up")
                     .start(() -> pump(localInput(), remote.outputStream(), remote::shutdownOutput));
@@ -39,6 +41,12 @@ public final class TcpStreamTunnel implements AutoCloseable {
 
     public static TcpStreamTunnel connectToLoopbackServer(
             int serverPort, LoopbackTcpBridge.DuplexConnection remote) throws IOException {
+        return connectToLoopbackServer(serverPort, remote, null);
+    }
+
+    public static TcpStreamTunnel connectToLoopbackServer(
+            int serverPort, LoopbackTcpBridge.DuplexConnection remote,
+            Runnable onClosed) throws IOException {
         if (serverPort < 1 || serverPort > 65_535) throw new IllegalArgumentException("Invalid server port.");
         if (remote == null) throw new IllegalArgumentException("Remote stream cannot be null.");
         Socket socket = new Socket();
@@ -47,7 +55,7 @@ public final class TcpStreamTunnel implements AutoCloseable {
             socket.setTcpNoDelay(true);
             socket.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), serverPort), 5_000);
             connected = true;
-            return new TcpStreamTunnel(socket, remote);
+            return new TcpStreamTunnel(socket, remote, onClosed);
         } finally {
             if (!connected) {
                 try { socket.close(); } catch (IOException ignored) {}
@@ -93,6 +101,11 @@ public final class TcpStreamTunnel implements AutoCloseable {
         if (!closed.compareAndSet(false, true)) return;
         try { localSocket.close(); } catch (IOException ignored) {}
         try { remote.close(); } catch (IOException ignored) {}
+        try { onClosed.run(); } catch (RuntimeException ignored) {}
+    }
+
+    public boolean isClosed() {
+        return closed.get();
     }
 
     @FunctionalInterface

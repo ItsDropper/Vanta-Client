@@ -370,6 +370,13 @@ public final class VantaRelayClient {
         public void onError(java.net.http.WebSocket webSocket, Throwable error) {
             errors.accept(error);
         }
+
+        @Override
+        public java.util.concurrent.CompletionStage<?> onClose(
+                java.net.http.WebSocket webSocket, int statusCode, String reason) {
+            errors.accept(new IOException("Relay host control connection closed."));
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
+        }
     }
 
     private static final class GuestDecisionListener implements java.net.http.WebSocket.Listener {

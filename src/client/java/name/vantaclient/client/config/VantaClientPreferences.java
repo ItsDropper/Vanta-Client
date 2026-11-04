@@ -54,6 +54,8 @@ public final class VantaClientPreferences {
     public int hudGridSize = 16;
     public double uiScale = 1.0;
     public double panelOpacity = 0.85;
+    /** User-owned HTTPS origin for remote world sharing; authentication tokens are never persisted. */
+    public String remoteRelayEndpoint = "";
     public Set<String> favoriteMods = new HashSet<>();
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
@@ -83,6 +85,11 @@ public final class VantaClientPreferences {
 
         if (instance == null) instance = new VantaClientPreferences();
         if (instance.accent == null) instance.accent = Accent.BLUE;
+        if (instance.remoteRelayEndpoint == null || instance.remoteRelayEndpoint.length() > 256) {
+            instance.remoteRelayEndpoint = "";
+        } else {
+            instance.remoteRelayEndpoint = instance.remoteRelayEndpoint.trim();
+        }
         if (!Double.isFinite(instance.uiScale)) instance.uiScale = 1.0;
         instance.uiScale = Math.max(0.8, Math.min(1.2, instance.uiScale));
         if (!Double.isFinite(instance.panelOpacity) || Math.abs(instance.panelOpacity - 0.92) < 0.0001) {

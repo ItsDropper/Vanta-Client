@@ -2,6 +2,7 @@ package name.vantaclient.mixin;
 
 import name.vantaclient.client.gui.VantaMenuStyle;
 import name.vantaclient.client.gui.VantaSettingsScreen;
+import name.vantaclient.client.gui.VantaWorldShareScreen;
 import name.vantaclient.mixin.accessor.ScreenAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -38,6 +39,9 @@ public abstract class TitleScreenMixin {
     private AbstractButton vanta$settingsShortcut;
 
     @Unique
+    private AbstractButton vanta$shareShortcut;
+
+    @Unique
     private AbstractButton vanta$creditsShortcut;
 
     @Unique
@@ -68,6 +72,14 @@ public abstract class TitleScreenMixin {
                             .bounds(bounds[0], bounds[1], bounds[2], bounds[3])
                             .build());
         }
+
+        vanta$shareShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
+                .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
+                        Component.literal("Vanta Share").withStyle(
+                                style -> style.withFont(VantaMenuStyle.uiFont())),
+                        button -> client.setScreen(new VantaWorldShareScreen(screen)))
+                        .bounds(0, 0, 108, 24)
+                        .build());
 
         vanta$creditsShortcut = (AbstractButton) ((ScreenAccessor) (Object) this)
                 .vanta$addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
@@ -123,7 +135,8 @@ public abstract class TitleScreenMixin {
                     style -> style.withFont(VantaMenuStyle.uiFont())));
 
             if (button == vanta$settingsShortcut || button == vanta$creditsShortcut
-                    || button == vanta$languageShortcut || button == vanta$accessibilityShortcut) continue;
+                    || button == vanta$languageShortcut || button == vanta$accessibilityShortcut
+                    || button == vanta$shareShortcut) continue;
             if (normalized.contains("language") || normalized.contains("accessibility")) {
                 button.visible = false;
                 button.active = false;
@@ -176,6 +189,9 @@ public abstract class TitleScreenMixin {
         }
         if (vanta$accessibilityShortcut != null) {
             vanta$setBounds(vanta$accessibilityShortcut, utilityStart + 112, utilityY, 132, 24);
+        }
+        if (vanta$shareShortcut != null) {
+            vanta$setBounds(vanta$shareShortcut, utilityStart + 260, utilityY, 108, 24);
         }
         if (vanta$creditsShortcut != null) {
             vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 100),
