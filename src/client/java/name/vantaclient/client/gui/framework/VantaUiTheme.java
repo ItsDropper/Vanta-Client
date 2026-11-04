@@ -28,6 +28,35 @@ public final class VantaUiTheme {
     public static final int INPUT_FOCUS_SURFACE = 0xBE17263A;
     public static final int TOOLTIP_SURFACE = 0xEE101925;
     public static final int WHITE = 0xFFFFFFFF;
+    public static final int STATUS_INFO = 0xFF78AFFF;
+    public static final int STATUS_SUCCESS = 0xFF65C99E;
+    public static final int STATUS_WARNING = 0xFFE2B36C;
+    public static final int STATUS_DANGER = 0xFFE27C83;
+
+    private static final int MAX_CACHED_SQUIRCLE_RADIUS = 32;
+    private static final int[][] SQUIRCLE_INSETS = buildSquircleInsets();
+
+    private static int[][] buildSquircleInsets() {
+        int[][] insets = new int[MAX_CACHED_SQUIRCLE_RADIUS + 1][];
+        insets[0] = new int[0];
+        for (int radius = 1; radius <= MAX_CACHED_SQUIRCLE_RADIUS; radius++) {
+            int[] rows = new int[radius];
+            for (int row = 0; row < radius; row++) {
+                double normalizedY = (radius - row - 0.5) / radius;
+                double y4 = normalizedY * normalizedY * normalizedY * normalizedY;
+                double normalizedX = Math.sqrt(Math.sqrt(Math.max(0.0, 1.0 - y4)));
+                rows[row] = Math.min(radius, (int) Math.ceil(radius * (1.0 - normalizedX)));
+            }
+            insets[radius] = rows;
+        }
+        return insets;
+    }
+
+    private static int squircleInset(int radius, int row) {
+        return radius <= 0 ? 0
+                : SQUIRCLE_INSETS[Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS)]
+                        [Math.min(row, Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS) - 1)];
+    }
 
     public static final int SPACE_1 = 4;
     public static final int SPACE_2 = 8;
@@ -68,6 +97,52 @@ public final class VantaUiTheme {
         opacity = Math.max(0.0, Math.min(1.0, opacity));
         int baseAlpha = (color >>> 24) & 0xFF;
         return withAlpha(color, (int) Math.round(baseAlpha * opacity));
+    }
+
+    /**
+     * Superellipse (n=4) fill for Vanta surfaces. The corner profile stays flatter
+     * along the sides than a circular radius, without a shader or per-frame allocation.
+     */
+    public static void fillSquircle(GuiGraphics graphics, int x, int y, int width,
+                                    int height, int radius, int color) {
+        if (graphics == null || width <= 0 || height <= 0 || color == 0) return;
+        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
+                Math.min(width / 2, height / 2)));
+        if (r == 0) {
+            graphics.fill(x, y, x + width, y + height, color);
+            return;
+        }
+        if (width > r * 2) graphics.fill(x + r, y, x + width - r, y + height, color);
+        for (int row = 0; row < r; row++) {
+            int inset = squircleInset(r, row);
+            int left = x + inset;
+            int right = x + width - inset;
+            if (right <= left) continue;
+            graphics.fill(left, y + row, right, y + row + 1, color);
+            graphics.fill(left, y + height - row - 1, right, y + height - row, color);
+        }
+    }
+
+    /** One-pixel or multi-pixel superellipse outline matching {@link #fillSquircle}. */
+    public static void outlineSquircle(GuiGraphics graphics, int x, int y, int width,
+                                       int height, int radius, int color, int thickness) {
+        if (graphics == null || width <= 1 || height <= 1 || color == 0 || thickness <= 0) return;
+        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
+                Math.min(width / 2, height / 2)));
+        int t = Math.max(1, Math.min(thickness, Math.min(width / 2, height / 2)));
+        for (int row = 0; row < height; row++) {
+            int inset = row < r ? squircleInset(r, row)
+                    : row >= height - r ? squircleInset(r, height - row - 1) : 0;
+            int left = x + inset;
+            int right = x + width - inset;
+            if (right <= left) continue;
+            if (row < t || row >= height - t) {
+                graphics.fill(left, y + row, right, y + row + 1, color);
+            } else {
+                graphics.fill(left, y + row, Math.min(right, left + t), y + row + 1, color);
+                graphics.fill(Math.max(left, right - t), y + row, right, y + row + 1, color);
+            }
+        }
     }
 
     /** Crisp one-pixel rounded outline; no dark offset plate or side box. */
