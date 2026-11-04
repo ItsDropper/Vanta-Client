@@ -2,7 +2,6 @@ package name.vantaclient.client.hud;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.feature.HudEditorFeature;
-import name.vantaclient.client.feature.PerformanceOptimizerFeature;
 import name.vantaclient.client.feature.PotionEffectsFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 
@@ -10,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffectUtil;
@@ -19,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PotionEffectsHudElement extends HudElement {
-    private List<EffectSnapshot> performanceSnapshot = List.of();
+    private List<EffectSnapshot> snapshot = List.of();
     private long lastSnapshotTick = Long.MIN_VALUE;
 
     public PotionEffectsHudElement() {
@@ -38,34 +36,18 @@ public class PotionEffectsHudElement extends HudElement {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
 
-        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            refreshPerformanceSnapshot(mc);
-            renderSnapshot(graphics);
-            return;
-        }
-
-        int offset = 0;
-        for (MobEffectInstance effect : mc.player.getActiveEffects()) {
-            Identifier texture = getTexture(effect);
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, texture, 0, offset, 18, 18);
-            String name = getEffectName(effect);
-            Component duration = MobEffectUtil.formatDuration(
-                    effect, 1.0F, mc.level.tickRateManager().tickrate());
-            graphics.drawString(mc.font, name, 22, offset + 1, 0xFFFFFFFF);
-            graphics.drawString(mc.font, duration, 22, offset + 10, 0xFFAAAAAA);
-            offset += 24;
-        }
+        refreshSnapshot(mc);
+        renderSnapshot(graphics);
     }
 
-    private void refreshPerformanceSnapshot(Minecraft mc) {
+    private void refreshSnapshot(Minecraft mc) {
         if (mc.player == null || mc.level == null) {
-            performanceSnapshot = List.of();
+            snapshot = List.of();
             lastSnapshotTick = Long.MIN_VALUE;
             return;
         }
         long gameTime = mc.level.getGameTime();
-        if (lastSnapshotTick != Long.MIN_VALUE && gameTime >= lastSnapshotTick
-                && gameTime - lastSnapshotTick < 5L) return;
+        if (!shouldRefreshSnapshot(lastSnapshotTick, gameTime)) return;
 
         List<EffectSnapshot> updated = new ArrayList<>();
         for (MobEffectInstance effect : mc.player.getActiveEffects()) {
@@ -73,14 +55,19 @@ public class PotionEffectsHudElement extends HudElement {
                     effect, 1.0F, mc.level.tickRateManager().tickrate()).getString();
             updated.add(new EffectSnapshot(getTexture(effect), getEffectName(effect), duration));
         }
-        performanceSnapshot = List.copyOf(updated);
+        snapshot = List.copyOf(updated);
         lastSnapshotTick = gameTime;
+    }
+
+    public static boolean shouldRefreshSnapshot(long lastSnapshotTick, long currentGameTime) {
+        return lastSnapshotTick == Long.MIN_VALUE || currentGameTime < lastSnapshotTick
+                || currentGameTime - lastSnapshotTick >= 5L;
     }
 
     private void renderSnapshot(GuiGraphics graphics) {
         Minecraft mc = Minecraft.getInstance();
         int offset = 0;
-        for (EffectSnapshot effect : performanceSnapshot) {
+        for (EffectSnapshot effect : snapshot) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, effect.texture(), 0, offset, 18, 18);
             graphics.drawString(mc.font, effect.name(), 22, offset + 1, 0xFFFFFFFF);
             graphics.drawString(mc.font, effect.duration(), 22, offset + 10, 0xFFAAAAAA);
@@ -110,20 +97,11 @@ public class PotionEffectsHudElement extends HudElement {
     @Override
     public int getWidth() {
         Minecraft mc = Minecraft.getInstance();
+        refreshSnapshot(mc);
         int widestLabel = 0;
-        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            refreshPerformanceSnapshot(mc);
-            for (EffectSnapshot effect : performanceSnapshot) {
-                widestLabel = Math.max(widestLabel,
-                        Math.max(mc.font.width(effect.name()), mc.font.width(effect.duration())));
-            }
-        } else if (mc.player != null && mc.level != null) {
-            for (MobEffectInstance effect : mc.player.getActiveEffects()) {
-                String duration = MobEffectUtil.formatDuration(
-                        effect, 1.0F, mc.level.tickRateManager().tickrate()).getString();
-                widestLabel = Math.max(widestLabel,
-                        Math.max(mc.font.width(getEffectName(effect)), mc.font.width(duration)));
-            }
+        for (EffectSnapshot effect : snapshot) {
+            widestLabel = Math.max(widestLabel,
+                    Math.max(mc.font.width(effect.name()), mc.font.width(effect.duration())));
         }
         return 22 + widestLabel;
     }
@@ -131,13 +109,8 @@ public class PotionEffectsHudElement extends HudElement {
     @Override
     public int getHeight() {
         Minecraft mc = Minecraft.getInstance();
-        int count;
-        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            refreshPerformanceSnapshot(mc);
-            count = performanceSnapshot.size();
-        } else {
-            count = mc.player == null ? 0 : mc.player.getActiveEffects().size();
-        }
+        refreshSnapshot(mc);
+        int count = snapshot.size();
         if (count <= 0) return 24;
         return (count - 1) * 24 + Math.max(18, 10 + mc.font.lineHeight);
     }
