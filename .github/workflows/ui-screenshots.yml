@@ -1,4 +1,5 @@
 name: Vanta UI screenshots
+# Captures the real client UI on relevant UI pushes; workflow_dispatch supports manual runs.
 
 on:
   workflow_dispatch:
