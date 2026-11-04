@@ -27,7 +27,7 @@ Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines confi
 - Low-fire and explosion-effect controls.
 - Saturation display and other client-side HUD utilities.
 
-Features can be enabled independently and retain their existing configuration. The available settings depend on the selected feature.
+Features can be enabled independently and retain their existing configuration. Optional per-feature toggle shortcuts can be assigned in Vanta Settings → Controls; they are unbound by default and saved with Minecraft's normal key mappings. The available settings depend on the selected feature.
 
 ## FarView limitations
 
