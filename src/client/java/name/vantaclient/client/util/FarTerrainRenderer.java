@@ -706,8 +706,8 @@ public final class FarTerrainRenderer {
                 double distanceSquared = dx * dx + dz * dz;
                 if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
 
-                int darkA = darken(colors[a]);
-                int darkB = darken(colors[b]);
+                int darkA = FarTerrainLodMath.darkenOpaqueArgb(colors[a]);
+                int darkB = FarTerrainLodMath.darkenOpaqueArgb(colors[b]);
                 emitQuad(consumer, pose, transformedVertex, cameraX, cameraY, cameraZ,
                         ax, heights[a], az, colors[a],
                         ax, heights[a] - depth, az, darkA,
@@ -717,13 +717,6 @@ public final class FarTerrainRenderer {
             }
         }
         return emitted;
-    }
-
-    private static int darken(int color) {
-        int red = ((color >>> 16) & 0xFF) / 2;
-        int green = ((color >>> 8) & 0xFF) / 2;
-        int blue = (color & 0xFF) / 2;
-        return 0xFF000000 | (red << 16) | (green << 8) | blue;
     }
 
     private static void emitQuad(VertexConsumer consumer, PoseStack.Pose pose,
