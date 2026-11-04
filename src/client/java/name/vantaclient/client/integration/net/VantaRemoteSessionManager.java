@@ -345,23 +345,31 @@ public final class VantaRemoteSessionManager {
                 session.control.approve(requestId);
                 LoopbackTcpBridge.DuplexConnection remote;
                 String transport;
+                WebRtcPeerSession peer = null;
                 try {
                     List<VantaRelayClient.IceServerConfig> iceServers =
                             session.relay.fetchHostIceServers(session.room, requestId);
-                    WebRtcPeerSession peer = WebRtcPeerSession.connectHost(
+                    peer = WebRtcPeerSession.connectHost(
                             session.relay, session.room, requestId, iceServers, relayOnly);
+                } catch (IOException negotiationFailure) {
+                    // A failed negotiation can use the WebSocket fallback because
+                    // the guest's WebRTC negotiation also fails before it returns.
+                }
+
+                if (peer != null) {
                     try {
+                        // This is a separate commit point in the relay. Do not fall
+                        // back after it fails: the guest may already be using its
+                        // established DataChannel and cannot safely switch transports.
                         session.relay.confirmHostPeerConnected(session.room, requestId);
-                        remote = peer;
                     } catch (IOException confirmationFailure) {
                         peer.close();
                         throw confirmationFailure;
                     }
+                    remote = peer;
                     transport = peer.isUsingTurnRelay()
                             ? "WebRTC through secure relay" : "direct WebRTC";
-                } catch (IOException peerFailure) {
-                    // ICE attempts configured TURN servers before failing. This
-                    // WebSocket tunnel is a separate last-resort availability path.
+                } else {
                     remote = session.relay.connectHostData(session.room, requestId);
                     transport = "secure WebSocket fallback";
                 }
