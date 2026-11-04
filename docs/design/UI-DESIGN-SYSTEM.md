@@ -1,6 +1,6 @@
 # Vanta UI Design System
 
-**Status:** Initial design specification; implementation and screenshot validation are pending.  
+**Status:** Superseded implementation brief. The live component/token contract is maintained in [`docs/ui/DESIGN_SYSTEM.md`](../ui/DESIGN_SYSTEM.md), and current migration/verification status is maintained in [`docs/ui/PHASE_STATUS.md`](../ui/PHASE_STATUS.md).  
 **Target:** Minecraft 1.21.11 GUI-scaled coordinates.  
 **Brand direction:** technical, quiet, dark, precise; not a generic SaaS dashboard.
 
