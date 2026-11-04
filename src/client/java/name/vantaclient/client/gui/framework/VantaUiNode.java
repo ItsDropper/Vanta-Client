@@ -943,7 +943,7 @@ public final class VantaUiNode {
             VantaUiTheme.fillSquircle(graphics, bounds.x(), bounds.y(),
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
                     VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
-            VantaUiTheme.outlineRounded(graphics, bounds.x(), bounds.y(),
+            VantaUiTheme.outlineSquircle(graphics, bounds.x(), bounds.y(),
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
                     VantaUiTheme.BORDER);
             String selected = dropdownValue == null ? "" : dropdownValue.get();
