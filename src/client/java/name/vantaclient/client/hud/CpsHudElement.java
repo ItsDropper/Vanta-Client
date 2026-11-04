@@ -40,7 +40,8 @@ public final class CpsHudElement extends HudElement {
     private String getDisplayText() {
         return PerformanceOptimizerFeature.INSTANCE.isEnabled()
                 ? HudPerformanceCache.getCpsText()
-                : "CPS  " + ClickRateTracker.getLeftCps() + " | " + ClickRateTracker.getRightCps();
+                : "CPS  " + ClickRateTracker.getSnapshotLeftCps()
+                + " | " + ClickRateTracker.getSnapshotRightCps();
     }
 
     @Override
