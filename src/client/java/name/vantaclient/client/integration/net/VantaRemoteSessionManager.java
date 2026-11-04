@@ -479,6 +479,7 @@ public final class VantaRemoteSessionManager {
             PENDING.clear();
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
+            HOST_TUNNEL_PORTS.clear();
             ACTIVE_GUESTS.clear();
             AUTHENTICATED_PROFILES.clear();
             REJECTED_PROFILE_REQUESTS.clear();
@@ -725,6 +726,7 @@ public final class VantaRemoteSessionManager {
             guestBusy = false;
             PENDING.clear();
             HOST_TUNNELS.clear();
+            HOST_TUNNEL_PORTS.clear();
             ACTIVE_GUESTS.clear();
             AUTHENTICATED_PROFILES.clear();
             REJECTED_PROFILE_REQUESTS.clear();
@@ -775,6 +777,7 @@ public final class VantaRemoteSessionManager {
             PENDING.clear();
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
+            HOST_TUNNEL_PORTS.clear();
             ACTIVE_GUESTS.clear();
             AUTHENTICATED_PROFILES.clear();
             REJECTED_PROFILE_REQUESTS.clear();
