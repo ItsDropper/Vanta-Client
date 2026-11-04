@@ -34,6 +34,8 @@ import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.IOException;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -726,6 +728,29 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                             }
                         }
                     }
+                }
+            }
+
+            Matrix4f vertexTransform = new Matrix4f()
+                    .translation(13.0f, -7.0f, 21.0f)
+                    .rotateY(0.37f)
+                    .scale(1.25f);
+            Vector3f reusablePosition = new Vector3f();
+            float[][] vertexPositions = {
+                    {0.0f, 0.0f, 0.0f},
+                    {128.0f, 64.0f, -256.0f},
+                    {-30_000_000.0f, 320.0f, 30_000_000.0f},
+                    {-0.5f, -64.0f, 0.25f}
+            };
+            for (float[] position : vertexPositions) {
+                Vector3f expectedPosition = new Vector3f(position[0], position[1], position[2]);
+                vertexTransform.transformPosition(expectedPosition);
+                reusablePosition.set(position[0], position[1], position[2]);
+                vertexTransform.transformPosition(reusablePosition);
+                if (Math.abs(expectedPosition.x - reusablePosition.x) > 0.001f
+                        || Math.abs(expectedPosition.y - reusablePosition.y) > 0.001f
+                        || Math.abs(expectedPosition.z - reusablePosition.z) > 0.001f) {
+                    throw new AssertionError("Reusing FarView's vertex-transform scratch changed transformed coordinates.");
                 }
             }
 
