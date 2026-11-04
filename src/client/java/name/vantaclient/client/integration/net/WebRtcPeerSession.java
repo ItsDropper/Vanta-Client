@@ -196,23 +196,24 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
 
     public static WebRtcPeerSession connectHost(
             VantaRelayClient relay, VantaRelayClient.Room room, String requestId,
-            List<VantaRelayClient.IceServerConfig> iceServers) throws IOException {
+            List<VantaRelayClient.IceServerConfig> iceServers, boolean relayOnly) throws IOException {
         if (relay == null || room == null) throw new IllegalArgumentException("Host relay session is required.");
         VantaRelayClient.SignalConnection signal = relay.connectHostSignal(room, requestId);
-        return connect(true, signal, iceServers);
+        return connect(true, signal, iceServers, relayOnly);
     }
 
     public static WebRtcPeerSession connectGuest(
             VantaRelayClient relay, VantaRelayClient.JoinTicket ticket,
-            List<VantaRelayClient.IceServerConfig> iceServers) throws IOException {
+            List<VantaRelayClient.IceServerConfig> iceServers, boolean relayOnly) throws IOException {
         if (relay == null || ticket == null) throw new IllegalArgumentException("Guest relay ticket is required.");
         VantaRelayClient.SignalConnection signal = relay.connectGuestSignal(ticket);
-        return connect(false, signal, iceServers);
+        return connect(false, signal, iceServers, relayOnly);
     }
 
     private static WebRtcPeerSession connect(boolean hostSide,
                                              VantaRelayClient.SignalConnection signal,
-                                             List<VantaRelayClient.IceServerConfig> iceServers)
+                                             List<VantaRelayClient.IceServerConfig> iceServers,
+                                             boolean relayOnly)
             throws IOException {
         PeerConnectionFactory factory = null;
         RTCPeerConnection peer = null;
@@ -220,6 +221,10 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
         try {
             if (iceServers == null || iceServers.isEmpty()) {
                 throw new IOException("The relay has no STUN/TURN servers configured for Internet hosting.");
+            }
+            if (relayOnly && iceServers.stream().flatMap(server -> server.urls().stream())
+                    .noneMatch(url -> url.startsWith("turn:") || url.startsWith("turns:"))) {
+                throw new IOException("Maximum IP privacy requires a configured TURN relay.");
             }
             signal.awaitReady(SIGNAL_READY_TIMEOUT);
             factory = new PeerConnectionFactory();
@@ -260,7 +265,8 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
             };
 
             RTCConfiguration configuration = new RTCConfiguration();
-            configuration.iceTransportPolicy = RTCIceTransportPolicy.ALL;
+            configuration.iceTransportPolicy = relayOnly
+                    ? RTCIceTransportPolicy.RELAY : RTCIceTransportPolicy.ALL;
             for (VantaRelayClient.IceServerConfig configured : iceServers) {
                 RTCIceServer server = new RTCIceServer();
                 server.urls.addAll(configured.urls());

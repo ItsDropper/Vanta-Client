@@ -115,6 +115,15 @@ public final class VantaWorldShareScreen extends Screen {
         endpointRow.add(VantaUiNode.button("SAVE", this::saveRelayEndpoint)
                 .size(62, 30));
         content.add(endpointRow);
+        content.add(VantaUiNode.toggle("Maximum IP privacy (TURN only)",
+                () -> preferences.remoteMaximumIpPrivacy,
+                value -> {
+                    preferences.remoteMaximumIpPrivacy = value;
+                    VantaClientPreferences.save();
+                }).height(34));
+        content.add(VantaUiNode.text(
+                "When enabled, WebRTC uses TURN-only candidates so guests do not learn your home IP. This requires TURN infrastructure; the WebSocket relay remains the fallback.",
+                VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.text(
                 "The relay forwards Minecraft TCP traffic without interpreting packets. Its operator can still see connection metadata and source network addresses.",
                 VantaUiTheme.TEXT_MUTED));

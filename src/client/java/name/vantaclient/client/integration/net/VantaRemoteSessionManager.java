@@ -1,5 +1,6 @@
 package name.vantaclient.client.integration.net;
 
+import name.vantaclient.client.config.VantaClientPreferences;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -181,6 +182,7 @@ public final class VantaRemoteSessionManager {
             bumpRevisionLocked();
         }
 
+        final boolean relayOnly = VantaClientPreferences.get().remoteMaximumIpPrivacy;
         executeIo(() -> {
             TcpStreamTunnel tunnel = null;
             try {
@@ -191,7 +193,7 @@ public final class VantaRemoteSessionManager {
                     List<VantaRelayClient.IceServerConfig> iceServers =
                             session.relay.fetchHostIceServers(session.room, requestId);
                     WebRtcPeerSession peer = WebRtcPeerSession.connectHost(
-                            session.relay, session.room, requestId, iceServers);
+                            session.relay, session.room, requestId, iceServers, relayOnly);
                     try {
                         session.relay.confirmHostPeerConnected(session.room, requestId);
                         remote = peer;
@@ -295,6 +297,7 @@ public final class VantaRemoteSessionManager {
             return;
         }
 
+        final boolean relayOnly = VantaClientPreferences.get().remoteMaximumIpPrivacy;
         final long generation;
         synchronized (LOCK) {
             if (shuttingDown || guestBusy || guestSession != null) return;
@@ -346,7 +349,7 @@ public final class VantaRemoteSessionManager {
                 try {
                     List<VantaRelayClient.IceServerConfig> iceServers =
                             relay.fetchGuestIceServers(ticket);
-                    WebRtcPeerSession peer = WebRtcPeerSession.connectGuest(relay, ticket, iceServers);
+                    WebRtcPeerSession peer = WebRtcPeerSession.connectGuest(relay, ticket, iceServers, relayOnly);
                     remote = peer;
                     transport = peer.isUsingTurnRelay()
                             ? "WebRTC through secure relay" : "direct WebRTC";

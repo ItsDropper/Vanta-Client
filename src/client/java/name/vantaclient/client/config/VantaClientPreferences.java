@@ -56,6 +56,8 @@ public final class VantaClientPreferences {
     public double panelOpacity = 0.85;
     /** User-owned HTTPS origin for remote world sharing; authentication tokens are never persisted. */
     public String remoteRelayEndpoint = "";
+    /** Restrict WebRTC ICE to TURN relay candidates to avoid exposing the peer's home IP. */
+    public boolean remoteMaximumIpPrivacy = false;
     public Set<String> favoriteMods = new HashSet<>();
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
