@@ -46,7 +46,7 @@ public final class FarTerrainLodMath {
     }
 
     public static boolean isEntireTileInsideInnerRadius(double farthestDistanceSquared,
-                                                                  double innerRadiusSquared) {
+                                                          double innerRadiusSquared) {
         return farthestDistanceSquared <= innerRadiusSquared;
     }
 
