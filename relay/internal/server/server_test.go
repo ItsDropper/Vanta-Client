@@ -2,6 +2,10 @@ package server
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
+	"strconv"
 	"context"
 	"encoding/json"
 	"io"
@@ -232,7 +236,7 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 	defer hostControl.CloseNow()
 
 	joinResponse, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests",
-		"application/json", strings.NewReader(`{"playerName":"SignalGuest"}`))
+		"application/json", strings.NewReader(`{"playerName":"SignalGuest","playerUUID":"f47ac10b-58cc-4372-a567-0e02b2c3d479"}`))
 	if err != nil { t.Fatal(err) }
 	defer joinResponse.Body.Close()
 	if joinResponse.StatusCode != http.StatusCreated { t.Fatalf("join request status: %d", joinResponse.StatusCode) }
@@ -241,7 +245,10 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 
 	var requested joinEvent
 	if err := readJSON(ctx, hostControl, &requested); err != nil { t.Fatalf("host join event: %v", err) }
-	if requested.Type != "join_request" || requested.PlayerName != "SignalGuest" { t.Fatalf("unexpected join event: %#v", requested) }
+	if requested.Type != "join_request" || requested.PlayerName != "SignalGuest" ||
+		requested.PlayerUUID != "f47ac10b-58cc-4372-a567-0e02b2c3d479" {
+		t.Fatalf("unexpected join event or profile claim: %#v", requested)
+	}
 
 	guestControl, _, err := websocket.Dial(ctx,
 		websocketURL+"/v1/guest/control/"+created.RoomCode+"/"+joined.RequestID,
@@ -305,6 +312,30 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 	if gotGuestCandidate.Type != "ice" || gotGuestCandidate.Candidate != guestCandidate.Candidate {
 		t.Fatalf("guest ICE changed: %#v", gotGuestCandidate)
 	}
+
+	peerConnected := httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+created.RoomCode+"/requests/"+joined.RequestID+"/peer-connected",
+		strings.NewReader("{}"))
+	peerConnected.Header.Set("Authorization", "Bearer "+created.HostToken)
+	peerResponse := httptest.NewRecorder()
+	service.Handler().ServeHTTP(peerResponse, peerConnected)
+	if peerResponse.Code != http.StatusOK {
+		t.Fatalf("host could not confirm the negotiated P2P peer: status=%d body=%s",
+			peerResponse.Code, peerResponse.Body.String())
+	}
+	current := service.getRoom(created.RoomCode)
+	current.mu.Lock()
+	activeRequest := current.requests[joined.RequestID]
+	current.mu.Unlock()
+	if activeRequest == nil {
+		t.Fatal("approved peer request disappeared before the P2P transport closed")
+	}
+	activeRequest.mu.Lock()
+	p2pActive := activeRequest.p2pStarted
+	activeRequest.mu.Unlock()
+	if !p2pActive {
+		t.Fatal("relay did not retain the established P2P guest in room accounting")
+	}
 }
 
 func TestSignallingRejectsUnauthenticatedAndUnapprovedPeers(t *testing.T) {
@@ -353,5 +384,207 @@ func TestSignallingRejectsRoleViolationsAndOversizedPayloads(t *testing.T) {
 	index := 0
 	if validSignalMessage(signalMessage{Type:"ice", Candidate:"not-a-candidate", SDPMid:"0", SDPMLineIndex:&index}, true) {
 		t.Fatal("malformed ICE candidate must be rejected")
+	}
+}
+
+
+func TestBuildICEServersIssuesShortLivedTURNCredentials(t *testing.T) {
+	service := New(Config{
+		STUNURLs: []string{"stun:stun.example.test:3478"},
+		TURNURLs: []string{"turn:turn.example.test:3478?transport=udp"},
+		TURNSharedSecret: "test-shared-secret",
+		TURNCredentialTTL: 5 * time.Minute,
+	})
+	defer service.Close()
+
+	servers, err := service.buildICEServers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(servers) != 2 {
+		t.Fatalf("expected STUN and TURN entries, got %d", len(servers))
+	}
+	turn := servers[1]
+	if len(turn.URLs) != 1 || turn.Username == "" || turn.Credential == "" {
+		t.Fatalf("TURN entry is incomplete: %#v", turn)
+	}
+	parts := strings.SplitN(turn.Username, ":", 2)
+	if len(parts) != 2 {
+		t.Fatalf("TURN username has no expiry: %q", turn.Username)
+	}
+	unixExpiry, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		t.Fatalf("invalid TURN expiry: %v", err)
+	}
+	remaining := time.Until(time.Unix(unixExpiry, 0))
+	if remaining <= 0 || remaining > 5*time.Minute {
+		t.Fatalf("TURN credential expiry outside configured window: %v", remaining)
+	}
+	mac := hmac.New(sha1.New, []byte("test-shared-secret"))
+	_, _ = mac.Write([]byte(turn.Username))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	if turn.Credential != expected {
+		t.Fatal("TURN credential does not match coturn REST HMAC-SHA1 format")
+	}
+}
+
+func TestBuildICEServersRejectsTURNWithoutSharedSecret(t *testing.T) {
+	service := New(Config{TURNURLs: []string{"turn:turn.example.test:3478"}})
+	defer service.Close()
+	if _, err := service.buildICEServers(); err == nil {
+		t.Fatal("TURN configuration without a shared secret must fail closed")
+	}
+}
+
+
+func TestValidateICEURLsAcceptsSTUNAndTURNURIForms(t *testing.T) {
+	for _, value := range []string{
+		"stun:stun.example.test:3478",
+		"stuns:stun.example.test:5349",
+		"turn:turn.example.test:3478?transport=udp",
+		"turns:turn.example.test:5349?transport=tcp",
+	} {
+		if _, err := validateICEURLs([]string{value}, "stun", "stuns", "turn", "turns"); err != nil {
+			t.Fatalf("valid ICE URI %q rejected: %v", value, err)
+		}
+	}
+	for _, value := range []string{
+		"ftp://example.test:21",
+		"turn://user:pass@example.test:3478",
+		"turn:missing-port",
+		"turn:",
+		"turn:example.test:3478#fragment",
+	} {
+		if _, err := validateICEURLs([]string{value}, "stun", "stuns", "turn", "turns"); err == nil {
+			t.Fatalf("invalid ICE URI %q was accepted", value)
+		}
+	}
+}
+
+func TestP2PRequestRemainsCountedUntilSignallingDisconnects(t *testing.T) {
+	expired := time.Now().Add(-time.Second)
+	current := &room{
+		requests: map[string]*joinRequest{
+			"active-p2p": {
+				id: "active-p2p", expiresAt: expired, state: "approved", p2pStarted: true,
+			},
+			"expired-p2p": {
+				id: "expired-p2p", expiresAt: expired, state: "approved",
+			},
+		},
+	}
+	current.mu.Lock()
+	pruneRequestsLocked(current)
+	_, activeRemains := current.requests["active-p2p"]
+	_, expiredRemains := current.requests["expired-p2p"]
+	current.mu.Unlock()
+	if !activeRemains {
+		t.Fatal("an established P2P session must remain counted until its signalling sockets close")
+	}
+	if expiredRemains {
+		t.Fatal("an expired request that never established a P2P session must be pruned")
+	}
+}
+
+func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.T) {
+	service := New(DefaultConfig())
+	current := &room{
+		code: "ABCDEFGHIJKLMNOPQRSTUVWX",
+		hostToken: "host-token-with-enough-length-to-pass-bearer-check",
+		expiresAt: time.Now().Add(time.Hour),
+		requests: map[string]*joinRequest{
+			"request-123456": {
+				id: "request-123456",
+				guestToken: "guest-token-with-enough-length-to-pass-bearer-check",
+				expiresAt: time.Now().Add(time.Minute),
+				state: "approved",
+				offerSeen: true,
+				answerSeen: true,
+			},
+		},
+	}
+	service.mu.Lock()
+	service.rooms[current.code] = current
+	service.mu.Unlock()
+	item := current.requests["request-123456"]
+	defer func() {
+		// These are non-nil sentinels used only to exercise the approval gate.
+		// Clear them before Server.Close so the websocket package never closes
+		// an uninitialized zero-value connection.
+		item.mu.Lock()
+		item.hostSignal = nil
+		item.guestSignal = nil
+		item.mu.Unlock()
+		service.Close()
+	}()
+
+	request := httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response := httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("peer confirmation without both live signalling sockets must fail, got %d", response.Code)
+	}
+
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer incorrect-host-token")
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("peer confirmation accepted an invalid host token, got %d", response.Code)
+	}
+
+	item.mu.Lock()
+	item.hostSignal = &websocket.Conn{}
+	item.guestSignal = &websocket.Conn{}
+	item.mu.Unlock()
+
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("host could not activate a fully negotiated peer session: status=%d body=%s",
+			response.Code, response.Body.String())
+	}
+	item.mu.Lock()
+	active := item.p2pStarted
+	item.mu.Unlock()
+	if !active {
+		t.Fatal("peer-connected endpoint did not mark the approved session active")
+	}
+
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("duplicate peer activation must be rejected, got %d", response.Code)
+	}
+}
+
+
+func TestJoinRejectsMalformedPlayerUUIDClaims(t *testing.T) {
+	service := New(DefaultConfig())
+	defer service.Close()
+	httpServer := httptest.NewServer(service.Handler())
+	defer httpServer.Close()
+
+	createResponse, err := http.Post(httpServer.URL+"/v1/rooms", "application/json", strings.NewReader("{}"))
+	if err != nil { t.Fatal(err) }
+	defer createResponse.Body.Close()
+	var created createRoomResponse
+	if err := json.NewDecoder(createResponse.Body).Decode(&created); err != nil { t.Fatal(err) }
+
+	body := strings.NewReader(`{"playerName":"VantaGuest","playerUUID":"not-a-uuid"}`)
+	response, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests", "application/json", body)
+	if err != nil { t.Fatal(err) }
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("malformed profile UUID should be rejected, got %d", response.StatusCode)
 	}
 }

@@ -4,6 +4,7 @@ import name.vantaclient.client.feature.*;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import name.vantaclient.client.util.AnchorPrediction;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -28,6 +29,8 @@ public class Events {
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> ClientPerformanceMetrics.beginClientTick());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> VantaRemoteSessionManager.shutdown());
+        ServerPlayConnectionEvents.JOIN.register(
+                (handler, sender, server) -> VantaRemoteSessionManager.onHostPlayerJoined(handler, server));
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> VantaRemoteSessionManager.onGuestJoined());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VantaRemoteSessionManager.onGuestDisconnected());
 

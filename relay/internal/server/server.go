@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
@@ -31,12 +32,16 @@ const (
 )
 
 type Config struct {
-	RoomTTL           time.Duration
-	RequestTTL        time.Duration
+	RoomTTL            time.Duration
+	RequestTTL         time.Duration
 	MaxRequestsPerRoom int
-	MaxActiveGuests   int
-	RateWindow        time.Duration
-	RateLimit         int
+	MaxActiveGuests    int
+	RateWindow         time.Duration
+	RateLimit          int
+	STUNURLs           []string
+	TURNURLs           []string
+	TURNSharedSecret   string
+	TURNCredentialTTL  time.Duration
 }
 
 func DefaultConfig() Config {
@@ -47,6 +52,7 @@ func DefaultConfig() Config {
 		MaxActiveGuests:    8,
 		RateWindow:         time.Minute,
 		RateLimit:          20,
+		TURNCredentialTTL:  10 * time.Minute,
 	}
 }
 
@@ -81,6 +87,7 @@ type room struct {
 type joinRequest struct {
 	id         string
 	playerName string
+	playerUUID string
 	guestToken string
 	expiresAt  time.Time
 	state      string
@@ -100,6 +107,7 @@ type joinRequest struct {
 	answerSeen      bool
 	signalWriteMu   sync.Mutex
 	pairStarted     bool
+	p2pStarted      bool
 }
 
 type createRoomResponse struct {
@@ -110,6 +118,7 @@ type createRoomResponse struct {
 
 type createJoinRequest struct {
 	PlayerName string `json:"playerName"`
+	PlayerUUID string `json:"playerUUID,omitempty"`
 }
 
 type createJoinResponse struct {
@@ -129,6 +138,7 @@ type joinEvent struct {
 	Type       string    `json:"type"`
 	RequestID  string    `json:"requestId"`
 	PlayerName string    `json:"playerName,omitempty"`
+	PlayerUUID string    `json:"playerUUID,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt,omitempty"`
 }
 
@@ -148,6 +158,7 @@ func New(config Config) *Server {
 	if config.MaxActiveGuests < 1 { config.MaxActiveGuests = defaults.MaxActiveGuests }
 	if config.RateWindow <= 0 { config.RateWindow = defaults.RateWindow }
 	if config.RateLimit < 1 { config.RateLimit = defaults.RateLimit }
+	if config.TURNCredentialTTL <= 0 { config.TURNCredentialTTL = defaults.TURNCredentialTTL }
 
 	s := &Server{
 		config: config,
@@ -164,6 +175,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("POST /v1/rooms/{code}/requests", s.createJoinRequest)
+	mux.HandleFunc("GET /v1/rooms/{code}/requests/{requestID}/ice-servers", s.guestICEServers)
+	mux.HandleFunc("GET /v1/rooms/{code}/requests/{requestID}/host-ice-servers", s.hostICEServers)
+	mux.HandleFunc("POST /v1/rooms/{code}/requests/{requestID}/peer-connected", s.hostPeerConnected)
 	mux.HandleFunc("GET /v1/host/control/{code}", s.hostControl)
 	mux.HandleFunc("GET /v1/guest/control/{code}/{requestID}", s.guestControl)
 	mux.HandleFunc("GET /v1/host/signal/{code}/{requestID}", s.hostSignal)
@@ -242,6 +256,10 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_player_name")
 		return
 	}
+	if input.PlayerUUID != "" && !validPlayerUUID(input.PlayerUUID) {
+		writeError(w, http.StatusBadRequest, "invalid_player_uuid")
+		return
+	}
 
 	current := s.getRoom(normalizeCode(r.PathValue("code")))
 	if current == nil {
@@ -260,7 +278,8 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request := &joinRequest{
-		id: requestID, playerName: input.PlayerName, guestToken: guestToken,
+		id: requestID, playerName: input.PlayerName,
+		playerUUID: strings.ToLower(input.PlayerUUID), guestToken: guestToken,
 		expiresAt: time.Now().Add(s.config.RequestTTL), state: "pending",
 	}
 
@@ -293,7 +312,7 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 
 	event := joinEvent{
 		Type: "join_request", RequestID: requestID, PlayerName: input.PlayerName,
-		ExpiresAt: request.expiresAt,
+		PlayerUUID: request.playerUUID, ExpiresAt: request.expiresAt,
 	}
 	if err := writeRoomJSON(current, host, event); err != nil {
 		current.mu.Lock()
@@ -486,7 +505,7 @@ func (s *Server) attachSignal(w http.ResponseWriter, r *http.Request, current *r
 
 	request.mu.Lock()
 	available := request.state == "approved" && time.Now().Before(request.expiresAt) &&
-		!request.pairStarted &&
+		!request.pairStarted && !request.p2pStarted &&
 		((isHost && !request.hostSignalUsed) || (!isHost && !request.guestSignalUsed))
 	request.mu.Unlock()
 	if !available {
@@ -500,7 +519,7 @@ func (s *Server) attachSignal(w http.ResponseWriter, r *http.Request, current *r
 	}
 
 	request.mu.Lock()
-	if request.state != "approved" || time.Now().After(request.expiresAt) || request.pairStarted {
+	if request.state != "approved" || time.Now().After(request.expiresAt) || request.pairStarted || request.p2pStarted {
 		request.mu.Unlock()
 		_ = conn.Close(websocket.StatusPolicyViolation, "request is not available for P2P signalling")
 		return
@@ -553,10 +572,21 @@ func (s *Server) attachSignal(w http.ResponseWriter, r *http.Request, current *r
 			other = request.hostSignal
 			request.hostSignal = nil
 		}
+		wasP2P := request.p2pStarted
+		if wasP2P {
+			request.p2pStarted = false
+		}
 		request.mu.Unlock()
 		_ = conn.Close(websocket.StatusNormalClosure, "signalling closed")
 		if other != nil {
 			_ = other.CloseNow()
+		}
+		if wasP2P {
+			current.mu.Lock()
+			if current.requests[requestID] == request {
+				delete(current.requests, requestID)
+			}
+			current.mu.Unlock()
 		}
 	}()
 
@@ -614,6 +644,42 @@ func (s *Server) attachSignal(w http.ResponseWriter, r *http.Request, current *r
 		}
 	}
 	_ = conn.Close(websocket.StatusPolicyViolation, "too many signalling messages")
+}
+
+
+func (s *Server) hostPeerConnected(w http.ResponseWriter, r *http.Request) {
+	if !s.allowRequest(r) {
+		writeError(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	current := s.getRoom(normalizeCode(r.PathValue("code")))
+	if current == nil || !validBearer(r, current.hostToken) {
+		writeError(w, http.StatusUnauthorized, "invalid_host_token")
+		return
+	}
+	current.mu.Lock()
+	request := current.requests[r.PathValue("requestID")]
+	current.mu.Unlock()
+	if request == nil {
+		writeError(w, http.StatusNotFound, "request_not_found")
+		return
+	}
+
+	request.mu.Lock()
+	ready := request.state == "approved" &&
+		time.Now().Before(request.expiresAt) &&
+		request.hostSignal != nil && request.guestSignal != nil &&
+		request.offerSeen && request.answerSeen && !request.p2pStarted
+	if ready {
+		request.p2pStarted = true
+	}
+	request.mu.Unlock()
+	if !ready {
+		writeError(w, http.StatusConflict, "peer_not_negotiated")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, map[string]string{"status": "connected"})
 }
 
 func readSignal(ctx context.Context, conn *websocket.Conn) (signalMessage, error) {
@@ -888,7 +954,7 @@ func pruneRequestsLocked(current *room) {
 		// Keep it in the room map so MaxActiveGuests continues to count it until
 		// relayPair closes and removes the completed/disconnected stream.
 		expired := (now.After(request.expiresAt) || request.state == "rejected") &&
-			!request.pairStarted
+			!request.pairStarted && !request.p2pStarted
 		request.mu.Unlock()
 		if expired {
 			delete(current.requests, id)
@@ -1012,6 +1078,16 @@ func validPlayerName(value string) bool {
 		}
 	}
 	return true
+}
+
+func validPlayerUUID(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' ||
+		value[18] != '-' || value[23] != '-' {
+		return false
+	}
+	compact := strings.ReplaceAll(value, "-", "")
+	decoded, err := hex.DecodeString(compact)
+	return err == nil && len(decoded) == 16
 }
 
 func sanitizeReason(value string) string {

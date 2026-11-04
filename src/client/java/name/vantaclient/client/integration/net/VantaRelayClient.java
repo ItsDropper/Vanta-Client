@@ -12,6 +12,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionException;
@@ -34,11 +36,13 @@ public final class VantaRelayClient {
     private static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(12);
 
     public record Room(String code, String hostToken, Instant expiresAt) {}
+    /** Short-lived credentials returned by the relay for STUN/TURN discovery. */
+    public record IceServerConfig(List<String> urls, String username, String credential) {}
     public record JoinTicket(String roomCode, String requestId, String guestToken,
                              Instant expiresAt) {}
     /** Wire DTO: keep the relay's ISO-8601 expiry as text; Gson does not need to reflect into java.time. */
     public record RelayEvent(String type, String requestId, String playerName,
-                             String reason, String expiresAt) {}
+                             String playerUUID, String reason, String expiresAt) {}
     public record RelaySignal(String type, String sdp, String candidate,
                               String sdpMid, Integer sdpMLineIndex) {}
 
@@ -81,12 +85,28 @@ public final class VantaRelayClient {
     }
 
     public JoinTicket requestJoin(String roomCode, String playerName) throws IOException {
+        return requestJoin(roomCode, playerName, null);
+    }
+
+    /**
+     * Sends the local Minecraft profile UUID as an untrusted claim. The host
+     * saves it only after the integrated server reports the joined GameProfile.
+     */
+    public JoinTicket requestJoin(String roomCode, String playerName, String playerUUID)
+            throws IOException {
         String normalizedCode = validateRoomCode(roomCode);
         if (playerName == null || !playerName.matches("[A-Za-z0-9_]{1,16}")) {
             throw new IOException("Enter a valid Minecraft player name.");
         }
+        if (playerUUID != null && !playerUUID.matches(
+                "(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            throw new IOException("The local Minecraft profile UUID is invalid.");
+        }
         JsonObject body = new JsonObject();
         body.addProperty("playerName", playerName);
+        if (playerUUID != null) {
+            body.addProperty("playerUUID", playerUUID.toLowerCase(java.util.Locale.ROOT));
+        }
         JsonObject response = post("/v1/rooms/" + normalizedCode + "/requests", GSON.toJson(body));
         String requestId = requiredString(response, "requestId");
         String token = requiredString(response, "guestToken");
@@ -115,6 +135,21 @@ public final class VantaRelayClient {
         return new GuestDecisionConnection(socket, listener);
     }
 
+    /** Fetches request-scoped ICE servers after the host has approved the guest. */
+    public List<IceServerConfig> fetchHostIceServers(Room room, String requestId) throws IOException {
+        requireRoom(room);
+        String id = validateRequestId(requestId);
+        return parseIceServers(get("/v1/rooms/" + room.code() + "/requests/" + id + "/host-ice-servers",
+                room.hostToken()));
+    }
+
+    /** Fetches request-scoped ICE servers using the guest's one-use bearer token. */
+    public List<IceServerConfig> fetchGuestIceServers(JoinTicket ticket) throws IOException {
+        requireTicket(ticket);
+        return parseIceServers(get("/v1/rooms/" + ticket.roomCode() + "/requests/"
+                + ticket.requestId() + "/ice-servers", ticket.guestToken()));
+    }
+
     public WebSocketDuplexConnection connectHostData(Room room, String requestId) throws IOException {
         requireRoom(room);
         String path = "/v1/host/data/" + room.code() + "/" + validateRequestId(requestId);
@@ -125,6 +160,43 @@ public final class VantaRelayClient {
         requireTicket(ticket);
         String path = "/v1/guest/data/" + ticket.roomCode() + "/" + ticket.requestId();
         return WebSocketDuplexConnection.connect(httpClient, webSocketUri(path), ticket.guestToken());
+    }
+
+    /**
+     * Marks this approved request as an established P2P guest after ICE has
+     * opened the DataChannel. The host bearer token is required; the invite
+     * code alone cannot activate a peer session.
+     */
+    public void confirmHostPeerConnected(Room room, String requestId) throws IOException {
+        requireRoom(room);
+        String id = validateRequestId(requestId);
+        String path = "/v1/rooms/" + room.code() + "/requests/" + id + "/peer-connected";
+        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
+                .timeout(HTTP_TIMEOUT)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + room.hostToken())
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+        final HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Confirming the peer connection was interrupted.", exception);
+        } catch (RuntimeException exception) {
+            throw new IOException("Could not confirm the peer connection with the relay.", exception);
+        }
+        if (response.statusCode() != 200) {
+            String code = "HTTP " + response.statusCode();
+            try {
+                JsonObject error = GSON.fromJson(response.body(), JsonObject.class);
+                if (error != null && error.has("error")) code = error.get("error").getAsString();
+            } catch (RuntimeException ignored) {
+                // Do not expose an arbitrary service response body.
+            }
+            throw new IOException("Relay did not activate the peer session: " + code);
+        }
     }
 
     public SignalConnection connectHostSignal(Room room, String requestId) throws IOException {
@@ -141,6 +213,82 @@ public final class VantaRelayClient {
         SignalListener listener = new SignalListener(false);
         java.net.http.WebSocket socket = connectWebSocket(path, ticket.guestToken(), listener);
         return new SignalConnection(socket, listener, false);
+    }
+
+    private JsonObject get(String path, String bearerToken) throws IOException {
+        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
+                .timeout(HTTP_TIMEOUT)
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + bearerToken)
+                .GET()
+                .build();
+        final HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Relay request was interrupted.", exception);
+        } catch (RuntimeException exception) {
+            throw new IOException("Could not reach the configured Vanta relay.", exception);
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            String code = "HTTP " + response.statusCode();
+            try {
+                JsonObject error = GSON.fromJson(response.body(), JsonObject.class);
+                if (error != null && error.has("error")) code = error.get("error").getAsString();
+            } catch (RuntimeException ignored) {
+                // Do not echo arbitrary service response bodies into the UI.
+            }
+            throw new IOException("Relay rejected ICE configuration: " + code);
+        }
+        try {
+            JsonObject object = GSON.fromJson(response.body(), JsonObject.class);
+            if (object == null) throw new IOException("Relay returned an empty ICE configuration.");
+            return object;
+        } catch (RuntimeException exception) {
+            throw new IOException("Relay returned malformed ICE configuration.", exception);
+        }
+    }
+
+    private static List<IceServerConfig> parseIceServers(JsonObject response) throws IOException {
+        if (!response.has("iceServers") || !response.get("iceServers").isJsonArray()) {
+            throw new IOException("Relay returned an invalid ICE server list.");
+        }
+        List<IceServerConfig> result = new ArrayList<>();
+        for (var element : response.getAsJsonArray("iceServers")) {
+            if (!element.isJsonObject()) throw new IOException("Relay returned an invalid ICE server.");
+            JsonObject item = element.getAsJsonObject();
+            if (!item.has("urls") || !item.get("urls").isJsonArray()) {
+                throw new IOException("Relay returned an ICE server without URLs.");
+            }
+            List<String> urls = new ArrayList<>();
+            for (var url : item.getAsJsonArray("urls")) {
+                if (!url.isJsonPrimitive() || !url.getAsJsonPrimitive().isString()) {
+                    throw new IOException("Relay returned an invalid ICE URL.");
+                }
+                String value = url.getAsString().trim();
+                if (!(value.startsWith("stun:") || value.startsWith("stuns:")
+                        || value.startsWith("turn:") || value.startsWith("turns:"))
+                        || value.length() > 512) {
+                    throw new IOException("Relay returned an unsupported ICE URL.");
+                }
+                urls.add(value);
+            }
+            if (urls.isEmpty() || urls.size() > 8) {
+                throw new IOException("Relay returned an invalid ICE URL count.");
+            }
+            String username = item.has("username") && !item.get("username").isJsonNull()
+                    ? item.get("username").getAsString() : null;
+            String credential = item.has("credential") && !item.get("credential").isJsonNull()
+                    ? item.get("credential").getAsString() : null;
+            if ((username == null) != (credential == null)
+                    || (username != null && (username.length() > 256 || credential.length() > 512))) {
+                throw new IOException("Relay returned invalid TURN credentials.");
+            }
+            result.add(new IceServerConfig(List.copyOf(urls), username, credential));
+            if (result.size() > 8) throw new IOException("Relay returned too many ICE servers.");
+        }
+        return List.copyOf(result);
     }
 
     private JsonObject post(String path, String body) throws IOException {

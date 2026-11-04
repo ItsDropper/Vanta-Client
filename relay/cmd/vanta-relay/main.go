@@ -9,9 +9,21 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"strings"
 
 	"github.com/itsdropper/vanta-client/relay/internal/server"
 )
+
+func splitURLs(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if cleaned := strings.TrimSpace(part); cleaned != "" {
+			result = append(result, cleaned)
+		}
+	}
+	return result
+}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -19,7 +31,11 @@ func main() {
 		port = "8080"
 	}
 
-	service := server.New(server.DefaultConfig())
+	config := server.DefaultConfig()
+	config.STUNURLs = splitURLs(os.Getenv("VANTA_STUN_URLS"))
+	config.TURNURLs = splitURLs(os.Getenv("VANTA_TURN_URLS"))
+	config.TURNSharedSecret = os.Getenv("VANTA_TURN_SHARED_SECRET")
+	service := server.New(config)
 	httpServer := &http.Server{
 		Addr:              ":" + port,
 		Handler:           service.Handler(),
