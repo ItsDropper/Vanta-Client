@@ -86,7 +86,6 @@ public class Events {
 
             FarViewController.tick(client);
             FarTerrainRenderer.tick(client);
-            InGameOverlayCache.tick(client);
             VantaNotificationManager.tick();
             FlyBoostFeature.tick(client);
             DisableDoubleTapSprintFeature.tick(client);
