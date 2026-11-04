@@ -408,3 +408,116 @@ func TestBuildICEServersRejectsTURNWithoutSharedSecret(t *testing.T) {
 		t.Fatal("TURN configuration without a shared secret must fail closed")
 	}
 }
+
+
+func TestValidateICEURLsAcceptsSTUNAndTURNURIForms(t *testing.T) {
+	for _, value := range []string{
+		"stun:stun.example.test:3478",
+		"stuns:stun.example.test:5349",
+		"turn:turn.example.test:3478?transport=udp",
+		"turns:turn.example.test:5349?transport=tcp",
+	} {
+		if _, err := validateICEURLs([]string{value}, "stun", "stuns", "turn", "turns"); err != nil {
+			t.Fatalf("valid ICE URI %q rejected: %v", value, err)
+		}
+	}
+	for _, value := range []string{
+		"ftp://example.test:21",
+		"turn://user:pass@example.test:3478",
+		"turn:missing-port",
+		"turn:",
+		"turn:example.test:3478#fragment",
+	} {
+		if _, err := validateICEURLs([]string{value}, "stun", "stuns", "turn", "turns"); err == nil {
+			t.Fatalf("invalid ICE URI %q was accepted", value)
+		}
+	}
+}
+
+func TestP2PRequestRemainsCountedUntilSignallingDisconnects(t *testing.T) {
+	expired := time.Now().Add(-time.Second)
+	current := &room{
+		requests: map[string]*joinRequest{
+			"active-p2p": {
+				id: "active-p2p", expiresAt: expired, state: "approved", p2pStarted: true,
+			},
+			"expired-p2p": {
+				id: "expired-p2p", expiresAt: expired, state: "approved",
+			},
+		},
+	}
+	current.mu.Lock()
+	pruneRequestsLocked(current)
+	_, activeRemains := current.requests["active-p2p"]
+	_, expiredRemains := current.requests["expired-p2p"]
+	current.mu.Unlock()
+	if !activeRemains {
+		t.Fatal("an established P2P session must remain counted until its signalling sockets close")
+	}
+	if expiredRemains {
+		t.Fatal("an expired request that never established a P2P session must be pruned")
+	}
+}
+
+func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.T) {
+	service := New(DefaultConfig())
+	defer service.Close()
+	current := &room{
+		code: "ABCDEFGHIJKLMNOPQRSTUVWX",
+		hostToken: "host-token-with-enough-length-to-pass-bearer-check",
+		expiresAt: time.Now().Add(time.Hour),
+		requests: map[string]*joinRequest{
+			"request-123456": {
+				id: "request-123456",
+				guestToken: "guest-token-with-enough-length-to-pass-bearer-check",
+				expiresAt: time.Now().Add(time.Minute),
+				state: "approved",
+				offerSeen: true,
+				answerSeen: true,
+			},
+		},
+	}
+	service.mu.Lock()
+	service.rooms[current.code] = current
+	service.mu.Unlock()
+
+	request := httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response := httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("peer confirmation without both live signalling sockets must fail, got %d", response.Code)
+	}
+
+	item := current.requests["request-123456"]
+	item.mu.Lock()
+	item.hostSignal = &websocket.Conn{}
+	item.guestSignal = &websocket.Conn{}
+	item.mu.Unlock()
+
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("host could not activate a fully negotiated peer session: status=%d body=%s",
+			response.Code, response.Body.String())
+	}
+	item.mu.Lock()
+	active := item.p2pStarted
+	item.mu.Unlock()
+	if !active {
+		t.Fatal("peer-connected endpoint did not mark the approved session active")
+	}
+
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer "+current.hostToken)
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("duplicate peer activation must be rejected, got %d", response.Code)
+	}
+}

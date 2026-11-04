@@ -123,7 +123,7 @@ public final class VantaRelayClient {
     public List<IceServerConfig> fetchHostIceServers(Room room, String requestId) throws IOException {
         requireRoom(room);
         String id = validateRequestId(requestId);
-        return parseIceServers(get("/v1/rooms/" + room.code() + "/requests/" + id + "/ice-servers",
+        return parseIceServers(get("/v1/rooms/" + room.code() + "/requests/" + id + "/host-ice-servers",
                 room.hostToken()));
     }
 
@@ -144,6 +144,43 @@ public final class VantaRelayClient {
         requireTicket(ticket);
         String path = "/v1/guest/data/" + ticket.roomCode() + "/" + ticket.requestId();
         return WebSocketDuplexConnection.connect(httpClient, webSocketUri(path), ticket.guestToken());
+    }
+
+    /**
+     * Marks this approved request as an established P2P guest after ICE has
+     * opened the DataChannel. The host bearer token is required; the invite
+     * code alone cannot activate a peer session.
+     */
+    public void confirmHostPeerConnected(Room room, String requestId) throws IOException {
+        requireRoom(room);
+        String id = validateRequestId(requestId);
+        String path = "/v1/rooms/" + room.code() + "/requests/" + id + "/peer-connected";
+        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
+                .timeout(HTTP_TIMEOUT)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + room.hostToken())
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+        final HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Confirming the peer connection was interrupted.", exception);
+        } catch (RuntimeException exception) {
+            throw new IOException("Could not confirm the peer connection with the relay.", exception);
+        }
+        if (response.statusCode() != 200) {
+            String code = "HTTP " + response.statusCode();
+            try {
+                JsonObject error = GSON.fromJson(response.body(), JsonObject.class);
+                if (error != null && error.has("error")) code = error.get("error").getAsString();
+            } catch (RuntimeException ignored) {
+                // Do not expose an arbitrary service response body.
+            }
+            throw new IOException("Relay did not activate the peer session: " + code);
+        }
     }
 
     public SignalConnection connectHostSignal(Room room, String requestId) throws IOException {

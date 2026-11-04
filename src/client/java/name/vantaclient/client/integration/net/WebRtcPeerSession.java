@@ -247,7 +247,8 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
                     if (current != null && event != null
                             && (isRelayCandidate(event.getLocal())
                             || isRelayCandidate(event.getRemote()))) {
-                        current.usingTurnRelay.set(true);
+                        current.usingTurnRelay.set(isRelayCandidate(event.getLocal())
+                    || isRelayCandidate(event.getRemote()));
                     }
                 }
             };
@@ -379,7 +380,6 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
         if (channelOpen.getCount() != 0) {
             throw new IOException("WebRTC did not establish a data channel before the connection timed out.");
         }
-        closeSignalling();
     }
 
     private void publishLocalDescription(RTCSessionDescription description, boolean hostSide)
