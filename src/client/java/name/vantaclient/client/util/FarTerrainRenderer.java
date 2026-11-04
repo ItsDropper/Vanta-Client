@@ -424,10 +424,12 @@ public final class FarTerrainRenderer {
             }
         }
 
+        long[] waterCellMask = FarTerrainLodMath.createWaterCellMask(
+                heights, key.resolution, seaLevel, waterSurfaceEnabled);
         return new TileMesh(job.workKey.revision(),
                 (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
                 key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
-                sampleWorldX, sampleWorldZ, heights, colors, waterColors);
+                sampleWorldX, sampleWorldZ, heights, colors, waterColors, waterCellMask);
     }
 
     private static int shadeColor(int color, double brightness) {
@@ -589,11 +591,8 @@ public final class FarTerrainRenderer {
                     int i10 = i00 + 1;
                     int i01 = i00 + side;
                     int i11 = i01 + 1;
-                    boolean submerged = mesh.waterSurfaceEnabled
-                            && heights[i00] < mesh.seaLevel
-                            && heights[i10] < mesh.seaLevel
-                            && heights[i01] < mesh.seaLevel
-                            && heights[i11] < mesh.seaLevel;
+                    boolean submerged = FarTerrainLodMath.isWaterCell(
+                            mesh.waterCellMask, z * resolution + x);
                     if (submerged) {
                         // Distant water is a single opaque, biome-tinted sea-level surface.
                         // Full transparency is intentionally left to the nearby vanilla renderer.
@@ -885,10 +884,11 @@ public final class FarTerrainRenderer {
                             TileKey key, int originX, int originZ, int spanBlocks,
                             int seaLevel, boolean waterSurfaceEnabled,
                             int[] sampleWorldX, int[] sampleWorldZ,
-                            int[] heights, int[] colors, int[] waterColors) {
+                            int[] heights, int[] colors, int[] waterColors, long[] waterCellMask) {
         private long estimatedBytes() {
             return ((long) sampleWorldX.length + sampleWorldZ.length
-                    + heights.length + colors.length + waterColors.length) * Integer.BYTES;
+                    + heights.length + colors.length + waterColors.length) * Integer.BYTES
+                    + (long) waterCellMask.length * Long.BYTES;
         }
     }
 }
