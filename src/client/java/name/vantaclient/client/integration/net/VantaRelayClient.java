@@ -30,8 +30,9 @@ public final class VantaRelayClient {
     public record Room(String code, String hostToken, Instant expiresAt) {}
     public record JoinTicket(String roomCode, String requestId, String guestToken,
                              Instant expiresAt) {}
+    /** Wire DTO: keep the relay's ISO-8601 expiry as text; Gson does not need to reflect into java.time. */
     public record RelayEvent(String type, String requestId, String playerName,
-                             String reason, Instant expiresAt) {}
+                             String reason, String expiresAt) {}
 
     private record CreateRoomResponse(String roomCode, String hostToken, String expiresAt) {}
     private record JoinResponse(String requestId, String guestToken, String expiresAt) {}
