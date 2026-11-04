@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Singleplayer-only far terrain renderer.
@@ -98,6 +99,9 @@ public final class FarTerrainRenderer {
     private static volatile int lastDrawnQuads;
     private static volatile int lastSubmittedMeshes;
     private static int adaptiveDrawBudget = 36_000;
+    private static volatile long workerBackoffNanos;
+    private static volatile int lastPrunedQueuedJobs;
+    private static volatile long totalPrunedQueuedJobs;
 
     private FarTerrainRenderer() {}
 
@@ -132,6 +136,7 @@ public final class FarTerrainRenderer {
         }
 
         updateAdaptiveDistance(client);
+        updateWorkerBackoff(client);
         drainCompletedMeshes();
 
         int playerChunkX = client.player.chunkPosition().x;
@@ -184,6 +189,14 @@ public final class FarTerrainRenderer {
         }
     }
 
+    private static void updateWorkerBackoff(Minecraft client) {
+        int backoffMillis = FarTerrainLodMath.workerBackoffMillis(
+                ClientPerformanceMetrics.getAverageWorldRenderMs(),
+                ClientPerformanceMetrics.getAverageClientTickMs(),
+                client.getFps());
+        workerBackoffNanos = TimeUnit.MILLISECONDS.toNanos(backoffMillis);
+    }
+
     private static void rebuildDesiredTiles(int playerChunkX, int playerChunkZ,
                                              int detailDistance, int farDistance, int sampleSpacingChunks) {
         long planStartedNanos = System.nanoTime();
@@ -228,6 +241,8 @@ public final class FarTerrainRenderer {
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
         recalculateMeshCacheBytes();
         orderedTiles = List.copyOf(sorted);
+        lastPrunedQueuedJobs = pruneObsoleteQueuedJobs();
+        totalPrunedQueuedJobs += lastPrunedQueuedJobs;
         lastTilePlanMs = (System.nanoTime() - planStartedNanos) / 1_000_000.0;
         tilePlanBuildCount++;
     }
@@ -279,6 +294,9 @@ public final class FarTerrainRenderer {
         RandomState randomState = level.getChunkSource().randomState();
         BiomeSource biomeSource = generator.getBiomeSource();
         Climate.Sampler climateSampler = randomState.sampler();
+        int seaLevel = level.getSeaLevel();
+        boolean waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
+        LevelHeightAccessor heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
 
         for (TileKey key : orderedTiles) {
             if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
@@ -286,37 +304,10 @@ public final class FarTerrainRenderer {
             WorkKey workKey = new WorkKey(key, revision);
             if (!PENDING.add(workKey)) continue;
 
-            long taskRevision = revision;
-            int seaLevel = level.getSeaLevel();
-            boolean waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
-            LevelHeightAccessor heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
+            TileGenerationJob job = new TileGenerationJob(workKey, generator, randomState,
+                    heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
             try {
-                WORKER.execute(() -> {
-                    try {
-                        if (taskRevision != revision || !DESIRED.contains(key)) return;
-                        long generationStartedNanos = System.nanoTime();
-                        TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
-                                biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
-                        if (taskRevision == revision && DESIRED.contains(key)) {
-                            recordTileGeneration(
-                                    (System.nanoTime() - generationStartedNanos) / 1_000_000.0);
-                            COMPLETED.add(mesh);
-                        }
-                    } catch (RuntimeException | LinkageError error) {
-                        // A job from an old world revision must never poison the new world's tile state.
-                        if (taskRevision == revision && DESIRED.contains(key)) {
-                            FAILED.add(key);
-                            String message = error.getMessage();
-                            lastWorkerError = error.getClass().getSimpleName()
-                                    + (message == null || message.isBlank() ? "" : ": " + message);
-                            if (lastWorkerError.length() > 180) {
-                                lastWorkerError = lastWorkerError.substring(0, 177) + "...";
-                            }
-                        }
-                    } finally {
-                        PENDING.remove(workKey);
-                    }
-                });
+                WORKER.execute(job);
                 scheduled++;
             } catch (RejectedExecutionException rejected) {
                 PENDING.remove(workKey);
@@ -325,10 +316,30 @@ public final class FarTerrainRenderer {
         }
     }
 
-    private static TileMesh generateTile(TileKey key, ChunkGenerator generator,
-                                         RandomState randomState, LevelHeightAccessor heightAccessor,
-                                         BiomeSource biomeSource, Climate.Sampler climateSampler,
-                                         int seaLevel, boolean waterSurfaceEnabled) {
+    /**
+     * A plan rebuild can invalidate dozens of queued meshes. Remove those jobs
+     * immediately instead of making the single worker wake up and reject them
+     * one by one ahead of the newly relevant tiles.
+     */
+    private static int pruneObsoleteQueuedJobs() {
+        int removed = 0;
+        Runnable[] queuedTasks = WORKER.getQueue().toArray(new Runnable[0]);
+        for (Runnable queuedTask : queuedTasks) {
+            if (queuedTask instanceof TileGenerationJob job
+                    && job.isObsolete()
+                    && WORKER.getQueue().remove(queuedTask)) {
+                PENDING.remove(job.workKey);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private static TileMesh generateTile(TileGenerationJob job, TileKey key,
+                                         ChunkGenerator generator, RandomState randomState,
+                                         LevelHeightAccessor heightAccessor, BiomeSource biomeSource,
+                                         Climate.Sampler climateSampler, int seaLevel,
+                                         boolean waterSurfaceEnabled) {
         int side = key.resolution + 1;
         int[] heights = new int[side * side];
         int[] colors = new int[side * side];
@@ -346,6 +357,7 @@ public final class FarTerrainRenderer {
         }
 
         for (int z = 0; z <= key.resolution; z++) {
+            if (job.isObsolete()) return null;
             int worldZ = sampleWorldZ[z];
             for (int x = 0; x <= key.resolution; x++) {
                 int worldX = sampleWorldX[x];
@@ -367,6 +379,7 @@ public final class FarTerrainRenderer {
 
         double sampleSpacing = (double) spanBlocks / key.resolution;
         for (int z = 0; z <= key.resolution; z++) {
+            if (job.isObsolete()) return null;
             for (int x = 0; x <= key.resolution; x++) {
                 int index = z * side + x;
                 int left = z * side + Math.max(0, x - 1);
@@ -743,6 +756,9 @@ public final class FarTerrainRenderer {
         tileGenerationSamples = 0L;
         lastDrawnQuads = 0;
         lastSubmittedMeshes = 0;
+        workerBackoffNanos = 0L;
+        lastPrunedQueuedJobs = 0;
+        totalPrunedQueuedJobs = 0L;
     }
 
     public static String getStatusLine() {
@@ -761,8 +777,73 @@ public final class FarTerrainRenderer {
                 + "/" + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
                 + " ms last/avg over " + tileGenerationSamples + " jobs | submit avg "
                 + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
-                + " ms | draw " + lastDrawnQuads + "/" + getDrawBudget()
+                + " ms | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
+                + " ms | stale queue jobs " + lastPrunedQueuedJobs + " last / "
+                + totalPrunedQueuedJobs + " total | draw " + lastDrawnQuads + "/" + getDrawBudget()
                 + " quads, " + lastSubmittedMeshes + " tiles" + suffix;
+    }
+
+    private static final class TileGenerationJob implements Runnable {
+        private final WorkKey workKey;
+        private final ChunkGenerator generator;
+        private final RandomState randomState;
+        private final LevelHeightAccessor heightAccessor;
+        private final BiomeSource biomeSource;
+        private final Climate.Sampler climateSampler;
+        private final int seaLevel;
+        private final boolean waterSurfaceEnabled;
+
+        private TileGenerationJob(WorkKey workKey, ChunkGenerator generator, RandomState randomState,
+                                  LevelHeightAccessor heightAccessor, BiomeSource biomeSource,
+                                  Climate.Sampler climateSampler, int seaLevel,
+                                  boolean waterSurfaceEnabled) {
+            this.workKey = workKey;
+            this.generator = generator;
+            this.randomState = randomState;
+            this.heightAccessor = heightAccessor;
+            this.biomeSource = biomeSource;
+            this.climateSampler = climateSampler;
+            this.seaLevel = seaLevel;
+            this.waterSurfaceEnabled = waterSurfaceEnabled;
+        }
+
+        private boolean isObsolete() {
+            return FarTerrainLodMath.isWorkObsolete(
+                    workKey.revision(), revision, DESIRED.contains(workKey.key()));
+        }
+
+        @Override
+        public void run() {
+            boolean generated = false;
+            try {
+                if (isObsolete()) return;
+                long generationStartedNanos = System.nanoTime();
+                TileMesh mesh = generateTile(this, workKey.key(), generator, randomState,
+                        heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
+                if (mesh != null && !isObsolete()) {
+                    recordTileGeneration((System.nanoTime() - generationStartedNanos) / 1_000_000.0);
+                    COMPLETED.add(mesh);
+                    generated = true;
+                }
+            } catch (RuntimeException | LinkageError error) {
+                // A job from an old world revision must never poison the new world's tile state.
+                if (!isObsolete()) {
+                    FAILED.add(workKey.key());
+                    String message = error.getMessage();
+                    lastWorkerError = error.getClass().getSimpleName()
+                            + (message == null || message.isBlank() ? "" : ": " + message);
+                    if (lastWorkerError.length() > 180) {
+                        lastWorkerError = lastWorkerError.substring(0, 177) + "...";
+                    }
+                }
+            } finally {
+                PENDING.remove(workKey);
+                if (generated && !isObsolete()) {
+                    long backoff = workerBackoffNanos;
+                    if (backoff > 0L) LockSupport.parkNanos(backoff);
+                }
+            }
+        }
     }
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
