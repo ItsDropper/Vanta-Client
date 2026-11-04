@@ -336,6 +336,31 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 	if !p2pActive {
 		t.Fatal("relay did not retain the established P2P guest in room accounting")
 	}
+
+	// A confirmed WebRTC transport is exclusive: neither endpoint may also
+	// establish the WebSocket gameplay relay for the same approved request.
+	for _, endpoint := range []struct {
+		path  string
+		token string
+	}{
+		{
+			path:  "/v1/host/data/" + created.RoomCode + "/" + joined.RequestID,
+			token: created.HostToken,
+		},
+		{
+			path:  "/v1/guest/data/" + created.RoomCode + "/" + joined.RequestID,
+			token: joined.GuestToken,
+		},
+	} {
+		request := httptest.NewRequest(http.MethodGet, endpoint.path, nil)
+		request.Header.Set("Authorization", "Bearer "+endpoint.token)
+		response := httptest.NewRecorder()
+		service.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusConflict {
+			t.Fatalf("parallel data transport was not rejected for %s: status=%d body=%s",
+				endpoint.path, response.Code, response.Body.String())
+		}
+	}
 }
 
 func TestSignallingRejectsUnauthenticatedAndUnapprovedPeers(t *testing.T) {
