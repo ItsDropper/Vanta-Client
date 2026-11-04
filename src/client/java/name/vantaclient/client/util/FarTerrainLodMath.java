@@ -112,6 +112,48 @@ public final class FarTerrainLodMath {
         return left < right - tolerance;
     }
 
+    /**
+     * Precomputes whether each mesh cell is completely below sea level. Cell bits are
+     * laid out row-major and allow the render loop to replace four height reads and
+     * comparisons with one compact lookup.
+     */
+    public static long[] createWaterCellMask(int[] heights, int resolution,
+                                              int seaLevel, boolean waterSurfaceEnabled) {
+        if (resolution <= 0) {
+            throw new IllegalArgumentException("Mesh resolution must be positive.");
+        }
+        int side = resolution + 1;
+        if (heights == null || heights.length != side * side) {
+            throw new IllegalArgumentException("Height grid does not match mesh resolution.");
+        }
+        int cellCount = resolution * resolution;
+        long[] mask = new long[(cellCount + Long.SIZE - 1) / Long.SIZE];
+        if (!waterSurfaceEnabled) return mask;
+
+        for (int z = 0; z < resolution; z++) {
+            int row = z * side;
+            int cellRow = z * resolution;
+            for (int x = 0; x < resolution; x++) {
+                int topLeft = row + x;
+                int topRight = topLeft + 1;
+                int bottomLeft = topLeft + side;
+                int bottomRight = bottomLeft + 1;
+                if (heights[topLeft] < seaLevel && heights[topRight] < seaLevel
+                        && heights[bottomLeft] < seaLevel && heights[bottomRight] < seaLevel) {
+                    int cellIndex = cellRow + x;
+                    mask[cellIndex >>> 6] |= 1L << (cellIndex & 63);
+                }
+            }
+        }
+        return mask;
+    }
+
+    public static boolean isWaterCell(long[] mask, int cellIndex) {
+        if (mask == null || cellIndex < 0) return false;
+        int wordIndex = cellIndex >>> 6;
+        return wordIndex < mask.length && (mask[wordIndex] & (1L << (cellIndex & 63))) != 0L;
+    }
+
     /** Converts a mesh-grid sample index into the exact rounded world coordinate used for sampling. */
     public static int sampleWorldCoordinate(int origin, int span, int coordinate, int resolution) {
         if (resolution <= 0) return origin;
