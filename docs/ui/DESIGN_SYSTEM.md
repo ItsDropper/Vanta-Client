@@ -99,12 +99,25 @@ Use a limited stack:
 
 A border is structural, not decoration. Most controls should not need a full bright outline in every state. Prefer a subtle surface change plus a deliberate focus indicator.
 
+## 5.1 Corner geometry
+
+Vanta-native surfaces use a cached fourth-order superellipse profile (n=4) for their squircle
+corners. This is a geometric treatment, not a claim that a particular radius is scientifically
+optimal. It keeps long edges visually flatter than circular corners while retaining a compact
+rounded transition. Scanline insets for the supported radius range are precomputed once; drawing
+uses ordinary GUI fills and does not allocate or invoke a shader per frame.
+
+Use the shared `fillSquircle` and `outlineSquircle` primitives for framework surfaces, title-menu
+controls and HUD-editor chrome. Keep corner radius proportional to the control's logical size;
+small tracks and indicators should remain nearly circular, while panels and buttons can use the
+medium/large tokens. Avoid nested outlines.
+
 ## 6. Interactive states
 
 Every interactive component must define:
 - Default.
 - Hover.
-- Focused (keyboard focus, not just mouse hover).
+- Focused (keyboard focus, not just mouse hover); buttons use the current accent as a distinct focus outline.
 - Pressed/active where applicable.
 - Disabled.
 - Value-on/value-off where applicable.
