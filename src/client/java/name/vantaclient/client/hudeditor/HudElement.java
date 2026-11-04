@@ -10,6 +10,10 @@ public abstract class HudElement {
 
     protected float scale = 1.0f;
 
+    private long measuredLayoutRevision = Long.MIN_VALUE;
+    private int measuredWidth = 1;
+    private int measuredHeight = 1;
+
     protected final int defaultX;
     protected final int defaultY;
 
@@ -81,11 +85,37 @@ public abstract class HudElement {
     }
 
     public int getScaledWidth() {
-        return (int) (getWidth() * scale);
+        return (int) (getMeasuredWidth() * scale);
     }
 
     public int getScaledHeight() {
-        return (int) (getHeight() * scale);
+        return (int) (getMeasuredHeight() * scale);
+    }
+
+    /**
+     * Invalidate cached raw dimensions when an element changes its layout within a tick.
+     * The manager's revision refreshes these measurements on the next client tick.
+     */
+    protected final void invalidateLayoutMeasurements() {
+        measuredLayoutRevision = Long.MIN_VALUE;
+    }
+
+    private int getMeasuredWidth() {
+        refreshMeasuredDimensions();
+        return measuredWidth;
+    }
+
+    private int getMeasuredHeight() {
+        refreshMeasuredDimensions();
+        return measuredHeight;
+    }
+
+    private void refreshMeasuredDimensions() {
+        long revision = HudManager.getLayoutRevision();
+        if (measuredLayoutRevision == revision) return;
+        measuredWidth = Math.max(1, getWidth());
+        measuredHeight = Math.max(1, getHeight());
+        measuredLayoutRevision = revision;
     }
 
     /** Local-pixel expansion beyond the element's normal rendered rectangle. */
