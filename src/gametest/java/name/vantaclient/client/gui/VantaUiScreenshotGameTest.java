@@ -805,6 +805,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     || FarTerrainLodMath.isWaterCell(largeWaterMask, 81)) {
                 throw new AssertionError("FarView water mask accepted an out-of-range cell index.");
             }
+            try {
+                FarTerrainLodMath.createWaterCellMask(new int[4], 2, 10, true);
+                throw new AssertionError("FarView water mask accepted a height grid with the wrong dimensions.");
+            } catch (IllegalArgumentException expected) {
+                // Invalid source grids are rejected before bit indexing.
+            }
+            try {
+                FarTerrainLodMath.createWaterCellMask(new int[4_356], 65, 10, true);
+                throw new AssertionError("FarView water mask accepted a resolution above the renderer's limit.");
+            } catch (IllegalArgumentException expected) {
+                // Renderer tile resolutions are capped at 64.
+            }
 
             int[] expectedSampleCoordinates = {100, 103, 105, 108, 110};
             for (int index = 0; index < expectedSampleCoordinates.length; index++) {
