@@ -53,7 +53,7 @@ Terminate TLS at a reverse proxy such as Caddy or nginx. Set the client relay UR
 - `POST /v1/rooms` — create a room; returns `roomCode`, `hostToken`, `expiresAt`.
 - `GET /v1/host/control/{roomCode}` — authenticated host control socket.
 - `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — host-only, approved-request ICE configuration.
-- `POST /v1/rooms/{roomCode}/requests` — guest asks to join; body: `{"playerName":"MinecraftName"}`.
+- `POST /v1/rooms/{roomCode}/requests` — guest asks to join; body: `{"playerName":"MinecraftName","playerUUID":"optional-client-claimed-uuid"}`. The UUID is untrusted request metadata used only to correlate the host-approved request with the later Minecraft connection; the relay does not authenticate it or use it as proof of account ownership.
 - `GET /v1/guest/control/{roomCode}/{requestId}` — authenticated guest approval result.
 - `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — guest-only ICE configuration after approval.
 - `GET /v1/host/signal/{roomCode}/{requestId}` and `GET /v1/guest/signal/{roomCode}/{requestId}` — authenticated, one-use peer-signalling sockets. The host sends one SDP offer and ICE candidates; the guest sends one SDP answer and ICE candidates. Both receive a `ready` event after both sockets are connected. Messages are schema-checked and size-bounded.
