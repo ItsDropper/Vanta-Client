@@ -103,6 +103,7 @@ public class Events {
                 SprintSneakToggles.toggleSneak();
             }
             SprintSneakToggles.tick(client);
+            FeatureKeybinds.tick(gameplayInputAllowed);
 
             if (client.player != null) {
 
