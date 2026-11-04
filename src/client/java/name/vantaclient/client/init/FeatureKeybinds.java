@@ -4,7 +4,6 @@ import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
