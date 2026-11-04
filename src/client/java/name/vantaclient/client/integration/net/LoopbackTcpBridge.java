@@ -54,6 +54,7 @@ public final class LoopbackTcpBridge implements AutoCloseable {
     private final RemoteConnector connector;
     private final Semaphore connectionSlots;
     private final ExecutorService workers;
+    private final Set<Socket> pendingSockets = ConcurrentHashMap.newKeySet();
     private final Set<Session> sessions = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Thread acceptThread;
@@ -167,10 +168,19 @@ public final class LoopbackTcpBridge implements AutoCloseable {
                 continue;
             }
 
+            pendingSockets.add(localSocket);
+            if (closed.get()) {
+                pendingSockets.remove(localSocket);
+                closeQuietly(localSocket);
+                connectionSlots.release();
+                return;
+            }
+
             try {
                 localSocket.setTcpNoDelay(true);
                 workers.execute(() -> openSession(localSocket));
             } catch (IOException | RejectedExecutionException exception) {
+                pendingSockets.remove(localSocket);
                 closeQuietly(localSocket);
                 connectionSlots.release();
                 if (exception instanceof RejectedExecutionException && !closed.get()) close();
@@ -185,12 +195,14 @@ public final class LoopbackTcpBridge implements AutoCloseable {
             if (remote == null) throw new IOException("Remote connector returned no stream.");
             Session session = new Session(localSocket, remote);
             sessions.add(session);
+            pendingSockets.remove(localSocket);
             if (closed.get()) {
                 session.close();
                 return;
             }
             session.start();
         } catch (Exception exception) {
+            pendingSockets.remove(localSocket);
             closeQuietly(localSocket);
             closeQuietly(remote);
             connectionSlots.release();
@@ -271,6 +283,8 @@ public final class LoopbackTcpBridge implements AutoCloseable {
     public void close() {
         if (!closed.compareAndSet(false, true)) return;
         closeQuietly(listener);
+        for (Socket socket : pendingSockets) closeQuietly(socket);
+        pendingSockets.clear();
         for (Session session : sessions) session.close();
         workers.shutdownNow();
     }
