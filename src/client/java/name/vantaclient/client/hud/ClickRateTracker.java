@@ -35,7 +35,7 @@ public final class ClickRateTracker {
     }
 
     private static int count(Deque<Long> clicks) {
-        long now = System.currentTimeMillis();
+        long now = System.nanoTime();
         synchronized (clicks) {
             prune(clicks, now);
             return clicks.size();
