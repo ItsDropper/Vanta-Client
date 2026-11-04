@@ -5,6 +5,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.server.MinecraftServer;
 
@@ -12,9 +15,12 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -30,8 +36,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * Relay credentials are memory-only and are never written to client preferences.
  */
 public final class VantaRemoteSessionManager {
-    public record PendingGuest(String requestId, String playerName, boolean approving) {}
-    public record ConnectedGuest(String requestId, String playerName) {}
+    public record PendingGuest(String requestId, String playerName, String playerUUID,
+                                boolean previouslyWhitelisted, boolean approving) {}
+    public record ConnectedGuest(String requestId, String playerName, String claimedPlayerUUID,
+                                 String authenticatedPlayerUUID, boolean identityVerified) {}
 
     public record Snapshot(
             String hostStatus,
@@ -54,6 +62,10 @@ public final class VantaRemoteSessionManager {
     private static final Map<String, PendingGuest> PENDING = new LinkedHashMap<>();
     private static final Map<String, TcpStreamTunnel> HOST_TUNNELS = new LinkedHashMap<>();
     private static final Map<String, ConnectedGuest> ACTIVE_GUESTS = new LinkedHashMap<>();
+    /** Server-observed profiles received while an approved TCP tunnel is still being registered. */
+    private static final Map<String, String> AUTHENTICATED_PROFILES = new LinkedHashMap<>();
+    /** Stops an approval worker from registering a tunnel after a profile mismatch was detected. */
+    private static final Set<String> REJECTED_PROFILE_REQUESTS = new HashSet<>();
 
     private static long revision;
     private static long hostGeneration;
@@ -102,6 +114,133 @@ public final class VantaRemoteSessionManager {
         }
     }
 
+    public static List<String> whitelistedPlayerUUIDs() {
+        synchronized (LOCK) {
+            if (hostedServer == null) return List.of();
+            Set<String> ids = VantaClientPreferences.get().remoteWorldWhitelists
+                    .getOrDefault(worldKey(hostedServer), Set.of());
+            return ids.stream().sorted().toList();
+        }
+    }
+
+    /** Removes a profile from this save's whitelist and kicks that profile if it is connected. */
+    public static void revokeWhitelistedPlayer(String profileUUID) {
+        if (!isProfileUUID(profileUUID)) return;
+        String normalized = profileUUID.toLowerCase(Locale.ROOT);
+        List<String> toKick = new ArrayList<>();
+        synchronized (LOCK) {
+            if (hostedServer == null) return;
+            Set<String> ids = VantaClientPreferences.get().remoteWorldWhitelists
+                    .get(worldKey(hostedServer));
+            if (ids == null || !ids.remove(normalized)) return;
+            for (ConnectedGuest guest : ACTIVE_GUESTS.values()) {
+                if (normalized.equals(guest.authenticatedPlayerUUID())
+                        || normalized.equals(guest.claimedPlayerUUID())) {
+                    toKick.add(guest.requestId());
+                }
+            }
+            bumpRevisionLocked();
+        }
+        VantaClientPreferences.save();
+        toKick.forEach(VantaRemoteSessionManager::kickGuest);
+    }
+
+    /**
+     * Called after Minecraft has accepted a connection and created its actual
+     * server-side GameProfile. The incoming UUID is a claim until it matches here.
+     */
+    public static void onHostPlayerJoined(ServerGamePacketListenerImpl handler, MinecraftServer server) {
+        if (handler == null || handler.player == null || server == null || !server.isSingleplayer()) return;
+        String actualUUID = handler.player.getUUID().toString().toLowerCase(Locale.ROOT);
+        String actualName = handler.player.getGameProfile().name();
+
+        // Never attribute the singleplayer owner to a remote invite.
+        var localProfileUUID = Minecraft.getInstance().getUser().getProfileId();
+        if (localProfileUUID != null && localProfileUUID.toString().equalsIgnoreCase(actualUUID)) return;
+
+        String requestId = null;
+        boolean rejectedClaim = false;
+        boolean saved = false;
+        synchronized (LOCK) {
+            if (hostedServer != server || hostSession == null) return;
+
+            List<PendingGuest> pendingUUIDMatches = PENDING.values().stream()
+                    .filter(guest -> guest.playerUUID() != null
+                            && guest.playerUUID().equalsIgnoreCase(actualUUID))
+                    .toList();
+            List<ConnectedGuest> activeUUIDMatches = ACTIVE_GUESTS.values().stream()
+                    .filter(guest -> guest.claimedPlayerUUID() != null
+                            && guest.claimedPlayerUUID().equalsIgnoreCase(actualUUID))
+                    .toList();
+
+            if (pendingUUIDMatches.size() + activeUUIDMatches.size() == 1) {
+                requestId = !pendingUUIDMatches.isEmpty()
+                        ? pendingUUIDMatches.getFirst().requestId()
+                        : activeUUIDMatches.getFirst().requestId();
+            } else if (pendingUUIDMatches.size() + activeUUIDMatches.size() > 1) {
+                return;
+            } else {
+                List<PendingGuest> pendingNameMatches = PENDING.values().stream()
+                        .filter(guest -> guest.playerName().equalsIgnoreCase(actualName))
+                        .toList();
+                List<ConnectedGuest> activeNameMatches = ACTIVE_GUESTS.values().stream()
+                        .filter(guest -> guest.playerName().equalsIgnoreCase(actualName))
+                        .toList();
+                if (pendingNameMatches.size() + activeNameMatches.size() != 1) return;
+
+                if (!pendingNameMatches.isEmpty()) {
+                    PendingGuest candidate = pendingNameMatches.getFirst();
+                    requestId = candidate.requestId();
+                    rejectedClaim = candidate.playerUUID() != null;
+                } else {
+                    ConnectedGuest candidate = activeNameMatches.getFirst();
+                    requestId = candidate.requestId();
+                    rejectedClaim = candidate.claimedPlayerUUID() != null;
+                }
+                if (rejectedClaim) {
+                    REJECTED_PROFILE_REQUESTS.add(requestId);
+                    PENDING.remove(requestId);
+                    AUTHENTICATED_PROFILES.remove(requestId);
+                    hostStatus = "A guest's Minecraft profile did not match the approved identity.";
+                }
+            }
+
+            if (!rejectedClaim && requestId != null) {
+                AUTHENTICATED_PROFILES.put(requestId, actualUUID);
+                ConnectedGuest active = ACTIVE_GUESTS.get(requestId);
+                if (active != null) {
+                    ACTIVE_GUESTS.put(requestId, new ConnectedGuest(
+                            active.requestId(), actualName, active.claimedPlayerUUID(),
+                            actualUUID, true));
+                }
+                Set<String> ids = VantaClientPreferences.get().remoteWorldWhitelists
+                        .computeIfAbsent(worldKey(server), ignored -> new HashSet<>());
+                saved = ids.add(actualUUID);
+                hostStatus = saved
+                        ? "Verified " + actualName + " and added their profile to this world's whitelist."
+                        : "Verified the Minecraft profile for " + actualName + ".";
+            }
+            bumpRevisionLocked();
+        }
+
+        if (rejectedClaim) {
+            handler.disconnect(Component.literal(
+                    "Vanta: the Minecraft profile does not match the identity approved by the world host."));
+            kickGuest(requestId);
+            return;
+        }
+        if (saved) VantaClientPreferences.save();
+    }
+
+    private static String worldKey(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().toString();
+    }
+
+    private static boolean isProfileUUID(String value) {
+        return value != null && value.matches(
+                "(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+    }
+
 
     /** Creates a short-lived room and authenticated host control socket. */
     public static void startHosting(String endpoint, MinecraftServer server, int serverPort) {
@@ -132,6 +271,8 @@ public final class VantaRemoteSessionManager {
             PENDING.clear();
             HOST_TUNNELS.clear();
             ACTIVE_GUESTS.clear();
+            AUTHENTICATED_PROFILES.clear();
+            REJECTED_PROFILE_REQUESTS.clear();
             bumpRevisionLocked();
         }
 
@@ -181,21 +322,21 @@ public final class VantaRemoteSessionManager {
     public static void approveGuest(String requestId) {
         final HostSession session;
         final long generation;
+        final PendingGuest approvedRequest;
         synchronized (LOCK) {
             session = hostSession;
             PendingGuest pending = PENDING.get(requestId);
             if (session == null || pending == null || pending.approving()) return;
-            PENDING.put(requestId, new PendingGuest(
-                    pending.requestId(), pending.playerName(), true));
+            approvedRequest = new PendingGuest(
+                    pending.requestId(), pending.playerName(), pending.playerUUID(),
+                    pending.previouslyWhitelisted(), true);
+            PENDING.put(requestId, approvedRequest);
             generation = hostGeneration;
             hostStatus = "Approving " + pending.playerName() + " and opening their stream…";
             bumpRevisionLocked();
         }
-        final String approvedPlayerName;
-        synchronized (LOCK) {
-            PendingGuest approved = PENDING.get(requestId);
-            approvedPlayerName = approved == null ? "Guest" : approved.playerName();
-        }
+        final String approvedPlayerName = approvedRequest.playerName();
+        final String approvedPlayerUUID = approvedRequest.playerUUID();
 
         final boolean relayOnly = VantaClientPreferences.get().remoteMaximumIpPrivacy;
         executeIo(() -> {
@@ -233,14 +374,23 @@ public final class VantaRemoteSessionManager {
                         tunnel.close();
                         return;
                     }
+                    if (REJECTED_PROFILE_REQUESTS.remove(requestId)) {
+                        tunnel.close();
+                        PENDING.remove(requestId);
+                        AUTHENTICATED_PROFILES.remove(requestId);
+                        return;
+                    }
                     HOST_TUNNELS.put(requestId, tunnel);
                     PENDING.remove(requestId);
                     if (tunnel.isClosed()) {
                         HOST_TUNNELS.remove(requestId);
                         ACTIVE_GUESTS.remove(requestId);
+                        AUTHENTICATED_PROFILES.remove(requestId);
                     } else {
-                        ACTIVE_GUESTS.put(requestId,
-                                new ConnectedGuest(requestId, approvedPlayerName));
+                        String authenticatedUUID = AUTHENTICATED_PROFILES.get(requestId);
+                        ACTIVE_GUESTS.put(requestId, new ConnectedGuest(
+                                requestId, approvedPlayerName, approvedPlayerUUID,
+                                authenticatedUUID, authenticatedUUID != null));
                     }
                     hostStatus = "Guest connected using " + transport + ".";
                     bumpRevisionLocked();
@@ -266,6 +416,9 @@ public final class VantaRemoteSessionManager {
             tunnel = HOST_TUNNELS.remove(requestId);
             if (tunnel == null) return;
             ACTIVE_GUESTS.remove(requestId);
+            AUTHENTICATED_PROFILES.remove(requestId);
+            REJECTED_PROFILE_REQUESTS.remove(requestId);
+            PENDING.remove(requestId);
             hostStatus = "Disconnected " + ACTIVE_GUESTS.size() + " remaining guest(s).";
             bumpRevisionLocked();
         }
@@ -309,6 +462,8 @@ public final class VantaRemoteSessionManager {
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
             ACTIVE_GUESTS.clear();
+            AUTHENTICATED_PROFILES.clear();
+            REJECTED_PROFILE_REQUESTS.clear();
             hostStatus = "Remote hosting stopped. Your local world remains open.";
             bumpRevisionLocked();
         }
@@ -319,7 +474,7 @@ public final class VantaRemoteSessionManager {
     }
 
     /** Requests host approval, then opens Minecraft against a local-only TCP endpoint. */
-    public static void join(String endpoint, String roomCode, String playerName, Screen parent) {
+    public static void join(String endpoint, String roomCode, Screen parent) {
         final String normalizedEndpoint;
         try {
             normalizedEndpoint = VantaRelayClient.normalizeBaseUrl(endpoint);
@@ -332,6 +487,10 @@ public final class VantaRemoteSessionManager {
             return;
         }
 
+        Minecraft minecraft = Minecraft.getInstance();
+        String playerName = minecraft.getUser().getName();
+        String playerUUID = minecraft.getUser().getProfileId() == null
+                ? null : minecraft.getUser().getProfileId().toString();
         final boolean relayOnly = VantaClientPreferences.get().remoteMaximumIpPrivacy;
         final long generation;
         synchronized (LOCK) {
@@ -354,7 +513,7 @@ public final class VantaRemoteSessionManager {
             AtomicReference<LoopbackTcpBridge.DuplexConnection> unclaimedData = new AtomicReference<>();
             try {
                 VantaRelayClient relay = new VantaRelayClient(normalizedEndpoint);
-                VantaRelayClient.JoinTicket ticket = relay.requestJoin(roomCode, playerName);
+                VantaRelayClient.JoinTicket ticket = relay.requestJoin(roomCode, playerName, playerUUID);
                 decision = relay.connectGuestControl(ticket);
                 synchronized (LOCK) {
                     if (generation != guestGeneration || !guestBusy) {
@@ -549,6 +708,9 @@ public final class VantaRemoteSessionManager {
             guestBusy = false;
             PENDING.clear();
             HOST_TUNNELS.clear();
+            ACTIVE_GUESTS.clear();
+            AUTHENTICATED_PROFILES.clear();
+            REJECTED_PROFILE_REQUESTS.clear();
             bumpRevisionLocked();
         }
         IO.execute(() -> {
@@ -565,8 +727,15 @@ public final class VantaRemoteSessionManager {
             if (generation != hostGeneration || hostSession == null) return;
             if ("join_request".equals(event.type())) {
                 if (event.requestId() == null || event.playerName() == null) return;
+                String claimedUUID = isProfileUUID(event.playerUUID())
+                        ? event.playerUUID().toLowerCase(Locale.ROOT) : null;
+                boolean previouslyWhitelisted = claimedUUID != null
+                        && hostedServer != null
+                        && VantaClientPreferences.get().remoteWorldWhitelists
+                                .getOrDefault(worldKey(hostedServer), Set.of()).contains(claimedUUID);
                 PENDING.put(event.requestId(), new PendingGuest(
-                        event.requestId(), event.playerName(), false));
+                        event.requestId(), event.playerName(), claimedUUID,
+                        previouslyWhitelisted, false));
                 hostStatus = "A player is requesting access to your world.";
             } else if ("request_error".equals(event.type())) {
                 hostStatus = "Relay request error: " + safeMessage(
@@ -590,6 +759,8 @@ public final class VantaRemoteSessionManager {
             tunnels = new ArrayList<>(HOST_TUNNELS.values());
             HOST_TUNNELS.clear();
             ACTIVE_GUESTS.clear();
+            AUTHENTICATED_PROFILES.clear();
+            REJECTED_PROFILE_REQUESTS.clear();
             hostStatus = "Relay control connection lost. Remote guests were disconnected; "
                     + "your local world remains open. "
                     + safeMessage(error, "connection closed");
@@ -606,6 +777,8 @@ public final class VantaRemoteSessionManager {
             if (generation != hostGeneration) return;
             if (HOST_TUNNELS.remove(requestId) != null) {
                 ACTIVE_GUESTS.remove(requestId);
+                AUTHENTICATED_PROFILES.remove(requestId);
+                REJECTED_PROFILE_REQUESTS.remove(requestId);
                 hostStatus = "A remote guest disconnected.";
                 bumpRevisionLocked();
             }
