@@ -309,6 +309,30 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 	if gotGuestCandidate.Type != "ice" || gotGuestCandidate.Candidate != guestCandidate.Candidate {
 		t.Fatalf("guest ICE changed: %#v", gotGuestCandidate)
 	}
+
+	peerConnected := httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+created.RoomCode+"/requests/"+joined.RequestID+"/peer-connected",
+		strings.NewReader("{}"))
+	peerConnected.Header.Set("Authorization", "Bearer "+created.HostToken)
+	peerResponse := httptest.NewRecorder()
+	service.Handler().ServeHTTP(peerResponse, peerConnected)
+	if peerResponse.Code != http.StatusOK {
+		t.Fatalf("host could not confirm the negotiated P2P peer: status=%d body=%s",
+			peerResponse.Code, peerResponse.Body.String())
+	}
+	current := service.getRoom(created.RoomCode)
+	current.mu.Lock()
+	activeRequest := current.requests[joined.RequestID]
+	current.mu.Unlock()
+	if activeRequest == nil {
+		t.Fatal("approved peer request disappeared before the P2P transport closed")
+	}
+	activeRequest.mu.Lock()
+	p2pActive := activeRequest.p2pStarted
+	activeRequest.mu.Unlock()
+	if !p2pActive {
+		t.Fatal("relay did not retain the established P2P guest in room accounting")
+	}
 }
 
 func TestSignallingRejectsUnauthenticatedAndUnapprovedPeers(t *testing.T) {
