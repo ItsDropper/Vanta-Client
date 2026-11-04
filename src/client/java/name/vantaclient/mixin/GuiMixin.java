@@ -1,11 +1,9 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.feature.SaturationFeature;
-import name.vantaclient.client.feature.PotionEffectsFeature;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.hud.VanillaHudLayout;
-import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.gui.VantaNotificationManager;
 
 import net.minecraft.client.DeltaTracker;
@@ -24,7 +22,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.List;
 
 @Mixin(Gui.class)
 public class GuiMixin {
@@ -87,32 +84,6 @@ public class GuiMixin {
         if (mc.options.hideGui || mc.screen != null) return;
         VantaNotificationManager.render(guiGraphics,
                 mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-    }
-
-    @Inject(
-            method = "render",
-            at = @At("TAIL")
-    )
-    private void renderPotionEffects(
-            GuiGraphics guiGraphics,
-            DeltaTracker deltaTracker,
-            CallbackInfo ci
-    ) {
-        if (!PotionEffectsFeature.INSTANCE.isEnabled()) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) {
-            return;
-        }
-
-        List<String> effectLines = InGameOverlayCache.getPotionEffectLines();
-        int y = 20;
-        for (String line : effectLines) {
-            guiGraphics.drawString(mc.font, line, 5, y, 0xFFFFFF);
-            y += 12;
-        }
     }
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"))
