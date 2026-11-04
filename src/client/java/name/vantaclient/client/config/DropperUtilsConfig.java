@@ -13,7 +13,7 @@ public class DropperUtilsConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("dropperutils.json").toFile();
 
-    public int configVersion = 18;
+    public int configVersion = 19;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -38,6 +38,9 @@ public class DropperUtilsConfig {
     public boolean chatTimestamps = false;
     public String chatTimestampFormat = "HH:mm";
     public boolean performanceOptimizer = false;
+    public boolean adaptiveEntityDistance = false;
+    /** Fraction of the user's configured entity draw distance retained under load. */
+    public float minimumEntityDistanceRatio = 0.65f;
     public boolean farViewEnabled = false;
     public boolean farViewAdaptive = false;
     public boolean vanillaHud = false;
@@ -151,6 +154,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 16) migrateV16();
                 if (INSTANCE.configVersion < 17) migrateV17();
                 if (INSTANCE.configVersion < 18) migrateV18();
+                if (INSTANCE.configVersion < 19) migrateV19();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -283,6 +287,14 @@ public class DropperUtilsConfig {
         save();
     }
 
+    private static void migrateV19() {
+        System.out.println("[DropperUtils] Migrating config v18 -> v19");
+        INSTANCE.adaptiveEntityDistance = false;
+        INSTANCE.minimumEntityDistanceRatio = 0.65f;
+        INSTANCE.configVersion = 19;
+        save();
+    }
+
     private static void fixBrokenHudPositions() {
         boolean changed = false;
         if (INSTANCE.armorHudX > 1) {
@@ -318,6 +330,13 @@ public class DropperUtilsConfig {
      */
     private static void sanitizeHudConfiguration() {
         boolean changed = false;
+        float minimumEntityRatio = Float.isFinite(INSTANCE.minimumEntityDistanceRatio)
+                ? Math.max(0.5f, Math.min(1.0f, INSTANCE.minimumEntityDistanceRatio))
+                : 0.65f;
+        if (Float.compare(minimumEntityRatio, INSTANCE.minimumEntityDistanceRatio) != 0) {
+            INSTANCE.minimumEntityDistanceRatio = minimumEntityRatio;
+            changed = true;
+        }
 
         changed |= sanitizePosition("fpsHudX", INSTANCE.fpsHudX, 0.02f);
         INSTANCE.fpsHudX = normalizedPosition(INSTANCE.fpsHudX, 0.02f);
