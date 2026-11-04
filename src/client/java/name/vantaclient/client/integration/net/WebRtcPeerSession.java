@@ -66,6 +66,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     private final RTCPeerConnection peer;
     private final VantaRelayClient.SignalConnection signalling;
     private final ExecutorService signallingWriter;
+    private final ExecutorService signallingReader;
     private final ArrayBlockingQueue<byte[]> inbound = new ArrayBlockingQueue<>(MAX_QUEUED_FRAMES);
     private final CountDownLatch channelOpen = new CountDownLatch(1);
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -183,6 +184,11 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
         this.signalling = signalling;
         this.signallingWriter = Executors.newSingleThreadExecutor(task -> {
             Thread thread = new Thread(task, "Vanta WebRTC signalling writer");
+            thread.setDaemon(true);
+            return thread;
+        });
+        this.signallingReader = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task, "Vanta WebRTC signalling reader");
             thread.setDaemon(true);
             return thread;
         });
@@ -380,6 +386,35 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
         if (channelOpen.getCount() != 0) {
             throw new IOException("WebRTC did not establish a data channel before the connection timed out.");
         }
+        startSignallingReader();
+    }
+
+    /**
+     * ICE gathering can continue after the SCTP DataChannel opens. Keep draining
+     * trickled candidates for the lifetime of the peer so the relay's bounded
+     * signalling queue cannot fill and ICE can react to candidate-pair changes.
+     */
+    private void startSignallingReader() {
+        signallingReader.execute(() -> {
+            while (!closed.get() && !signallingClosed.get()) {
+                try {
+                    VantaRelayClient.RelaySignal message =
+                            signalling.receive(Duration.ofSeconds(1));
+                    if ("ice".equals(message.type())) {
+                        applyRemoteCandidate(message);
+                    } else {
+                        fail(new IOException("The relay sent an unexpected post-negotiation signalling message."));
+                        return;
+                    }
+                } catch (IOException exception) {
+                    if (closed.get() || signallingClosed.get()) return;
+                    String message = exception.getMessage();
+                    if (message != null && message.contains("Timed out waiting")) continue;
+                    fail(exception);
+                    return;
+                }
+            }
+        });
     }
 
     private void publishLocalDescription(RTCSessionDescription description, boolean hostSide)
@@ -649,6 +684,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
             // The DataChannel owns the live byte stream after negotiation.
         }
         signallingWriter.shutdown();
+        signallingReader.shutdownNow();
     }
 
     public boolean isUsingTurnRelay() {
@@ -673,6 +709,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
         inbound.offer(EOF_FRAME);
         closeSignalling();
         signallingWriter.shutdownNow();
+        signallingReader.shutdownNow();
         closeChannel(channel);
         try {
             peer.close();
