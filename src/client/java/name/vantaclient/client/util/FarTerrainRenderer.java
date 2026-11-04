@@ -99,6 +99,7 @@ public final class FarTerrainRenderer {
     private static volatile int lastDrawnQuads;
     private static volatile int lastSubmittedMeshes;
     private static int adaptiveDrawBudget = 36_000;
+    private static int drawBudgetAdjustmentFrames;
     private static volatile long workerBackoffNanos;
     private static volatile int lastPrunedQueuedJobs;
     private static volatile long totalPrunedQueuedJobs;
@@ -627,14 +628,16 @@ public final class FarTerrainRenderer {
     }
 
     private static void updateDrawBudget(double renderMillis) {
-        if (!FarViewFeature.isAdaptiveEnabled()) return;
+        if (!FarViewFeature.isAdaptiveEnabled()) {
+            drawBudgetAdjustmentFrames = 0;
+            return;
+        }
         averageMeshSubmitMs = averageMeshSubmitMs == 0.0
                 ? renderMillis : averageMeshSubmitMs * 0.82 + renderMillis * 0.18;
-        if (averageMeshSubmitMs > 4.0) {
-            adaptiveDrawBudget = Math.max(12_000, (int) (adaptiveDrawBudget * 0.85));
-        } else if (averageMeshSubmitMs < 2.0) {
-            adaptiveDrawBudget = Math.min(MAX_DRAW_QUADS, adaptiveDrawBudget + 4_000);
-        }
+        if (++drawBudgetAdjustmentFrames < 10) return;
+        drawBudgetAdjustmentFrames = 0;
+        adaptiveDrawBudget = FarTerrainLodMath.adjustDrawBudget(
+                adaptiveDrawBudget, averageMeshSubmitMs, 12_000, MAX_DRAW_QUADS);
     }
 
     private static int emitSkirts(VertexConsumer consumer, PoseStack.Pose pose, TileMesh mesh,
@@ -740,6 +743,7 @@ public final class FarTerrainRenderer {
         lastWorkerError = "";
         averageMeshSubmitMs = 0.0;
         adaptiveDrawBudget = 36_000;
+        drawBudgetAdjustmentFrames = 0;
         DESIRED = Set.of();
         MESHES.clear();
         cachedMeshBytes = 0L;
