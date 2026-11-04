@@ -702,6 +702,33 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("FarView conservative horizontal view-cone culling failed boundary cases.");
             }
 
+            double[] viewConeRadii = {0.0, 16.0, 128.0, 512.0, 4096.0};
+            double baseViewAngle = Math.toRadians(68.0);
+            for (int direction = 0; direction < 16; direction++) {
+                double angle = direction * (Math.PI / 8.0);
+                double forwardX = Math.cos(angle);
+                double forwardZ = Math.sin(angle);
+                for (int dx = -32; dx <= 32; dx += 4) {
+                    for (int dz = -32; dz <= 32; dz += 4) {
+                        double distanceSquared = (double) dx * dx + (double) dz * dz;
+                        if (distanceSquared <= 1.0) continue;
+                        double distance = Math.sqrt(distanceSquared);
+                        double projection = (dx * forwardX + dz * forwardZ) / distance;
+                        for (double radius : viewConeRadii) {
+                            boolean referenceCull = projection
+                                    < Math.cos(baseViewAngle + Math.atan2(radius, distance));
+                            boolean actualCull = FarTerrainLodMath.isOutsideHorizontalViewCone(
+                                    dx, dz, forwardX, forwardZ, radius);
+                            if (actualCull && !referenceCull) {
+                                throw new AssertionError("FarView view-cone helper culled a tile retained by "
+                                        + "the original angular test: dx=" + dx + ", dz=" + dz
+                                        + ", radius=" + radius + ", direction=" + direction);
+                            }
+                        }
+                    }
+                }
+            }
+
             int[] expectedSampleCoordinates = {100, 103, 105, 108, 110};
             for (int index = 0; index < expectedSampleCoordinates.length; index++) {
                 int actual = FarTerrainLodMath.sampleWorldCoordinate(100, 10, index, 4);
