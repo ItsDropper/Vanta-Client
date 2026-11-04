@@ -24,7 +24,7 @@ public class Keybinds {
         captureActive = active;
     }
 
-    private static final KeyMapping.Category CATEGORY =
+    public static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(
                     Identifier.fromNamespaceAndPath(
                             "dropperutils",
