@@ -1,6 +1,6 @@
 # Vanta Remote World Sharing
 
-**Status:** relay-based remote hosting and joining are implemented in the client and relay service. A real Internet session still requires an operator to deploy a relay and two Minecraft clients to test against it. Direct WebRTC/P2P transport is not implemented.
+**Status:** relay-based remote hosting and joining are implemented in the client and relay service. The relay now has authenticated, bounded SDP/ICE signalling endpoints, but the client-side WebRTC peer transport is not yet connected to them. Gameplay bytes still travel through the configured WebSocket relay.
 
 ## Current connection model
 
@@ -55,7 +55,9 @@ See [relay/README.md](../../relay/README.md) for local and Docker deployment ins
 
 ## Direct P2P status
 
-Direct peer transport is a future optimization. The current data path always traverses the configured relay. A WebRTC DataChannel with ICE and an explicitly configured TURN fallback would require an additional native/Java transport implementation, packaging and cross-platform testing. Do not label a relayed session as direct P2P, and do not add a hard-coded third-party signalling or TURN endpoint.
+The relay exposes request-scoped host/guest signalling sockets for SDP offers/answers and trickled ICE candidates. The host is the only offerer; the guest is the only answerer. Both endpoints must be connected before either side receives `ready`. The server rejects unapproved requests, duplicate offers/answers, wrong-role messages, malformed JSON and oversized SDP/candidate payloads. Signalling sockets are single-use and are closed when either peer leaves or the host control connection disappears.
+
+The client has not yet wired a WebRTC peer connection and DataChannel to these endpoints. The current gameplay data path still traverses the configured WebSocket relay. Direct connectivity, configurable STUN/TURN, and automatic TURN/WebSocket fallback remain unfinished. Do not label a relayed session as direct P2P or add a hard-coded third-party signalling or TURN endpoint.
 
 ## Acceptance still required
 

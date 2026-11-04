@@ -208,3 +208,150 @@ func TestHostControlRejectsInvalidToken(t *testing.T) {
 		t.Fatalf("expected HTTP 401, got %#v", response)
 	}
 }
+
+
+func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
+	service := New(DefaultConfig())
+	defer service.Close()
+	httpServer := httptest.NewServer(service.Handler())
+	defer httpServer.Close()
+
+	createResponse, err := http.Post(httpServer.URL+"/v1/rooms", "application/json", strings.NewReader("{}"))
+	if err != nil { t.Fatal(err) }
+	defer createResponse.Body.Close()
+	if createResponse.StatusCode != http.StatusCreated { t.Fatalf("create room status: %d", createResponse.StatusCode) }
+	var created createRoomResponse
+	if err := json.NewDecoder(createResponse.Body).Decode(&created); err != nil { t.Fatal(err) }
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http")
+	hostControl, _, err := websocket.Dial(ctx, websocketURL+"/v1/host/control/"+created.RoomCode,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+created.HostToken}}})
+	if err != nil { t.Fatalf("host control connect: %v", err) }
+	defer hostControl.CloseNow()
+
+	joinResponse, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests",
+		"application/json", strings.NewReader(`{"playerName":"SignalGuest"}`))
+	if err != nil { t.Fatal(err) }
+	defer joinResponse.Body.Close()
+	if joinResponse.StatusCode != http.StatusCreated { t.Fatalf("join request status: %d", joinResponse.StatusCode) }
+	var joined createJoinResponse
+	if err := json.NewDecoder(joinResponse.Body).Decode(&joined); err != nil { t.Fatal(err) }
+
+	var requested joinEvent
+	if err := readJSON(ctx, hostControl, &requested); err != nil { t.Fatalf("host join event: %v", err) }
+	if requested.Type != "join_request" || requested.PlayerName != "SignalGuest" { t.Fatalf("unexpected join event: %#v", requested) }
+
+	guestControl, _, err := websocket.Dial(ctx,
+		websocketURL+"/v1/guest/control/"+created.RoomCode+"/"+joined.RequestID,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+joined.GuestToken}}})
+	if err != nil { t.Fatalf("guest control connect: %v", err) }
+	defer guestControl.CloseNow()
+	if err := writeJSONMessage(ctx, hostControl, controlMessage{Type: "approve", RequestID: joined.RequestID}); err != nil {
+		t.Fatalf("approve guest: %v", err)
+	}
+	var approved controlMessage
+	if err := readJSON(ctx, guestControl, &approved); err != nil { t.Fatalf("guest approval: %v", err) }
+	if approved.Type != "approved" { t.Fatalf("expected approval, got %#v", approved) }
+	var acknowledgement controlMessage
+	if err := readJSON(ctx, hostControl, &acknowledgement); err != nil { t.Fatalf("host acknowledgement: %v", err) }
+	if acknowledgement.Type != "request_updated" || acknowledgement.Reason != "approved" {
+		t.Fatalf("unexpected approval acknowledgement: %#v", acknowledgement)
+	}
+
+	hostSignal, _, err := websocket.Dial(ctx,
+		websocketURL+"/v1/host/signal/"+created.RoomCode+"/"+joined.RequestID,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+created.HostToken}}})
+	if err != nil { t.Fatalf("host signalling connect: %v", err) }
+	defer hostSignal.CloseNow()
+	guestSignal, _, err := websocket.Dial(ctx,
+		websocketURL+"/v1/guest/signal/"+created.RoomCode+"/"+joined.RequestID,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+joined.GuestToken}}})
+	if err != nil { t.Fatalf("guest signalling connect: %v", err) }
+	defer guestSignal.CloseNow()
+
+	var hostReady, guestReady signalMessage
+	if err := readJSON(ctx, hostSignal, &hostReady); err != nil { t.Fatalf("host ready event: %v", err) }
+	if err := readJSON(ctx, guestSignal, &guestReady); err != nil { t.Fatalf("guest ready event: %v", err) }
+	if hostReady.Type != "ready" || guestReady.Type != "ready" { t.Fatalf("peers not ready: host=%#v guest=%#v", hostReady, guestReady) }
+
+	offer := signalMessage{Type: "offer", SDP: "v=0\\r\\no=- 1 1 IN IP4 0.0.0.0\\r\\ns=-\\r\\nt=0 0\\r\\n"}
+	if err := writeJSONMessage(ctx, hostSignal, offer); err != nil { t.Fatalf("send offer: %v", err) }
+	var gotOffer signalMessage
+	if err := readJSON(ctx, guestSignal, &gotOffer); err != nil { t.Fatalf("receive offer: %v", err) }
+	if gotOffer.Type != offer.Type || gotOffer.SDP != offer.SDP { t.Fatalf("offer changed: %#v", gotOffer) }
+
+	answer := signalMessage{Type: "answer", SDP: "v=0\\r\\no=- 2 2 IN IP4 0.0.0.0\\r\\ns=-\\r\\nt=0 0\\r\\n"}
+	if err := writeJSONMessage(ctx, guestSignal, answer); err != nil { t.Fatalf("send answer: %v", err) }
+	var gotAnswer signalMessage
+	if err := readJSON(ctx, hostSignal, &gotAnswer); err != nil { t.Fatalf("receive answer: %v", err) }
+	if gotAnswer.Type != answer.Type || gotAnswer.SDP != answer.SDP { t.Fatalf("answer changed: %#v", gotAnswer) }
+
+	lineIndex := 0
+	hostCandidate := signalMessage{Type:"ice", Candidate:"candidate:1 1 UDP 2122260223 192.0.2.1 5000 typ host", SDPMid:"0", SDPMLineIndex:&lineIndex}
+	if err := writeJSONMessage(ctx, hostSignal, hostCandidate); err != nil { t.Fatalf("send host ICE: %v", err) }
+	var gotHostCandidate signalMessage
+	if err := readJSON(ctx, guestSignal, &gotHostCandidate); err != nil { t.Fatalf("receive host ICE: %v", err) }
+	if gotHostCandidate.Type != "ice" || gotHostCandidate.Candidate != hostCandidate.Candidate ||
+		gotHostCandidate.SDPMid != "0" || gotHostCandidate.SDPMLineIndex == nil || *gotHostCandidate.SDPMLineIndex != 0 {
+		t.Fatalf("host ICE changed: %#v", gotHostCandidate)
+	}
+
+	guestCandidate := signalMessage{Type:"ice", Candidate:"candidate:2 1 UDP 2122260222 192.0.2.2 5001 typ host", SDPMid:"0", SDPMLineIndex:&lineIndex}
+	if err := writeJSONMessage(ctx, guestSignal, guestCandidate); err != nil { t.Fatalf("send guest ICE: %v", err) }
+	var gotGuestCandidate signalMessage
+	if err := readJSON(ctx, hostSignal, &gotGuestCandidate); err != nil { t.Fatalf("receive guest ICE: %v", err) }
+	if gotGuestCandidate.Type != "ice" || gotGuestCandidate.Candidate != guestCandidate.Candidate {
+		t.Fatalf("guest ICE changed: %#v", gotGuestCandidate)
+	}
+}
+
+func TestSignallingRejectsUnauthenticatedAndUnapprovedPeers(t *testing.T) {
+	service := New(DefaultConfig())
+	defer service.Close()
+	httpServer := httptest.NewServer(service.Handler())
+	defer httpServer.Close()
+	createResponse, err := http.Post(httpServer.URL+"/v1/rooms", "application/json", strings.NewReader("{}"))
+	if err != nil { t.Fatal(err) }
+	defer createResponse.Body.Close()
+	var created createRoomResponse
+	if err := json.NewDecoder(createResponse.Body).Decode(&created); err != nil { t.Fatal(err) }
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http")
+	_, response, err := websocket.Dial(ctx, websocketURL+"/v1/host/signal/"+created.RoomCode+"/abcdefghijklmnop",
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer invalid-token"}}})
+	if err == nil { t.Fatal("host signalling accepted an invalid token") }
+	if response == nil || response.StatusCode != http.StatusUnauthorized { t.Fatalf("expected HTTP 401, got %#v", response) }
+
+	host, _, err := websocket.Dial(ctx, websocketURL+"/v1/host/control/"+created.RoomCode,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+created.HostToken}}})
+	if err != nil { t.Fatalf("host control connect: %v", err) }
+	defer host.CloseNow()
+	joinResponse, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests",
+		"application/json", strings.NewReader(`{"playerName":"PendingGuest"}`))
+	if err != nil { t.Fatal(err) }
+	defer joinResponse.Body.Close()
+	var joined createJoinResponse
+	if err := json.NewDecoder(joinResponse.Body).Decode(&joined); err != nil { t.Fatal(err) }
+
+	_, response, err = websocket.Dial(ctx,
+		websocketURL+"/v1/host/signal/"+created.RoomCode+"/"+joined.RequestID,
+		&websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer "+created.HostToken}}})
+	if err == nil { t.Fatal("host signalling accepted an unapproved request") }
+	if response == nil || response.StatusCode != http.StatusConflict { t.Fatalf("expected HTTP 409, got %#v", response) }
+}
+
+func TestSignallingRejectsRoleViolationsAndOversizedPayloads(t *testing.T) {
+	if validSignalMessage(signalMessage{Type:"offer", SDP:"v=0\\r\\n"}, false) { t.Fatal("guest must not originate offers") }
+	if validSignalMessage(signalMessage{Type:"answer", SDP:"v=0\\r\\n"}, true) { t.Fatal("host must not send answers") }
+	if validSignalMessage(signalMessage{Type:"offer", SDP:strings.Repeat("x", maxSignalSDPBytes+1)}, true) {
+		t.Fatal("oversized SDP must be rejected")
+	}
+	index := 0
+	if validSignalMessage(signalMessage{Type:"ice", Candidate:"not-a-candidate", SDPMid:"0", SDPMLineIndex:&index}, true) {
+		t.Fatal("malformed ICE candidate must be rejected")
+	}
+}

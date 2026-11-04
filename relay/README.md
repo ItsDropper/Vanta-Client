@@ -12,7 +12,7 @@ This service is an opt-in, self-hosted WebSocket relay for Vanta's remote world-
 - Expires rooms and requests, caps pending/active guests, and rate-limits room creation/join attempts by source address.
 - Does not inspect, modify, log or persist Minecraft payloads. The relay does see transport metadata and the source network addresses required by the underlying connection.
 
-The relay is a forwarding service, not a direct P2P path. A future WebRTC transport can use the same stream interface and fall back to this relay when direct connectivity fails.
+The relay is a forwarding service, not a direct P2P path. It now also exposes authenticated, request-scoped SDP/ICE signalling sockets for a future WebRTC peer transport. The current Vanta client still sends gameplay bytes through the WebSocket data relay; the signalling endpoints do not themselves create a peer connection.
 
 ## Run locally
 
@@ -43,6 +43,7 @@ Terminate TLS at a reverse proxy such as Caddy or nginx. Set the client relay UR
 - `GET /v1/host/control/{roomCode}` — authenticated host signalling socket.
 - `POST /v1/rooms/{roomCode}/requests` — guest asks to join; body: `{"playerName":"MinecraftName"}`.
 - `GET /v1/guest/control/{roomCode}/{requestId}` — authenticated guest approval result.
+- `GET /v1/host/signal/{roomCode}/{requestId}` and `GET /v1/guest/signal/{roomCode}/{requestId}` — authenticated, one-use peer-signalling sockets. The host sends one SDP offer and ICE candidates; the guest sends one SDP answer and ICE candidates. Both receive a `ready` event after both sockets are connected. Messages are schema-checked and size-bounded.
 - `GET /v1/host/data/{roomCode}/{requestId}` — host side of an approved stream.
 - `GET /v1/guest/data/{roomCode}/{requestId}` — guest side of an approved stream.
 

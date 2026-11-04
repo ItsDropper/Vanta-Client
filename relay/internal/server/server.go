@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -20,9 +21,13 @@ import (
 )
 
 const (
-	maxControlBytes  = 4 * 1024
-	maxDataFrameBytes = 16 * 1024
-	maxPlayerName    = 16
+	maxControlBytes         = 4 * 1024
+	maxDataFrameBytes       = 16 * 1024
+	maxSignalMessageBytes   = 64 * 1024
+	maxSignalSDPBytes       = 48 * 1024
+	maxSignalCandidateBytes = 4 * 1024
+	maxSignalMessages       = 512
+	maxPlayerName           = 16
 )
 
 type Config struct {
@@ -84,10 +89,17 @@ type joinRequest struct {
 	guestControl   *websocket.Conn
 	guestWriteMu   sync.Mutex
 	hostData       *websocket.Conn
-	guestData      *websocket.Conn
-	hostDataUsed   bool
-	guestDataUsed  bool
-	pairStarted    bool
+	guestData       *websocket.Conn
+	hostSignal      *websocket.Conn
+	guestSignal     *websocket.Conn
+	hostDataUsed    bool
+	guestDataUsed   bool
+	hostSignalUsed  bool
+	guestSignalUsed bool
+	offerSeen       bool
+	answerSeen      bool
+	signalWriteMu   sync.Mutex
+	pairStarted     bool
 }
 
 type createRoomResponse struct {
@@ -120,6 +132,14 @@ type joinEvent struct {
 	ExpiresAt  time.Time `json:"expiresAt,omitempty"`
 }
 
+type signalMessage struct {
+	Type          string `json:"type"`
+	SDP           string `json:"sdp,omitempty"`
+	Candidate     string `json:"candidate,omitempty"`
+	SDPMid        string `json:"sdpMid,omitempty"`
+	SDPMLineIndex *int   `json:"sdpMLineIndex,omitempty"`
+}
+
 func New(config Config) *Server {
 	defaults := DefaultConfig()
 	if config.RoomTTL <= 0 { config.RoomTTL = defaults.RoomTTL }
@@ -146,6 +166,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/rooms/{code}/requests", s.createJoinRequest)
 	mux.HandleFunc("GET /v1/host/control/{code}", s.hostControl)
 	mux.HandleFunc("GET /v1/guest/control/{code}/{requestID}", s.guestControl)
+	mux.HandleFunc("GET /v1/host/signal/{code}/{requestID}", s.hostSignal)
+	mux.HandleFunc("GET /v1/guest/signal/{code}/{requestID}", s.guestSignal)
 	mux.HandleFunc("GET /v1/host/data/{code}/{requestID}", s.hostData)
 	mux.HandleFunc("GET /v1/guest/data/{code}/{requestID}", s.guestData)
 	return securityHeaders(mux)
@@ -307,11 +329,15 @@ func (s *Server) hostControl(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		current.mu.Lock()
-		if current.hostControl == conn {
+		wasCurrent := current.hostControl == conn
+		if wasCurrent {
 			current.hostControl = nil
 		}
 		current.mu.Unlock()
 		_ = conn.Close(websocket.StatusNormalClosure, "host disconnected")
+		if wasCurrent {
+			closeRoomSignalling(current)
+		}
 	}()
 
 	for {
@@ -420,6 +446,233 @@ func (s *Server) guestControl(w http.ResponseWriter, r *http.Request) {
 	}
 	request.mu.Unlock()
 	_ = conn.Close(websocket.StatusNormalClosure, "guest control disconnected")
+}
+
+func (s *Server) hostSignal(w http.ResponseWriter, r *http.Request) {
+	current := s.getRoom(normalizeCode(r.PathValue("code")))
+	if current == nil || !validBearer(r, current.hostToken) {
+		writeError(w, http.StatusUnauthorized, "invalid_host_token")
+		return
+	}
+	s.attachSignal(w, r, current, r.PathValue("requestID"), true)
+}
+
+func (s *Server) guestSignal(w http.ResponseWriter, r *http.Request) {
+	current, request, ok := s.authorizeGuest(r)
+	if !ok || request.id != r.PathValue("requestID") {
+		writeError(w, http.StatusUnauthorized, "invalid_guest_token")
+		return
+	}
+	s.attachSignal(w, r, current, request.id, false)
+}
+
+// attachSignal provides bounded, authenticated SDP/ICE signalling for one
+// approved peer pair. The host is the sole offerer; the guest answers. Data
+// channel payloads never pass through this endpoint.
+func (s *Server) attachSignal(w http.ResponseWriter, r *http.Request, current *room,
+	requestID string, isHost bool) {
+	current.mu.Lock()
+	request := current.requests[requestID]
+	hostOnline := current.hostControl != nil
+	current.mu.Unlock()
+	if request == nil {
+		writeError(w, http.StatusNotFound, "request_not_found")
+		return
+	}
+	if !hostOnline {
+		writeError(w, http.StatusConflict, "host_not_connected")
+		return
+	}
+
+	request.mu.Lock()
+	available := request.state == "approved" && time.Now().Before(request.expiresAt) &&
+		!request.pairStarted &&
+		((isHost && !request.hostSignalUsed) || (!isHost && !request.guestSignalUsed))
+	request.mu.Unlock()
+	if !available {
+		writeError(w, http.StatusConflict, "signalling_not_available")
+		return
+	}
+
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+
+	request.mu.Lock()
+	if request.state != "approved" || time.Now().After(request.expiresAt) || request.pairStarted {
+		request.mu.Unlock()
+		_ = conn.Close(websocket.StatusPolicyViolation, "request is not available for P2P signalling")
+		return
+	}
+	var peer *websocket.Conn
+	if isHost {
+		if request.hostSignalUsed {
+			request.mu.Unlock()
+			_ = conn.Close(websocket.StatusPolicyViolation, "host signalling socket already used")
+			return
+		}
+		request.hostSignalUsed = true
+		request.hostSignal = conn
+		peer = request.guestSignal
+	} else {
+		if request.guestSignalUsed {
+			request.mu.Unlock()
+			_ = conn.Close(websocket.StatusPolicyViolation, "guest signalling socket already used")
+			return
+		}
+		request.guestSignalUsed = true
+		request.guestSignal = conn
+		peer = request.hostSignal
+	}
+	request.mu.Unlock()
+
+	if peer != nil {
+		ready := signalMessage{Type: "ready"}
+		if err := writeSignal(request, conn, ready); err != nil {
+			_ = conn.CloseNow()
+			_ = peer.CloseNow()
+			return
+		}
+		if err := writeSignal(request, peer, ready); err != nil {
+			_ = conn.CloseNow()
+			_ = peer.CloseNow()
+			return
+		}
+	}
+
+	defer func() {
+		request.mu.Lock()
+		var other *websocket.Conn
+		if isHost && request.hostSignal == conn {
+			request.hostSignal = nil
+			other = request.guestSignal
+			request.guestSignal = nil
+		} else if !isHost && request.guestSignal == conn {
+			request.guestSignal = nil
+			other = request.hostSignal
+			request.hostSignal = nil
+		}
+		request.mu.Unlock()
+		_ = conn.Close(websocket.StatusNormalClosure, "signalling closed")
+		if other != nil {
+			_ = other.CloseNow()
+		}
+	}()
+
+	for count := 0; count < maxSignalMessages; count++ {
+		message, err := readSignal(r.Context(), conn)
+		if err != nil {
+			return
+		}
+		if !validSignalMessage(message, isHost) {
+			_ = conn.Close(websocket.StatusPolicyViolation, "invalid signalling message")
+			return
+		}
+
+		request.mu.Lock()
+		var destination *websocket.Conn
+		if isHost {
+			destination = request.guestSignal
+			if message.Type == "offer" {
+				if request.offerSeen {
+					request.mu.Unlock()
+					_ = conn.Close(websocket.StatusPolicyViolation, "duplicate offer")
+					return
+				}
+				request.offerSeen = true
+			}
+			if message.Type == "ice" && !request.offerSeen {
+				request.mu.Unlock()
+				_ = conn.Close(websocket.StatusPolicyViolation, "ICE arrived before the host offer")
+				return
+			}
+		} else {
+			destination = request.hostSignal
+			if message.Type == "answer" {
+				if !request.offerSeen || request.answerSeen {
+					request.mu.Unlock()
+					_ = conn.Close(websocket.StatusPolicyViolation, "answer is missing an offer or is duplicated")
+					return
+				}
+				request.answerSeen = true
+			}
+			if message.Type == "ice" && !request.answerSeen {
+				request.mu.Unlock()
+				_ = conn.Close(websocket.StatusPolicyViolation, "ICE arrived before the guest answer")
+				return
+			}
+		}
+		request.mu.Unlock()
+
+		if destination == nil {
+			_ = conn.Close(websocket.StatusPolicyViolation, "peer signalling socket is not connected")
+			return
+		}
+		if err := writeSignal(request, destination, message); err != nil {
+			return
+		}
+	}
+	_ = conn.Close(websocket.StatusPolicyViolation, "too many signalling messages")
+}
+
+func readSignal(ctx context.Context, conn *websocket.Conn) (signalMessage, error) {
+	messageType, reader, err := conn.Reader(ctx)
+	if err != nil {
+		return signalMessage{}, err
+	}
+	if messageType != websocket.MessageText {
+		return signalMessage{}, errors.New("signalling messages must be text")
+	}
+	payload, err := io.ReadAll(io.LimitReader(reader, maxSignalMessageBytes+1))
+	if err != nil {
+		return signalMessage{}, err
+	}
+	if len(payload) > maxSignalMessageBytes {
+		return signalMessage{}, errors.New("signalling message too large")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	var message signalMessage
+	if err := decoder.Decode(&message); err != nil {
+		return signalMessage{}, err
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return signalMessage{}, errors.New("trailing signalling JSON")
+	}
+	if !validSignalMessage(message, false) && !validSignalMessage(message, true) {
+		return signalMessage{}, errors.New("invalid signalling message")
+	}
+	return message, nil
+}
+
+func validSignalMessage(message signalMessage, isHost bool) bool {
+	switch message.Type {
+	case "offer":
+		return isHost && len(message.SDP) > 0 && len(message.SDP) <= maxSignalSDPBytes &&
+			strings.Contains(message.SDP, "v=0") && message.Candidate == "" &&
+			message.SDPMid == "" && message.SDPMLineIndex == nil
+	case "answer":
+		return !isHost && len(message.SDP) > 0 && len(message.SDP) <= maxSignalSDPBytes &&
+			strings.Contains(message.SDP, "v=0") && message.Candidate == "" &&
+			message.SDPMid == "" && message.SDPMLineIndex == nil
+	case "ice":
+		return len(message.Candidate) > 0 && len(message.Candidate) <= maxSignalCandidateBytes &&
+			strings.HasPrefix(message.Candidate, "candidate:") &&
+			len(message.SDPMid) > 0 && len(message.SDPMid) <= 256 &&
+			message.SDPMLineIndex != nil && *message.SDPMLineIndex >= 0 &&
+			*message.SDPMLineIndex <= 255 && message.SDP == ""
+	default:
+		return false
+	}
+}
+
+func writeSignal(request *joinRequest, conn *websocket.Conn, value signalMessage) error {
+	request.signalWriteMu.Lock()
+	defer request.signalWriteMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return writeJSONMessage(ctx, conn, value)
 }
 
 func (s *Server) hostData(w http.ResponseWriter, r *http.Request) {
@@ -647,16 +900,31 @@ func pruneRequestsLocked(current *room) {
 func closeRequest(request *joinRequest) {
 	request.mu.Lock()
 	guestControl, hostData, guestData := request.guestControl, request.hostData, request.guestData
+	hostSignal, guestSignal := request.hostSignal, request.guestSignal
 	request.guestControl, request.hostData, request.guestData = nil, nil, nil
+	request.hostSignal, request.guestSignal = nil, nil
 	request.mu.Unlock()
-	if guestControl != nil {
-		_ = guestControl.CloseNow()
+	if guestControl != nil { _ = guestControl.CloseNow() }
+	if hostData != nil { _ = hostData.CloseNow() }
+	if guestData != nil { _ = guestData.CloseNow() }
+	if hostSignal != nil { _ = hostSignal.CloseNow() }
+	if guestSignal != nil { _ = guestSignal.CloseNow() }
+}
+
+func closeRoomSignalling(current *room) {
+	current.mu.Lock()
+	requests := make([]*joinRequest, 0, len(current.requests))
+	for _, request := range current.requests {
+		requests = append(requests, request)
 	}
-	if hostData != nil {
-		_ = hostData.CloseNow()
-	}
-	if guestData != nil {
-		_ = guestData.CloseNow()
+	current.mu.Unlock()
+	for _, request := range requests {
+		request.mu.Lock()
+		hostSignal, guestSignal := request.hostSignal, request.guestSignal
+		request.hostSignal, request.guestSignal = nil, nil
+		request.mu.Unlock()
+		if hostSignal != nil { _ = hostSignal.CloseNow() }
+		if guestSignal != nil { _ = guestSignal.CloseNow() }
 	}
 }
 
@@ -673,11 +941,15 @@ func closeRoom(current *room) {
 	for _, request := range requests {
 		request.mu.Lock()
 		guestControl, hostData, guestData := request.guestControl, request.hostData, request.guestData
+		hostSignal, guestSignal := request.hostSignal, request.guestSignal
 		request.guestControl, request.hostData, request.guestData = nil, nil, nil
+		request.hostSignal, request.guestSignal = nil, nil
 		request.mu.Unlock()
 		if guestControl != nil { _ = guestControl.CloseNow() }
 		if hostData != nil { _ = hostData.CloseNow() }
 		if guestData != nil { _ = guestData.CloseNow() }
+		if hostSignal != nil { _ = hostSignal.CloseNow() }
+		if guestSignal != nil { _ = guestSignal.CloseNow() }
 	}
 }
 
