@@ -49,7 +49,8 @@ Terminate TLS at a reverse proxy such as Caddy or nginx. Set the client relay UR
 
 ## Endpoints
 
-- `GET /healthz`
+- `GET /healthz` — process liveness; does not require ICE configuration.
+- `GET /readyz` — readiness for remote-world negotiation; returns HTTP 204 only when at least one valid STUN/TURN server is configured, otherwise HTTP 503. Monitor this separately from liveness.
 - `POST /v1/rooms` — create a room; returns `roomCode`, `hostToken`, `expiresAt`.
 - `GET /v1/host/control/{roomCode}` — authenticated host control socket.
 - `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — host-only, approved-request ICE configuration.
