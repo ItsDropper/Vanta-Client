@@ -314,7 +314,6 @@ func (s *Server) hostControl(w http.ResponseWriter, r *http.Request) {
 		_ = conn.Close(websocket.StatusNormalClosure, "host disconnected")
 	}()
 
-	conn.SetReadLimit(maxControlBytes)
 	for {
 		var command controlMessage
 		if err := readJSON(r.Context(), conn, &command); err != nil {
@@ -372,7 +371,7 @@ func (s *Server) setRequestState(current *room, host *websocket.Conn,
 }
 
 func (s *Server) guestControl(w http.ResponseWriter, r *http.Request) {
-	current, request, ok := s.authorizeGuest(r)
+	_, request, ok := s.authorizeGuest(r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "invalid_guest_token")
 		return
@@ -398,11 +397,13 @@ func (s *Server) guestControl(w http.ResponseWriter, r *http.Request) {
 		})
 		_ = conn.Close(websocket.StatusNormalClosure, "request already resolved")
 	} else {
-		conn.SetReadLimit(maxControlBytes)
-		for {
-			_, _, err := conn.Reader(r.Context())
-			if err != nil {
-				break
+		// Guest control is receive-only: approval/rejection is sent by the host.
+		// Drain one bounded message and close if a guest attempts to send commands.
+		_, reader, readErr := conn.Reader(r.Context())
+		if readErr == nil {
+			payload, drainErr := io.ReadAll(io.LimitReader(reader, maxControlBytes+1))
+			if drainErr == nil && len(payload) <= maxControlBytes {
+				_ = conn.Close(websocket.StatusPolicyViolation, "guest control is receive-only")
 			}
 		}
 	}
@@ -413,7 +414,6 @@ func (s *Server) guestControl(w http.ResponseWriter, r *http.Request) {
 	}
 	request.mu.Unlock()
 	_ = conn.Close(websocket.StatusNormalClosure, "guest control disconnected")
-	_ = current
 }
 
 func (s *Server) hostData(w http.ResponseWriter, r *http.Request) {
@@ -448,7 +448,6 @@ func (s *Server) attachData(w http.ResponseWriter, r *http.Request, current *roo
 	if err != nil {
 		return
 	}
-	conn.SetReadLimit(maxDataFrameBytes)
 
 	request.mu.Lock()
 	if request.state != "approved" || time.Now().After(request.expiresAt) {
