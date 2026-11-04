@@ -891,12 +891,19 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyPotionHudSnapshotPolicy(ClientGameTestContext context) {
         context.runOnClient(client -> {
+            Object world = new Object();
+            Object player = new Object();
             if (!PotionEffectsHudElement.shouldRefreshSnapshot(Long.MIN_VALUE, 100L)
                     || PotionEffectsHudElement.shouldRefreshSnapshot(100L, 100L)
                     || PotionEffectsHudElement.shouldRefreshSnapshot(100L, 104L)
                     || !PotionEffectsHudElement.shouldRefreshSnapshot(100L, 105L)
-                    || !PotionEffectsHudElement.shouldRefreshSnapshot(105L, 104L)) {
-                throw new AssertionError("Potion HUD snapshot refresh cadence mishandled initial, five-tick, or rewind boundaries.");
+                    || !PotionEffectsHudElement.shouldRefreshSnapshot(105L, 104L)
+                    || PotionEffectsHudElement.hasSnapshotContextChanged(world, world, player, player)
+                    || !PotionEffectsHudElement.hasSnapshotContextChanged(
+                    world, new Object(), player, player)
+                    || !PotionEffectsHudElement.hasSnapshotContextChanged(
+                    world, world, player, new Object())) {
+                throw new AssertionError("Potion HUD snapshot refresh policy mishandled cadence, rewinds, or world/player changes.");
             }
         });
     }
