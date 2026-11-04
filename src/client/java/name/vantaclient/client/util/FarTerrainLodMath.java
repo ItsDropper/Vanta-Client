@@ -2,6 +2,9 @@ package name.vantaclient.client.util;
 
 /** Pure planning math for the FarView quadtree. */
 public final class FarTerrainLodMath {
+    private static final double HORIZONTAL_VIEW_COS = Math.cos(Math.toRadians(68.0));
+    private static final double HORIZONTAL_VIEW_SIN = Math.sin(Math.toRadians(68.0));
+
     private FarTerrainLodMath() {}
 
     /**
@@ -83,6 +86,30 @@ public final class FarTerrainLodMath {
             return 8;
         }
         return 0;
+    }
+
+    /**
+     * Conservative horizontal view-cone rejection for a tile's bounding circle.
+     * This is algebraically equivalent to comparing atan2/cos angles, but avoids
+     * per-tile trigonometric calls in the render loop. A small tolerance biases
+     * borderline cases toward rendering rather than incorrectly culling them.
+     */
+    public static boolean isOutsideHorizontalViewCone(double dx, double dz,
+                                                        double forwardX, double forwardZ,
+                                                        double radius) {
+        double distanceSquared = dx * dx + dz * dz;
+        if (distanceSquared <= 1.0) return false;
+
+        double boundedRadius = Math.max(0.0, radius);
+        double distance = Math.sqrt(distanceSquared);
+        double radiusSquared = boundedRadius * boundedRadius;
+        double expandedDistance = Math.sqrt(distanceSquared + radiusSquared);
+        double forwardProjection = dx * forwardX + dz * forwardZ;
+        double left = forwardProjection * expandedDistance;
+        double right = distanceSquared * HORIZONTAL_VIEW_COS
+                - distance * boundedRadius * HORIZONTAL_VIEW_SIN;
+        double tolerance = Math.max(1.0, distanceSquared + radiusSquared) * 1.0e-10;
+        return left < right - tolerance;
     }
 
     /** Converts a mesh-grid sample index into the exact rounded world coordinate used for sampling. */
