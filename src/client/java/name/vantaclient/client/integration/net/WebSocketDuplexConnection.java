@@ -81,8 +81,12 @@ public final class WebSocketDuplexConnection implements LoopbackTcpBridge.Duplex
                         connection.fail(new IOException("Relay receive queue is full."));
                         webSocket.abort();
                     }
+                } else {
+                    // A fragmented WebSocket message must continue assembling, but a
+                    // completed message is not followed by another request until the
+                    // Minecraft-side reader consumes the current buffer.
+                    webSocket.request(1);
                 }
-                webSocket.request(1);
                 return CompletableFuture.completedFuture(null);
             }
 
@@ -109,8 +113,9 @@ public final class WebSocketDuplexConnection implements LoopbackTcpBridge.Duplex
                         connection.fail(new IOException("Relay sent an unknown stream control message."));
                         webSocket.abort();
                     }
+                } else {
+                    webSocket.request(1);
                 }
-                webSocket.request(1);
                 return CompletableFuture.completedFuture(null);
             }
 
@@ -246,6 +251,11 @@ public final class WebSocketDuplexConnection implements LoopbackTcpBridge.Duplex
             int count = Math.min(length, currentInput.length - currentInputOffset);
             System.arraycopy(currentInput, currentInputOffset, bytes, offset, count);
             currentInputOffset += count;
+            if (currentInputOffset >= currentInput.length) {
+                currentInput = null;
+                currentInputOffset = 0;
+                socket.request(1);
+            }
             return count;
         }
     }

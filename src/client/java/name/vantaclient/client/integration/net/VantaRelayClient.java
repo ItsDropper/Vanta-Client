@@ -394,7 +394,7 @@ public final class VantaRelayClient {
             if (last) {
                 try {
                     RelayEvent event = parseEvent(text.toString());
-                    if (event == null || event.type() == null) throw new IOException("Invalid relay response.");
+                    if (event == null || event.type() == null) throw new IllegalStateException("Invalid relay response.");
                     if ("approved".equals(event.type()) || "rejected".equals(event.type())) {
                         decision.complete(event);
                     } else {

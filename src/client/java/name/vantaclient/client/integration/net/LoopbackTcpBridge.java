@@ -92,7 +92,7 @@ public final class LoopbackTcpBridge implements AutoCloseable {
         boolean bound = false;
         try {
             listener.setReuseAddress(false);
-            listener.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0),
+            listener.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0),
                     maximumConnections);
             LoopbackTcpBridge bridge = new LoopbackTcpBridge(
                     listener, connector, maximumConnections);

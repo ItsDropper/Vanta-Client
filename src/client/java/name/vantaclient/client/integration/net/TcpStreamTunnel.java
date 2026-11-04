@@ -45,7 +45,7 @@ public final class TcpStreamTunnel implements AutoCloseable {
         boolean connected = false;
         try {
             socket.setTcpNoDelay(true);
-            socket.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort), 5_000);
+            socket.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), serverPort), 5_000);
             connected = true;
             return new TcpStreamTunnel(socket, remote);
         } finally {
