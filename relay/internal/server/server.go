@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
@@ -86,6 +87,7 @@ type room struct {
 type joinRequest struct {
 	id         string
 	playerName string
+	playerUUID string
 	guestToken string
 	expiresAt  time.Time
 	state      string
@@ -116,6 +118,7 @@ type createRoomResponse struct {
 
 type createJoinRequest struct {
 	PlayerName string `json:"playerName"`
+	PlayerUUID string `json:"playerUUID,omitempty"`
 }
 
 type createJoinResponse struct {
@@ -135,6 +138,7 @@ type joinEvent struct {
 	Type       string    `json:"type"`
 	RequestID  string    `json:"requestId"`
 	PlayerName string    `json:"playerName,omitempty"`
+	PlayerUUID string    `json:"playerUUID,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt,omitempty"`
 }
 
@@ -252,6 +256,10 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_player_name")
 		return
 	}
+	if input.PlayerUUID != "" && !validPlayerUUID(input.PlayerUUID) {
+		writeError(w, http.StatusBadRequest, "invalid_player_uuid")
+		return
+	}
 
 	current := s.getRoom(normalizeCode(r.PathValue("code")))
 	if current == nil {
@@ -270,7 +278,8 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request := &joinRequest{
-		id: requestID, playerName: input.PlayerName, guestToken: guestToken,
+		id: requestID, playerName: input.PlayerName,
+		playerUUID: strings.ToLower(input.PlayerUUID), guestToken: guestToken,
 		expiresAt: time.Now().Add(s.config.RequestTTL), state: "pending",
 	}
 
@@ -303,7 +312,7 @@ func (s *Server) createJoinRequest(w http.ResponseWriter, r *http.Request) {
 
 	event := joinEvent{
 		Type: "join_request", RequestID: requestID, PlayerName: input.PlayerName,
-		ExpiresAt: request.expiresAt,
+		PlayerUUID: request.playerUUID, ExpiresAt: request.expiresAt,
 	}
 	if err := writeRoomJSON(current, host, event); err != nil {
 		current.mu.Lock()
@@ -1069,6 +1078,16 @@ func validPlayerName(value string) bool {
 		}
 	}
 	return true
+}
+
+func validPlayerUUID(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' ||
+		value[18] != '-' || value[23] != '-' {
+		return false
+	}
+	compact := strings.ReplaceAll(value, "-", "")
+	decoded, err := hex.DecodeString(compact)
+	return err == nil && len(decoded) == 16
 }
 
 func sanitizeReason(value string) string {

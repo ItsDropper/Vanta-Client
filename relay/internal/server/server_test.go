@@ -236,7 +236,7 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 	defer hostControl.CloseNow()
 
 	joinResponse, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests",
-		"application/json", strings.NewReader(`{"playerName":"SignalGuest"}`))
+		"application/json", strings.NewReader(`{"playerName":"SignalGuest","playerUUID":"f47ac10b-58cc-4372-a567-0e02b2c3d479"}`))
 	if err != nil { t.Fatal(err) }
 	defer joinResponse.Body.Close()
 	if joinResponse.StatusCode != http.StatusCreated { t.Fatalf("join request status: %d", joinResponse.StatusCode) }
@@ -245,7 +245,10 @@ func TestApprovedGuestSignallingRelaysOfferAnswerAndICE(t *testing.T) {
 
 	var requested joinEvent
 	if err := readJSON(ctx, hostControl, &requested); err != nil { t.Fatalf("host join event: %v", err) }
-	if requested.Type != "join_request" || requested.PlayerName != "SignalGuest" { t.Fatalf("unexpected join event: %#v", requested) }
+	if requested.Type != "join_request" || requested.PlayerName != "SignalGuest" ||
+		requested.PlayerUUID != "f47ac10b-58cc-4372-a567-0e02b2c3d479" {
+		t.Fatalf("unexpected join event or profile claim: %#v", requested)
+	}
 
 	guestControl, _, err := websocket.Dial(ctx,
 		websocketURL+"/v1/guest/control/"+created.RoomCode+"/"+joined.RequestID,
@@ -561,5 +564,27 @@ func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.
 	service.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusConflict {
 		t.Fatalf("duplicate peer activation must be rejected, got %d", response.Code)
+	}
+}
+
+
+func TestJoinRejectsMalformedPlayerUUIDClaims(t *testing.T) {
+	service := New(DefaultConfig())
+	defer service.Close()
+	httpServer := httptest.NewServer(service.Handler())
+	defer httpServer.Close()
+
+	createResponse, err := http.Post(httpServer.URL+"/v1/rooms", "application/json", strings.NewReader("{}"))
+	if err != nil { t.Fatal(err) }
+	defer createResponse.Body.Close()
+	var created createRoomResponse
+	if err := json.NewDecoder(createResponse.Body).Decode(&created); err != nil { t.Fatal(err) }
+
+	body := strings.NewReader(`{"playerName":"VantaGuest","playerUUID":"not-a-uuid"}`)
+	response, err := http.Post(httpServer.URL+"/v1/rooms/"+created.RoomCode+"/requests", "application/json", body)
+	if err != nil { t.Fatal(err) }
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("malformed profile UUID should be rejected, got %d", response.StatusCode)
 	}
 }
