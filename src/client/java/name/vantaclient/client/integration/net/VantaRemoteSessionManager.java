@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -62,6 +63,8 @@ public final class VantaRemoteSessionManager {
     });
     private static final Map<String, PendingGuest> PENDING = new LinkedHashMap<>();
     private static final Map<String, TcpStreamTunnel> HOST_TUNNELS = new LinkedHashMap<>();
+    /** Maps the integrated server's remote source port to the exact approved relay request. */
+    private static final Map<Integer, String> HOST_TUNNEL_PORTS = new LinkedHashMap<>();
     private static final Map<String, ConnectedGuest> ACTIVE_GUESTS = new LinkedHashMap<>();
     /** Server-observed profiles received while an approved TCP tunnel is still being registered. */
     private static final Map<String, String> AUTHENTICATED_PROFILES = new LinkedHashMap<>();
@@ -159,12 +162,12 @@ public final class VantaRemoteSessionManager {
     public static void onHostPlayerJoined(ServerGamePacketListenerImpl handler, MinecraftServer server) {
         if (handler == null || handler.player == null || server == null || !server.isSingleplayer()) return;
 
-        // The integrated server is also published to the LAN. Only correlate
-        // connections created by this remote-session manager's fixed 127.0.0.1
-        // tunnel; an unrelated LAN join must never satisfy a pending relay request.
+        // The exact source port is registered before TcpStreamTunnel starts forwarding
+        // bytes. This is stronger than matching a guest-supplied name or UUID claim.
         if (!(handler.getRemoteAddress() instanceof java.net.InetSocketAddress remoteAddress)
                 || remoteAddress.getAddress() == null
                 || !remoteAddress.getAddress().isLoopbackAddress()) return;
+
         String actualUUID = handler.player.getUUID().toString().toLowerCase(Locale.ROOT);
         String actualName = handler.player.getGameProfile().name();
         var chatSession = handler.player.getChatSession();
@@ -174,56 +177,35 @@ public final class VantaRemoteSessionManager {
         var localProfileUUID = Minecraft.getInstance().getUser().getProfileId();
         if (localProfileUUID != null && localProfileUUID.toString().equalsIgnoreCase(actualUUID)) return;
 
-        String requestId = null;
-        boolean rejectedClaim = false;
+        String requestId;
+        boolean rejectGuest = false;
         boolean saved = false;
         synchronized (LOCK) {
             if (hostedServer != server || hostSession == null) return;
+            requestId = HOST_TUNNEL_PORTS.get(remoteAddress.getPort());
+            if (requestId == null) return;
 
-            List<PendingGuest> pendingUUIDMatches = PENDING.values().stream()
-                    .filter(guest -> guest.playerUUID() != null
-                            && guest.playerUUID().equalsIgnoreCase(actualUUID))
-                    .toList();
-            List<ConnectedGuest> activeUUIDMatches = ACTIVE_GUESTS.values().stream()
-                    .filter(guest -> guest.claimedPlayerUUID() != null
-                            && guest.claimedPlayerUUID().equalsIgnoreCase(actualUUID))
-                    .toList();
+            PendingGuest pending = PENDING.get(requestId);
+            ConnectedGuest active = ACTIVE_GUESTS.get(requestId);
+            String approvedName = pending != null ? pending.playerName()
+                    : active != null ? active.playerName() : null;
+            String claimedUUID = pending != null ? pending.playerUUID()
+                    : active != null ? active.claimedPlayerUUID() : null;
+            if (approvedName == null) return;
 
-            if (pendingUUIDMatches.size() + activeUUIDMatches.size() == 1) {
-                requestId = !pendingUUIDMatches.isEmpty()
-                        ? pendingUUIDMatches.getFirst().requestId()
-                        : activeUUIDMatches.getFirst().requestId();
-            } else if (pendingUUIDMatches.size() + activeUUIDMatches.size() > 1) {
-                return;
-            } else {
-                List<PendingGuest> pendingNameMatches = PENDING.values().stream()
-                        .filter(guest -> guest.playerName().equalsIgnoreCase(actualName))
-                        .toList();
-                List<ConnectedGuest> activeNameMatches = ACTIVE_GUESTS.values().stream()
-                        .filter(guest -> guest.playerName().equalsIgnoreCase(actualName))
-                        .toList();
-                if (pendingNameMatches.size() + activeNameMatches.size() != 1) return;
-
-                if (!pendingNameMatches.isEmpty()) {
-                    PendingGuest candidate = pendingNameMatches.getFirst();
-                    requestId = candidate.requestId();
-                    rejectedClaim = candidate.playerUUID() != null;
-                } else {
-                    ConnectedGuest candidate = activeNameMatches.getFirst();
-                    requestId = candidate.requestId();
-                    rejectedClaim = candidate.claimedPlayerUUID() != null;
-                }
-                if (rejectedClaim) {
-                    REJECTED_PROFILE_REQUESTS.add(requestId);
-                    PENDING.remove(requestId);
-                    AUTHENTICATED_PROFILES.remove(requestId);
-                    hostStatus = "A guest's Minecraft profile did not match the approved identity.";
-                }
-            }
-
-            if (!rejectedClaim && requestId != null && verifiedMinecraftSession) {
+            // The invite approval belongs to one Minecraft identity label. Reject
+            // a different name on that exact transport, but do not treat an offline
+            // UUID as proof of a different account: integrated-server UUIDs are
+            // normally derived from the name when online authentication is disabled.
+            if (!approvedName.equalsIgnoreCase(actualName)) {
+                REJECTED_PROFILE_REQUESTS.add(requestId);
+                PENDING.remove(requestId);
+                AUTHENTICATED_PROFILES.remove(requestId);
+                hostStatus = "The Minecraft player name did not match the approved invite.";
+                rejectGuest = true;
+            } else if (verifiedMinecraftSession && claimedUUID != null
+                    && claimedUUID.equalsIgnoreCase(actualUUID)) {
                 AUTHENTICATED_PROFILES.put(requestId, actualUUID);
-                ConnectedGuest active = ACTIVE_GUESTS.get(requestId);
                 if (active != null) {
                     ACTIVE_GUESTS.put(requestId, new ConnectedGuest(
                             active.requestId(), actualName, active.claimedPlayerUUID(),
@@ -236,17 +218,18 @@ public final class VantaRemoteSessionManager {
                         ? "Verified the Mojang account key for " + actualName
                                 + " and saved this profile for the world."
                         : "Verified the Mojang account key for " + actualName + ".";
-            } else if (!rejectedClaim && requestId != null) {
+            } else {
+                // Do not persist an offline-mode UUID or an unverified client claim.
                 hostStatus = actualName
-                        + " is connected, but Minecraft has not supplied a valid account key; "
-                        + "this profile will not be saved.";
+                        + " connected through the approved invite. Minecraft has not "
+                        + "proved that the offline server profile belongs to the claimed account.";
             }
             bumpRevisionLocked();
         }
 
-        if (rejectedClaim) {
+        if (rejectGuest) {
             handler.disconnect(Component.literal(
-                    "Vanta: the Minecraft profile does not match the identity approved by the world host."));
+                    "Vanta: the Minecraft player name does not match the identity approved by the world host."));
             kickGuest(requestId);
             return;
         }
@@ -291,6 +274,7 @@ public final class VantaRemoteSessionManager {
             hostStatus = "Creating a private invite room…";
             PENDING.clear();
             HOST_TUNNELS.clear();
+            HOST_TUNNEL_PORTS.clear();
             ACTIVE_GUESTS.clear();
             AUTHENTICATED_PROFILES.clear();
             REJECTED_PROFILE_REQUESTS.clear();
@@ -394,9 +378,14 @@ public final class VantaRemoteSessionManager {
                     remote = session.relay.connectHostData(session.room, requestId);
                     transport = "secure WebSocket fallback";
                 }
+                AtomicInteger tunnelLocalPort = new AtomicInteger();
                 tunnel = TcpStreamTunnel.connectToLoopbackServer(
                         session.serverPort, remote,
-                        () -> onHostTunnelClosed(generation, requestId));
+                        localPort -> {
+                            tunnelLocalPort.set(localPort);
+                            return registerHostTunnelPort(generation, session, requestId, localPort);
+                        },
+                        () -> onHostTunnelClosed(generation, requestId, tunnelLocalPort.get()));
 
                 synchronized (LOCK) {
                     if (generation != hostGeneration || hostSession != session) {
@@ -800,9 +789,19 @@ public final class VantaRemoteSessionManager {
         });
     }
 
-    private static void onHostTunnelClosed(long generation, String requestId) {
+    private static boolean registerHostTunnelPort(
+            long generation, HostSession session, String requestId, int localPort) {
+        synchronized (LOCK) {
+            if (generation != hostGeneration || hostSession != session || shuttingDown
+                    || localPort < 1 || localPort > 65_535) return false;
+            return HOST_TUNNEL_PORTS.putIfAbsent(localPort, requestId) == null;
+        }
+    }
+
+    private static void onHostTunnelClosed(long generation, String requestId, int localPort) {
         synchronized (LOCK) {
             if (generation != hostGeneration) return;
+            HOST_TUNNEL_PORTS.remove(localPort, requestId);
             if (HOST_TUNNELS.remove(requestId) != null) {
                 ACTIVE_GUESTS.remove(requestId);
                 AUTHENTICATED_PROFILES.remove(requestId);
