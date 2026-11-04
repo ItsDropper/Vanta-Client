@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -134,6 +135,10 @@ func validateICEURLs(values []string, schemes ...string) ([]string, error) {
 		authority, err := url.Parse("//" + value[colon+1:])
 		if err != nil || authority.Host == "" || authority.User != nil || authority.Fragment != "" {
 			return nil, fmt.Errorf("invalid ICE URL")
+		}
+		port, err := strconv.Atoi(authority.Port())
+		if authority.Hostname() == "" || err != nil || port < 1 || port > 65535 {
+			return nil, fmt.Errorf("ICE URL must include a valid host and port")
 		}
 		result = append(result, value)
 	}

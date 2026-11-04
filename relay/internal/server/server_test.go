@@ -461,7 +461,6 @@ func TestP2PRequestRemainsCountedUntilSignallingDisconnects(t *testing.T) {
 
 func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.T) {
 	service := New(DefaultConfig())
-	defer service.Close()
 	current := &room{
 		code: "ABCDEFGHIJKLMNOPQRSTUVWX",
 		hostToken: "host-token-with-enough-length-to-pass-bearer-check",
@@ -480,6 +479,17 @@ func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.
 	service.mu.Lock()
 	service.rooms[current.code] = current
 	service.mu.Unlock()
+	item := current.requests["request-123456"]
+	defer func() {
+		// These are non-nil sentinels used only to exercise the approval gate.
+		// Clear them before Server.Close so the websocket package never closes
+		// an uninitialized zero-value connection.
+		item.mu.Lock()
+		item.hostSignal = nil
+		item.guestSignal = nil
+		item.mu.Unlock()
+		service.Close()
+	}()
 
 	request := httptest.NewRequest(http.MethodPost,
 		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
@@ -490,7 +500,15 @@ func TestPeerConnectedRequiresHostCredentialsAndCompletedNegotiation(t *testing.
 		t.Fatalf("peer confirmation without both live signalling sockets must fail, got %d", response.Code)
 	}
 
-	item := current.requests["request-123456"]
+	request = httptest.NewRequest(http.MethodPost,
+		"/v1/rooms/"+current.code+"/requests/request-123456/peer-connected", strings.NewReader("{}"))
+	request.Header.Set("Authorization", "Bearer incorrect-host-token")
+	response = httptest.NewRecorder()
+	service.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("peer confirmation accepted an invalid host token, got %d", response.Code)
+	}
+
 	item.mu.Lock()
 	item.hostSignal = &websocket.Conn{}
 	item.guestSignal = &websocket.Conn{}
