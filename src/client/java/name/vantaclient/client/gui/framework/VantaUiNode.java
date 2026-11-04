@@ -578,7 +578,7 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
+        if (background != 0) VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
@@ -638,27 +638,27 @@ public final class VantaUiNode {
                     int trackWidth = Math.max(0, width);
                     int segmentWidth = Math.min(trackWidth,
                             Math.max(8, Math.round(trackWidth * 0.28f)));
-                    VantaUiTheme.fillRounded(graphics, x, trackY, trackWidth, 4, 2,
+                    VantaUiTheme.fillSquircle(graphics, x, trackY, trackWidth, 4, 2,
                             VantaUiTheme.withAlpha(VantaUiTheme.TRACK, 180));
                     float phase = progressPhase <= 1.0f ? progressPhase : 2.0f - progressPhase;
                     int segmentTravel = Math.max(0, trackWidth - segmentWidth);
                     int segmentX = x + Math.round(segmentTravel * phase);
-                    VantaUiTheme.fillRounded(graphics, segmentX, trackY, segmentWidth, 4, 2, accent);
+                    VantaUiTheme.fillSquircle(graphics, segmentX, trackY, segmentWidth, 4, 2, accent);
                 }
             }
             case BUTTON -> {
                 if (selected) {
-                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
                             VantaUiTheme.withAlpha(accent, 46));
                 } else if (over) {
-                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
                             VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
                                     Math.round(110.0f + 45.0f * hoverAmount)));
                 } else if (focused) {
-                    VantaUiTheme.fillRounded(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
                             VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER, 76));
                 }
-                VantaUiTheme.outlineRounded(graphics, x, y, width, height,
+                VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
                         VantaUiTheme.RADIUS_LARGE,
                         !enabled ? 0x55798593
                                 : over ? VantaUiTheme.BUTTON_OUTLINE_HOVER
@@ -689,10 +689,10 @@ public final class VantaUiNode {
                         : value ? accent : VantaUiTheme.TRACK;
                 int trackX = x + width - 42;
                 int trackY = y + (height - 18) / 2;
-                VantaUiTheme.fillRounded(graphics, trackX, trackY, 38, 18, 9, trackColor);
+                VantaUiTheme.fillSquircle(graphics, trackX, trackY, 38, 18, 9, trackColor);
                 int knobX = trackX + 3 + Math.round(19.0f * animatedToggle);
-                VantaUiTheme.fillRounded(graphics, knobX, trackY + 3, 13, 12, 6, VantaUiTheme.WHITE);
-                if (focused) VantaUiTheme.fillRounded(graphics, trackX, y + height - 2, 38, 2, 1,
+                VantaUiTheme.fillSquircle(graphics, knobX, trackY + 3, 13, 12, 6, VantaUiTheme.WHITE);
+                if (focused) VantaUiTheme.fillSquircle(graphics, trackX, y + height - 2, 38, 2, 1,
                         VantaUiTheme.withAlpha(accent, 180));
             }
             case SLIDER -> {
@@ -714,10 +714,10 @@ public final class VantaUiNode {
                 graphics.drawString(font, styledText(valueText, UI_FONT), x + width - valueWidth, y + 2, valueColor);
                 int trackY = y + 28;
                 int knobX = x + (int) Math.round((width - 8) * normalized);
-                VantaUiTheme.fillRounded(graphics, x, trackY, width, 4, 2, VantaUiTheme.TRACK);
-                VantaUiTheme.fillRounded(graphics, x, trackY, Math.max(4, knobX + 4 - x), 4, 2,
+                VantaUiTheme.fillSquircle(graphics, x, trackY, width, 4, 2, VantaUiTheme.TRACK);
+                VantaUiTheme.fillSquircle(graphics, x, trackY, Math.max(4, knobX + 4 - x), 4, 2,
                         enabled ? accent : VantaUiTheme.TEXT_MUTED);
-                VantaUiTheme.fillRounded(graphics, knobX - 2, trackY - 4, 12, 12, 6,
+                VantaUiTheme.fillSquircle(graphics, knobX - 2, trackY - 4, 12, 12, 6,
                         !enabled ? VantaUiTheme.TEXT_MUTED
                                 : focused || over ? VantaUiTheme.WHITE : 0xFFD5DFEC);
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
@@ -730,7 +730,7 @@ public final class VantaUiNode {
                 graphics.drawString(font, styledText(dropdownLabel, UI_FONT), x,
                         y + (controlHeight - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
                         enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
-                VantaUiTheme.fillRounded(graphics, boxX, y + 2, x + width - boxX, controlHeight - 4,
+                VantaUiTheme.fillSquircle(graphics, boxX, y + 2, x + width - boxX, controlHeight - 4,
                         VantaUiTheme.RADIUS_SMALL,
                         enabled ? mixColor(VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER, hoverAmount)
                                 : VantaUiTheme.INPUT_SURFACE);
@@ -749,9 +749,9 @@ public final class VantaUiNode {
             }
             case TEXT_FIELD -> {
                 int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
-                VantaUiTheme.fillRounded(graphics, x, y, width, height,
+                VantaUiTheme.fillSquircle(graphics, x, y, width, height,
                         VantaUiTheme.RADIUS_MEDIUM, fieldBackground);
-                if (focused) VantaUiTheme.fillRounded(graphics, x + 7, y + height - 2,
+                if (focused) VantaUiTheme.fillSquircle(graphics, x + 7, y + height - 2,
                         Math.max(0, width - 14), 2, 1, accent);
 
                 String value = currentInput();
@@ -937,9 +937,9 @@ public final class VantaUiNode {
             DropdownPopupBounds bounds = dropdownPopupBounds(viewportWidth, viewportHeight);
             if (bounds == null) return false;
             int accent = theme.accent();
-            VantaUiTheme.fillRounded(graphics, bounds.x() + 2, bounds.y() + 3,
+            VantaUiTheme.fillSquircle(graphics, bounds.x() + 2, bounds.y() + 3,
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM, 0x55000000);
-            VantaUiTheme.fillRounded(graphics, bounds.x(), bounds.y(),
+            VantaUiTheme.fillSquircle(graphics, bounds.x(), bounds.y(),
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
                     VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
             VantaUiTheme.outlineRounded(graphics, bounds.x(), bounds.y(),
@@ -954,7 +954,7 @@ public final class VantaUiNode {
                         && mouseY >= optionY && mouseY < optionY + 22;
                 boolean highlighted = hoveredOption || optionIndex == dropdownHighlight;
                 if (highlighted) {
-                    VantaUiTheme.fillRounded(graphics,
+                    VantaUiTheme.fillSquircle(graphics,
                             bounds.x() + 2, optionY + 1, bounds.width() - 4, 20,
                             VantaUiTheme.RADIUS_SMALL, VantaUiTheme.withAlpha(accent, 58));
                 }
