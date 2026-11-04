@@ -694,6 +694,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("FarView worker backoff did not follow the measured client load tiers.");
             }
 
+            int[] expectedSampleCoordinates = {100, 103, 105, 108, 110};
+            for (int index = 0; index < expectedSampleCoordinates.length; index++) {
+                int actual = FarTerrainLodMath.sampleWorldCoordinate(100, 10, index, 4);
+                if (actual != expectedSampleCoordinates[index]) {
+                    throw new AssertionError("FarView sample coordinate mismatch at index "
+                            + index + ": expected " + expectedSampleCoordinates[index] + ", got " + actual);
+                }
+            }
+            if (FarTerrainLodMath.sampleWorldCoordinate(-100, 10, 4, 4) != -90) {
+                throw new AssertionError("FarView sample coordinates did not preserve negative world origins.");
+            }
+
             if (FarTerrainLodMath.adjustDrawBudget(36_000, 1.9, 12_000, 96_000) != 38_000
                     || FarTerrainLodMath.adjustDrawBudget(36_000, 2.0, 12_000, 96_000) != 36_000
                     || FarTerrainLodMath.adjustDrawBudget(36_000, 4.0, 12_000, 96_000) != 36_000
