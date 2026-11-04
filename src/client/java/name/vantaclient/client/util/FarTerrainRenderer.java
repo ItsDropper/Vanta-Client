@@ -49,7 +49,6 @@ public final class FarTerrainRenderer {
     private static final int MAX_FAR_DISTANCE = 2048;
     private static final int ROOT_TILE_SIZE_CHUNKS = 2048;
     private static final int MIN_TILE_SIZE_CHUNKS = 2;
-    private static final int DESIRED_REFRESH_TICKS = 20;
     private static final int ADAPTIVE_REFRESH_TICKS = 40;
     private static final int MAX_TILES_TO_SCHEDULE_PER_TICK = 6;
     private static final int MAX_QUEUED_TILE_JOBS = 96;
@@ -82,7 +81,6 @@ public final class FarTerrainRenderer {
 
     private static ServerLevel activeLevel;
     private static volatile long revision;
-    private static int ticksUntilRefresh;
     private static int ticksUntilAdaptiveUpdate;
     private static int effectiveFarDistance = 512;
     private static int lastSampleSpacing = -1;
@@ -92,6 +90,13 @@ public final class FarTerrainRenderer {
     private static int lastPlayerChunkZ = Integer.MIN_VALUE;
     private static volatile String lastWorkerError = "";
     private static double averageMeshSubmitMs;
+    private static volatile double lastTilePlanMs;
+    private static volatile double averageTileGenerationMs;
+    private static volatile double lastTileGenerationMs;
+    private static volatile long tilePlanBuildCount;
+    private static volatile long tileGenerationSamples;
+    private static volatile int lastDrawnQuads;
+    private static volatile int lastSubmittedMeshes;
     private static int adaptiveDrawBudget = 36_000;
 
     private FarTerrainRenderer() {}
@@ -135,14 +140,11 @@ public final class FarTerrainRenderer {
         int detailDistance = Math.max(2, FarViewController.getEffectiveRenderDistance());
         int configuredFarDistance = effectiveFarDistance;
 
-        boolean movedEnough = Math.abs(playerChunkX - lastPlayerChunkX) >= 4
-                || Math.abs(playerChunkZ - lastPlayerChunkZ) >= 4;
-        boolean settingsChanged = sampleSpacingChunks != lastSampleSpacing
-                || detailDistance != lastDetailDistance
-                || configuredFarDistance != lastConfiguredFarDistance;
-
-        if (ticksUntilRefresh-- <= 0 || movedEnough || settingsChanged) {
-            ticksUntilRefresh = DESIRED_REFRESH_TICKS;
+        if (FarTerrainLodMath.shouldRebuildPlan(!orderedTiles.isEmpty(),
+                lastPlayerChunkX, lastPlayerChunkZ, playerChunkX, playerChunkZ,
+                lastSampleSpacing, sampleSpacingChunks,
+                lastDetailDistance, detailDistance,
+                lastConfiguredFarDistance, configuredFarDistance)) {
             lastPlayerChunkX = playerChunkX;
             lastPlayerChunkZ = playerChunkZ;
             lastSampleSpacing = sampleSpacingChunks;
@@ -184,6 +186,7 @@ public final class FarTerrainRenderer {
 
     private static void rebuildDesiredTiles(int playerChunkX, int playerChunkZ,
                                              int detailDistance, int farDistance, int sampleSpacingChunks) {
+        long planStartedNanos = System.nanoTime();
         Set<TileKey> nextDesired = new HashSet<>();
         int rootMinX = Math.floorDiv(playerChunkX - farDistance, ROOT_TILE_SIZE_CHUNKS)
                 * ROOT_TILE_SIZE_CHUNKS;
@@ -225,23 +228,28 @@ public final class FarTerrainRenderer {
         MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
         recalculateMeshCacheBytes();
         orderedTiles = List.copyOf(sorted);
+        lastTilePlanMs = (System.nanoTime() - planStartedNanos) / 1_000_000.0;
+        tilePlanBuildCount++;
     }
 
     private static void collectLeaves(int minChunkX, int minChunkZ, int size,
                                       int playerChunkX, int playerChunkZ,
                                       int detailDistance, int farDistance, int sampleSpacingChunks,
                                       Set<TileKey> output) {
-        double nearestDistance = distanceToRectangle(playerChunkX + 0.5, playerChunkZ + 0.5,
+        double nearestDistanceSquared = FarTerrainLodMath.distanceToRectangleSquared(
+                playerChunkX + 0.5, playerChunkZ + 0.5,
                 minChunkX, minChunkZ, minChunkX + size, minChunkZ + size);
-        if (nearestDistance > farDistance) return;
+        if (nearestDistanceSquared > (double) farDistance * farDistance) return;
 
-        double farthestDistance = farthestCornerDistance(playerChunkX + 0.5, playerChunkZ + 0.5,
+        double farthestDistanceSquared = FarTerrainLodMath.farthestCornerDistanceSquared(
+                playerChunkX + 0.5, playerChunkZ + 0.5,
                 minChunkX, minChunkZ, minChunkX + size, minChunkZ + size);
-        if (farthestDistance < Math.max(1, detailDistance - 1)) return;
+        double detailThreshold = Math.max(1, detailDistance - 1);
+        if (farthestDistanceSquared < detailThreshold * detailThreshold) return;
 
-        double centerDistance = Math.sqrt(distanceSquaredToCenter(
-                minChunkX, minChunkZ, size, playerChunkX + 0.5, playerChunkZ + 0.5));
-        int desiredSize = desiredTileSize(centerDistance);
+        double centerDistanceSquared = distanceSquaredToCenter(
+                minChunkX, minChunkZ, size, playerChunkX + 0.5, playerChunkZ + 0.5);
+        int desiredSize = FarTerrainLodMath.desiredTileSizeForDistanceSquared(centerDistanceSquared);
 
         if (size > desiredSize && size > MIN_TILE_SIZE_CHUNKS) {
             int half = size / 2;
@@ -265,16 +273,6 @@ public final class FarTerrainRenderer {
         return Math.max(4, Math.min(64, requested));
     }
 
-    private static int desiredTileSize(double distanceChunks) {
-        if (distanceChunks < 64) return 8;
-        if (distanceChunks < 128) return 16;
-        if (distanceChunks < 256) return 32;
-        if (distanceChunks < 512) return 64;
-        if (distanceChunks < 1024) return 128;
-        if (distanceChunks < 1536) return 256;
-        return 512;
-    }
-
     private static void scheduleMissingTiles(ServerLevel level) {
         int scheduled = 0;
         ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -296,8 +294,10 @@ public final class FarTerrainRenderer {
                 WORKER.execute(() -> {
                     try {
                         if (taskRevision != revision || !DESIRED.contains(key)) return;
+                        long generationStartedNanos = System.nanoTime();
                         TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
                                 biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
+                        recordTileGeneration((System.nanoTime() - generationStartedNanos) / 1_000_000.0);
                         if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
                     } catch (RuntimeException | LinkageError error) {
                         // A job from an old world revision must never poison the new world's tile state.
@@ -476,6 +476,7 @@ public final class FarTerrainRenderer {
         if (context.consumers() == null) return;
         VertexConsumer consumer = context.consumers().getBuffer(FarTerrainRenderType.TYPE);
         int drawnQuads = 0;
+        int submittedMeshes = 0;
         for (TileKey key : orderedTiles) {
             TileMesh mesh = MESHES.get(key);
             if (mesh == null) continue;
@@ -551,7 +552,10 @@ public final class FarTerrainRenderer {
                         playerX, playerZ, innerRadiusSquared, outerRadiusSquared,
                         drawnQuads, drawBudget);
             }
+            submittedMeshes++;
         }
+        lastDrawnQuads = drawnQuads;
+        lastSubmittedMeshes = submittedMeshes;
         updateDrawBudget((System.nanoTime() - renderStartNanos) / 1_000_000.0);
     }
 
@@ -565,6 +569,14 @@ public final class FarTerrainRenderer {
         return FarViewFeature.isAdaptiveEnabled()
                 ? Math.max(12_000, Math.min(profileBudget, adaptiveDrawBudget))
                 : profileBudget;
+    }
+
+    private static void recordTileGeneration(double generationMillis) {
+        lastTileGenerationMs = generationMillis;
+        averageTileGenerationMs = tileGenerationSamples == 0L
+                ? generationMillis
+                : averageTileGenerationMs + (generationMillis - averageTileGenerationMs) * 0.12;
+        tileGenerationSamples++;
     }
 
     private static void updateDrawBudget(double renderMillis) {
@@ -674,20 +686,6 @@ public final class FarTerrainRenderer {
         return dx * dx + dz * dz;
     }
 
-    private static double distanceToRectangle(double x, double z,
-                                              double minX, double minZ, double maxX, double maxZ) {
-        double dx = x < minX ? minX - x : x > maxX ? x - maxX : 0.0;
-        double dz = z < minZ ? minZ - z : z > maxZ ? z - maxZ : 0.0;
-        return Math.sqrt(dx * dx + dz * dz);
-    }
-
-    private static double farthestCornerDistance(double x, double z,
-                                                  double minX, double minZ, double maxX, double maxZ) {
-        double dx = Math.max(Math.abs(x - minX), Math.abs(x - maxX));
-        double dz = Math.max(Math.abs(z - minZ), Math.abs(z - maxZ));
-        return Math.sqrt(dx * dx + dz * dz);
-    }
-
     private static void clearWorld() {
         if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()) return;
         activeLevel = null;
@@ -710,8 +708,14 @@ public final class FarTerrainRenderer {
         lastDetailDistance = -1;
         lastConfiguredFarDistance = -1;
         effectiveFarDistance = 512;
-        ticksUntilRefresh = 0;
         ticksUntilAdaptiveUpdate = 0;
+        lastTilePlanMs = 0.0;
+        averageTileGenerationMs = 0.0;
+        lastTileGenerationMs = 0.0;
+        tilePlanBuildCount = 0L;
+        tileGenerationSamples = 0L;
+        lastDrawnQuads = 0;
+        lastSubmittedMeshes = 0;
     }
 
     public static String getStatusLine() {
@@ -723,7 +727,14 @@ public final class FarTerrainRenderer {
                 + " failed | " + CACHE_EVICTED.size() + " memory-evicted | cache "
                 + (cachedMeshBytes / (1024 * 1024)) + "/"
                 + (MAX_MESH_CACHE_BYTES / (1024 * 1024)) + " MiB | range "
-                + effectiveFarDistance + " chunks" + suffix;
+                + effectiveFarDistance + " chunks | plan "
+                + String.format(java.util.Locale.ROOT, "%.2f", lastTilePlanMs) + " ms/"
+                + tilePlanBuildCount + " rebuilds | mesh avg "
+                + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
+                + " ms/" + tileGenerationSamples + " jobs | submit avg "
+                + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
+                + " ms | draw " + lastDrawnQuads + "/" + getDrawBudget()
+                + " quads, " + lastSubmittedMeshes + " tiles" + suffix;
     }
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
