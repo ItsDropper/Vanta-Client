@@ -72,6 +72,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     private final AtomicBoolean outputFinished = new AtomicBoolean();
     private final AtomicBoolean inputFinished = new AtomicBoolean();
     private final AtomicBoolean usingTurnRelay = new AtomicBoolean();
+    private final AtomicBoolean signallingClosed = new AtomicBoolean();
     private final AtomicReference<IOException> failure = new AtomicReference<>();
     private final Object signallingLock = new Object();
     private final Object sendBackpressure = new Object();
@@ -282,8 +283,12 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
             if (session != null) {
                 session.close();
             } else {
-                closeQuietly(peer);
-                closeQuietly(factory);
+                if (peer != null) {
+                    try { peer.close(); } catch (RuntimeException ignored) {}
+                }
+                if (factory != null) {
+                    try { factory.dispose(); } catch (RuntimeException ignored) {}
+                }
                 closeQuietly(signal);
             }
             if (exception instanceof IOException io) throw io;
@@ -395,6 +400,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     }
 
     private void queueLocalCandidate(RTCIceCandidate candidate) {
+        if (signallingClosed.get()) return;
         if (candidate == null || candidate.sdp == null || !candidate.sdp.startsWith("candidate:")) return;
         String mid = candidate.sdpMid == null || candidate.sdpMid.isBlank()
                 ? "0" : candidate.sdpMid;
@@ -411,10 +417,10 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     }
 
     private void sendCandidateAsync(VantaRelayClient.RelaySignal candidate) {
-        if (closed.get()) return;
+        if (closed.get() || signallingClosed.get()) return;
         try {
             signallingWriter.execute(() -> {
-                if (closed.get()) return;
+                if (closed.get() || signallingClosed.get()) return;
                 try {
                     signalling.sendIce(candidate.candidate(), candidate.sdpMid(),
                             candidate.sdpMLineIndex());
@@ -636,6 +642,7 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     }
 
     private void closeSignalling() {
+        if (!signallingClosed.compareAndSet(false, true)) return;
         try {
             signalling.close();
         } catch (RuntimeException ignored) {
