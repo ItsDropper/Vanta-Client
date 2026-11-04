@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.player.PlayerModel;
@@ -305,19 +306,7 @@ public final class VantaMenuStyle {
 
     private static void fillRounded(GuiGraphics graphics, int x, int y,
                                     int width, int height, int radius, int color) {
-        if (width <= 0 || height <= 0) return;
-        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= height - r) {
-                double dy = row - (height - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-        }
+        VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius, color);
     }
 
     /** Keeps font styling centralized without creating a second UI framework. */
