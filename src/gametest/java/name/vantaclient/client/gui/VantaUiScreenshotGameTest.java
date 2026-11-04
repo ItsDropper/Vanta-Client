@@ -694,6 +694,16 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("FarView worker backoff did not follow the measured client load tiers.");
             }
 
+            if (FarTerrainLodMath.adjustDrawBudget(36_000, 1.9, 12_000, 96_000) != 38_000
+                    || FarTerrainLodMath.adjustDrawBudget(36_000, 2.0, 12_000, 96_000) != 36_000
+                    || FarTerrainLodMath.adjustDrawBudget(36_000, 4.0, 12_000, 96_000) != 36_000
+                    || FarTerrainLodMath.adjustDrawBudget(36_000, 4.1, 12_000, 96_000) != 30_600
+                    || FarTerrainLodMath.adjustDrawBudget(12_000, 8.0, 12_000, 96_000) != 12_000
+                    || FarTerrainLodMath.adjustDrawBudget(96_000, 1.0, 12_000, 96_000) != 96_000
+                    || FarTerrainLodMath.adjustDrawBudget(40_000, Double.NaN, 12_000, 96_000) != 40_000) {
+                throw new AssertionError("FarView adaptive draw budget exceeded its bounded response policy.");
+            }
+
             int[] expectedSizes = {8, 16, 32, 64, 128, 256, 512};
             double[] distances = {63.0, 64.0, 128.0, 256.0, 512.0, 1024.0, 1536.0};
             for (int index = 0; index < distances.length; index++) {
