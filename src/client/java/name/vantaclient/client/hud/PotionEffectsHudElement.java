@@ -50,7 +50,7 @@ public class PotionEffectsHudElement extends HudElement {
             snapshotPlayer = null;
             return;
         }
-        if (snapshotWorld != mc.level || snapshotPlayer != mc.player) {
+        if (hasSnapshotContextChanged(snapshotWorld, mc.level, snapshotPlayer, mc.player)) {
             snapshotWorld = mc.level;
             snapshotPlayer = mc.player;
             lastSnapshotTick = Long.MIN_VALUE;
@@ -66,6 +66,11 @@ public class PotionEffectsHudElement extends HudElement {
         }
         snapshot = List.copyOf(updated);
         lastSnapshotTick = gameTime;
+    }
+
+    public static boolean hasSnapshotContextChanged(Object previousWorld, Object currentWorld,
+                                                    Object previousPlayer, Object currentPlayer) {
+        return previousWorld != currentWorld || previousPlayer != currentPlayer;
     }
 
     public static boolean shouldRefreshSnapshot(long lastSnapshotTick, long currentGameTime) {
