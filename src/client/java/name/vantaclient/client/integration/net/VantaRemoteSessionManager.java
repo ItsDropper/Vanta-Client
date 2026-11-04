@@ -135,8 +135,9 @@ public final class VantaRemoteSessionManager {
                     .get(worldKey(hostedServer));
             if (ids == null || !ids.remove(normalized)) return;
             for (ConnectedGuest guest : ACTIVE_GUESTS.values()) {
-                if (normalized.equals(guest.authenticatedPlayerUUID())
-                        || normalized.equals(guest.claimedPlayerUUID())) {
+                // Only a server-verified profile can match a saved whitelist
+                // entry. Never let an untrusted UUID claim trigger a revocation kick.
+                if (normalized.equals(guest.authenticatedPlayerUUID())) {
                     toKick.add(guest.requestId());
                 }
             }
