@@ -929,6 +929,19 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     || element.widthCalls != 2 || element.heightCalls != 2) {
                 throw new AssertionError("HUD dimensions did not refresh after the manager tick revision advanced.");
             }
+
+            ArmorHudElement armor = new ArmorHudElement();
+            boolean originalHorizontal = armor.isHorizontal();
+            try {
+                int originalWidth = armor.getHitboxWidth();
+                armor.setHorizontal(!originalHorizontal);
+                int changedWidth = armor.getHitboxWidth();
+                if (originalWidth == changedWidth) {
+                    throw new AssertionError("Armor HUD orientation change did not invalidate its cached dimensions.");
+                }
+            } finally {
+                armor.setHorizontal(originalHorizontal);
+            }
         });
     }
 
