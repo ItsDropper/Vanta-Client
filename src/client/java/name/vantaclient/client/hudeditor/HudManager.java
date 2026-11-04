@@ -27,6 +27,7 @@ public class HudManager {
             Collections.unmodifiableList(ACTIVE_ELEMENTS);
     private static boolean initialized = false;
     private static boolean visibilityInitialized = false;
+    private static long layoutRevision;
 
     public static void init() {
         if (initialized) return;
@@ -59,6 +60,7 @@ public class HudManager {
      */
     public static void refreshVisibleElements() {
         init();
+        layoutRevision++;
         ACTIVE_ELEMENTS.clear();
         for (HudElement element : ELEMENTS) {
             if (element.shouldRender()) {
@@ -87,6 +89,11 @@ public class HudManager {
      * Visible HUD elements from the most recent client-tick refresh.
      * Render passes can consume this snapshot without reevaluating feature predicates.
      */
+    /** Revision advanced once per manager visibility refresh/client tick. */
+    public static long getLayoutRevision() {
+        return layoutRevision;
+    }
+
     public static List<HudElement> getActiveElements() {
         init();
         if (!visibilityInitialized) {
