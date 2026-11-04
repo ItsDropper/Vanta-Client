@@ -125,14 +125,8 @@ func validateICEURLs(values []string, schemes ...string) ([]string, error) {
 	result := make([]string, 0, len(values))
 	for _, raw := range values {
 		value := strings.TrimSpace(raw)
-		colon := strings.IndexByte(value, ':')
-		if colon <= 0 || !allowed[strings.ToLower(value[:colon])] || len(value) > 512 {
-			return nil, fmt.Errorf("invalid ICE URL")
-		}
-		// STUN/TURN URIs use an opaque URI scheme (stun:host:port), so parse
-		// the remainder as an authority instead of expecting URL.Host directly.
-		authority, err := url.Parse("//" + value[colon+1:])
-		if err != nil || authority.Host == "" || authority.User != nil || authority.Fragment != "" {
+		parsed, err := url.Parse(value)
+		if err != nil || !allowed[parsed.Scheme] || parsed.Host == "" || len(value) > 512 {
 			return nil, fmt.Errorf("invalid ICE URL")
 		}
 		result = append(result, value)

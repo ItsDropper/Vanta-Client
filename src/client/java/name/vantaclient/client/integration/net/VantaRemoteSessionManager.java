@@ -327,7 +327,7 @@ public final class VantaRemoteSessionManager {
                     if (!streamClaimed.compareAndSet(false, true)) {
                         throw new IOException("This invite already has an active Minecraft connection.");
                     }
-                    WebSocketDuplexConnection claimed = unclaimedData.getAndSet(null);
+                    LoopbackTcpBridge.DuplexConnection claimed = unclaimedData.getAndSet(null);
                     if (claimed == null) throw new IOException("The relay stream is no longer available.");
                     return claimed;
                 }, 1);

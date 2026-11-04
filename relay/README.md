@@ -48,7 +48,7 @@ Terminate TLS at a reverse proxy such as Caddy or nginx. Set the client relay UR
 - `GET /healthz`
 - `POST /v1/rooms` — create a room; returns `roomCode`, `hostToken`, `expiresAt`.
 - `GET /v1/host/control/{roomCode}` — authenticated host control socket.
-- `GET /v1/rooms/{roomCode}/requests/{requestId}/host-ice-servers` — host-only, approved-request ICE configuration.
+- `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — host-only, approved-request ICE configuration.
 - `POST /v1/rooms/{roomCode}/requests` — guest asks to join; body: `{"playerName":"MinecraftName"}`.
 - `GET /v1/guest/control/{roomCode}/{requestId}` — authenticated guest approval result.
 - `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — guest-only ICE configuration after approval.

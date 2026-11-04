@@ -123,7 +123,7 @@ public final class VantaRelayClient {
     public List<IceServerConfig> fetchHostIceServers(Room room, String requestId) throws IOException {
         requireRoom(room);
         String id = validateRequestId(requestId);
-        return parseIceServers(get("/v1/rooms/" + room.code() + "/requests/" + id + "/host-ice-servers",
+        return parseIceServers(get("/v1/rooms/" + room.code() + "/requests/" + id + "/ice-servers",
                 room.hostToken()));
     }
 
