@@ -19,6 +19,7 @@
     "AbstractButtonMixin",
     "TitleScreenMixin",
     "PauseScreenMixin",
+    "ScreenMixin",
     "MouseHandlerMixin",
     "ChatComponentMixin",
     "accessor.ScreenAccessor",
