@@ -62,7 +62,7 @@ public final class FarTerrainRenderer {
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
-    private static final Set<TileKey> DESIRED = ConcurrentHashMap.newKeySet();
+    private static volatile Set<TileKey> DESIRED = Set.of();
     private static final ConcurrentLinkedQueue<TileMesh> COMPLETED = new ConcurrentLinkedQueue<>();
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
@@ -227,8 +227,7 @@ public final class FarTerrainRenderer {
         nextDesired.clear();
         nextDesired.addAll(sorted);
 
-        DESIRED.clear();
-        DESIRED.addAll(nextDesired);
+        DESIRED = Set.copyOf(nextDesired);
         FAILED.removeIf(key -> !nextDesired.contains(key));
         // Re-admit an intentionally evicted tile only after it moves into the
         // inner 65% of the active radius. This prevents later movement-driven
@@ -737,7 +736,7 @@ public final class FarTerrainRenderer {
         lastWorkerError = "";
         averageMeshSubmitMs = 0.0;
         adaptiveDrawBudget = 36_000;
-        DESIRED.clear();
+        DESIRED = Set.of();
         MESHES.clear();
         cachedMeshBytes = 0L;
         FAILED.clear();
