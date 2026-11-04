@@ -19,6 +19,16 @@ import java.util.List;
 public final class HudBackgroundRenderer {
     private static final int BACKGROUND_COLOR = 0xCC292D35;
 
+    // Reused on the client render thread. Typical HUD layouts stay within the initial
+    // capacity, so collecting and merging hitboxes does not allocate every frame.
+    private static int[] lefts = new int[32];
+    private static int[] tops = new int[32];
+    private static int[] rights = new int[32];
+    private static int[] bottoms = new int[32];
+    private static int[] pending = new int[32];
+    private static boolean[] visited = new boolean[32];
+    private static int backgroundCount;
+
     private HudBackgroundRenderer() {}
 
     public record Bounds(int left, int top, int right, int bottom) {
@@ -41,12 +51,12 @@ public final class HudBackgroundRenderer {
     /** Collects enabled HUD hitboxes and paints their backgrounds beneath the HUD render pass. */
     public static void render(GuiGraphics graphics) {
         VantaClientPreferences preferences = VantaClientPreferences.get();
-        List<Bounds> backgrounds = new ArrayList<>();
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = Math.max(1, mc.getWindow().getGuiScaledWidth());
         int screenHeight = Math.max(1, mc.getWindow().getGuiScaledHeight());
         boolean editing = HudEditorFeature.INSTANCE.isEnabled();
         boolean vanillaPositionsEnabled = VanillaHudFeature.INSTANCE.isEnabled();
+        backgroundCount = 0;
 
         for (HudElement element : HudManager.getElements()) {
             if (!preferences.isHudBackgroundEnabled(element.getBackgroundId())) continue;
@@ -54,43 +64,103 @@ public final class HudBackgroundRenderer {
             if (element instanceof VanillaHudElement vanilla) {
                 VanillaHudElement.Part part = vanilla.getPart();
                 if (editing) {
-                    add(backgrounds, vanilla.getHitboxX(), vanilla.getHitboxY(),
+                    add(vanilla.getHitboxX(), vanilla.getHitboxY(),
                             vanilla.getHitboxWidth(), vanilla.getHitboxHeight());
                 } else if (vanillaPositionsEnabled) {
                     VantaClientPreferences.HudPosition position =
                             VanillaHudElement.getPosition(part);
                     int x = Math.round(position.x * screenWidth);
                     int y = Math.round(position.y * screenHeight);
-                    add(backgrounds, x, y,
-                            Math.round(part.width() * position.scale),
+                    add(x, y, Math.round(part.width() * position.scale),
                             Math.round(part.height() * position.scale));
                 } else {
-                    add(backgrounds, part.defaultX(screenWidth), part.defaultY(screenHeight),
+                    add(part.defaultX(screenWidth), part.defaultY(screenHeight),
                             part.width(), part.height());
                 }
                 continue;
             }
 
             if (element.shouldRender()) {
-                add(backgrounds, element.getHitboxX(), element.getHitboxY(),
+                add(element.getHitboxX(), element.getHitboxY(),
                         element.getHitboxWidth(), element.getHitboxHeight());
             }
         }
 
         int connectionGap = preferences.connectHudBackgrounds
                 ? preferences.hudBackgroundConnectionGap : 0;
-        // Always union overlaps so the shared area is never rendered at compounded opacity.
-        backgrounds = mergeConnectedBounds(backgrounds, connectionGap);
+        drawConnectedBackgrounds(graphics, Math.max(0, connectionGap));
+    }
 
-        for (Bounds bounds : backgrounds) {
-            graphics.fill(bounds.left(), bounds.top(), bounds.right(), bounds.bottom(),
-                    BACKGROUND_COLOR);
+    private static void add(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+        ensureCapacity(backgroundCount + 1);
+        lefts[backgroundCount] = x;
+        tops[backgroundCount] = y;
+        rights[backgroundCount] = x + width;
+        bottoms[backgroundCount] = y + height;
+        backgroundCount++;
+    }
+
+    private static void ensureCapacity(int required) {
+        if (required <= lefts.length) return;
+        int capacity = Math.max(required, lefts.length * 2);
+        lefts = java.util.Arrays.copyOf(lefts, capacity);
+        tops = java.util.Arrays.copyOf(tops, capacity);
+        rights = java.util.Arrays.copyOf(rights, capacity);
+        bottoms = java.util.Arrays.copyOf(bottoms, capacity);
+        pending = java.util.Arrays.copyOf(pending, capacity);
+        visited = java.util.Arrays.copyOf(visited, capacity);
+    }
+
+    /** Union connected hitboxes without allocating collections or rectangle objects per frame. */
+    private static void drawConnectedBackgrounds(GuiGraphics graphics, int maximumGap) {
+        if (backgroundCount == 0) return;
+        java.util.Arrays.fill(visited, 0, backgroundCount, false);
+
+        for (int start = 0; start < backgroundCount; start++) {
+            if (visited[start]) continue;
+            int head = 0;
+            int tail = 0;
+            pending[tail++] = start;
+            visited[start] = true;
+
+            int groupLeft = lefts[start];
+            int groupTop = tops[start];
+            int groupRight = rights[start];
+            int groupBottom = bottoms[start];
+
+            while (head < tail) {
+                int current = pending[head++];
+                for (int candidate = 0; candidate < backgroundCount; candidate++) {
+                    if (visited[candidate] || !areConnected(
+                            lefts[current], tops[current], rights[current], bottoms[current],
+                            lefts[candidate], tops[candidate], rights[candidate], bottoms[candidate],
+                            maximumGap)) continue;
+
+                    visited[candidate] = true;
+                    pending[tail++] = candidate;
+                    groupLeft = Math.min(groupLeft, lefts[candidate]);
+                    groupTop = Math.min(groupTop, tops[candidate]);
+                    groupRight = Math.max(groupRight, rights[candidate]);
+                    groupBottom = Math.max(groupBottom, bottoms[candidate]);
+                }
+            }
+
+            graphics.fill(groupLeft, groupTop, groupRight, groupBottom, BACKGROUND_COLOR);
         }
     }
 
-    private static void add(List<Bounds> bounds, int x, int y, int width, int height) {
-        if (width <= 0 || height <= 0) return;
-        bounds.add(new Bounds(x, y, x + width, y + height));
+    private static boolean areConnected(int firstLeft, int firstTop, int firstRight, int firstBottom,
+                                        int secondLeft, int secondTop, int secondRight, int secondBottom,
+                                        int maximumGap) {
+        boolean horizontalOverlap = firstLeft < secondRight && secondLeft < firstRight;
+        boolean verticalOverlap = firstTop < secondBottom && secondTop < firstBottom;
+        int horizontalGap = Math.max(0,
+                Math.max(firstLeft - secondRight, secondLeft - firstRight));
+        int verticalGap = Math.max(0,
+                Math.max(firstTop - secondBottom, secondTop - firstBottom));
+        return (verticalOverlap && horizontalGap <= maximumGap)
+                || (horizontalOverlap && verticalGap <= maximumGap);
     }
 
     /**
