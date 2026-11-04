@@ -19,6 +19,7 @@ public final class AdaptiveEntityDistanceController {
     private static double originalScale;
     private static double lastAppliedScale;
     private static int ticksUntilUpdate;
+    private static long lastObservedWorldRenderSamples;
 
     private AdaptiveEntityDistanceController() {}
 
@@ -36,11 +37,13 @@ public final class AdaptiveEntityDistanceController {
             originalScale = actualScale;
             lastAppliedScale = actualScale;
             captured = true;
+            lastObservedWorldRenderSamples = ClientPerformanceMetrics.getWorldRenderSamples();
             ticksUntilUpdate = 0;
         } else if (Math.abs(actualScale - lastAppliedScale) > 0.0001) {
             // Treat an external options change as the new user-selected ceiling.
             originalScale = actualScale;
             lastAppliedScale = actualScale;
+            lastObservedWorldRenderSamples = ClientPerformanceMetrics.getWorldRenderSamples();
             ticksUntilUpdate = 0;
         }
 
@@ -49,6 +52,9 @@ public final class AdaptiveEntityDistanceController {
         if (client.screen != null) return;
         if (ticksUntilUpdate-- > 0) return;
         ticksUntilUpdate = UPDATE_INTERVAL_TICKS;
+        long sampleCount = ClientPerformanceMetrics.getWorldRenderSamples();
+        if (sampleCount == lastObservedWorldRenderSamples) return;
+        lastObservedWorldRenderSamples = sampleCount;
 
         double next = calculateNextScale(
                 lastAppliedScale,
@@ -107,6 +113,7 @@ public final class AdaptiveEntityDistanceController {
         originalScale = 1.0;
         lastAppliedScale = 1.0;
         ticksUntilUpdate = 0;
+        lastObservedWorldRenderSamples = 0L;
     }
 
     private static double clamp(double value, double minimum, double maximum) {
