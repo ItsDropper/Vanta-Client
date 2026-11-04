@@ -668,6 +668,16 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Squared farthest-corner distance is incorrect: " + farthest);
             }
 
+            if (!FarTerrainLodMath.isEntireTileInsideInnerRadius(99.0, 100.0)
+                    || FarTerrainLodMath.isEntireTileInsideInnerRadius(101.0, 100.0)) {
+                throw new AssertionError("Inner-radius tile rejection did not respect its conservative bound.");
+            }
+            if (!FarTerrainLodMath.isEntireTileInsideRenderBand(100.0, 400.0, 100.0, 400.0)
+                    || FarTerrainLodMath.isEntireTileInsideRenderBand(99.0, 400.0, 100.0, 400.0)
+                    || FarTerrainLodMath.isEntireTileInsideRenderBand(100.0, 401.0, 100.0, 400.0)) {
+                throw new AssertionError("Visible-band tile fast path crossed a render-distance boundary.");
+            }
+
             int[] expectedSizes = {8, 16, 32, 64, 128, 256, 512};
             double[] distances = {63.0, 64.0, 128.0, 256.0, 512.0, 1024.0, 1536.0};
             for (int index = 0; index < distances.length; index++) {
