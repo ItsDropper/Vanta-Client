@@ -7,6 +7,8 @@ public final class ClickRateTracker {
     private static final long WINDOW_NANOS = 1_000_000_000L;
     private static final Deque<Long> LEFT = new ArrayDeque<>();
     private static final Deque<Long> RIGHT = new ArrayDeque<>();
+    private static volatile int snapshotLeftCps;
+    private static volatile int snapshotRightCps;
 
     private ClickRateTracker() {}
 
@@ -26,6 +28,21 @@ public final class ClickRateTracker {
         return count(RIGHT);
     }
 
+    /** Prune and count both input queues once per client tick, not once per rendered frame. */
+    public static void refreshSnapshot() {
+        long now = System.nanoTime();
+        snapshotLeftCps = count(LEFT, now);
+        snapshotRightCps = count(RIGHT, now);
+    }
+
+    public static int getSnapshotLeftCps() {
+        return snapshotLeftCps;
+    }
+
+    public static int getSnapshotRightCps() {
+        return snapshotRightCps;
+    }
+
     private static void record(Deque<Long> clicks) {
         long now = System.nanoTime();
         synchronized (clicks) {
@@ -35,7 +52,10 @@ public final class ClickRateTracker {
     }
 
     private static int count(Deque<Long> clicks) {
-        long now = System.nanoTime();
+        return count(clicks, System.nanoTime());
+    }
+
+    private static int count(Deque<Long> clicks, long now) {
         synchronized (clicks) {
             prune(clicks, now);
             return clicks.size();
