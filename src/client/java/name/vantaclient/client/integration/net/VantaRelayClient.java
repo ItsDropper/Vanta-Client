@@ -417,10 +417,12 @@ public final class VantaRelayClient {
         }
 
         @Override
-        public void onClose(java.net.http.WebSocket webSocket, int statusCode, String reason) {
+        public java.util.concurrent.CompletionStage<?> onClose(
+                java.net.http.WebSocket webSocket, int statusCode, String reason) {
             if (!decision.isDone()) {
                 decision.completeExceptionally(new IOException("Relay closed before host approval."));
             }
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
     }
 }
