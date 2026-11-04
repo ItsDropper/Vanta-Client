@@ -123,6 +123,12 @@ public final class VantaUiTheme {
         }
     }
 
+    /** One-pixel superellipse outline for standard controls. */
+    public static void outlineSquircle(GuiGraphics graphics, int x, int y, int width,
+                                       int height, int radius, int color) {
+        outlineSquircle(graphics, x, y, width, height, radius, color, 1);
+    }
+
     /** One-pixel or multi-pixel superellipse outline matching {@link #fillSquircle}. */
     public static void outlineSquircle(GuiGraphics graphics, int x, int y, int width,
                                        int height, int radius, int color, int thickness) {
