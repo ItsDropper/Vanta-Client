@@ -123,6 +123,11 @@ public final class FarTerrainLodMath {
      * Adjusts FarView's draw budget with bounded steps to avoid frame-to-frame oscillation.
      * The caller controls adjustment cadence; this policy only responds to smoothed render cost.
      */
+    /** Halves each RGB channel independently while keeping the opaque alpha byte intact. */
+    public static int darkenOpaqueArgb(int color) {
+        return 0xFF000000 | ((color & 0x00FEFEFE) >>> 1);
+    }
+
     public static int adjustDrawBudget(int currentBudget, double averageRenderMs,
                                        int minimumBudget, int maximumBudget) {
         int minimum = Math.max(1, minimumBudget);
