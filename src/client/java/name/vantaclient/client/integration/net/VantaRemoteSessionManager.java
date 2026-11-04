@@ -32,8 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * Owns opt-in remote world sessions independently of the UI screen.
  *
  * The integrated server remains authoritative. Guests connect through a loopback
- * TCP bridge and then use Minecraft's ordinary online-mode authentication flow.
- * Relay credentials are memory-only and are never written to client preferences.
+ * TCP bridge. Because integrated servers accept unauthenticated logins, a profile
+ * is persisted only after Minecraft installs a non-expired, Mojang-verified
+ * player chat session. Relay credentials are memory-only and never persisted.
  */
 public final class VantaRemoteSessionManager {
     public record PendingGuest(String requestId, String playerName, String playerUUID,
@@ -146,13 +147,20 @@ public final class VantaRemoteSessionManager {
     }
 
     /**
-     * Called after Minecraft has accepted a connection and created its actual
-     * server-side GameProfile. The incoming UUID is a claim until it matches here.
+     * Correlates an integrated-server player with an explicitly approved relay request.
+     * The login UUID alone is not proof on an integrated server: Minecraft accepts
+     * unauthenticated logins there. A UUID is persisted only after the server has
+     * validated and installed the player's Mojang-signed chat-session public key.
+     *
+     * This method is also called after ServerGamePacketListenerImpl processes a
+     * chat-session update, because that packet can arrive after the JOIN callback.
      */
     public static void onHostPlayerJoined(ServerGamePacketListenerImpl handler, MinecraftServer server) {
         if (handler == null || handler.player == null || server == null || !server.isSingleplayer()) return;
         String actualUUID = handler.player.getUUID().toString().toLowerCase(Locale.ROOT);
         String actualName = handler.player.getGameProfile().name();
+        var chatSession = handler.player.getChatSession();
+        boolean verifiedMinecraftSession = chatSession != null && !chatSession.hasExpired();
 
         // Never attribute the singleplayer owner to a remote invite.
         var localProfileUUID = Minecraft.getInstance().getUser().getProfileId();
@@ -205,7 +213,7 @@ public final class VantaRemoteSessionManager {
                 }
             }
 
-            if (!rejectedClaim && requestId != null) {
+            if (!rejectedClaim && requestId != null && verifiedMinecraftSession) {
                 AUTHENTICATED_PROFILES.put(requestId, actualUUID);
                 ConnectedGuest active = ACTIVE_GUESTS.get(requestId);
                 if (active != null) {
@@ -217,8 +225,13 @@ public final class VantaRemoteSessionManager {
                         .computeIfAbsent(worldKey(server), ignored -> new HashSet<>());
                 saved = ids.add(actualUUID);
                 hostStatus = saved
-                        ? "Verified " + actualName + " and added their profile to this world's whitelist."
-                        : "Verified the Minecraft profile for " + actualName + ".";
+                        ? "Verified the Mojang account key for " + actualName
+                                + " and saved this profile for the world."
+                        : "Verified the Mojang account key for " + actualName + ".";
+            } else if (!rejectedClaim && requestId != null) {
+                hostStatus = actualName
+                        + " is connected, but Minecraft has not supplied a valid account key; "
+                        + "this profile will not be saved.";
             }
             bumpRevisionLocked();
         }
