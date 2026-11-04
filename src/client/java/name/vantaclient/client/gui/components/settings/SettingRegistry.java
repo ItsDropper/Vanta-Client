@@ -3,6 +3,8 @@ package name.vantaclient.client.gui.components.settings;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.feature.*;
 
+import name.vantaclient.client.util.AdaptiveEntityDistanceController;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +13,24 @@ public final class SettingRegistry {
 
     public static List<Setting> getSettings(Feature feature) {
         List<Setting> settings = new ArrayList<>();
+
+        if (feature == PerformanceOptimizerFeature.INSTANCE) {
+            settings.add(new BooleanSetting("Adaptive entity distance",
+                    () -> DropperUtilsConfig.get().adaptiveEntityDistance,
+                    value -> {
+                        DropperUtilsConfig.get().adaptiveEntityDistance = value;
+                        DropperUtilsConfig.save();
+                        if (!value) AdaptiveEntityDistanceController.restore();
+                    }));
+            settings.add(new SliderSetting("Minimum entity distance", 50, 100, "%",
+                    () -> (double) Math.round(
+                            DropperUtilsConfig.get().minimumEntityDistanceRatio * 100.0f),
+                    value -> {
+                        DropperUtilsConfig.get().minimumEntityDistanceRatio =
+                                Math.max(0.5f, Math.min(1.0f, value.floatValue() / 100.0f));
+                        DropperUtilsConfig.save();
+                    }));
+        }
 
         if (feature == NametagUtilsFeature.INSTANCE) {
             settings.add(new SliderSetting("Nameplate scale", 0.5, 2.0, "x",
