@@ -1,0 +1,71 @@
+services:
+  vanta-relay:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    expose:
+      - "8080"
+    environment:
+      PORT: "8080"
+      VANTA_STUN_URLS: "stun:${VANTA_DOMAIN:?Set VANTA_DOMAIN}:3478"
+      VANTA_TURN_URLS: "turn:${VANTA_DOMAIN:?Set VANTA_DOMAIN}:3478?transport=udp,turn:${VANTA_DOMAIN:?Set VANTA_DOMAIN}:3478?transport=tcp"
+      VANTA_TURN_SHARED_SECRET: ${VANTA_TURN_SHARED_SECRET:?Set VANTA_TURN_SHARED_SECRET}
+    networks:
+      - relay
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - vanta-relay
+    environment:
+      VANTA_DOMAIN: ${VANTA_DOMAIN:?Set VANTA_DOMAIN}
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - relay
+
+  coturn:
+    image: coturn/coturn:4.18.0-r0
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --realm=${VANTA_DOMAIN:?Set VANTA_DOMAIN}
+      - --use-auth-secret
+      - --static-auth-secret=${VANTA_TURN_SHARED_SECRET:?Set VANTA_TURN_SHARED_SECRET}
+      - --fingerprint
+      - --listening-port=3478
+      - --listening-ip=${TURN_PRIVATE_IP:?Set TURN_PRIVATE_IP}
+      - --relay-ip=${TURN_PRIVATE_IP:?Set TURN_PRIVATE_IP}
+      - --external-ip=${TURN_PUBLIC_IP:?Set TURN_PUBLIC_IP}/${TURN_PRIVATE_IP:?Set TURN_PRIVATE_IP}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-loopback-peers
+      - --no-multicast-peers
+
+networks:
+  relay:
+
+volumes:
+  caddy-data:
+  caddy-config:
