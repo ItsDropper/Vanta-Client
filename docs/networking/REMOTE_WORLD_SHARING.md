@@ -4,7 +4,7 @@
 
 ## Current connection model
 
-Vanta uses an explicitly configured, self-hosted WebSocket relay. Remote gameplay bytes travel through that relay; this implementation is **relayed multiplayer, not a direct peer-to-peer connection**. There is no Vanta-operated public relay URL and the client does not silently contact a third party.
+Vanta uses an explicitly configured relay for room creation, host approval, and authenticated WebRTC SDP/ICE signalling. After approval, gameplay uses a reliable, ordered WebRTC DataChannel. ICE may select a direct peer path or a TURN-relayed path, depending on network reachability and the configured ICE servers. If WebRTC negotiation fails, Vanta falls back to the authenticated WebSocket gameplay relay; that fallback is relayed multiplayer, not direct P2P. There is no Vanta-operated public relay/STUN/TURN service configured, and the client does not silently contact a third party.
 
 ### Host flow
 
