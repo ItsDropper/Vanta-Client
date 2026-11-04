@@ -62,6 +62,19 @@ public final class ChatTimestampsFeature extends Feature {
         return LocalTime.now().format(format.formatter);
     }
 
+    /**
+     * Decorates the received message component without modifying the component
+     * supplied by Minecraft or changing the underlying message sent by a server.
+     */
+    public static net.minecraft.network.chat.Component decorateMessage(
+            net.minecraft.network.chat.Component message) {
+        if (message == null) return null;
+        net.minecraft.network.chat.Component timestamp = net.minecraft.network.chat.Component
+                .literal("[" + formatTimestamp() + "] ")
+                .withStyle(net.minecraft.ChatFormatting.GRAY);
+        return timestamp.copy().append(message);
+    }
+
     @Override
     public void saveConfig() {
         DropperUtilsConfig.get().chatTimestamps = isEnabled();
