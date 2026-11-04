@@ -174,6 +174,9 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
         AtomicInteger registeredPort = new AtomicInteger(-1);
         AtomicInteger acceptedPort = new AtomicInteger(-1);
         AtomicBoolean registrationFinished = new AtomicBoolean();
+        CountDownLatch registrationEntered = new CountDownLatch(1);
+        CountDownLatch allowRegistration = new CountDownLatch(1);
+        CountDownLatch remotePayloadReceived = new CountDownLatch(1);
 
         try (ServerSocket minecraftServer = new ServerSocket(0, 1, loopback);
              ServerSocket remoteEchoServer = new ServerSocket(0, 1, loopback)) {
@@ -181,6 +184,7 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
                 try (Socket echo = remoteEchoServer.accept()) {
                     echo.setSoTimeout(2_000);
                     byte[] received = echo.getInputStream().readNBytes(payload.length);
+                    remotePayloadReceived.countDown();
                     if (!Arrays.equals(payload, received)) {
                         throw new AssertionError("Host tunnel forwarded the wrong payload to its remote stream.");
                     }
@@ -215,13 +219,34 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
             minecraftWorker.start();
 
             Socket remote = new Socket(loopback, remoteEchoServer.getLocalPort());
-            try (TcpStreamTunnel tunnel = TcpStreamTunnel.connectToLoopbackServer(
-                    minecraftServer.getLocalPort(), LoopbackTcpBridge.fromSocket(remote),
-                    localPort -> {
-                        registeredPort.set(localPort);
-                        registrationFinished.set(true);
-                        return true;
-                    }, null)) {
+            FutureTask<TcpStreamTunnel> tunnelTask = new FutureTask<>(() ->
+                    TcpStreamTunnel.connectToLoopbackServer(
+                            minecraftServer.getLocalPort(), LoopbackTcpBridge.fromSocket(remote),
+                            localPort -> {
+                                registeredPort.set(localPort);
+                                registrationEntered.countDown();
+                                try {
+                                    if (!allowRegistration.await(2, TimeUnit.SECONDS)) return false;
+                                } catch (InterruptedException exception) {
+                                    Thread.currentThread().interrupt();
+                                    return false;
+                                }
+                                registrationFinished.set(true);
+                                return true;
+                            }, null));
+            Thread tunnelWorker = new Thread(tunnelTask, "Vanta host tunnel registration test");
+            tunnelWorker.setDaemon(true);
+            tunnelWorker.start();
+
+            if (!registrationEntered.await(2, TimeUnit.SECONDS)) {
+                throw new AssertionError("Host tunnel did not reach its pre-forwarding registration callback.");
+            }
+            if (remotePayloadReceived.await(150, TimeUnit.MILLISECONDS)) {
+                throw new AssertionError("Host tunnel forwarded Minecraft bytes before registration completed.");
+            }
+
+            allowRegistration.countDown();
+            try (TcpStreamTunnel tunnel = tunnelTask.get(3, TimeUnit.SECONDS)) {
                 minecraftTask.get(3, TimeUnit.SECONDS);
                 echoTask.get(3, TimeUnit.SECONDS);
                 if (registeredPort.get() < 1 || registeredPort.get() > 65_535) {
