@@ -92,7 +92,7 @@ public final class VantaRelayClient {
         String path = "/v1/host/control/" + room.code();
         WebSocketJsonListener listener = new WebSocketJsonListener(events, errors);
         java.net.http.WebSocket socket = connectWebSocket(path, room.hostToken(), listener);
-        return new HostControlConnection(socket);
+        return new HostControlConnection(socket, listener);
     }
 
     public GuestDecisionConnection connectGuestControl(JoinTicket ticket) throws IOException {
@@ -254,34 +254,52 @@ public final class VantaRelayClient {
 
     public static final class HostControlConnection implements AutoCloseable {
         private final java.net.http.WebSocket socket;
+        private final WebSocketJsonListener listener;
 
-        private HostControlConnection(java.net.http.WebSocket socket) {
+        private HostControlConnection(java.net.http.WebSocket socket,
+                                       WebSocketJsonListener listener) {
             this.socket = socket;
+            this.listener = listener;
         }
 
         public void approve(String requestId) throws IOException {
-            send(new ControlMessage("approve", validateRequestId(requestId), null));
+            sendAndAwait(new ControlMessage("approve", validateRequestId(requestId), null),
+                    "approved");
         }
 
         public void reject(String requestId, String reason) throws IOException {
-            send(new ControlMessage("reject", validateRequestId(requestId),
-                    reason == null ? "" : reason.substring(0, Math.min(80, reason.length()))));
+            sendAndAwait(new ControlMessage("reject", validateRequestId(requestId),
+                    reason == null ? "" : reason.substring(0, Math.min(80, reason.length()))),
+                    "rejected");
         }
 
-        private void send(ControlMessage message) throws IOException {
+        private void sendAndAwait(ControlMessage message, String expectedState) throws IOException {
+            java.util.concurrent.CompletableFuture<RelayEvent> acknowledgement =
+                    listener.expectAcknowledgement(message.requestId());
             try {
-                socket.sendText(GSON.toJson(message), true)
-                        .get(5, TimeUnit.SECONDS);
+                socket.sendText(GSON.toJson(message), true).get(5, TimeUnit.SECONDS);
+                RelayEvent response = acknowledgement.get(5, TimeUnit.SECONDS);
+                if ("request_error".equals(response.type())) {
+                    throw new IOException("Relay rejected the host decision: "
+                            + (response.reason() == null ? "request_error" : response.reason()));
+                }
+                if (!"request_updated".equals(response.type())
+                        || !expectedState.equals(response.reason())) {
+                    throw new IOException("Relay returned an invalid host decision acknowledgement.");
+                }
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
-                throw new IOException("Relay control message was interrupted.", exception);
+                throw new IOException("Relay host decision was interrupted.", exception);
             } catch (ExecutionException | TimeoutException exception) {
-                throw new IOException("Could not send the host approval.", exception);
+                throw new IOException("Relay did not confirm the host decision.", exception);
+            } finally {
+                listener.removeAcknowledgement(message.requestId(), acknowledgement);
             }
         }
 
         @Override
         public void close() {
+            listener.failAcknowledgements(new IOException("Relay host control connection closed."));
             try {
                 socket.sendClose(java.net.http.WebSocket.NORMAL_CLOSURE, "host closed")
                         .get(2, TimeUnit.SECONDS);
@@ -331,10 +349,37 @@ public final class VantaRelayClient {
         private final Consumer<RelayEvent> events;
         private final Consumer<Throwable> errors;
         private final StringBuilder text = new StringBuilder();
+        private final java.util.concurrent.ConcurrentHashMap<String,
+                java.util.concurrent.CompletableFuture<RelayEvent>> acknowledgements =
+                new java.util.concurrent.ConcurrentHashMap<>();
 
         private WebSocketJsonListener(Consumer<RelayEvent> events, Consumer<Throwable> errors) {
             this.events = events == null ? event -> {} : events;
             this.errors = errors == null ? error -> {} : errors;
+        }
+
+        private java.util.concurrent.CompletableFuture<RelayEvent> expectAcknowledgement(
+                String requestId) throws IOException {
+            java.util.concurrent.CompletableFuture<RelayEvent> future =
+                    new java.util.concurrent.CompletableFuture<>();
+            if (acknowledgements.putIfAbsent(requestId, future) != null) {
+                throw new IOException("A decision for this guest is already being processed.");
+            }
+            return future;
+        }
+
+        private void removeAcknowledgement(
+                String requestId,
+                java.util.concurrent.CompletableFuture<RelayEvent> future) {
+            acknowledgements.remove(requestId, future);
+        }
+
+        private void failAcknowledgements(Throwable error) {
+            for (var entry : acknowledgements.entrySet()) {
+                if (acknowledgements.remove(entry.getKey(), entry.getValue())) {
+                    entry.getValue().completeExceptionally(error);
+                }
+            }
         }
 
         @Override
@@ -346,8 +391,10 @@ public final class VantaRelayClient {
         public synchronized java.util.concurrent.CompletionStage<?> onText(
                 java.net.http.WebSocket webSocket, CharSequence data, boolean last) {
             if (text.length() + data.length() > 4 * 1024) {
+                IOException error = new IOException("Relay control message exceeded its size limit.");
+                failAcknowledgements(error);
+                errors.accept(error);
                 webSocket.abort();
-                errors.accept(new IOException("Relay control message exceeded its size limit."));
                 return java.util.concurrent.CompletableFuture.completedFuture(null);
             }
             text.append(data);
@@ -355,8 +402,16 @@ public final class VantaRelayClient {
                 try {
                     RelayEvent event = parseEvent(text.toString());
                     if (event == null || event.type() == null) throw new IOException("Invalid relay event.");
+                    if (event.requestId() != null
+                            && ("request_updated".equals(event.type())
+                            || "request_error".equals(event.type()))) {
+                        java.util.concurrent.CompletableFuture<RelayEvent> acknowledgement =
+                                acknowledgements.get(event.requestId());
+                        if (acknowledgement != null) acknowledgement.complete(event);
+                    }
                     events.accept(event);
                 } catch (RuntimeException | IOException exception) {
+                    failAcknowledgements(exception);
                     errors.accept(exception);
                     webSocket.abort();
                 } finally {
@@ -369,13 +424,16 @@ public final class VantaRelayClient {
 
         @Override
         public void onError(java.net.http.WebSocket webSocket, Throwable error) {
+            failAcknowledgements(error);
             errors.accept(error);
         }
 
         @Override
         public java.util.concurrent.CompletionStage<?> onClose(
                 java.net.http.WebSocket webSocket, int statusCode, String reason) {
-            errors.accept(new IOException("Relay host control connection closed."));
+            IOException error = new IOException("Relay host control connection closed.");
+            failAcknowledgements(error);
+            errors.accept(error);
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
     }

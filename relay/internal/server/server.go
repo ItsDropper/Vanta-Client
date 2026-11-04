@@ -364,6 +364,12 @@ func (s *Server) setRequestState(current *room, host *websocket.Conn,
 	request.mu.Unlock()
 	current.mu.Unlock()
 
+	// Confirm the authoritative state change to the host before it opens the
+	// data socket on a separate connection. Without this acknowledgement the
+	// host and relay can race, and attachData may see the old pending state.
+	_ = writeRoomJSON(current, host, controlMessage{
+		Type: "request_updated", RequestID: requestID, Reason: state,
+	})
 	if guestControl != nil {
 		event := controlMessage{Type: state, RequestID: requestID, Reason: reason}
 		_ = writeGuestJSON(request, guestControl, event)

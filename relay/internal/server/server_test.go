@@ -64,6 +64,15 @@ func TestApprovedGuestDataIsRelayedBidirectionally(t *testing.T) {
 	var approved controlMessage
 	if err := readJSON(ctx, guestControl, &approved); err != nil { t.Fatalf("guest approval event: %v", err) }
 	if approved.Type != "approved" { t.Fatalf("expected approved event, got %#v", approved) }
+	var hostAcknowledgement controlMessage
+	if err := readJSON(ctx, host, &hostAcknowledgement); err != nil {
+		t.Fatalf("host decision acknowledgement: %v", err)
+	}
+	if hostAcknowledgement.Type != "request_updated" ||
+		hostAcknowledgement.RequestID != joined.RequestID ||
+		hostAcknowledgement.Reason != "approved" {
+		t.Fatalf("unexpected host decision acknowledgement: %#v", hostAcknowledgement)
+	}
 
 	hostDataURL := "ws" + strings.TrimPrefix(baseURL, "http") +
 		"/v1/host/data/" + created.RoomCode + "/" + joined.RequestID
