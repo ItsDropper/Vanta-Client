@@ -333,11 +333,19 @@ public final class FarTerrainRenderer {
         int originX = key.chunkX * 16;
         int originZ = key.chunkZ * 16;
         int spanBlocks = key.sizeChunks * 16;
+        int[] sampleWorldX = new int[side];
+        int[] sampleWorldZ = new int[side];
+        for (int coordinate = 0; coordinate <= key.resolution; coordinate++) {
+            long offset = (long) coordinate * spanBlocks;
+            int roundedOffset = (int) ((offset + key.resolution / 2L) / key.resolution);
+            sampleWorldX[coordinate] = originX + roundedOffset;
+            sampleWorldZ[coordinate] = originZ + roundedOffset;
+        }
 
         for (int z = 0; z <= key.resolution; z++) {
-            int worldZ = originZ + Math.round((float) z * spanBlocks / key.resolution);
+            int worldZ = sampleWorldZ[z];
             for (int x = 0; x <= key.resolution; x++) {
-                int worldX = originX + Math.round((float) x * spanBlocks / key.resolution);
+                int worldX = sampleWorldX[x];
                 int height = generator.getBaseHeight(worldX, worldZ,
                         Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
                 height = Math.max(heightAccessor.getMinY(),
@@ -490,7 +498,19 @@ public final class FarTerrainRenderer {
             double tileHalfSpan = mesh.spanBlocks * 0.5;
             double nearestDx = Math.max(0.0, Math.abs(tileDx) - tileHalfSpan);
             double nearestDz = Math.max(0.0, Math.abs(tileDz) - tileHalfSpan);
-            if (nearestDx * nearestDx + nearestDz * nearestDz > outerRadiusSquared) continue;
+            double nearestTileDistanceSquared = nearestDx * nearestDx + nearestDz * nearestDz;
+            if (nearestTileDistanceSquared > outerRadiusSquared) continue;
+
+            // If every point in this tile lies inside the vanilla-detail radius,
+            // skip it completely. If the tile lies wholly inside the drawable
+            // annulus, its individual cells do not need distance checks.
+            double farthestDx = Math.abs(tileDx) + tileHalfSpan;
+            double farthestDz = Math.abs(tileDz) + tileHalfSpan;
+            double farthestTileDistanceSquared = farthestDx * farthestDx + farthestDz * farthestDz;
+            if (farthestTileDistanceSquared <= innerRadiusSquared) continue;
+            boolean tileEntirelyInsideRenderBand =
+                    nearestTileDistanceSquared >= innerRadiusSquared
+                            && farthestTileDistanceSquared <= outerRadiusSquared;
             double tileDistance = Math.sqrt(tileDistanceSquared);
             if (hasHorizontalForward && tileDistance > 1.0) {
                 double angularRadius = Math.atan2(mesh.spanBlocks * 0.72, tileDistance);
@@ -511,12 +531,15 @@ public final class FarTerrainRenderer {
                 for (int x = 0; x < resolution && drawnQuads < drawBudget; x++) {
                     double x0 = mesh.originX + x * step;
                     double x1 = mesh.originX + (x + 1) * step;
-                    double centerX = (x0 + x1) * 0.5;
-                    double centerZ = (z0 + z1) * 0.5;
-                    double dx = centerX - playerX;
-                    double dz = centerZ - playerZ;
-                    double distanceSquared = dx * dx + dz * dz;
-                    if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+                    if (!tileEntirelyInsideRenderBand) {
+                        double centerX = (x0 + x1) * 0.5;
+                        double centerZ = (z0 + z1) * 0.5;
+                        double dx = centerX - playerX;
+                        double dz = centerZ - playerZ;
+                        double distanceSquared = dx * dx + dz * dz;
+                        if (distanceSquared < innerRadiusSquared
+                                || distanceSquared > outerRadiusSquared) continue;
+                    }
 
                     int i00 = z * side + x;
                     int i10 = i00 + 1;
