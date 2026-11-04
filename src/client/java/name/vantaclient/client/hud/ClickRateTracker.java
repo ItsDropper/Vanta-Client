@@ -4,7 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 public final class ClickRateTracker {
-    private static final long WINDOW_MILLIS = 1000L;
+    private static final long WINDOW_NANOS = 1_000_000_000L;
     private static final Deque<Long> LEFT = new ArrayDeque<>();
     private static final Deque<Long> RIGHT = new ArrayDeque<>();
 
@@ -27,7 +27,7 @@ public final class ClickRateTracker {
     }
 
     private static void record(Deque<Long> clicks) {
-        long now = System.currentTimeMillis();
+        long now = System.nanoTime();
         synchronized (clicks) {
             prune(clicks, now);
             clicks.addLast(now);
@@ -43,7 +43,7 @@ public final class ClickRateTracker {
     }
 
     private static void prune(Deque<Long> clicks, long now) {
-        while (!clicks.isEmpty() && now - clicks.peekFirst() >= WINDOW_MILLIS) {
+        while (!clicks.isEmpty() && now - clicks.peekFirst() >= WINDOW_NANOS) {
             clicks.removeFirst();
         }
     }
