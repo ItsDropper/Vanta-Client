@@ -61,7 +61,7 @@ The 50-image suite covers the title screen, eight settings states including Cont
 
 ## Performance optimization
 
-- Performance Optimizer still provides tick-rate HUD data snapshots and render/tick timing metrics. It now also offers an opt-in adaptive entity draw-distance controller using Minecraft 1.21.11's native entity-distance option.
+- Performance Optimizer still provides tick-rate HUD data snapshots and render/tick timing metrics. The potion-effects HUD now caches formatted labels for five game ticks regardless of the optimizer toggle, refreshing immediately when the current world/player changes or world time rewinds. It now also offers an opt-in adaptive entity draw-distance controller using Minecraft 1.21.11's native entity-distance option.
 - The controller measures fresh world-render samples, reduces only client entity draw distance in bounded steps under sustained load, and recovers gradually when frame headroom returns. It retains the user's selected value as its ceiling, adopts external option changes, and restores the saved value when disabled or leaving a world.
 - Entity AI, entity ticking, collision, hitboxes, server simulation and networking are not modified. The minimum retained draw-distance ratio is configurable from 50–100% and defaults to 65%.
 - GameTests cover overload response, floor/ceiling bounds, gradual recovery, neutral conditions and missing measurement behavior. Actual FPS gains remain scene- and hardware-dependent and require gameplay benchmarking.
