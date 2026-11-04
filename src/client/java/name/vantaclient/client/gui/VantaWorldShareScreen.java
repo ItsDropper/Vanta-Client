@@ -190,8 +190,8 @@ public final class VantaWorldShareScreen extends Screen {
                 guestInfo.add(VantaUiNode.text("Claims name: " + guest.playerName(),
                         VantaUiTheme.TEXT_PRIMARY));
                 guestInfo.add(VantaUiNode.text(guest.previouslyWhitelisted()
-                                ? "Previously approved · " + claimedProfile
-                                : claimedProfile + " · awaiting your approval",
+                                ? "Saved profile claim · key check required"
+                                : claimedProfile + " · unverified; approval required",
                         VantaUiTheme.TEXT_MUTED));
                 request.add(guestInfo);
                 request.add(VantaUiNode.button("APPROVE",
@@ -210,13 +210,16 @@ public final class VantaWorldShareScreen extends Screen {
                 active.add(VantaUiNode.text(guest.playerName(),
                         VantaUiTheme.TEXT_PRIMARY).flex(1));
                 active.add(VantaUiNode.text(guest.identityVerified()
-                                ? "PROFILE VERIFIED" : "CHECKING PROFILE",
+                                ? "ACCOUNT KEY VERIFIED" : "AWAITING ACCOUNT KEY",
                         VantaUiTheme.TEXT_MUTED));
                 active.add(VantaUiNode.button("KICK",
                         () -> VantaRemoteSessionManager.kickGuest(guest.requestId()))
                         .size(62, 30));
                 content.add(active);
             }
+            content.add(VantaUiNode.text(
+                    "Only Mojang-verified account keys are saved. Every guest still needs host approval.",
+                    VantaUiTheme.TEXT_MUTED));
             List<String> savedProfiles = VantaRemoteSessionManager.whitelistedPlayerUUIDs();
             if (!savedProfiles.isEmpty()) {
                 content.add(VantaUiNode.eyebrow("SAVED PLAYERS FOR THIS WORLD"));
