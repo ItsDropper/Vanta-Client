@@ -14,6 +14,7 @@ import name.vantaclient.client.gui.VantaNotificationManager;
 import name.vantaclient.client.util.AnchorOptimizer;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.hud.HudPerformanceCache;
+import name.vantaclient.client.hud.ClickRateTracker;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.util.ExplosionEffects;
@@ -74,6 +75,11 @@ public class Events {
 
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
+            if (CpsHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled()
+                    || PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+                ClickRateTracker.refreshSnapshot();
+            }
 
             if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
                 HudPerformanceCache.tick(client);
