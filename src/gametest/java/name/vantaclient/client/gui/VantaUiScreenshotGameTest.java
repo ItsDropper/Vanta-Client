@@ -3,6 +3,7 @@ package name.vantaclient.client.gui;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.network.chat.Component;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.hudeditor.HudElement;
@@ -19,6 +20,7 @@ import name.vantaclient.client.integration.net.VantaRelayClient;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
 import name.vantaclient.client.feature.FeatureRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -62,6 +64,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
         verifyKeybindCaptureLifecycle(context);
+        verifyChatTimestampDecoration(context);
         verifyUiMotion(context);
         verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
@@ -563,6 +566,40 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 client.options.save();
                 Keybinds.setCaptureActive(false);
                 client.setScreen(null);
+            }
+        });
+    }
+
+    private static void verifyChatTimestampDecoration(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            String originalFormat = ChatTimestampsFeature.getFormatLabel();
+            Component original = Component.literal("Vanta timestamp probe");
+            try {
+                ChatTimestampsFeature.setFormat("24-hour");
+                String twentyFourHour = ChatTimestampsFeature.decorateMessage(original).getString();
+                if (!twentyFourHour.matches("\\[\\d{2}:\\d{2}\\] Vanta timestamp probe")) {
+                    throw new AssertionError("24-hour timestamps were not attached to the message: "
+                            + twentyFourHour);
+                }
+
+                ChatTimestampsFeature.setFormat("24-hour with seconds");
+                String withSeconds = ChatTimestampsFeature.decorateMessage(original).getString();
+                if (!withSeconds.matches("\\[\\d{2}:\\d{2}:\\d{2}\\] Vanta timestamp probe")) {
+                    throw new AssertionError("Second-resolution timestamps were not formatted correctly: "
+                            + withSeconds);
+                }
+
+                ChatTimestampsFeature.setFormat("12-hour");
+                String twelveHour = ChatTimestampsFeature.decorateMessage(original).getString();
+                if (!twelveHour.matches("\\[\\d{1,2}:\\d{2} (AM|PM)\\] Vanta timestamp probe")) {
+                    throw new AssertionError("12-hour timestamps were not formatted correctly: " + twelveHour);
+                }
+
+                if (!"Vanta timestamp probe".equals(original.getString())) {
+                    throw new AssertionError("Timestamp decoration mutated the original server message.");
+                }
+            } finally {
+                ChatTimestampsFeature.setFormat(originalFormat);
             }
         });
     }
