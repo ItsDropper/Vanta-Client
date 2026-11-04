@@ -297,8 +297,11 @@ public final class FarTerrainRenderer {
                         long generationStartedNanos = System.nanoTime();
                         TileMesh mesh = generateTile(key, generator, randomState, heightAccessor,
                                 biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
-                        recordTileGeneration((System.nanoTime() - generationStartedNanos) / 1_000_000.0);
-                        if (taskRevision == revision && DESIRED.contains(key)) COMPLETED.add(mesh);
+                        if (taskRevision == revision && DESIRED.contains(key)) {
+                            recordTileGeneration(
+                                    (System.nanoTime() - generationStartedNanos) / 1_000_000.0);
+                            COMPLETED.add(mesh);
+                        }
                     } catch (RuntimeException | LinkageError error) {
                         // A job from an old world revision must never poison the new world's tile state.
                         if (taskRevision == revision && DESIRED.contains(key)) {
