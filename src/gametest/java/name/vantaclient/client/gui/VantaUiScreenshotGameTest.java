@@ -772,6 +772,39 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             }
 
+            int[] waterHeights = {
+                    0, 0, 100,
+                    0, 0, 100,
+                    100, 100, 100
+            };
+            long[] waterMask = FarTerrainLodMath.createWaterCellMask(
+                    waterHeights, 2, 50, true);
+            if (!FarTerrainLodMath.isWaterCell(waterMask, 0)
+                    || FarTerrainLodMath.isWaterCell(waterMask, 1)
+                    || FarTerrainLodMath.isWaterCell(waterMask, 2)
+                    || FarTerrainLodMath.isWaterCell(waterMask, 3)) {
+                throw new AssertionError("FarView water-cell mask disagreed with the four-corner sea-level rule.");
+            }
+            long[] disabledWaterMask = FarTerrainLodMath.createWaterCellMask(
+                    waterHeights, 2, 50, false);
+            if (FarTerrainLodMath.isWaterCell(disabledWaterMask, 0)) {
+                throw new AssertionError("FarView water mask emitted water in a dimension with water disabled.");
+            }
+
+            int[] largeWaterHeights = new int[100];
+            long[] largeWaterMask = FarTerrainLodMath.createWaterCellMask(
+                    largeWaterHeights, 9, 10, true);
+            if (!FarTerrainLodMath.isWaterCell(largeWaterMask, 63)
+                    || !FarTerrainLodMath.isWaterCell(largeWaterMask, 64)
+                    || FarTerrainLodMath.isWaterCell(largeWaterMask, 80)
+                    || largeWaterMask.length != 2) {
+                throw new AssertionError("FarView water mask failed across a packed 64-cell word boundary.");
+            }
+            if (FarTerrainLodMath.isWaterCell(largeWaterMask, -1)
+                    || FarTerrainLodMath.isWaterCell(largeWaterMask, 81)) {
+                throw new AssertionError("FarView water mask accepted an out-of-range cell index.");
+            }
+
             int[] expectedSampleCoordinates = {100, 103, 105, 108, 110};
             for (int index = 0; index < expectedSampleCoordinates.length; index++) {
                 int actual = FarTerrainLodMath.sampleWorldCoordinate(100, 10, index, 4);
