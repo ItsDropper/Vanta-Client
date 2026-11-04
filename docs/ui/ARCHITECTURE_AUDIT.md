@@ -50,7 +50,13 @@ The settings and library screens use `VantaUiRuntime` to map Minecraft GUI-scale
 4. The HUD canvas selection/drag overlay intentionally remains specialized rendering; only its toolbar and inspector use the shared component runtime.
 5. Manual gameplay-session validation and performance profiling remain outstanding.
 
-## 6. Existing functionality to preserve
+## 6. Performance controls
+
+- The Performance Optimizer's adaptive entity-distance controller uses the native 1.21.11 `Options.entityDistanceScaling()` setting rather than a renderer mixin. It is opt-in, captures and restores the user's configured value, detects external option changes, and waits for fresh world-render timing samples before adjusting.
+- The controller changes only client-side entity draw range. Entity ticking, AI, collision and server simulation remain untouched.
+- Entity occlusion, chunk mesh compilation and block-entity batching are intentionally not reimplemented here because dedicated renderer mods already own those pipelines; overlapping render hooks would increase compatibility risk.
+
+## 7. Existing functionality to preserve
 
 - Feature enable/disable and configuration persistence.
 - Feature-specific settings and existing getters/setters.
