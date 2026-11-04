@@ -14,7 +14,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - IBM Plex Sans is bundled and wired through Minecraft's font-provider resources, with its OFL license.
 - UI scale and panel opacity use shared framework behavior rather than separate transforms for each retained-mode screen.
 - Dropdowns now use bounded floating overlays outside parent clipping, without layout reflow; keyboard navigation and popup-local wheel scrolling are supported.
-- Remaining framework gaps include reusable modal dialogs and a comprehensive layout/input unit-test suite. Progress indicators are indeterminate because the Modrinth installer does not expose transfer callbacks. The Controls page edits the five registered Vanta mappings; no feature-level keybinding model currently exists.
+- Remaining framework gaps include reusable modal dialogs and a comprehensive layout/input unit-test suite. Progress indicators are indeterminate because the Modrinth installer does not expose transfer callbacks. The Controls page now edits the five global Vanta mappings plus one optional, unbound-by-default shortcut for each registered feature; feature bindings use Minecraft's normal options persistence and participate in shared conflict detection.
 - The framework, legacy native widgets, title-screen controls and HUD-editor chrome now share cached fourth-order superellipse geometry. Existing rounded helper names remain compatibility aliases; scanline insets are precomputed and no shader is required.
 - Semantic notification colors are centralized in `VantaUiTheme`, and keyboard-focused buttons receive an explicit accent outline distinct from hover.
 - HUD-editor element guides now use the exact persisted/rendered hitbox rectangle; selection emphasis remains a separate outer outline.
@@ -57,7 +57,7 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 - `1b95d17`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937594) and [46-image screenshots with keyboard rebind/cancel/unbind lifecycle tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41735937566).
 - `64fa3c9`: [build](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445767) and [46-image screenshots with duplicate-binding detection and key capture tests](https://github.com/ItsDropper/Vanta-Client/actions/runs/41736445960).
 
-The 50-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector, desktop/compact Modrinth (including busy progress previews), installed-mod library, selected-mod details and the LAN world-sharing screen. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and Vanta keybind conflict/rebind/cancel/unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
+The 50-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector, desktop/compact Modrinth (including busy progress previews), installed-mod library, selected-mod details and the LAN world-sharing screen. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and global/feature keybind conflict, rebind, cancel and unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
 
 ## World sharing milestone
 
@@ -70,6 +70,6 @@ The 50-image suite covers the title screen, eight settings states including Cont
 
 ## Remaining acceptance gates
 - Review the 50-image artifact for visual quality, particularly the Controls page, title screen, HUD editor at 960×540 GUI scale 2, compact Modrinth cards, busy progress previews, selected-mod details and world-sharing screen.
-- Manually test mod search/favorites, read-only inventory refresh, per-mod hotload recovery, config handoff, dropdown scrolling, keybind conflict/capture/reset/unbind, screen lifecycle, and HUD dragging.
+- Manually test mod search/favorites, read-only inventory refresh, per-mod hotload recovery, config handoff, dropdown scrolling, global and per-feature keybind conflict/capture/reset/unbind, screen lifecycle, and HUD dragging.
 - Verify HUD hit-testing and FarView render-option restoration in a gameplay session; confirm layouts with the preferred GUI scale and a populated real mods folder.
 A successful compile or screenshot capture is not by itself proof of full functional acceptance. Static screenshots do not replace manual interaction and gameplay testing.
