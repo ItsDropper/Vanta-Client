@@ -183,8 +183,15 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
             FutureTask<Void> echoTask = new FutureTask<>(() -> {
                 try (Socket echo = remoteEchoServer.accept()) {
                     echo.setSoTimeout(2_000);
-                    byte[] received = echo.getInputStream().readNBytes(payload.length);
+                    int first = echo.getInputStream().read();
+                    if (first < 0) {
+                        throw new AssertionError("Host tunnel closed before forwarding the Minecraft payload.");
+                    }
                     remotePayloadReceived.countDown();
+                    byte[] receivedTail = echo.getInputStream().readNBytes(payload.length - 1);
+                    byte[] received = new byte[payload.length];
+                    received[0] = (byte) first;
+                    System.arraycopy(receivedTail, 0, received, 1, receivedTail.length);
                     if (!Arrays.equals(payload, received)) {
                         throw new AssertionError("Host tunnel forwarded the wrong payload to its remote stream.");
                     }
