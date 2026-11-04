@@ -139,34 +139,14 @@ public class HudEditorScreen extends Screen {
         }
     }
 
-    private void drawToolbar(GuiGraphics graphics, Minecraft mc,
-                             VantaClientPreferences preferences, float opacity) {
-        int accent = preferences.accent.color();
-        int x = (width - 430) / 2;
-        int y = 18 - Math.round((1.0f - opacity) * 10.0f);
-        fillRounded(graphics, x + 3, y + 4, 430, 52, 15, 0x66000000);
-        fillRounded(graphics, x, y, 430, 52, 14, 0xFF303A49);
-        fillRounded(graphics, x + 1, y + 1, 428, 50, 13, 0xF0161D28);
-        fillRounded(graphics, x + 12, y + 10, 32, 32, 9, accent);
-        graphics.drawCenteredString(mc.font, "V", x + 28, y + 22, 0xFFFFFFFF);
-        graphics.drawString(mc.font, "HUD Editor", x + 54, y + 11, 0xFFF0F3FA);
-        graphics.drawString(mc.font, "Drag elements to position · Click to customize",
-                x + 54, y + 27, 0xFF8995A8);
-
-        String snap = preferences.hudSnapToGrid ? "SNAP ON" : "SNAP OFF";
-        int snapWidth = mc.font.width(snap) + 18;
-        fillRounded(graphics, x + 430 - snapWidth - 12, y + 15, snapWidth, 22, 8,
-                preferences.hudSnapToGrid ? accent : 0xFF303A49);
-        graphics.drawCenteredString(mc.font, snap,
-                x + 430 - snapWidth / 2 - 12, y + 22, 0xFFFFFFFF);
-    }
-
     private void drawElementHitboxes(GuiGraphics graphics, int accent) {
         for (HudElement element : HudManager.getElements()) {
-            int x = element.getHitboxX() - 3;
-            int y = element.getHitboxY() - 3;
-            int w = Math.max(8, element.getHitboxWidth() + 6);
-            int h = Math.max(8, element.getHitboxHeight() + 6);
+            // Draw the guide on the exact hit-test/background rectangle. Selection
+            // emphasis is a separate outer outline and must not redefine the hitbox.
+            int x = element.getHitboxX();
+            int y = element.getHitboxY();
+            int w = Math.max(1, element.getHitboxWidth());
+            int h = Math.max(1, element.getHitboxHeight());
             boolean selected = element == HudSettingsPanel.getSelected();
             int fill = selected ? 0x263F8DFF : 0x182A3A50;
             int border = selected ? accent : 0xA8798CA8;
@@ -218,40 +198,12 @@ public class HudEditorScreen extends Screen {
     private static void drawRoundedOutline(GuiGraphics graphics, int x, int y,
                                             int width, int height, int radius,
                                             int color, int thickness) {
-        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= height - r) {
-                double dy = row - (height - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            if (row < thickness || row >= height - thickness) {
-                graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-            } else {
-                graphics.fill(x + inset, y + row, x + inset + thickness, y + row + 1, color);
-                graphics.fill(x + width - inset - thickness, y + row,
-                        x + width - inset, y + row + 1, color);
-            }
-        }
+        VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius, color, thickness);
     }
 
     private static void fillRounded(GuiGraphics graphics, int x, int y,
                                      int width, int height, int radius, int color) {
-        int r = Math.max(1, Math.min(radius, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int inset = 0;
-            if (row < r) {
-                double dy = r - row - 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            } else if (row >= height - r) {
-                double dy = row - (height - r) + 0.5;
-                inset = r - (int) Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
-            }
-            graphics.fill(x + inset, y + row, x + width - inset, y + row + 1, color);
-        }
+        VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius, color);
     }
 
     @Override
