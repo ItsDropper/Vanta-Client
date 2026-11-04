@@ -694,6 +694,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("FarView worker backoff did not follow the measured client load tiers.");
             }
 
+            if (FarTerrainLodMath.isOutsideHorizontalViewCone(10.0, 0.0, 1.0, 0.0, 0.0)
+                    || !FarTerrainLodMath.isOutsideHorizontalViewCone(-10.0, 0.0, 1.0, 0.0, 0.0)
+                    || !FarTerrainLodMath.isOutsideHorizontalViewCone(0.0, 10.0, 1.0, 0.0, 0.0)
+                    || FarTerrainLodMath.isOutsideHorizontalViewCone(0.0, 10.0, 1.0, 0.0, 100.0)
+                    || FarTerrainLodMath.isOutsideHorizontalViewCone(0.5, 0.5, 1.0, 0.0, 0.0)) {
+                throw new AssertionError("FarView conservative horizontal view-cone culling failed boundary cases.");
+            }
+
             int[] expectedSampleCoordinates = {100, 103, 105, 108, 110};
             for (int index = 0; index < expectedSampleCoordinates.length; index++) {
                 int actual = FarTerrainLodMath.sampleWorldCoordinate(100, 10, index, 4);
