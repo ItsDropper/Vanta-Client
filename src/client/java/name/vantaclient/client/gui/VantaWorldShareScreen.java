@@ -147,19 +147,17 @@ public final class VantaWorldShareScreen extends Screen {
         }
 
         if (lanStatus.state() == VantaLanHostingService.State.HOSTED) {
-            content.add(VantaUiNode.text("Local integrated server is listening on port "
-                    + lanStatus.port() + ".", VantaUiTheme.TEXT_SECONDARY));
+            content.add(VantaUiNode.text("Your integrated server is ready for guests.",
+                    VantaUiTheme.TEXT_SECONDARY));
         } else {
             content.add(VantaUiNode.text(
-                    "Vanta uses Minecraft's integrated server and opens its LAN listener before creating the remote invite.",
+                    "Vanta publishes the active singleplayer world through Minecraft's integrated server.",
                     VantaUiTheme.TEXT_SECONDARY));
             content.add(VantaUiNode.dropdown("Guest game mode", GAME_MODES,
                     () -> gameTypeLabel(selectedGameType),
                     value -> selectedGameType = gameTypeFromLabel(value)).height(34));
             content.add(VantaUiNode.toggle("Allow commands for guests",
                     () -> allowCommands, value -> allowCommands = value).height(34));
-            content.add(VantaUiNode.button("OPEN WORLD TO LAN", this::openLanHosting)
-                    .height(34));
         }
 
         if (session.hostActive()) {
@@ -169,7 +167,13 @@ public final class VantaWorldShareScreen extends Screen {
                     .add(VantaUiNode.spacer(1).flex(1))
                     .add(VantaUiNode.text(session.connectedGuests() + " connected",
                             VantaUiTheme.TEXT_SECONDARY)));
-            content.add(VantaUiNode.title(session.roomCode()));
+            content.add(VantaUiNode.row(8, 0)
+                    .height(36)
+                    .align(VantaUiNode.Alignment.CENTER)
+                    .add(VantaUiNode.title(session.roomCode()).flex(1))
+                    .add(VantaUiNode.button("COPY INVITE",
+                            () -> Minecraft.getInstance().keyboardHandler.setClipboard(session.roomCode()))
+                            .size(104, 30)));
             if (session.roomExpiresAt() != null) {
                 content.add(VantaUiNode.text("Invite expires "
                         + session.roomExpiresAt().toString().replace('T', ' ').replace("Z", " UTC"),
@@ -203,8 +207,10 @@ public final class VantaWorldShareScreen extends Screen {
             content.add(VantaUiNode.progressIndicator("Creating your invite room…").height(30));
             content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
         } else {
-            content.add(VantaUiNode.button("CREATE REMOTE INVITE", this::startRemoteHosting)
-                    .height(36));
+            content.add(VantaUiNode.button(
+                    lanStatus.state() == VantaLanHostingService.State.HOSTED
+                            ? "CREATE REMOTE INVITE" : "HOST WORLD",
+                    this::startRemoteHosting).height(36));
             content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
         }
 
