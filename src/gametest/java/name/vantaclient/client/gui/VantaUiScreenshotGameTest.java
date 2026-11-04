@@ -22,6 +22,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
+import name.vantaclient.client.util.AdaptiveEntityDistanceController;
 import name.vantaclient.client.feature.FeatureRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -65,6 +66,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyHudHitboxGeometry(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
+        verifyAdaptiveEntityDistancePolicy(context);
         verifyUiMotion(context);
         verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
@@ -566,6 +568,59 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 client.options.save();
                 Keybinds.setCaptureActive(false);
                 client.setScreen(null);
+            }
+        });
+    }
+
+    private static void verifyAdaptiveEntityDistancePolicy(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            double reduced = AdaptiveEntityDistanceController.calculateNextScale(
+                    1.0, 1.0, 0.65, 28.0, 42);
+            if (Math.abs(reduced - 0.75) > 0.0001) {
+                throw new AssertionError("Over-budget rendering did not reduce entity distance gradually: "
+                        + reduced);
+            }
+
+            double floor = AdaptiveEntityDistanceController.calculateNextScale(
+                    0.75, 1.0, 0.65, 30.0, 40);
+            if (Math.abs(floor - 0.65) > 0.0001) {
+                throw new AssertionError("Adaptive entity distance did not respect its configured floor: "
+                        + floor);
+            }
+
+            double recovered = AdaptiveEntityDistanceController.calculateNextScale(
+                    0.65, 1.0, 0.65, 8.0, 120);
+            if (Math.abs(recovered - 0.775) > 0.0001) {
+                throw new AssertionError("Entity distance did not recover gradually with frame headroom: "
+                        + recovered);
+            }
+
+            double customMaximum = AdaptiveEntityDistanceController.calculateNextScale(
+                    1.0, 2.0, 0.5, 8.0, 120);
+            if (Math.abs(customMaximum - 1.125) > 0.0001) {
+                throw new AssertionError("Adaptive recovery did not preserve the user's custom ceiling: "
+                        + customMaximum);
+            }
+
+            double unchanged = AdaptiveEntityDistanceController.calculateNextScale(
+                    0.8, 1.0, 0.65, 17.0, 60);
+            if (Math.abs(unchanged - 0.8) > 0.0001) {
+                throw new AssertionError("The adaptive policy changed distance without overload or headroom: "
+                        + unchanged);
+            }
+
+            double noMeasurements = AdaptiveEntityDistanceController.calculateNextScale(
+                    0.8, 1.0, 0.65, 0.0, 0);
+            if (Math.abs(noMeasurements - 0.8) > 0.0001) {
+                throw new AssertionError("The adaptive policy changed distance without fresh measurements: "
+                        + noMeasurements);
+            }
+
+            double minimumBound = AdaptiveEntityDistanceController.calculateNextScale(
+                    0.5, 1.0, 0.5, 30.0, 30);
+            if (Math.abs(minimumBound - 0.5) > 0.0001) {
+                throw new AssertionError("Adaptive entity distance went below Minecraft's supported minimum: "
+                        + minimumBound);
             }
         });
     }
