@@ -20,6 +20,8 @@ public class HudManager {
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
     private static final List<HudElement> READ_ONLY_ELEMENTS = Collections.unmodifiableList(ELEMENTS);
     private static final List<HudElement> ACTIVE_ELEMENTS = new ArrayList<>();
+    private static final List<HudElement> READ_ONLY_ACTIVE_ELEMENTS =
+            Collections.unmodifiableList(ACTIVE_ELEMENTS);
     private static boolean initialized = false;
     private static boolean visibilityInitialized = false;
 
@@ -73,5 +75,17 @@ public class HudManager {
     public static List<HudElement> getElements() {
         init();
         return READ_ONLY_ELEMENTS;
+    }
+
+    /**
+     * Visible HUD elements from the most recent client-tick refresh.
+     * Render passes can consume this snapshot without reevaluating feature predicates.
+     */
+    public static List<HudElement> getActiveElements() {
+        init();
+        if (!visibilityInitialized) {
+            refreshVisibleElements();
+        }
+        return READ_ONLY_ACTIVE_ELEMENTS;
     }
 }
