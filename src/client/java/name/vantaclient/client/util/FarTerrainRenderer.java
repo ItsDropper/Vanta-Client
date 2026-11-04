@@ -507,10 +507,11 @@ public final class FarTerrainRenderer {
             double farthestDx = Math.abs(tileDx) + tileHalfSpan;
             double farthestDz = Math.abs(tileDz) + tileHalfSpan;
             double farthestTileDistanceSquared = farthestDx * farthestDx + farthestDz * farthestDz;
-            if (farthestTileDistanceSquared <= innerRadiusSquared) continue;
-            boolean tileEntirelyInsideRenderBand =
-                    nearestTileDistanceSquared >= innerRadiusSquared
-                            && farthestTileDistanceSquared <= outerRadiusSquared;
+            if (FarTerrainLodMath.isEntireTileInsideInnerRadius(
+                    farthestTileDistanceSquared, innerRadiusSquared)) continue;
+            boolean tileEntirelyInsideRenderBand = FarTerrainLodMath.isEntireTileInsideRenderBand(
+                    nearestTileDistanceSquared, farthestTileDistanceSquared,
+                    innerRadiusSquared, outerRadiusSquared);
             double tileDistance = Math.sqrt(tileDistanceSquared);
             if (hasHorizontalForward && tileDistance > 1.0) {
                 double angularRadius = Math.atan2(mesh.spanBlocks * 0.72, tileDistance);
