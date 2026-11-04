@@ -1,9 +1,11 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.VantaLanHostingService;
+import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -16,17 +18,26 @@ import net.minecraft.world.level.GameType;
 
 import java.util.List;
 
-/** Vanta's retained-mode front end for the first, LAN-only world-sharing milestone. */
+/** Retained-mode host and guest entry point for Vanta's self-hosted remote relay. */
 public final class VantaWorldShareScreen extends Screen {
     private static final List<String> GAME_MODES =
             List.of("Survival", "Creative", "Adventure", "Spectator");
 
     private final Screen parent;
     private VantaUiRuntime runtime;
+    private VantaClientPreferences preferences;
+    private VantaLanHostingService.Status lanStatus =
+            new VantaLanHostingService.Status(VantaLanHostingService.State.NO_WORLD, -1);
+    private VantaRemoteSessionManager.Snapshot session = VantaRemoteSessionManager.snapshot();
+
+    private String relayEndpoint = "";
+    private String inviteCode = "";
+    private String playerName = "";
+    private String localStatus = "";
     private GameType selectedGameType = GameType.SURVIVAL;
     private boolean allowCommands;
-    private VantaLanHostingService.Status status =
-            new VantaLanHostingService.Status(VantaLanHostingService.State.NO_WORLD, -1);
+    private long lastSessionRevision = -1L;
+    private boolean connectionHandoffStarted;
 
     public VantaWorldShareScreen(Screen parent) {
         super(Component.literal("Vanta World Sharing"));
@@ -35,25 +46,32 @@ public final class VantaWorldShareScreen extends Screen {
 
     @Override
     protected void init() {
+        preferences = VantaClientPreferences.get();
+        relayEndpoint = preferences.remoteRelayEndpoint;
+        playerName = Minecraft.getInstance().getUser().getName();
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         if (server != null && server.getDefaultGameType() != null) {
             selectedGameType = server.getDefaultGameType();
         }
-        status = VantaLanHostingService.status();
+        lanStatus = VantaLanHostingService.status();
+        session = VantaRemoteSessionManager.snapshot();
+        lastSessionRevision = VantaRemoteSessionManager.revision();
         rebuildUi();
     }
 
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
-        runtime.setScale((float) name.vantaclient.client.config.VantaClientPreferences.get().uiScale);
+        runtime.setScale((float) preferences.uiScale);
         runtime.layout(font, width, height);
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = width < 620;
-        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
+        boolean compact = width < 680;
+        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        lanStatus = VantaLanHostingService.status();
 
+        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
         VantaUiNode header = VantaUiNode.row(10, 12)
                 .height(compact ? 42 : 48)
                 .background(VantaUiTheme.PANEL)
@@ -64,77 +82,215 @@ public final class VantaWorldShareScreen extends Screen {
         header.add(heading);
         header.add(VantaUiNode.spacer(1).flex(1));
         header.add(VantaUiNode.button("BACK", this::onClose).height(30)
-                .tooltip("Return to the pause menu"));
+                .tooltip("Return to the previous screen"));
         root.add(header);
 
-        VantaUiNode content = VantaUiNode.column(12, 18)
-                .flex(1).padding(compact ? 12 : 20)
-                .background(VantaUiTheme.PANEL).scrollable();
-        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        VantaUiNode content = VantaUiNode.column(12, 16)
+                .flex(1)
+                .padding(compact ? 12 : 18)
+                .background(VantaUiTheme.PANEL)
+                .scrollable();
 
-        switch (status.state()) {
-            case NO_WORLD -> {
-                content.add(VantaUiNode.eyebrow("NO ACTIVE WORLD"));
-                content.add(VantaUiNode.title("Open a singleplayer world first"));
-                content.add(VantaUiNode.paragraph(
-                        "Vanta can share an integrated singleplayer world while you are in-game.",
-                        VantaUiTheme.TEXT_SECONDARY, 2));
-            }
-            case HOSTED -> {
-                content.add(VantaUiNode.eyebrow("LOCAL HOSTING ACTIVE"));
-                content.add(VantaUiNode.title("Your world is open to LAN"));
-                content.add(VantaUiNode.text("Port  " + status.port(),
-                        VantaUiTheme.TEXT_PRIMARY));
-                content.add(VantaUiNode.paragraph(
-                        "Players on the same local network can find this world from Minecraft's Multiplayer screen.",
-                        VantaUiTheme.TEXT_SECONDARY, compact ? 4 : 2));
-                content.add(VantaUiNode.paragraph(
-                        "To stop hosting, close the world and return to the title screen.",
-                        VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
-            }
-            case NOT_HOSTED, FAILED -> {
-                content.add(VantaUiNode.eyebrow("LOCAL NETWORK"));
-                content.add(VantaUiNode.title("Share your current world"));
-                content.add(VantaUiNode.paragraph(
-                        "Open the integrated server to devices on your local network. Minecraft chooses an available port.",
-                        VantaUiTheme.TEXT_SECONDARY, compact ? 4 : 2));
+        addRelaySettings(content, compact);
+        content.add(VantaUiNode.spacer(1).height(2));
+        addHostSection(content, server, compact);
+        content.add(VantaUiNode.spacer(1).height(2));
+        addGuestSection(content, compact);
 
-                if (server != null) {
-                    content.add(VantaUiNode.dropdown("Guest game mode", GAME_MODES,
-                            () -> gameTypeLabel(selectedGameType),
-                            value -> selectedGameType = gameTypeFromLabel(value)).height(34));
-                    content.add(VantaUiNode.toggle("Allow commands",
-                            () -> allowCommands, value -> allowCommands = value)
-                            .height(36)
-                            .tooltip("Allow commands for players who join this LAN session"));
-                    content.add(VantaUiNode.button("START LOCAL HOSTING", this::startHosting)
-                            .height(36));
-                } else {
-                    content.add(VantaUiNode.paragraph(
-                            "The singleplayer server is not ready. Return to the world and try again.",
-                            VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
-                }
-
-                if (status.state() == VantaLanHostingService.State.FAILED) {
-                    content.add(VantaUiNode.paragraph(
-                            "Minecraft could not open a LAN port. Check whether another service is using the network port, then retry.",
-                            VantaUiTheme.TEXT_MUTED, compact ? 5 : 3));
-                }
-            }
-        }
-
-        content.add(VantaUiNode.spacer(1).height(4));
-        content.add(VantaUiNode.eyebrow("REMOTE PLAY"));
-        content.add(VantaUiNode.paragraph(
-                "Internet peer invitations are not implemented in this milestone. They need an authenticated signalling and relay or NAT-traversal service; this screen does not request or display public addresses.",
-                VantaUiTheme.TEXT_MUTED, compact ? 7 : 3));
         root.add(content);
         return root;
     }
 
-    private void startHosting() {
-        status = VantaLanHostingService.start(selectedGameType, allowCommands);
+    private void addRelaySettings(VantaUiNode content, boolean compact) {
+        content.add(VantaUiNode.eyebrow("YOUR RELAY"));
+        content.add(VantaUiNode.text(
+                "Use a relay you operate or trust. Remote relays must use HTTPS/WSS; no Vanta-operated public relay is configured.",
+                VantaUiTheme.TEXT_SECONDARY));
+        VantaUiNode endpointRow = VantaUiNode.row(8, 0)
+                .height(34)
+                .align(VantaUiNode.Alignment.CENTER);
+        endpointRow.add(VantaUiNode.textField("https://your-relay.example", 
+                () -> relayEndpoint, value -> relayEndpoint = value, 256)
+                .flex(1).minSize(80, 30));
+        endpointRow.add(VantaUiNode.button("SAVE", this::saveRelayEndpoint)
+                .size(62, 30));
+        content.add(endpointRow);
+        content.add(VantaUiNode.text(
+                "The relay forwards encrypted Minecraft transport data. Its operator can still see connection metadata and source network addresses.",
+                VantaUiTheme.TEXT_MUTED));
+        if (!localStatus.isBlank()) {
+            content.add(VantaUiNode.paragraph(localStatus,
+                    VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
+        }
+    }
+
+    private void addHostSection(VantaUiNode content, MinecraftServer server, boolean compact) {
+        content.add(VantaUiNode.eyebrow("HOST A WORLD"));
+        if (server == null) {
+            content.add(VantaUiNode.title("Open a singleplayer world to host"));
+            content.add(VantaUiNode.text(
+                    "Hosting is available while a singleplayer integrated server is running. You can still join a friend's invite from this screen.",
+                    VantaUiTheme.TEXT_SECONDARY));
+            return;
+        }
+
+        if (lanStatus.state() == VantaLanHostingService.State.HOSTED) {
+            content.add(VantaUiNode.text("Local integrated server is listening on port "
+                    + lanStatus.port() + ".", VantaUiTheme.TEXT_SECONDARY));
+        } else {
+            content.add(VantaUiNode.text(
+                    "Vanta uses Minecraft's integrated server and opens its LAN listener before creating the remote invite.",
+                    VantaUiTheme.TEXT_SECONDARY));
+            content.add(VantaUiNode.dropdown("Guest game mode", GAME_MODES,
+                    () -> gameTypeLabel(selectedGameType),
+                    value -> selectedGameType = gameTypeFromLabel(value)).height(34));
+            content.add(VantaUiNode.toggle("Allow commands for guests",
+                    () -> allowCommands, value -> allowCommands = value).height(34));
+            content.add(VantaUiNode.button("OPEN WORLD TO LAN", this::openLanHosting)
+                    .height(34));
+        }
+
+        if (session.hostActive()) {
+            content.add(VantaUiNode.divider(1, 8));
+            content.add(VantaUiNode.row(8, 0).height(22)
+                    .add(VantaUiNode.eyebrow("REMOTE INVITE ACTIVE"))
+                    .add(VantaUiNode.spacer(1).flex(1))
+                    .add(VantaUiNode.text(session.connectedGuests() + " connected",
+                            VantaUiTheme.TEXT_SECONDARY)));
+            content.add(VantaUiNode.title(session.roomCode()));
+            if (session.roomExpiresAt() != null) {
+                content.add(VantaUiNode.text("Invite expires "
+                        + session.roomExpiresAt().toString().replace('T', ' ').replace("Z", " UTC"),
+                        VantaUiTheme.TEXT_MUTED));
+            }
+            content.add(VantaUiNode.paragraph(session.hostStatus(),
+                    VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
+            for (VantaRemoteSessionManager.PendingGuest guest : session.pendingGuests()) {
+                VantaUiNode request = VantaUiNode.row(8, 4)
+                        .height(compact ? 66 : 38)
+                        .align(VantaUiNode.Alignment.CENTER);
+                VantaUiNode guestInfo = VantaUiNode.column(2, 0).flex(1);
+                guestInfo.add(VantaUiNode.text(guest.playerName(), VantaUiTheme.TEXT_PRIMARY));
+                guestInfo.add(VantaUiNode.text(guest.approving()
+                                ? "Approval sent; opening stream…"
+                                : "Waiting for your approval",
+                        VantaUiTheme.TEXT_MUTED));
+                request.add(guestInfo);
+                request.add(VantaUiNode.button("APPROVE",
+                        () -> VantaRemoteSessionManager.approveGuest(guest.requestId()))
+                        .size(76, 30).enabled(!guest.approving()));
+                request.add(VantaUiNode.button("REJECT",
+                        () -> VantaRemoteSessionManager.rejectGuest(guest.requestId()))
+                        .size(64, 30).enabled(!guest.approving()));
+                content.add(request);
+            }
+            content.add(VantaUiNode.button("STOP REMOTE HOSTING",
+                    VantaRemoteSessionManager::stopHosting).height(34));
+        } else if (session.hostBusy()) {
+            content.add(VantaUiNode.progressIndicator("Creating your invite room…").height(30));
+            content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
+        } else {
+            content.add(VantaUiNode.button("CREATE REMOTE INVITE", this::startRemoteHosting)
+                    .height(36));
+            content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
+        }
+
+        if (lanStatus.state() == VantaLanHostingService.State.FAILED) {
+            content.add(VantaUiNode.paragraph(
+                    "Minecraft could not open a local listener. Remote hosting cannot continue until the integrated server is published.",
+                    VantaUiTheme.TEXT_MUTED, 3));
+        }
+    }
+
+    private void addGuestSection(VantaUiNode content, boolean compact) {
+        content.add(VantaUiNode.divider(1, 8));
+        content.add(VantaUiNode.eyebrow("JOIN A FRIEND"));
+        content.add(VantaUiNode.textField("Invite code",
+                () -> inviteCode, value -> inviteCode = value.toUpperCase().replaceAll("[^A-Z2-7]", ""),
+                32).height(34));
+        content.add(VantaUiNode.textField("Minecraft player name",
+                () -> playerName, value -> playerName = value, 16).height(34));
+
+        if (session.guestBusy()) {
+            content.add(VantaUiNode.progressIndicator("Waiting for the host…").height(30));
+            content.add(VantaUiNode.paragraph(session.guestStatus(),
+                    VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
+            content.add(VantaUiNode.button("CANCEL JOIN",
+                    VantaRemoteSessionManager::stopJoining).height(32));
+        } else if (session.guestActive()) {
+            content.add(VantaUiNode.paragraph(session.guestStatus(),
+                    VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
+            content.add(VantaUiNode.button("DISCONNECT REMOTE WORLD",
+                    VantaRemoteSessionManager::stopJoining).height(32));
+        } else {
+            content.add(VantaUiNode.button("JOIN REMOTE WORLD", this::joinRemoteWorld)
+                    .height(36));
+            content.add(VantaUiNode.text(session.guestStatus(), VantaUiTheme.TEXT_MUTED));
+        }
+    }
+
+    private void saveRelayEndpoint() {
+        try {
+            relayEndpoint = VantaRelayClient.normalizeBaseUrl(relayEndpoint);
+            preferences.remoteRelayEndpoint = relayEndpoint;
+            VantaClientPreferences.save();
+            localStatus = "Relay address saved on this device.";
+        } catch (IllegalArgumentException exception) {
+            localStatus = exception.getMessage();
+        }
         rebuildUi();
+    }
+
+    private void openLanHosting() {
+        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) {
+            localStatus = "Open a singleplayer world first.";
+        } else {
+            lanStatus = VantaLanHostingService.start(selectedGameType, allowCommands);
+            localStatus = lanStatus.state() == VantaLanHostingService.State.HOSTED
+                    ? "Local hosting is active. You can now create a remote invite."
+                    : "Could not open the local integrated server.";
+        }
+        rebuildUi();
+    }
+
+    private void startRemoteHosting() {
+        saveEndpointWithoutRebuild();
+        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) {
+            localStatus = "Open a singleplayer world before creating a remote invite.";
+            rebuildUi();
+            return;
+        }
+        lanStatus = VantaLanHostingService.status();
+        if (lanStatus.state() != VantaLanHostingService.State.HOSTED) {
+            lanStatus = VantaLanHostingService.start(selectedGameType, allowCommands);
+        }
+        if (lanStatus.state() != VantaLanHostingService.State.HOSTED) {
+            localStatus = "Minecraft could not open the integrated server to LAN.";
+            rebuildUi();
+            return;
+        }
+        localStatus = "Starting your private relay invite…";
+        VantaRemoteSessionManager.startHosting(relayEndpoint, server, lanStatus.port());
+        rebuildUi();
+    }
+
+    private void joinRemoteWorld() {
+        saveEndpointWithoutRebuild();
+        VantaRemoteSessionManager.join(relayEndpoint, inviteCode, playerName, this);
+        rebuildUi();
+    }
+
+    private void saveEndpointWithoutRebuild() {
+        try {
+            relayEndpoint = VantaRelayClient.normalizeBaseUrl(relayEndpoint);
+            preferences.remoteRelayEndpoint = relayEndpoint;
+            VantaClientPreferences.save();
+            localStatus = "";
+        } catch (IllegalArgumentException exception) {
+            localStatus = exception.getMessage();
+        }
     }
 
     private static String gameTypeLabel(GameType gameType) {
@@ -157,10 +313,22 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (runtime != null) runtime.tick();
+        long revision = VantaRemoteSessionManager.revision();
+        if (revision != lastSessionRevision) {
+            lastSessionRevision = revision;
+            session = VantaRemoteSessionManager.snapshot();
+            rebuildUi();
+        }
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
         if (runtime != null) {
-            runtime.setScale((float) name.vantaclient.client.config.VantaClientPreferences.get().uiScale);
+            runtime.setScale((float) preferences.uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -211,13 +379,16 @@ public final class VantaWorldShareScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (VantaRemoteSessionManager.snapshot().guestBusy() && !connectionHandoffStarted) {
+            VantaRemoteSessionManager.stopJoining();
+        }
         if (minecraft != null) minecraft.setScreen(parent);
         else super.onClose();
     }
 
     /**
-     * Keep the integrated server ticking while this screen is visible so LAN guests
-     * can connect without the host having to close the world-sharing screen.
+     * ConnectScreen replaces this screen after host approval. Preserve the tunnel
+     * during that screen transition; an explicit Back action cancels the join.
      */
     @Override
     public boolean isPauseScreen() {
