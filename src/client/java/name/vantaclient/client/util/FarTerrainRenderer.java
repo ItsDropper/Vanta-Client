@@ -19,6 +19,7 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -522,6 +523,9 @@ public final class FarTerrainRenderer {
         PoseStack.Pose pose = context.matrices().last();
         if (context.consumers() == null) return;
         VertexConsumer consumer = context.consumers().getBuffer(FarTerrainRenderType.TYPE);
+        // Reuse one position scratch vector for every emitted vertex. The PoseStack
+        // VertexConsumer overload allocates a temporary Vector3f per vertex.
+        Vector3f transformedVertex = new Vector3f();
         int drawnQuads = 0;
         int submittedMeshes = 0;
         for (TileKey key : orderedTiles) {
@@ -593,13 +597,13 @@ public final class FarTerrainRenderer {
                         // Distant water is a single opaque, biome-tinted sea-level surface.
                         // Full transparency is intentionally left to the nearby vanilla renderer.
                         double waterY = mesh.seaLevel + 0.04;
-                        emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
+                        emitQuad(consumer, pose, transformedVertex, cameraX, cameraY, cameraZ,
                                 x0, waterY, z0, waterColors[i00],
                                 x0, waterY, z1, waterColors[i01],
                                 x1, waterY, z1, waterColors[i11],
                                 x1, waterY, z0, waterColors[i10]);
                     } else {
-                        emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
+                        emitQuad(consumer, pose, transformedVertex, cameraX, cameraY, cameraZ,
                                 x0, heights[i00], z0, colors[i00],
                                 x0, heights[i01], z1, colors[i01],
                                 x1, heights[i11], z1, colors[i11],
@@ -610,7 +614,7 @@ public final class FarTerrainRenderer {
             }
 
             if (drawnQuads < drawBudget) {
-                drawnQuads += emitSkirts(consumer, pose, mesh, cameraX, cameraY, cameraZ,
+                drawnQuads += emitSkirts(consumer, pose, transformedVertex, mesh, cameraX, cameraY, cameraZ,
                         playerX, playerZ, innerRadiusSquared, outerRadiusSquared,
                         drawnQuads, drawBudget);
             }
@@ -654,7 +658,8 @@ public final class FarTerrainRenderer {
                 adaptiveDrawBudget, averageMeshSubmitMs, 12_000, MAX_DRAW_QUADS);
     }
 
-    private static int emitSkirts(VertexConsumer consumer, PoseStack.Pose pose, TileMesh mesh,
+    private static int emitSkirts(VertexConsumer consumer, PoseStack.Pose pose,
+                                  Vector3f transformedVertex, TileMesh mesh,
                                   double cameraX, double cameraY, double cameraZ,
                                   double playerX, double playerZ, double innerRadiusSquared,
                                   double outerRadiusSquared, int alreadyDrawn, int maxQuads) {
@@ -703,7 +708,7 @@ public final class FarTerrainRenderer {
 
                 int darkA = darken(colors[a]);
                 int darkB = darken(colors[b]);
-                emitQuad(consumer, pose, cameraX, cameraY, cameraZ,
+                emitQuad(consumer, pose, transformedVertex, cameraX, cameraY, cameraZ,
                         ax, heights[a], az, colors[a],
                         ax, heights[a] - depth, az, darkA,
                         bx, heights[b] - depth, bz, darkB,
@@ -722,22 +727,29 @@ public final class FarTerrainRenderer {
     }
 
     private static void emitQuad(VertexConsumer consumer, PoseStack.Pose pose,
+                                 Vector3f transformedVertex,
                                  double cameraX, double cameraY, double cameraZ,
                                  double x0, double y0, double z0, int color0,
                                  double x1, double y1, double z1, int color1,
                                  double x2, double y2, double z2, int color2,
                                  double x3, double y3, double z3, int color3) {
-        putVertex(consumer, pose, x0 - cameraX, y0 - cameraY, z0 - cameraZ, color0);
-        putVertex(consumer, pose, x1 - cameraX, y1 - cameraY, z1 - cameraZ, color1);
-        putVertex(consumer, pose, x2 - cameraX, y2 - cameraY, z2 - cameraZ, color2);
-        putVertex(consumer, pose, x3 - cameraX, y3 - cameraY, z3 - cameraZ, color3);
+        putVertex(consumer, pose, transformedVertex,
+                x0 - cameraX, y0 - cameraY, z0 - cameraZ, color0);
+        putVertex(consumer, pose, transformedVertex,
+                x1 - cameraX, y1 - cameraY, z1 - cameraZ, color1);
+        putVertex(consumer, pose, transformedVertex,
+                x2 - cameraX, y2 - cameraY, z2 - cameraZ, color2);
+        putVertex(consumer, pose, transformedVertex,
+                x3 - cameraX, y3 - cameraY, z3 - cameraZ, color3);
     }
 
     private static void putVertex(VertexConsumer consumer, PoseStack.Pose pose,
-                                  double x, double y, double z, int color) {
-        consumer.addVertex(pose, (float) x, (float) y, (float) z)
-                .setColor((color >>> 16) & 0xFF, (color >>> 8) & 0xFF,
-                        color & 0xFF, 255);
+                                  Vector3f transformedVertex, double x, double y, double z,
+                                  int color) {
+        transformedVertex.set((float) x, (float) y, (float) z);
+        pose.pose().transformPosition(transformedVertex);
+        consumer.addVertex(transformedVertex.x, transformedVertex.y, transformedVertex.z)
+                .setColor(color);
     }
 
     private static double distanceSquaredToCenter(TileKey key, double playerChunkX, double playerChunkZ) {
