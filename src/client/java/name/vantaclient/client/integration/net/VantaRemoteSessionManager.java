@@ -60,6 +60,7 @@ public final class VantaRemoteSessionManager {
     private static boolean shuttingDown;
     private static String hostStatus = "No remote host session is running.";
     private static String guestStatus = "Enter your relay address and invite code to join.";
+    private static String guestTransportLabel = "secure WebSocket relay fallback";
     private static HostSession hostSession;
     private static MinecraftServer hostedServer;
     private static GuestSession guestSession;
@@ -184,8 +185,20 @@ public final class VantaRemoteSessionManager {
             TcpStreamTunnel tunnel = null;
             try {
                 session.control.approve(requestId);
-                WebSocketDuplexConnection remote =
-                        session.relay.connectHostData(session.room, requestId);
+                LoopbackTcpBridge.DuplexConnection remote;
+                try {
+                    List<VantaRelayClient.IceServerConfig> iceServers =
+                            session.relay.fetchHostIceServers(session.room, requestId);
+                    remote = WebRtcPeerSession.connectHost(
+                            session.relay, session.room, requestId, iceServers);
+                } catch (IOException peerFailure) {
+                    // TURN is attempted by ICE before it fails. This is a distinct
+                    // availability fallback, not a direct or TURN connection.
+                    remote = session.relay.connectHostData(session.room, requestId);
+                }
+                String transport = remote instanceof WebRtcPeerSession webRtc
+                        ? (webRtc.isUsingTurnRelay() ? "WebRTC through TURN" : "direct WebRTC")
+                        : "secure WebSocket relay fallback";
                 tunnel = TcpStreamTunnel.connectToLoopbackServer(
                         session.serverPort, remote,
                         () -> onHostTunnelClosed(generation, requestId));
@@ -198,7 +211,7 @@ public final class VantaRemoteSessionManager {
                     HOST_TUNNELS.put(requestId, tunnel);
                     PENDING.remove(requestId);
                     if (tunnel.isClosed()) HOST_TUNNELS.remove(requestId);
-                    hostStatus = "The approved guest stream is active.";
+                    hostStatus = "Guest connected using " + transport + ".";
                     bumpRevisionLocked();
                 }
             } catch (Exception exception) {
@@ -292,7 +305,7 @@ public final class VantaRemoteSessionManager {
         executeIo(() -> {
             VantaRelayClient.GuestDecisionConnection decision = null;
             LoopbackTcpBridge bridge = null;
-            AtomicReference<WebSocketDuplexConnection> unclaimedData = new AtomicReference<>();
+            AtomicReference<LoopbackTcpBridge.DuplexConnection> unclaimedData = new AtomicReference<>();
             try {
                 VantaRelayClient relay = new VantaRelayClient(normalizedEndpoint);
                 VantaRelayClient.JoinTicket ticket = relay.requestJoin(roomCode, playerName);
@@ -320,8 +333,22 @@ public final class VantaRemoteSessionManager {
                     throw new IOException("The host declined your join request.");
                 }
 
-                WebSocketDuplexConnection remote = relay.connectGuestData(ticket);
+                LoopbackTcpBridge.DuplexConnection remote;
+                try {
+                    List<VantaRelayClient.IceServerConfig> iceServers =
+                            relay.fetchGuestIceServers(ticket);
+                    remote = WebRtcPeerSession.connectGuest(relay, ticket, iceServers);
+                } catch (IOException peerFailure) {
+                    // Use the legacy data relay only when WebRTC/ICE could not connect.
+                    remote = relay.connectGuestData(ticket);
+                }
+                String transport = remote instanceof WebRtcPeerSession webRtc
+                        ? (webRtc.isUsingTurnRelay() ? "WebRTC through TURN" : "direct WebRTC")
+                        : "secure WebSocket relay fallback";
                 unclaimedData.set(remote);
+                synchronized (LOCK) {
+                    if (generation == guestGeneration) guestTransportLabel = transport;
+                }
                 AtomicBoolean streamClaimed = new AtomicBoolean();
                 bridge = LoopbackTcpBridge.listen(() -> {
                     if (!streamClaimed.compareAndSet(false, true)) {
@@ -364,7 +391,7 @@ public final class VantaRemoteSessionManager {
             } catch (Exception exception) {
                 if (decision != null) decision.close();
                 if (bridge != null) bridge.close();
-                WebSocketDuplexConnection remaining = unclaimedData.getAndSet(null);
+                LoopbackTcpBridge.DuplexConnection remaining = unclaimedData.getAndSet(null);
                 closeQuietly(remaining);
                 synchronized (LOCK) {
                     if (generation == guestGeneration) {
@@ -410,7 +437,7 @@ public final class VantaRemoteSessionManager {
         synchronized (LOCK) {
             if (guestSession == null) return;
             guestWorldJoined = true;
-            guestStatus = "Connected to the host through the configured relay.";
+            guestStatus = "Connected to the host using " + guestTransportLabel + ".";
             bumpRevisionLocked();
         }
     }
@@ -605,17 +632,17 @@ public final class VantaRemoteSessionManager {
 
     private static final class GuestSession {
         private final LoopbackTcpBridge bridge;
-        private final AtomicReference<WebSocketDuplexConnection> unclaimedData;
+        private final AtomicReference<LoopbackTcpBridge.DuplexConnection> unclaimedData;
 
         private GuestSession(LoopbackTcpBridge bridge,
-                             AtomicReference<WebSocketDuplexConnection> unclaimedData) {
+                             AtomicReference<LoopbackTcpBridge.DuplexConnection> unclaimedData) {
             this.bridge = bridge;
             this.unclaimedData = unclaimedData;
         }
 
         private void close() {
             bridge.close();
-            WebSocketDuplexConnection remote = unclaimedData.getAndSet(null);
+            LoopbackTcpBridge.DuplexConnection remote = unclaimedData.getAndSet(null);
             closeQuietly(remote);
         }
     }
