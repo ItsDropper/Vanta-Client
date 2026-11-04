@@ -218,7 +218,7 @@ public final class VantaWorldShareScreen extends Screen {
                 content.add(active);
             }
             content.add(VantaUiNode.text(
-                    "Only Mojang-verified account keys are saved. Every guest still needs host approval.",
+                    "Only matching Mojang-verified account keys are saved. Offline UUID mismatches do not block approved guests, but they are not saved as trusted profiles.",
                     VantaUiTheme.TEXT_MUTED));
             List<String> savedProfiles = VantaRemoteSessionManager.whitelistedPlayerUUIDs();
             if (!savedProfiles.isEmpty()) {
