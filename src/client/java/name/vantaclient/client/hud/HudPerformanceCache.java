@@ -76,8 +76,7 @@ public final class HudPerformanceCache {
             if (info != null) ping = info.getLatency();
         }
         pingText = ping < 0 ? "PING  --" : "PING  " + ping + " ms";
-        cpsText = "CPS  " + ClickRateTracker.getSnapshotLeftCps()
-                + " | " + ClickRateTracker.getSnapshotRightCps();
+        cpsText = ClickRateTracker.getSnapshotText();
         fpsText = "FPS  " + mc.getFps();
     }
 
