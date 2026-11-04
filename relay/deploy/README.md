@@ -40,7 +40,7 @@ docker compose logs -f vanta-relay coturn caddy
 Check the public health endpoint:
 
 ```sh
-curl --fail https://${VANTA_DOMAIN}/healthz
+curl --fail https://<your-domain>/healthz
 ```
 
 A healthy response is HTTP 204. Configure both Vanta clients to use `https://<your-domain>`. The client converts the API's WebSocket routes to WSS. No Minecraft port needs to be exposed on the host's public interface.
