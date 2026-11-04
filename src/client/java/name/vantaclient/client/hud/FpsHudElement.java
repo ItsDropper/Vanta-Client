@@ -8,6 +8,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
 public final class FpsHudElement extends HudElement {
+    private int lastDisplayedFps = Integer.MIN_VALUE;
+    private String cachedFpsText = "FPS  --";
     public FpsHudElement() {
         super(name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudX,
                 name.vantaclient.client.config.DropperUtilsConfig.get().fpsHudY);
@@ -38,8 +40,15 @@ public final class FpsHudElement extends HudElement {
     }
 
     private String getDisplayText(Minecraft mc) {
-        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getFpsText() : "FPS  " + mc.getFps();
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            return HudPerformanceCache.getFpsText();
+        }
+        int fps = mc.getFps();
+        if (fps != lastDisplayedFps) {
+            lastDisplayedFps = fps;
+            cachedFpsText = "FPS  " + fps;
+        }
+        return cachedFpsText;
     }
 
     @Override
