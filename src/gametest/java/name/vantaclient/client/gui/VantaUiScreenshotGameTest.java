@@ -3,6 +3,7 @@ package name.vantaclient.client.gui;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
@@ -80,6 +81,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyArmorHudSnapshotPolicy(context);
         verifyClickRateSnapshot(context);
         verifyPingHudSnapshotPolicy(context);
+        verifyHudDimensionMeasurementCache(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -895,6 +897,63 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 ChatTimestampsFeature.setFormat(originalFormat);
             }
         });
+    }
+
+    private static void verifyHudDimensionMeasurementCache(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            HudManager.refreshVisibleElements();
+            MeasuringHudElement element = new MeasuringHudElement();
+            int firstWidth = element.getHitboxWidth();
+            int firstHeight = element.getHitboxHeight();
+            if (firstWidth != 41 || firstHeight != 19
+                    || element.widthCalls != 1 || element.heightCalls != 1) {
+                throw new AssertionError("HUD dimensions were not measured exactly once on first access.");
+            }
+
+            element.getHitboxWidth();
+            element.getHitboxHeight();
+            element.getScaledWidth();
+            element.getScaledHeight();
+            if (element.widthCalls != 1 || element.heightCalls != 1) {
+                throw new AssertionError("HUD dimensions were recomputed within the same manager revision.");
+            }
+
+            element.setScale(2.0f);
+            if (element.getScaledWidth() != 82 || element.getScaledHeight() != 38
+                    || element.widthCalls != 1 || element.heightCalls != 1) {
+                throw new AssertionError("HUD scale changes should reuse raw dimensions and apply scale live.");
+            }
+
+            HudManager.refreshVisibleElements();
+            if (element.getHitboxWidth() != 82 || element.getHitboxHeight() != 38
+                    || element.widthCalls != 2 || element.heightCalls != 2) {
+                throw new AssertionError("HUD dimensions did not refresh after the manager tick revision advanced.");
+            }
+        });
+    }
+
+    private static final class MeasuringHudElement extends HudElement {
+        private int widthCalls;
+        private int heightCalls;
+
+        private MeasuringHudElement() {
+            super(0.0f, 0.0f);
+        }
+
+        @Override
+        protected void renderElement(GuiGraphics graphics) {}
+
+        @Override
+        public int getWidth() {
+            widthCalls++;
+            return 41;
+        }
+
+        @Override
+        public int getHeight() {
+            heightCalls++;
+            return 19;
+        }
     }
 
     private static void verifyPingHudSnapshotPolicy(ClientGameTestContext context) {
