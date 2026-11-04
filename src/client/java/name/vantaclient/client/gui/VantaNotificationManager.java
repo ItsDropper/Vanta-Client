@@ -9,7 +9,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -25,6 +24,7 @@ public final class VantaNotificationManager {
     private static final ArrayList<Entry> ACTIVE = new ArrayList<>();
     private static final LinkedHashMap<String, Long> RECENT = new LinkedHashMap<>();
     private static final int MAX_ACTIVE = 3;
+    private static final Entry[] RENDER_SNAPSHOT = new Entry[MAX_ACTIVE];
     private static final int MAX_PENDING = 5;
     private static final long DEDUPE_WINDOW = 3_000_000_000L;
     private static final long RECENT_WINDOW = 6_000_000_000L;
@@ -126,11 +126,14 @@ public final class VantaNotificationManager {
 
     public static void render(GuiGraphics graphics, int screenWidth, int screenHeight) {
         if (screenWidth < 120 || screenHeight < 80) return;
-        List<Entry> snapshot;
+        int snapshotSize;
         synchronized (LOCK) {
-            snapshot = List.copyOf(ACTIVE);
+            snapshotSize = Math.min(ACTIVE.size(), RENDER_SNAPSHOT.length);
+            for (int index = 0; index < snapshotSize; index++) {
+                RENDER_SNAPSHOT[index] = ACTIVE.get(index);
+            }
         }
-        if (snapshot.isEmpty()) return;
+        if (snapshotSize == 0) return;
 
         Minecraft minecraft = Minecraft.getInstance();
         Font font = minecraft.font;
@@ -139,8 +142,9 @@ public final class VantaNotificationManager {
         int baseX = screenWidth - cardWidth - 10;
         long now = System.nanoTime();
 
-        for (int index = 0; index < snapshot.size(); index++) {
-            Entry entry = snapshot.get(index);
+        for (int index = 0; index < snapshotSize; index++) {
+            Entry entry = RENDER_SNAPSHOT[index];
+            RENDER_SNAPSHOT[index] = null;
             long age = Math.max(0L, now - entry.startedAt);
             long remaining = Math.max(0L, entry.expiresAt - now);
             float enter = Math.min(1.0f, age / 190_000_000.0f);
