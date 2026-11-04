@@ -580,7 +580,6 @@ public final class VantaRemoteSessionManager {
                     bumpRevisionLocked();
                 }
 
-                Minecraft minecraft = Minecraft.getInstance();
                 LoopbackTcpBridge guestBridge = bridge;
                 minecraft.execute(() -> {
                     synchronized (LOCK) {
