@@ -255,11 +255,12 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
                 @Override
                 public void onSelectedCandidatePairChanged(RTCCandidatePairChangeEvent event) {
                     WebRtcPeerSession current = holder.get();
-                    if (current != null && event != null
-                            && (isRelayCandidate(event.getLocal())
-                            || isRelayCandidate(event.getRemote()))) {
+                    if (current != null && event != null) {
+                        // ICE may switch candidate pairs after the initial connection.
+                        // Reflect the currently selected pair instead of latching "TURN"
+                        // forever after the first relay-backed pair.
                         current.usingTurnRelay.set(isRelayCandidate(event.getLocal())
-                    || isRelayCandidate(event.getRemote()));
+                                || isRelayCandidate(event.getRemote()));
                     }
                 }
             };
