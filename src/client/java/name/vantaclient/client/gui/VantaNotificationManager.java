@@ -177,10 +177,10 @@ public final class VantaNotificationManager {
 
     private static int typeColor(Type type) {
         return switch (type) {
-            case INFO -> 0xFF78AFFF;
-            case SUCCESS -> 0xFF65C99E;
-            case WARNING -> 0xFFE2B36C;
-            case ERROR -> 0xFFE27C83;
+            case INFO -> VantaUiTheme.STATUS_INFO;
+            case SUCCESS -> VantaUiTheme.STATUS_SUCCESS;
+            case WARNING -> VantaUiTheme.STATUS_WARNING;
+            case ERROR -> VantaUiTheme.STATUS_DANGER;
         };
     }
 
