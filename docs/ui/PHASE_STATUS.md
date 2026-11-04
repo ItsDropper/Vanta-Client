@@ -59,6 +59,13 @@ The baseline commit `5beed53` passed both the Gradle build (run [41716076962](ht
 
 The 50-image suite covers the title screen, eight settings states including Controls, the HUD editor/inspector, desktop/compact Modrinth (including busy progress previews), installed-mod library, selected-mod details and the LAN world-sharing screen. The HUD editor capture enables FPS and Keystrokes backgrounds, places their hitboxes 2 px apart and asserts that they merge into one panel, then restores prior preferences. Client GameTests cover connected-region geometry, armor hitbox dimensions, scrollbar dragging, floating dropdown positioning/selection/scrolling, and global/feature keybind conflict, rebind, cancel and unbind behavior. The workflow verifies real Minecraft screenshot production and exact count; the images have not been independently reviewed for visual quality in this session.
 
+## Performance optimization
+
+- Performance Optimizer still provides tick-rate HUD data snapshots and render/tick timing metrics. It now also offers an opt-in adaptive entity draw-distance controller using Minecraft 1.21.11's native entity-distance option.
+- The controller measures fresh world-render samples, reduces only client entity draw distance in bounded steps under sustained load, and recovers gradually when frame headroom returns. It retains the user's selected value as its ceiling, adopts external option changes, and restores the saved value when disabled or leaving a world.
+- Entity AI, entity ticking, collision, hitboxes, server simulation and networking are not modified. The minimum retained draw-distance ratio is configurable from 50–100% and defaults to 65%.
+- GameTests cover overload response, floor/ceiling bounds, gradual recovery, neutral conditions and missing measurement behavior. Actual FPS gains remain scene- and hardware-dependent and require gameplay benchmarking.
+
 ## World sharing milestone
 
 - The retained-mode Vanta Share screen is available from the title screen and singleplayer pause menu. It supports a user-configured self-hosted relay URL, local integrated-server publication, remote invite creation, claimed guest-name display, host approval/rejection, guest join, cancellation and disconnect.
