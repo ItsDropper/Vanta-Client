@@ -218,8 +218,8 @@ public final class FarTerrainRenderer {
         DESIRED.addAll(nextDesired);
         FAILED.removeIf(key -> !nextDesired.contains(key));
         // Re-admit an intentionally evicted tile only after it moves into the
-        // inner 65% of the active radius. This prevents a 20-tick rebuild loop
-        // from regenerating distant tiles that the memory cap immediately evicts.
+        // inner 65% of the active radius. This prevents later movement-driven
+        // plan rebuilds from regenerating distant tiles that the memory cap evicts.
         double reentryDistance = farDistance * 0.65;
         double reentryDistanceSquared = reentryDistance * reentryDistance;
         CACHE_EVICTED.removeIf(key -> !nextDesired.contains(key)
@@ -730,8 +730,9 @@ public final class FarTerrainRenderer {
                 + effectiveFarDistance + " chunks | plan "
                 + String.format(java.util.Locale.ROOT, "%.2f", lastTilePlanMs) + " ms/"
                 + tilePlanBuildCount + " rebuilds | mesh avg "
-                + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
-                + " ms/" + tileGenerationSamples + " jobs | submit avg "
+                + String.format(java.util.Locale.ROOT, "%.2f", lastTileGenerationMs)
+                + "/" + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
+                + " ms last/avg over " + tileGenerationSamples + " jobs | submit avg "
                 + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
                 + " ms | draw " + lastDrawnQuads + "/" + getDrawBudget()
                 + " quads, " + lastSubmittedMeshes + " tiles" + suffix;
