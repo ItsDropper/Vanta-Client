@@ -58,32 +58,35 @@ public final class HudBackgroundRenderer {
         boolean vanillaPositionsEnabled = VanillaHudFeature.INSTANCE.isEnabled();
         backgroundCount = 0;
 
+        // Vanilla HUD backgrounds are independent of custom HUD visibility:
+        // their persisted hitboxes must remain available while the editor is closed.
         for (HudElement element : HudManager.getElements()) {
-            if (!preferences.isHudBackgroundEnabled(element.getBackgroundId())) continue;
+            if (!(element instanceof VanillaHudElement vanilla)
+                    || !preferences.isHudBackgroundEnabled(vanilla.getBackgroundId())) continue;
 
-            if (element instanceof VanillaHudElement vanilla) {
-                VanillaHudElement.Part part = vanilla.getPart();
-                if (editing) {
-                    add(vanilla.getHitboxX(), vanilla.getHitboxY(),
-                            vanilla.getHitboxWidth(), vanilla.getHitboxHeight());
-                } else if (vanillaPositionsEnabled) {
-                    VantaClientPreferences.HudPosition position =
-                            VanillaHudElement.getPosition(part);
-                    int x = Math.round(position.x * screenWidth);
-                    int y = Math.round(position.y * screenHeight);
-                    add(x, y, Math.round(part.width() * position.scale),
-                            Math.round(part.height() * position.scale));
-                } else {
-                    add(part.defaultX(screenWidth), part.defaultY(screenHeight),
-                            part.width(), part.height());
-                }
-                continue;
+            VanillaHudElement.Part part = vanilla.getPart();
+            if (editing) {
+                add(vanilla.getHitboxX(), vanilla.getHitboxY(),
+                        vanilla.getHitboxWidth(), vanilla.getHitboxHeight());
+            } else if (vanillaPositionsEnabled) {
+                VantaClientPreferences.HudPosition position = VanillaHudElement.getPosition(part);
+                int x = Math.round(position.x * screenWidth);
+                int y = Math.round(position.y * screenHeight);
+                add(x, y, Math.round(part.width() * position.scale),
+                        Math.round(part.height() * position.scale));
+            } else {
+                add(part.defaultX(screenWidth), part.defaultY(screenHeight),
+                        part.width(), part.height());
             }
+        }
 
-            if (element.shouldRender()) {
-                add(element.getHitboxX(), element.getHitboxY(),
-                        element.getHitboxWidth(), element.getHitboxHeight());
-            }
+        // HudManager already resolves custom element visibility once per tick.
+        // Reuse that snapshot instead of calling shouldRender() again every frame.
+        for (HudElement element : HudManager.getActiveElements()) {
+            if (element instanceof VanillaHudElement
+                    || !preferences.isHudBackgroundEnabled(element.getBackgroundId())) continue;
+            add(element.getHitboxX(), element.getHitboxY(),
+                    element.getHitboxWidth(), element.getHitboxHeight());
         }
 
         int connectionGap = preferences.connectHudBackgrounds
