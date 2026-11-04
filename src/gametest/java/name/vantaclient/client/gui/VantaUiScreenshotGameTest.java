@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.hud.PotionEffectsHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
@@ -70,6 +71,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
         verifyHudVisibilitySnapshot(context);
+        verifyPotionHudSnapshotPolicy(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -883,6 +885,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyPotionHudSnapshotPolicy(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            if (!PotionEffectsHudElement.shouldRefreshSnapshot(Long.MIN_VALUE, 100L)
+                    || PotionEffectsHudElement.shouldRefreshSnapshot(100L, 100L)
+                    || PotionEffectsHudElement.shouldRefreshSnapshot(100L, 104L)
+                    || !PotionEffectsHudElement.shouldRefreshSnapshot(100L, 105L)
+                    || !PotionEffectsHudElement.shouldRefreshSnapshot(105L, 104L)) {
+                throw new AssertionError("Potion HUD snapshot refresh cadence mishandled initial, five-tick, or rewind boundaries.");
             }
         });
     }
