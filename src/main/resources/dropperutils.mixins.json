@@ -27,7 +27,8 @@
     "EntityRendererMixin",
     "MinecraftCrashReportMixin",
     "ExperienceBarRendererMixin",
-    "JumpableVehicleBarRendererMixin"
+    "JumpableVehicleBarRendererMixin",
+    "RemoteWorldIdentityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
