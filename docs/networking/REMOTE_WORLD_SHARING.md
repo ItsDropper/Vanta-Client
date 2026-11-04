@@ -1,49 +1,69 @@
 # Vanta Remote World Sharing
 
-**Status:** design only. The implemented Vanta Share screen currently publishes a singleplayer integrated server to the local network. It does not create Internet invitations or route remote gameplay traffic.
+**Status:** relay-based remote hosting and joining are implemented in the client and relay service. A real Internet session still requires an operator to deploy a relay and two Minecraft clients to test against it. Direct WebRTC/P2P transport is not implemented.
 
-## Target experience
+## Current connection model
 
-A host opens a singleplayer world, creates a short-lived invite, and approves incoming players. Guests join from a Vanta invite flow without needing to discover or manually enter the host's IP address. The Minecraft login/authentication path remains enabled.
+Vanta uses an explicitly configured, self-hosted WebSocket relay. Remote gameplay bytes travel through that relay; this implementation is **relayed multiplayer, not a direct peer-to-peer connection**. There is no Vanta-operated public relay URL and the client does not silently contact a third party.
 
-The target transport is peer-to-peer when the two networks can connect directly, with a relay fallback for restrictive NATs and networks. Signalling and relay services must be deployable by the project owner; the client must not silently use an unrelated third-party endpoint.
+### Host flow
 
-## Proposed data path
+1. The host opens a singleplayer world and chooses **Create Remote Invite**.
+2. Vanta opens Minecraft's existing integrated-server LAN listener and keeps its actual bound port.
+3. The client creates an ephemeral room at the configured relay and opens an authenticated host-control WebSocket.
+4. Vanta displays the invite code. A guest request shows the player name claimed by the guest; it is not verified identity.
+5. The host explicitly approves or rejects each request.
+6. For each approved request, Vanta opens a dedicated host data WebSocket and forwards its ordered byte stream to the fixed loopback destination `127.0.0.1:<published-port>`.
 
-1. The host uses the existing integrated-server LAN publishing API and retains the actual bound port.
-2. A host-side loopback connector accepts an established peer data channel and forwards its byte stream to the integrated server at `127.0.0.1:<published-port>`.
-3. A guest-side loopback listener presents a local TCP endpoint to Minecraft. The guest joins that local endpoint through the normal Minecraft connection flow; Vanta forwards the resulting byte stream through the peer transport.
-4. Each remote player receives an independent tunnel. The relay/signalling plane handles session coordination only unless direct connectivity fails and relay fallback is selected.
+### Guest flow
 
-A loopback TCP bridge is the preferred first prototype because it avoids replacing Minecraft's internal Netty channel implementation. It must bind only to loopback, use a fixed host-side destination, close both sides on failure, and enforce bounded buffers and write backpressure.
+1. The guest enters the same configured relay origin, invite code and Minecraft player name.
+2. The relay issues a request-scoped guest token and notifies the host.
+3. The guest waits for host approval. Rejection, expiry, cancellation and relay errors are handled by the session manager.
+4. After approval, Vanta opens the guest data WebSocket and a TCP listener bound only to `127.0.0.1`.
+5. Vanilla Minecraft's `ConnectScreen` connects to that local port. The loopback bridge forwards the byte stream to the host's relay tunnel.
+6. Minecraft's normal login and online-mode authentication remain in the connection path. The relay does not authenticate Minecraft accounts.
 
-## Transport and signalling
+The loopback listener is not exposed to the LAN or the public Internet. The host tunnel always targets the local integrated-server port; it does not accept a caller-supplied destination.
 
-- Preferred direct transport candidate: a reliable, ordered WebRTC DataChannel using DTLS/SCTP.
-- Signalling: HTTPS/WSS exchange of SDP and ICE candidates. Signalling messages are not gameplay payloads.
-- Connectivity: use ICE to establish a direct path where possible; use TURN or an explicitly configured project-owned relay when direct connectivity fails.
-- The relay is a transport fallback, not proof of P2P. The UI must distinguish direct and relayed sessions accurately.
-- Candidate Java binding for a prototype: [libdatachannel-java](https://github.com/pschichtel/libdatachannel-java). It wraps native libdatachannel and requires architecture-specific native components; no dependency has been selected or added. Validate Windows, Linux and macOS packaging, native loading, license obligations, thread ownership and shutdown before adoption.
+## Relay service
 
-## Session security and privacy
+The Go service lives under `relay/`. It is intentionally small-group/self-hosted infrastructure with in-memory session state.
 
-- Generate cryptographically random, short-lived, single-use invite secrets. Do not use sequential room IDs as authorization.
-- Require the host to approve each incoming player before opening the gameplay tunnel.
-- Keep Minecraft's normal online-mode authentication enabled. A transport invite is not a substitute for player authentication.
-- Use TLS for signalling and DTLS for WebRTC data. Reject plaintext remote endpoints.
-- Do not display, copy, log or persist the host's public IP in the client UI.
-- Do not persist SDP, ICE candidates, invite secrets or player presence beyond the minimum session lifetime.
-- Apply per-session connection limits, message-size limits, bounded queues, rate limits and abuse controls to any relay service.
-- Never expose the loopback bridge to the LAN or public interfaces.
+Default limits:
+- Room lifetime: 45 minutes.
+- Join request lifetime: 2 minutes.
+- Maximum pending/approved guests per room: 8.
+- Maximum outstanding requests per room: 16.
+- Binary WebSocket frame size: 16 KiB.
+- HTTP room creation and join request rate: 20 per source address per minute.
 
-## Implementation gates
+It uses random room codes, room-scoped host bearer tokens, request-scoped guest bearer tokens, authenticated control/data sockets, explicit host approval, bounded message sizes, rate limiting and a reaper for expired rooms/requests. Room state is lost when the relay process restarts.
 
-1. **Local tunnel prototype:** implement and test the loopback TCP bridge using an in-memory duplex transport. Cover half-close, EOF, concurrent clients, disconnect cleanup, bounded buffering, maximum packet sizes and cancellation.
-2. **WebRTC prototype:** connect two local peers by exchanging SDP in-process. Confirm ordered binary delivery, channel close, backpressure and native resource cleanup.
-3. **Self-hostable signalling/relay:** create a separate deployable service with ephemeral room state, authenticated host/guest roles, invite expiry, host approval and TURN/relay configuration. No public default endpoint until it is intentionally operated.
-4. **Client integration:** add host invite and guest join flows, lifecycle cancellation, reconnect handling and clear direct-vs-relayed connection status.
-5. **Gameplay acceptance:** verify one and multiple guests, online-mode authentication, modded payload sizes, chunk/bulk transfer, latency, packet loss, NAT restrictions, relay fallback, host world closure and crash recovery.
+Deploy the relay behind a trusted HTTPS/WSS reverse proxy. The listener itself is plain HTTP for reverse-proxy deployment. The client accepts HTTPS for remote services and permits plain HTTP only for loopback development addresses. The relay URL is a user preference; invite codes and authentication tokens are memory-only.
 
-## Current implementation boundary
+See [relay/README.md](../../relay/README.md) for local and Docker deployment instructions.
 
-The current LAN milestone is useful and retained: it opens the integrated server using Minecraft's own API, displays the bound LAN port, keeps guest commands off by default and clearly labels Internet invitations as unimplemented. Do not replace it with a fake invite code or a hard-coded third-party relay URL.
+## Privacy and trust boundaries
+
+- The configured relay operator can observe connection metadata and source network addresses. Do not use a relay you do not trust.
+- The relay forwards Minecraft TCP traffic without interpreting packet contents. The pre-login handshake is not equivalent to an end-to-end encrypted session; Minecraft's normal authentication and encryption flow remains owned by Minecraft.
+- The LAN publishing step also makes the integrated server discoverable to devices on the host's local network. The Vanta UI discloses this before remote hosting starts.
+- The host sees a guest-provided player name for approval. That name is not authenticated by the relay; Minecraft's own login later verifies the connecting account.
+- The client does not display or persist the host's public IP, relay bearer tokens, guest tokens, SDP or ICE candidates.
+- Closing the world, stopping remote hosting, cancelling a guest join, disconnecting Minecraft or exiting the client tears down the corresponding tunnels and control sockets.
+
+## Direct P2P status
+
+Direct peer transport is a future optimization. The current data path always traverses the configured relay. A WebRTC DataChannel with ICE and an explicitly configured TURN fallback would require an additional native/Java transport implementation, packaging and cross-platform testing. Do not label a relayed session as direct P2P, and do not add a hard-coded third-party signalling or TURN endpoint.
+
+## Acceptance still required
+
+1. Deploy the Go relay at a user-controlled HTTPS origin.
+2. Run two separate Minecraft clients with the same relay origin configured.
+3. Create an invite, request access, approve and reject guests, and verify the claimed name is clearly presented as unverified.
+4. Verify normal online-mode authentication, multiple guests, large chunk/resource transfers, connection loss, relay restart, world closure and cancellation.
+5. Verify firewall behaviour and that the guest bridge binds only to loopback on Windows and Linux.
+6. Review client and relay logs for accidental credential disclosure.
+
+The repository's build and UI screenshot jobs validate compilation and screen rendering; they do not prove a live cross-network multiplayer session. No external relay has been deployed from this repository session.

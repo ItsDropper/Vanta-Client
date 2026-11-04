@@ -56,10 +56,12 @@ The 50-image suite covers the title screen, eight settings states including Cont
 
 ## World sharing milestone
 
-- The pause menu exposes a retained-mode Vanta world-sharing screen for singleplayer integrated servers. It uses Minecraft's existing LAN publishing API and lets the host select game mode and whether guests may use commands.
-- This is LAN sharing, not Internet P2P. Remote invitations still require a dedicated authenticated signalling service and direct/relay transport; the current screen does not expose public addresses or claim Internet connectivity.
-- The service has no-world GameTest coverage and the screen is included in the 50-image workflow. Publishing a real integrated server and joining from another device still require manual gameplay testing.
-- The planned remote P2P design and its security/transport gates are documented in [REMOTE_WORLD_SHARING.md](../networking/REMOTE_WORLD_SHARING.md). No signalling endpoint, WebRTC dependency or relay service is shipped yet.
+- The retained-mode Vanta Share screen is available from the title screen and singleplayer pause menu. It supports a user-configured self-hosted relay URL, local integrated-server publication, remote invite creation, claimed guest-name display, host approval/rejection, guest join, cancellation and disconnect.
+- The client session manager owns host/guest state outside the screen, keeps relay credentials in memory, forwards each approved stream through a dedicated tunnel, and stops tunnels on disconnect, world close or client exit.
+- Guest Minecraft connects to a loopback-only TCP port using vanilla `ConnectScreen`; the host side forwards to the fixed loopback integrated-server port. Minecraft's ordinary login path remains intact.
+- Hosting also publishes the integrated server to the host's local network. The UI warns about LAN discovery and identifies guest names as unverified claims.
+- Remote gameplay currently always traverses the user-configured relay. It is not direct WebRTC/P2P, and no Vanta-operated endpoint is baked into the client. Direct WebRTC/ICE remains future work.
+- The client and relay code compile and the UI is screenshot-tested; a real cross-network session still requires a user-deployed HTTPS relay and two independent Minecraft clients. See [REMOTE_WORLD_SHARING.md](../networking/REMOTE_WORLD_SHARING.md) for the implemented flow and acceptance gates.
 
 ## Remaining acceptance gates
 - Review the 50-image artifact for visual quality, particularly the Controls page, title screen, HUD editor at 960×540 GUI scale 2, compact Modrinth cards, busy progress previews, selected-mod details and world-sharing screen.
