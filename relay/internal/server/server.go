@@ -173,6 +173,7 @@ func New(config Config) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
+	mux.HandleFunc("GET /readyz", s.ready)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("POST /v1/rooms/{code}/requests", s.createJoinRequest)
 	mux.HandleFunc("GET /v1/rooms/{code}/requests/{requestID}/ice-servers", s.guestICEServers)
@@ -205,6 +206,18 @@ func (s *Server) Close() {
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ready reports whether this instance can serve remote-world negotiation.
+// Liveness remains independent so an unconfigured process can still be diagnosed.
+func (s *Server) ready(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	servers, err := s.buildICEServers()
+	if err != nil || len(servers) == 0 {
+		writeError(w, http.StatusServiceUnavailable, "ice_service_unavailable")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
