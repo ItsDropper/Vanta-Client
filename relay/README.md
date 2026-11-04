@@ -34,6 +34,10 @@ go run ./cmd/vanta-relay
 
 The HTTP listener defaults to port 8080. Set `PORT` to change it. The listener itself is plain HTTP so it can run behind a trusted TLS reverse proxy. Do not expose it directly to the Internet without HTTPS/WSS.
 
+## Managed deployment stack
+
+For a single-Linux-host deployment that includes the Go room/signalling relay, Caddy HTTPS/WSS termination, and coturn STUN/TURN, see [deploy/README.md](deploy/README.md). This is operator infrastructure; it is not required on the host or guest PCs.
+
 ## Docker
 
 ```sh
