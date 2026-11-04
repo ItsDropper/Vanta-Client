@@ -536,11 +536,9 @@ public final class FarTerrainRenderer {
             boolean tileEntirelyInsideRenderBand = FarTerrainLodMath.isEntireTileInsideRenderBand(
                     nearestTileDistanceSquared, farthestTileDistanceSquared,
                     innerRadiusSquared, outerRadiusSquared);
-            double tileDistance = Math.sqrt(tileDistanceSquared);
-            if (hasHorizontalForward && tileDistance > 1.0) {
-                double angularRadius = Math.atan2(mesh.spanBlocks * 0.72, tileDistance);
-                double viewDot = (tileDx * forwardX + tileDz * forwardZ) / tileDistance;
-                if (viewDot < Math.cos(Math.toRadians(68.0) + angularRadius)) continue;
+            if (hasHorizontalForward && FarTerrainLodMath.isOutsideHorizontalViewCone(
+                    tileDx, tileDz, forwardX, forwardZ, mesh.spanBlocks * 0.72)) {
+                continue;
             }
 
             int resolution = mesh.key.resolution;
