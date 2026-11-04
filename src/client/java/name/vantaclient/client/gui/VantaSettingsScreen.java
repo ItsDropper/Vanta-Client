@@ -9,6 +9,7 @@ import name.vantaclient.client.feature.FarViewFeature;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.init.FeatureKeybinds;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
@@ -449,6 +450,20 @@ public final class VantaSettingsScreen extends Screen {
                 "Toggle the Vanta sneak state.", Keybinds.sneakToggleKey);
         content.add(panel);
 
+        VantaUiNode featurePanel = VantaUiNode.column(6, 12)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(12);
+        featurePanel.add(VantaUiNode.eyebrow("FEATURE SHORTCUTS"));
+        featurePanel.add(VantaUiNode.text(
+                "Optional shortcuts that toggle individual Vanta features. They are unbound by default.",
+                VantaUiTheme.TEXT_SECONDARY));
+        for (FeatureKeybinds.Binding binding : FeatureKeybinds.bindings()) {
+            featurePanel.add(divider());
+            addKeybindRow(featurePanel, binding.feature().getName(),
+                    binding.feature().getDescription(), binding.mapping());
+        }
+        content.add(featurePanel);
+
         if (pendingKeyCapture != null) {
             VantaUiNode waiting = VantaUiNode.row(8, 10)
                     .height(42)
@@ -461,7 +476,7 @@ public final class VantaSettingsScreen extends Screen {
             content.add(waiting);
         }
         content.add(VantaUiNode.text(
-                "These are the five Vanta mappings currently registered. Feature-specific key bindings are not defined yet.",
+                "Feature shortcuts are also available here; all are unbound by default and saved with Minecraft's normal controls.",
                 VantaUiTheme.TEXT_MUTED));
     }
 
