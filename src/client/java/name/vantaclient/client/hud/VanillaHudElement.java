@@ -64,6 +64,7 @@ public final class VanillaHudElement extends HudElement {
     }
 
     private final Part part;
+    private final String backgroundId;
 
     public VanillaHudElement(Part part) {
         this(part, position(part));
@@ -72,6 +73,7 @@ public final class VanillaHudElement extends HudElement {
     private VanillaHudElement(Part part, VantaClientPreferences.HudPosition position) {
         super(position.x, position.y);
         this.part = part;
+        this.backgroundId = "vanilla." + part.name();
         this.scale = position.scale;
     }
 
@@ -85,7 +87,7 @@ public final class VanillaHudElement extends HudElement {
 
     @Override
     public String getBackgroundId() {
-        return "vanilla." + part.name();
+        return backgroundId;
     }
 
     public static VantaClientPreferences.HudPosition getPosition(Part part) {
