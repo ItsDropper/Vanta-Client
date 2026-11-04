@@ -294,18 +294,33 @@ public final class FarTerrainRenderer {
 
     private static void scheduleMissingTiles(ServerLevel level) {
         int scheduled = 0;
-        ChunkGenerator generator = level.getChunkSource().getGenerator();
-        RandomState randomState = level.getChunkSource().randomState();
-        BiomeSource biomeSource = generator.getBiomeSource();
-        Climate.Sampler climateSampler = randomState.sampler();
-        int seaLevel = level.getSeaLevel();
-        boolean waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
-        LevelHeightAccessor heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
+        ChunkGenerator generator = null;
+        RandomState randomState = null;
+        BiomeSource biomeSource = null;
+        Climate.Sampler climateSampler = null;
+        LevelHeightAccessor heightAccessor = null;
+        int seaLevel = 0;
+        boolean waterSurfaceEnabled = false;
+        boolean generationContextReady = false;
 
         for (TileKey key : orderedTiles) {
             if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
             if (MESHES.containsKey(key) || FAILED.contains(key) || CACHE_EVICTED.contains(key)) continue;
             WorkKey workKey = new WorkKey(key, revision);
+            if (PENDING.contains(workKey)) continue;
+
+            // Avoid touching generator/heightmap context on idle ticks where every
+            // desired tile is already cached, failed, evicted, or currently pending.
+            if (!generationContextReady) {
+                generator = level.getChunkSource().getGenerator();
+                randomState = level.getChunkSource().randomState();
+                biomeSource = generator.getBiomeSource();
+                climateSampler = randomState.sampler();
+                heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
+                seaLevel = level.getSeaLevel();
+                waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
+                generationContextReady = true;
+            }
             if (!PENDING.add(workKey)) continue;
 
             TileGenerationJob job = new TileGenerationJob(workKey, generator, randomState,
