@@ -731,6 +731,21 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             }
 
+            int[][] darkeningCases = {
+                    {0xFFFFFFFF, 0xFF7F7F7F},
+                    {0xFF010203, 0xFF000101},
+                    {0xFF00FE80, 0xFF007F40},
+                    {0xFF808080, 0xFF404040},
+                    {0xFFABCDEF, 0xFF556677}
+            };
+            for (int[] colorCase : darkeningCases) {
+                int actual = FarTerrainLodMath.darkenOpaqueArgb(colorCase[0]);
+                if (actual != colorCase[1]) {
+                    throw new AssertionError("FarView packed skirt darkening mismatch: expected 0x"
+                            + Integer.toHexString(colorCase[1]) + ", got 0x" + Integer.toHexString(actual));
+                }
+            }
+
             Matrix4f vertexTransform = new Matrix4f()
                     .translation(13.0f, -7.0f, 21.0f)
                     .rotateY(0.37f)
