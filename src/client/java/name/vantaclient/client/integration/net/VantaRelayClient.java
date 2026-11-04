@@ -89,8 +89,9 @@ public final class VantaRelayClient {
     }
 
     /**
-     * Sends the local Minecraft profile UUID as an untrusted claim. The host
-     * saves it only after the integrated server reports the joined GameProfile.
+     * Sends the local Minecraft profile UUID as an untrusted correlation claim.
+     * The host saves it only after vanilla validates and installs the matching
+     * Mojang-signed player chat-session key on the integrated server.
      */
     public JoinTicket requestJoin(String roomCode, String playerName, String playerUUID)
             throws IOException {
