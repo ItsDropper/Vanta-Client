@@ -19,6 +19,8 @@ import java.util.List;
 public class PotionEffectsHudElement extends HudElement {
     private List<EffectSnapshot> snapshot = List.of();
     private long lastSnapshotTick = Long.MIN_VALUE;
+    private Object snapshotWorld;
+    private Object snapshotPlayer;
 
     public PotionEffectsHudElement() {
         super(DropperUtilsConfig.get().potionHudX, DropperUtilsConfig.get().potionHudY);
@@ -44,7 +46,14 @@ public class PotionEffectsHudElement extends HudElement {
         if (mc.player == null || mc.level == null) {
             snapshot = List.of();
             lastSnapshotTick = Long.MIN_VALUE;
+            snapshotWorld = null;
+            snapshotPlayer = null;
             return;
+        }
+        if (snapshotWorld != mc.level || snapshotPlayer != mc.player) {
+            snapshotWorld = mc.level;
+            snapshotPlayer = mc.player;
+            lastSnapshotTick = Long.MIN_VALUE;
         }
         long gameTime = mc.level.getGameTime();
         if (!shouldRefreshSnapshot(lastSnapshotTick, gameTime)) return;
