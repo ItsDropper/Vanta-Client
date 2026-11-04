@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Exercises the loopback bridge independently of Minecraft's UI and relay service.
@@ -27,6 +29,7 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
                 verifyConnectionLimitAndCleanup();
                 verifyConnectorFailureClosesClient();
                 verifyCloseDuringConnectCleansPendingSocket();
+                verifyHostTunnelRegistersSourcePortBeforeForwarding();
             } catch (Exception exception) {
                 throw new AssertionError("Loopback TCP bridge GameTests failed.", exception);
             }
@@ -161,6 +164,73 @@ public final class LoopbackTcpBridgeGameTest implements FabricClientGameTest {
             }
             if (bridge.activeConnections() != 0) {
                 throw new AssertionError("Closed bridge retained active sessions.");
+            }
+        }
+    }
+
+    private static void verifyHostTunnelRegistersSourcePortBeforeForwarding() throws Exception {
+        InetAddress loopback = InetAddress.getByName("127.0.0.1");
+        byte[] payload = new byte[] { 0x12, 0x34, 0x56, 0x78, (byte) 0x9A };
+        AtomicInteger registeredPort = new AtomicInteger(-1);
+        AtomicInteger acceptedPort = new AtomicInteger(-1);
+        AtomicBoolean registrationFinished = new AtomicBoolean();
+
+        try (ServerSocket minecraftServer = new ServerSocket(0, 1, loopback);
+             ServerSocket remoteEchoServer = new ServerSocket(0, 1, loopback)) {
+            FutureTask<Void> echoTask = new FutureTask<>(() -> {
+                try (Socket echo = remoteEchoServer.accept()) {
+                    echo.setSoTimeout(2_000);
+                    byte[] received = echo.getInputStream().readNBytes(payload.length);
+                    if (!Arrays.equals(payload, received)) {
+                        throw new AssertionError("Host tunnel forwarded the wrong payload to its remote stream.");
+                    }
+                    if (!registrationFinished.get()) {
+                        throw new AssertionError("Tunnel forwarded bytes before registering its source port.");
+                    }
+                    echo.getOutputStream().write(received);
+                    echo.getOutputStream().flush();
+                    echo.shutdownOutput();
+                }
+                return null;
+            });
+            FutureTask<Void> minecraftTask = new FutureTask<>(() -> {
+                try (Socket accepted = minecraftServer.accept()) {
+                    accepted.setSoTimeout(2_000);
+                    acceptedPort.set(((InetSocketAddress) accepted.getRemoteSocketAddress()).getPort());
+                    accepted.getOutputStream().write(payload);
+                    accepted.getOutputStream().flush();
+                    accepted.shutdownOutput();
+                    byte[] returned = accepted.getInputStream().readNBytes(payload.length);
+                    if (!Arrays.equals(payload, returned)) {
+                        throw new AssertionError("Host tunnel did not return the remote stream payload.");
+                    }
+                }
+                return null;
+            });
+            Thread echoWorker = new Thread(echoTask, "Vanta host tunnel echo test");
+            Thread minecraftWorker = new Thread(minecraftTask, "Vanta integrated server port test");
+            echoWorker.setDaemon(true);
+            minecraftWorker.setDaemon(true);
+            echoWorker.start();
+            minecraftWorker.start();
+
+            Socket remote = new Socket(loopback, remoteEchoServer.getLocalPort());
+            try (TcpStreamTunnel tunnel = TcpStreamTunnel.connectToLoopbackServer(
+                    minecraftServer.getLocalPort(), LoopbackTcpBridge.fromSocket(remote),
+                    localPort -> {
+                        registeredPort.set(localPort);
+                        registrationFinished.set(true);
+                        return true;
+                    }, null)) {
+                minecraftTask.get(3, TimeUnit.SECONDS);
+                echoTask.get(3, TimeUnit.SECONDS);
+                if (registeredPort.get() < 1 || registeredPort.get() > 65_535) {
+                    throw new AssertionError("Host tunnel did not register a valid source port.");
+                }
+                if (acceptedPort.get() != registeredPort.get()) {
+                    throw new AssertionError("Integrated server observed source port " + acceptedPort.get()
+                            + " but the tunnel registered " + registeredPort.get() + ".");
+                }
             }
         }
     }
