@@ -8,6 +8,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
 public final class PingHudElement extends HudElement {
+    private String snapshotText = "PING  --";
+    private long lastSnapshotTick = Long.MIN_VALUE;
+    private Object snapshotWorld;
+    private Object snapshotPlayer;
+    private Object snapshotConnection;
     public PingHudElement() {
         super(name.vantaclient.client.config.DropperUtilsConfig.get().pingHudX,
                 name.vantaclient.client.config.DropperUtilsConfig.get().pingHudY);
@@ -41,11 +46,42 @@ public final class PingHudElement extends HudElement {
         if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
             return HudPerformanceCache.getPingText();
         }
-        if (mc.player != null && mc.getConnection() != null) {
-            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
-            if (info != null) return "PING  " + info.getLatency() + " ms";
+        refreshPingSnapshot(mc);
+        return snapshotText;
+    }
+
+    private void refreshPingSnapshot(Minecraft mc) {
+        var connection = mc.getConnection();
+        if (mc.player == null || mc.level == null || connection == null) {
+            snapshotText = "PING  --";
+            lastSnapshotTick = Long.MIN_VALUE;
+            snapshotWorld = null;
+            snapshotPlayer = null;
+            snapshotConnection = null;
+            return;
         }
-        return "PING  --";
+
+        long gameTime = mc.level.getGameTime();
+        if (!shouldRefreshPingSnapshot(lastSnapshotTick, gameTime,
+                snapshotWorld, mc.level, snapshotPlayer, mc.player,
+                snapshotConnection, connection)) return;
+
+        var info = connection.getPlayerInfo(mc.player.getUUID());
+        snapshotText = info == null ? "PING  --" : "PING  " + info.getLatency() + " ms";
+        lastSnapshotTick = gameTime;
+        snapshotWorld = mc.level;
+        snapshotPlayer = mc.player;
+        snapshotConnection = connection;
+    }
+
+    public static boolean shouldRefreshPingSnapshot(long lastGameTime, long currentGameTime,
+                                                     Object previousWorld, Object currentWorld,
+                                                     Object previousPlayer, Object currentPlayer,
+                                                     Object previousConnection, Object currentConnection) {
+        return lastGameTime != currentGameTime
+                || previousWorld != currentWorld
+                || previousPlayer != currentPlayer
+                || previousConnection != currentConnection;
     }
 
     @Override
