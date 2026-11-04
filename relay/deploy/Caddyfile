@@ -1,0 +1,4 @@
+{$VANTA_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy vanta-relay:8080
+}
