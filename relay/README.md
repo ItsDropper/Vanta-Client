@@ -12,7 +12,14 @@ This service is an opt-in, self-hosted WebSocket relay for Vanta's remote world-
 - Expires rooms and requests, caps pending/active guests, and rate-limits room creation/join attempts by source address.
 - Does not inspect, modify, log or persist Minecraft payloads. The relay does see transport metadata and the source network addresses required by the underlying connection.
 
-The relay is a forwarding service, not a direct P2P path. It now also exposes authenticated, request-scoped SDP/ICE signalling sockets for a future WebRTC peer transport. The current Vanta client still sends gameplay bytes through the WebSocket data relay; the signalling endpoints do not themselves create a peer connection.
+The client negotiates WebRTC peers over the authenticated signalling sockets and carries gameplay bytes in a reliable, ordered DataChannel. ICE uses the STUN/TURN servers configured on this relay. If peer negotiation fails, the client can fall back to this service's WebSocket data relay; that fallback is not a TURN connection.
+
+Configure ICE infrastructure with:
+- `VANTA_STUN_URLS`: comma-separated STUN/STUNS URIs.
+- `VANTA_TURN_URLS`: comma-separated TURN/TURNS URIs.
+- `VANTA_TURN_SHARED_SECRET`: coturn REST shared secret (must match coturn's `static-auth-secret`).
+
+TURN credentials are generated per approved join request, use coturn's HMAC-SHA1 REST credential format, expire after ten minutes, and are returned only over authenticated, no-store HTTPS requests. Never put the shared secret in the client. This repository does not provide or deploy public Vanta STUN/TURN infrastructure.
 
 ## Run locally
 
@@ -40,9 +47,11 @@ Terminate TLS at a reverse proxy such as Caddy or nginx. Set the client relay UR
 
 - `GET /healthz`
 - `POST /v1/rooms` — create a room; returns `roomCode`, `hostToken`, `expiresAt`.
-- `GET /v1/host/control/{roomCode}` — authenticated host signalling socket.
+- `GET /v1/host/control/{roomCode}` — authenticated host control socket.
+- `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — host-only, approved-request ICE configuration.
 - `POST /v1/rooms/{roomCode}/requests` — guest asks to join; body: `{"playerName":"MinecraftName"}`.
 - `GET /v1/guest/control/{roomCode}/{requestId}` — authenticated guest approval result.
+- `GET /v1/rooms/{roomCode}/requests/{requestId}/ice-servers` — guest-only ICE configuration after approval.
 - `GET /v1/host/signal/{roomCode}/{requestId}` and `GET /v1/guest/signal/{roomCode}/{requestId}` — authenticated, one-use peer-signalling sockets. The host sends one SDP offer and ICE candidates; the guest sends one SDP answer and ICE candidates. Both receive a `ready` event after both sockets are connected. Messages are schema-checked and size-bounded.
 - `GET /v1/host/data/{roomCode}/{requestId}` — host side of an approved stream.
 - `GET /v1/guest/data/{roomCode}/{requestId}` — guest side of an approved stream.

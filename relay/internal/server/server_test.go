@@ -2,6 +2,10 @@ package server
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
+	"strconv"
 	"context"
 	"encoding/json"
 	"io"
@@ -353,5 +357,54 @@ func TestSignallingRejectsRoleViolationsAndOversizedPayloads(t *testing.T) {
 	index := 0
 	if validSignalMessage(signalMessage{Type:"ice", Candidate:"not-a-candidate", SDPMid:"0", SDPMLineIndex:&index}, true) {
 		t.Fatal("malformed ICE candidate must be rejected")
+	}
+}
+
+
+func TestBuildICEServersIssuesShortLivedTURNCredentials(t *testing.T) {
+	service := New(Config{
+		STUNURLs: []string{"stun:stun.example.test:3478"},
+		TURNURLs: []string{"turn:turn.example.test:3478?transport=udp"},
+		TURNSharedSecret: "test-shared-secret",
+		TURNCredentialTTL: 5 * time.Minute,
+	})
+	defer service.Close()
+
+	servers, err := service.buildICEServers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(servers) != 2 {
+		t.Fatalf("expected STUN and TURN entries, got %d", len(servers))
+	}
+	turn := servers[1]
+	if len(turn.URLs) != 1 || turn.Username == "" || turn.Credential == "" {
+		t.Fatalf("TURN entry is incomplete: %#v", turn)
+	}
+	parts := strings.SplitN(turn.Username, ":", 2)
+	if len(parts) != 2 {
+		t.Fatalf("TURN username has no expiry: %q", turn.Username)
+	}
+	unixExpiry, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		t.Fatalf("invalid TURN expiry: %v", err)
+	}
+	remaining := time.Until(time.Unix(unixExpiry, 0))
+	if remaining <= 0 || remaining > 5*time.Minute {
+		t.Fatalf("TURN credential expiry outside configured window: %v", remaining)
+	}
+	mac := hmac.New(sha1.New, []byte("test-shared-secret"))
+	_, _ = mac.Write([]byte(turn.Username))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	if turn.Credential != expected {
+		t.Fatal("TURN credential does not match coturn REST HMAC-SHA1 format")
+	}
+}
+
+func TestBuildICEServersRejectsTURNWithoutSharedSecret(t *testing.T) {
+	service := New(Config{TURNURLs: []string{"turn:turn.example.test:3478"}})
+	defer service.Close()
+	if _, err := service.buildICEServers(); err == nil {
+		t.Fatal("TURN configuration without a shared secret must fail closed")
 	}
 }

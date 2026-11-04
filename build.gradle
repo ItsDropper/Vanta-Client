@@ -52,6 +52,22 @@ dependencies {
 	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
 	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
+	// WebRTC data transport. Package every desktop native classifier so the same
+	// published mod works on Windows, macOS and Linux regardless of CI host OS.
+	def webrtcVersion = project.webrtc_java_version
+	def webrtcNativeClassifiers = [
+		"windows-x86_64", "windows-aarch64",
+		"macos-x86_64", "macos-aarch64",
+		"linux-x86_64", "linux-aarch64", "linux-aarch32"
+	]
+	implementation "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
+	include "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
+	webrtcNativeClassifiers.each { classifier ->
+		def artifact = "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}:${classifier}"
+		implementation artifact
+		include artifact
+	}
+
 	// The production client-test launcher needs Fabric API in its runtime installation.
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }

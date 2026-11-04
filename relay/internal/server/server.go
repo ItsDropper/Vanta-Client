@@ -31,12 +31,16 @@ const (
 )
 
 type Config struct {
-	RoomTTL           time.Duration
-	RequestTTL        time.Duration
+	RoomTTL            time.Duration
+	RequestTTL         time.Duration
 	MaxRequestsPerRoom int
-	MaxActiveGuests   int
-	RateWindow        time.Duration
-	RateLimit         int
+	MaxActiveGuests    int
+	RateWindow         time.Duration
+	RateLimit          int
+	STUNURLs           []string
+	TURNURLs           []string
+	TURNSharedSecret   string
+	TURNCredentialTTL  time.Duration
 }
 
 func DefaultConfig() Config {
@@ -47,6 +51,7 @@ func DefaultConfig() Config {
 		MaxActiveGuests:    8,
 		RateWindow:         time.Minute,
 		RateLimit:          20,
+		TURNCredentialTTL:  10 * time.Minute,
 	}
 }
 
@@ -148,6 +153,7 @@ func New(config Config) *Server {
 	if config.MaxActiveGuests < 1 { config.MaxActiveGuests = defaults.MaxActiveGuests }
 	if config.RateWindow <= 0 { config.RateWindow = defaults.RateWindow }
 	if config.RateLimit < 1 { config.RateLimit = defaults.RateLimit }
+	if config.TURNCredentialTTL <= 0 { config.TURNCredentialTTL = defaults.TURNCredentialTTL }
 
 	s := &Server{
 		config: config,
@@ -164,6 +170,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("POST /v1/rooms/{code}/requests", s.createJoinRequest)
+	mux.HandleFunc("GET /v1/rooms/{code}/requests/{requestID}/ice-servers", s.guestICEServers)
+	mux.HandleFunc("GET /v1/rooms/{code}/requests/{requestID}/host-ice-servers", s.hostICEServers)
 	mux.HandleFunc("GET /v1/host/control/{code}", s.hostControl)
 	mux.HandleFunc("GET /v1/guest/control/{code}/{requestID}", s.guestControl)
 	mux.HandleFunc("GET /v1/host/signal/{code}/{requestID}", s.hostSignal)
