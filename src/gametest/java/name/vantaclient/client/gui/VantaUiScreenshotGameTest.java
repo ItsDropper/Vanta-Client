@@ -792,6 +792,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
 
             int[] largeWaterHeights = new int[100];
+            largeWaterHeights[99] = 10;
             long[] largeWaterMask = FarTerrainLodMath.createWaterCellMask(
                     largeWaterHeights, 9, 10, true);
             if (!FarTerrainLodMath.isWaterCell(largeWaterMask, 63)
