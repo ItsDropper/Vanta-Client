@@ -117,6 +117,40 @@ func TestApprovedGuestDataIsRelayedBidirectionally(t *testing.T) {
 	}
 }
 
+func TestPruneKeepsPairedGuestsCountedUntilDisconnect(t *testing.T) {
+	expired := time.Now().Add(-time.Second)
+	current := &room{
+		requests: map[string]*joinRequest{
+			"active": {
+				id: "active", expiresAt: expired, state: "approved", pairStarted: true,
+			},
+			"half-open": {
+				id: "half-open", expiresAt: expired, state: "approved",
+			},
+			"rejected": {
+				id: "rejected", expiresAt: time.Now().Add(time.Hour), state: "rejected",
+			},
+		},
+	}
+
+	current.mu.Lock()
+	pruneRequestsLocked(current)
+	_, activeRemains := current.requests["active"]
+	_, halfOpenRemains := current.requests["half-open"]
+	_, rejectedRemains := current.requests["rejected"]
+	current.mu.Unlock()
+
+	if !activeRemains {
+		t.Fatal("an established data pair must remain counted after its join ticket expires")
+	}
+	if halfOpenRemains {
+		t.Fatal("an expired half-open request must be removed")
+	}
+	if rejectedRemains {
+		t.Fatal("a rejected request must be removed")
+	}
+}
+
 func TestJoinRequiresLiveHostAndValidPlayerName(t *testing.T) {
 	service := New(DefaultConfig())
 	defer service.Close()

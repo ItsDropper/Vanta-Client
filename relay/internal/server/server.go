@@ -625,11 +625,32 @@ func pruneRequestsLocked(current *room) {
 	now := time.Now()
 	for id, request := range current.requests {
 		request.mu.Lock()
-		expired := now.After(request.expiresAt) || request.state == "rejected"
+		// A paired data stream is a live guest session, not an expired invite.
+		// Keep it in the room map so MaxActiveGuests continues to count it until
+		// relayPair closes and removes the completed/disconnected stream.
+		expired := (now.After(request.expiresAt) || request.state == "rejected") &&
+			!request.pairStarted
 		request.mu.Unlock()
 		if expired {
 			delete(current.requests, id)
+			go closeRequest(request)
 		}
+	}
+}
+
+func closeRequest(request *joinRequest) {
+	request.mu.Lock()
+	guestControl, hostData, guestData := request.guestControl, request.hostData, request.guestData
+	request.guestControl, request.hostData, request.guestData = nil, nil, nil
+	request.mu.Unlock()
+	if guestControl != nil {
+		_ = guestControl.CloseNow()
+	}
+	if hostData != nil {
+		_ = hostData.CloseNow()
+	}
+	if guestData != nil {
+		_ = guestData.CloseNow()
 	}
 }
 
