@@ -6,6 +6,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.VantaLanHostingService;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
+import name.vantaclient.client.integration.net.VantaRelayClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -116,7 +117,7 @@ public final class VantaWorldShareScreen extends Screen {
                 .size(62, 30));
         content.add(endpointRow);
         content.add(VantaUiNode.text(
-                "The relay forwards encrypted Minecraft transport data. Its operator can still see connection metadata and source network addresses.",
+                "The relay forwards Minecraft TCP traffic without interpreting packets. Its operator can still see connection metadata and source network addresses.",
                 VantaUiTheme.TEXT_MUTED));
         if (!localStatus.isBlank()) {
             content.add(VantaUiNode.paragraph(localStatus,
@@ -151,7 +152,7 @@ public final class VantaWorldShareScreen extends Screen {
         }
 
         if (session.hostActive()) {
-            content.add(VantaUiNode.divider(1, 8));
+            content.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
             content.add(VantaUiNode.row(8, 0).height(22)
                     .add(VantaUiNode.eyebrow("REMOTE INVITE ACTIVE"))
                     .add(VantaUiNode.spacer(1).flex(1))
@@ -203,7 +204,7 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     private void addGuestSection(VantaUiNode content, boolean compact) {
-        content.add(VantaUiNode.divider(1, 8));
+        content.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
         content.add(VantaUiNode.eyebrow("JOIN A FRIEND"));
         content.add(VantaUiNode.textField("Invite code",
                 () -> inviteCode, value -> inviteCode = value.toUpperCase().replaceAll("[^A-Z2-7]", ""),
@@ -255,7 +256,10 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     private void startRemoteHosting() {
-        saveEndpointWithoutRebuild();
+        if (!saveEndpointWithoutRebuild()) {
+            rebuildUi();
+            return;
+        }
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         if (server == null) {
             localStatus = "Open a singleplayer world before creating a remote invite.";
@@ -277,19 +281,24 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     private void joinRemoteWorld() {
-        saveEndpointWithoutRebuild();
+        if (!saveEndpointWithoutRebuild()) {
+            rebuildUi();
+            return;
+        }
         VantaRemoteSessionManager.join(relayEndpoint, inviteCode, playerName, this);
         rebuildUi();
     }
 
-    private void saveEndpointWithoutRebuild() {
+    private boolean saveEndpointWithoutRebuild() {
         try {
             relayEndpoint = VantaRelayClient.normalizeBaseUrl(relayEndpoint);
             preferences.remoteRelayEndpoint = relayEndpoint;
             VantaClientPreferences.save();
             localStatus = "";
+            return true;
         } catch (IllegalArgumentException exception) {
             localStatus = exception.getMessage();
+            return false;
         }
     }
 

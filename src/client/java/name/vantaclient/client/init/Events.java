@@ -28,7 +28,7 @@ public class Events {
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> ClientPerformanceMetrics.beginClientTick());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> VantaRemoteSessionManager.shutdown());
-        ClientPlayConnectionEvents.JOIN.register((handler, client) -> VantaRemoteSessionManager.onGuestJoined());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> VantaRemoteSessionManager.onGuestJoined());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VantaRemoteSessionManager.onGuestDisconnected());
 
         FullbrightFeature.INSTANCE.setEnabled(
