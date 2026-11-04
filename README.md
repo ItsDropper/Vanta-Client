@@ -20,6 +20,7 @@ Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines confi
 - Local chat timestamps for signed player chat and system messages, with 24-hour, 24-hour-with-seconds and 12-hour formats; plus configurable animation profiles.
 - Sprint/sneak toggles and double-tap sprint controls.
 - Performance diagnostics and opt-in local CrashPatch diagnostics.
+- Optional adaptive entity draw distance in Performance Optimizer: reduces client-side entity rendering distance under sustained frame load, then gradually restores the user's configured value when headroom returns. It never changes entity AI, ticks, collision, or server simulation.
 
 ### Combat and gameplay utilities
 
