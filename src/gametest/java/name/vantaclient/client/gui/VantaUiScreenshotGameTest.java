@@ -19,6 +19,7 @@ import name.vantaclient.client.integration.net.VantaRelayClient;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.init.FeatureKeybinds;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.input.KeyEvent;
@@ -473,8 +474,23 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
             String originalKey = mapping.saveString();
             String conflictingKey = Keybinds.fullbrightKey.saveString();
+            List<FeatureKeybinds.Binding> featureBindings = FeatureKeybinds.bindings();
+            if (featureBindings.isEmpty()
+                    || featureBindings.stream().map(FeatureKeybinds.Binding::feature).distinct().count()
+                    != featureBindings.size()) {
+                throw new AssertionError("Every registered feature must have exactly one feature shortcut.");
+            }
+            FeatureKeybinds.Binding featureBinding = featureBindings.getFirst();
+            String originalFeatureKey = featureBinding.mapping().saveString();
             VantaSettingsScreen screen = new VantaSettingsScreen(null);
             try {
+                featureBinding.mapping().setKey(InputConstants.getKey(conflictingKey));
+                KeyMapping.resetMapping();
+                if (!screen.hasBindingConflict(featureBinding.mapping())) {
+                    throw new AssertionError("Feature shortcuts must participate in Minecraft/Vanta conflict detection.");
+                }
+                featureBinding.mapping().setKey(InputConstants.getKey(originalFeatureKey));
+                KeyMapping.resetMapping();
                 mapping.setKey(InputConstants.getKey(conflictingKey));
                 KeyMapping.resetMapping();
                 if (!screen.hasBindingConflict(mapping)) {
@@ -525,6 +541,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 mapping.setKey(InputConstants.getKey(originalKey));
+                featureBinding.mapping().setKey(InputConstants.getKey(originalFeatureKey));
                 KeyMapping.resetMapping();
                 client.options.save();
                 Keybinds.setCaptureActive(false);
