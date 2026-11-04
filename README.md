@@ -17,7 +17,7 @@ Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines confi
 
 - Fullbright, zoom, motion blur, nametag utilities and visual overlays.
 - FarView distant-terrain LOD for singleplayer worlds.
-- Chat timestamps and configurable animation profiles.
+- Local chat timestamps for signed player chat and system messages, with 24-hour, 24-hour-with-seconds and 12-hour formats; plus configurable animation profiles.
 - Sprint/sneak toggles and double-tap sprint controls.
 - Performance diagnostics and opt-in local CrashPatch diagnostics.
 
