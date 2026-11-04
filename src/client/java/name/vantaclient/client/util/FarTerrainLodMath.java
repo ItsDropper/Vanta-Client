@@ -85,6 +85,13 @@ public final class FarTerrainLodMath {
         return 0;
     }
 
+    /** Converts a mesh-grid sample index into the exact rounded world coordinate used for sampling. */
+    public static int sampleWorldCoordinate(int origin, int span, int coordinate, int resolution) {
+        if (resolution <= 0) return origin;
+        long offset = (long) coordinate * span;
+        return origin + (int) ((offset + resolution / 2L) / resolution);
+    }
+
     /**
      * Adjusts FarView's draw budget with bounded steps to avoid frame-to-frame oscillation.
      * The caller controls adjustment cadence; this policy only responds to smoothed render cost.
