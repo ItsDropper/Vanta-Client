@@ -6,6 +6,8 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
+import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.hudeditor.HudManager;
@@ -67,6 +69,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
         verifyHudHitboxGeometry(context);
+        verifyHudVisibilitySnapshot(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -834,6 +837,38 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyHudVisibilitySnapshot(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            HudManager.init();
+            boolean originalEditorEnabled = HudEditorFeature.INSTANCE.isEnabled();
+            try {
+                HudEditorFeature.INSTANCE.setEnabled(true);
+                HudManager.refreshVisibleElements();
+                List<HudElement> activeInEditor = HudManager.getActiveElements();
+                for (HudElement element : HudManager.getElements()) {
+                    if (element instanceof VanillaHudElement && !activeInEditor.contains(element)) {
+                        throw new AssertionError("Vanilla HUD editor previews must be included in the cached visible snapshot.");
+                    }
+                }
+                try {
+                    activeInEditor.clear();
+                    throw new AssertionError("The cached visible HUD list must not be externally mutable.");
+                } catch (UnsupportedOperationException expected) {
+                    // The renderer receives a read-only view over the tick-refreshed active list.
+                }
+
+                HudEditorFeature.INSTANCE.setEnabled(false);
+                HudManager.refreshVisibleElements();
+                if (HudManager.getActiveElements().stream().anyMatch(VanillaHudElement.class::isInstance)) {
+                    throw new AssertionError("Vanilla HUD editor previews must be absent when the editor is closed.");
+                }
+            } finally {
+                HudEditorFeature.INSTANCE.setEnabled(originalEditorEnabled);
+                HudManager.refreshVisibleElements();
             }
         });
     }
