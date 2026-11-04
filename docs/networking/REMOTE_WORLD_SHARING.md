@@ -66,7 +66,7 @@ No default Vanta-operated signalling or TURN service is configured in this repos
 1. Deploy the Go signalling relay at an HTTPS origin and configure `VANTA_STUN_URLS`, `VANTA_TURN_URLS`, and `VANTA_TURN_SHARED_SECRET` against an operational STUN/TURN deployment.
 2. Run two separate Minecraft clients with the same relay origin configured.
 3. Create an invite, request access, approve and reject guests, and verify the claimed name is clearly presented as unverified.
-4. Verify normal online-mode authentication, multiple guests, large chunk/resource transfers, connection loss, relay restart, world closure and cancellation.
+4. Verify normal Minecraft authentication, guest profile UUID matching, per-world whitelist persistence and revocation, multiple guests, large chunk/resource transfers, connection loss, relay restart, world closure and cancellation.
 5. Verify firewall behaviour and that the guest bridge binds only to loopback on Windows and Linux.
 6. Verify the selected ICE candidate pair (direct vs TURN), confirm fallback behaviour, and review client and relay logs for accidental credential disclosure.
 
