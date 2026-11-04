@@ -428,7 +428,7 @@ public final class FarTerrainRenderer {
                 heights, key.resolution, seaLevel, waterSurfaceEnabled);
         return new TileMesh(job.workKey.revision(),
                 (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
-                key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
+                key, originX, originZ, spanBlocks, seaLevel,
                 sampleWorldX, sampleWorldZ, heights, colors, waterColors, waterCellMask);
     }
 
@@ -882,8 +882,7 @@ public final class FarTerrainRenderer {
     private record WorkKey(TileKey key, long revision) {}
     private record TileMesh(long revision, double generationMillis,
                             TileKey key, int originX, int originZ, int spanBlocks,
-                            int seaLevel, boolean waterSurfaceEnabled,
-                            int[] sampleWorldX, int[] sampleWorldZ,
+                            int seaLevel, int[] sampleWorldX, int[] sampleWorldZ,
                             int[] heights, int[] colors, int[] waterColors, long[] waterCellMask) {
         private long estimatedBytes() {
             return ((long) sampleWorldX.length + sampleWorldZ.length
