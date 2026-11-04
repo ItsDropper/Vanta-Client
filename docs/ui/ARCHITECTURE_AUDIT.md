@@ -66,7 +66,7 @@ The settings and library screens use `VantaUiRuntime` to map Minecraft GUI-scale
 - HUD element rendering, normalized positioning, scaling, dragging, selection and persistence.
 - Minecraft keyboard, mouse, screen lifecycle and narration behavior.
 
-## 7. Verification boundary
+## 8. Verification boundary
 
 This is a source audit. The existence of the push-triggered workflow does not mean that its build has passed. No local Minecraft session, screenshot capture, GUI-scale test, allocation profile or gameplay performance measurement is claimed here. Those require an actual build/run and visual QA pass.
 
