@@ -18,7 +18,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - The framework, legacy native widgets, title-screen controls and HUD-editor chrome now share cached fourth-order superellipse geometry. Existing rounded helper names remain compatibility aliases; scanline insets are precomputed and no shader is required.
 - Semantic notification colors are centralized in `VantaUiTheme`, and keyboard-focused buttons receive an explicit accent outline distinct from hover.
 - HUD-editor element guides now use the exact persisted/rendered hitbox rectangle; selection emphasis remains a separate outer outline.
-- HUD background hitbox collection and connected-region merging use reusable primitive scratch arrays on the render thread. The normal path no longer creates temporary lists, queues or rectangle records per frame; scratch storage grows only if a layout exceeds its initial capacity.
+- HUD background hitbox collection and connected-region merging use reusable primitive scratch arrays on the render thread. The normal path no longer creates temporary lists, queues or rectangle records per frame; scratch storage grows only if a layout exceeds its initial capacity. Custom HUD backgrounds consume HudManager's immutable read-only active-element view, avoiding a second per-frame pass through custom feature visibility predicates; vanilla HUD backgrounds remain separately handled so their saved layout works outside the editor.
 - The title screen keeps Minecraft's vanilla panorama and original button actions while routing its surface geometry through the shared theme.
 
 ## Production migration
