@@ -112,7 +112,7 @@ public final class VantaUiTheme {
             graphics.fill(x, y, x + width, y + height, color);
             return;
         }
-        if (width > r * 2) graphics.fill(x + r, y, x + width - r, y + height, color);
+        if (height > r * 2) graphics.fill(x, y + r, x + width, y + height - r, color);
         for (int row = 0; row < r; row++) {
             int inset = squircleInset(r, row);
             int left = x + inset;
