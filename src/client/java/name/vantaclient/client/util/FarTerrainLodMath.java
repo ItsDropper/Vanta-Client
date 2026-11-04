@@ -119,8 +119,8 @@ public final class FarTerrainLodMath {
      */
     public static long[] createWaterCellMask(int[] heights, int resolution,
                                               int seaLevel, boolean waterSurfaceEnabled) {
-        if (resolution <= 0) {
-            throw new IllegalArgumentException("Mesh resolution must be positive.");
+        if (resolution <= 0 || resolution > 64) {
+            throw new IllegalArgumentException("Mesh resolution must be between 1 and 64.");
         }
         int side = resolution + 1;
         if (heights == null || heights.length != side * side) {
