@@ -23,6 +23,7 @@ import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
 import name.vantaclient.client.util.AdaptiveEntityDistanceController;
+import name.vantaclient.client.util.FarTerrainLodMath;
 import name.vantaclient.client.feature.FeatureRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -67,6 +68,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
+        verifyFarTerrainPlanningMath(context);
         verifyUiMotion(context);
         verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
@@ -621,6 +623,60 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (Math.abs(minimumBound - 0.5) > 0.0001) {
                 throw new AssertionError("Adaptive entity distance went below Minecraft's supported minimum: "
                         + minimumBound);
+            }
+        });
+    }
+
+    private static void verifyFarTerrainPlanningMath(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            if (FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 103, -98, 32, 32, 16, 16, 512, 512)) {
+                throw new AssertionError("FarView rebuilt an unchanged plan after sub-threshold movement.");
+            }
+            if (!FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 104, -100, 32, 32, 16, 16, 512, 512)
+                    || !FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 100, -104, 32, 32, 16, 16, 512, 512)) {
+                throw new AssertionError("FarView did not invalidate a plan after four chunks of movement.");
+            }
+            if (!FarTerrainLodMath.shouldRebuildPlan(false,
+                    100, -100, 100, -100, 32, 32, 16, 16, 512, 512)) {
+                throw new AssertionError("FarView did not create its initial tile plan.");
+            }
+            if (!FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 100, -100, 32, 16, 16, 16, 512, 512)
+                    || !FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 100, -100, 32, 32, 16, 24, 512, 512)
+                    || !FarTerrainLodMath.shouldRebuildPlan(true,
+                    100, -100, 100, -100, 32, 32, 16, 16, 512, 256)) {
+                throw new AssertionError("FarView did not invalidate a plan after topology settings changed.");
+            }
+
+            double nearest = FarTerrainLodMath.distanceToRectangleSquared(
+                    0.0, 0.0, 3.0, 4.0, 13.0, 14.0);
+            if (nearest != 25.0) {
+                throw new AssertionError("Squared nearest-rectangle distance is incorrect: " + nearest);
+            }
+            double inside = FarTerrainLodMath.distanceToRectangleSquared(
+                    8.0, 9.0, 3.0, 4.0, 13.0, 14.0);
+            if (inside != 0.0) {
+                throw new AssertionError("A point inside a tile must have zero rectangle distance: " + inside);
+            }
+            double farthest = FarTerrainLodMath.farthestCornerDistanceSquared(
+                    0.0, 0.0, 3.0, 4.0, 13.0, 14.0);
+            if (farthest != 365.0) {
+                throw new AssertionError("Squared farthest-corner distance is incorrect: " + farthest);
+            }
+
+            int[] expectedSizes = {8, 16, 32, 64, 128, 256, 512};
+            double[] distances = {63.0, 64.0, 128.0, 256.0, 512.0, 1024.0, 1536.0};
+            for (int index = 0; index < distances.length; index++) {
+                double distanceSquared = distances[index] * distances[index];
+                int actual = FarTerrainLodMath.desiredTileSizeForDistanceSquared(distanceSquared);
+                if (actual != expectedSizes[index]) {
+                    throw new AssertionError("FarView LOD threshold mismatch at " + distances[index]
+                            + " chunks: expected " + expectedSizes[index] + ", got " + actual);
+                }
             }
         });
     }
