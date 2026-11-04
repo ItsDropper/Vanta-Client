@@ -15,6 +15,7 @@ public final class ClientPerformanceMetrics {
     private static volatile double averageClientTickMs;
     private static volatile double lastWorldRenderMs;
     private static volatile double averageWorldRenderMs;
+    private static volatile long worldRenderSamples;
 
     private ClientPerformanceMetrics() {}
 
@@ -59,6 +60,7 @@ public final class ClientPerformanceMetrics {
     public static double getAverageClientTickMs() { return averageClientTickMs; }
     public static double getLastWorldRenderMs() { return lastWorldRenderMs; }
     public static double getAverageWorldRenderMs() { return averageWorldRenderMs; }
+    public static long getWorldRenderSamples() { return worldRenderSamples; }
 
     public static void reset() {
         clientTickStartNanos = 0L;
@@ -67,6 +69,7 @@ public final class ClientPerformanceMetrics {
         averageClientTickMs = 0.0;
         lastWorldRenderMs = 0.0;
         averageWorldRenderMs = 0.0;
+        worldRenderSamples = 0L;
     }
 
     private static void recordClientTick(double elapsedMs) {
@@ -77,6 +80,7 @@ public final class ClientPerformanceMetrics {
     private static void recordWorldRender(double elapsedMs) {
         lastWorldRenderMs = elapsedMs;
         averageWorldRenderMs = smooth(averageWorldRenderMs, elapsedMs);
+        worldRenderSamples++;
     }
 
     private static double smooth(double previous, double current) {
