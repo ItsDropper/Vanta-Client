@@ -14,6 +14,11 @@ import net.minecraft.world.item.Items;
 public class TotemCounterHudElement extends HudElement {
     private static final ItemStack TOTEM_ICON = new ItemStack(Items.TOTEM_OF_UNDYING);
 
+    private int cachedInventoryTotems;
+    private long lastInventoryTick = Long.MIN_VALUE;
+    private Object cachedWorld;
+    private Object cachedPlayer;
+
     public TotemCounterHudElement() {
         super(DropperUtilsConfig.get().totemHudX, DropperUtilsConfig.get().totemHudY);
         scale = DropperUtilsConfig.get().totemCounterScale;
@@ -34,10 +39,34 @@ public class TotemCounterHudElement extends HudElement {
     }
 
     private int getCount(Minecraft mc) {
-        if (mc.player == null) return 0;
-        return PerformanceOptimizerFeature.INSTANCE.isEnabled()
-                ? HudPerformanceCache.getTotemCount()
-                : mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
+        if (mc.player == null || mc.level == null) {
+            cachedInventoryTotems = 0;
+            lastInventoryTick = Long.MIN_VALUE;
+            cachedWorld = null;
+            cachedPlayer = null;
+            return 0;
+        }
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            return HudPerformanceCache.getTotemCount();
+        }
+
+        long gameTime = mc.level.getGameTime();
+        if (shouldRefreshInventoryCount(lastInventoryTick, gameTime,
+                cachedWorld, mc.level, cachedPlayer, mc.player)) {
+            cachedInventoryTotems = mc.player.getInventory().countItem(Items.TOTEM_OF_UNDYING);
+            lastInventoryTick = gameTime;
+            cachedWorld = mc.level;
+            cachedPlayer = mc.player;
+        }
+        return cachedInventoryTotems;
+    }
+
+    public static boolean shouldRefreshInventoryCount(long lastGameTime, long currentGameTime,
+                                                       Object previousWorld, Object currentWorld,
+                                                       Object previousPlayer, Object currentPlayer) {
+        return lastGameTime != currentGameTime
+                || previousWorld != currentWorld
+                || previousPlayer != currentPlayer;
     }
 
     @Override
