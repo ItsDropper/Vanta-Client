@@ -60,7 +60,7 @@ public final class HudBackgroundRenderer {
 
         // Vanilla HUD backgrounds are independent of custom HUD visibility:
         // their persisted hitboxes must remain available while the editor is closed.
-        for (HudElement element : HudManager.getElements()) {
+        for (HudElement element : HudManager.getVanillaElements()) {
             if (!(element instanceof VanillaHudElement vanilla)
                     || !preferences.isHudBackgroundEnabled(vanilla.getBackgroundId())) continue;
 
