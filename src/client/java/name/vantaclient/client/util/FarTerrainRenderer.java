@@ -354,10 +354,10 @@ public final class FarTerrainRenderer {
         int[] sampleWorldX = new int[side];
         int[] sampleWorldZ = new int[side];
         for (int coordinate = 0; coordinate <= key.resolution; coordinate++) {
-            long offset = (long) coordinate * spanBlocks;
-            int roundedOffset = (int) ((offset + key.resolution / 2L) / key.resolution);
-            sampleWorldX[coordinate] = originX + roundedOffset;
-            sampleWorldZ[coordinate] = originZ + roundedOffset;
+            sampleWorldX[coordinate] = FarTerrainLodMath.sampleWorldCoordinate(
+                    originX, spanBlocks, coordinate, key.resolution);
+            sampleWorldZ[coordinate] = FarTerrainLodMath.sampleWorldCoordinate(
+                    originZ, spanBlocks, coordinate, key.resolution);
         }
 
         for (int z = 0; z <= key.resolution; z++) {
@@ -410,7 +410,7 @@ public final class FarTerrainRenderer {
         return new TileMesh(job.workKey.revision(),
                 (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
                 key, originX, originZ, spanBlocks, seaLevel, waterSurfaceEnabled,
-                heights, colors, waterColors);
+                sampleWorldX, sampleWorldZ, heights, colors, waterColors);
     }
 
     private static int shadeColor(int color, double brightness) {
@@ -548,14 +548,15 @@ public final class FarTerrainRenderer {
             int[] heights = mesh.heights;
             int[] colors = mesh.colors;
             int[] waterColors = mesh.waterColors;
-            double step = (double) mesh.spanBlocks / resolution;
+            int[] sampleWorldX = mesh.sampleWorldX;
+            int[] sampleWorldZ = mesh.sampleWorldZ;
 
             for (int z = 0; z < resolution && drawnQuads < drawBudget; z++) {
-                double z0 = mesh.originZ + z * step;
-                double z1 = mesh.originZ + (z + 1) * step;
+                double z0 = sampleWorldZ[z];
+                double z1 = sampleWorldZ[z + 1];
                 for (int x = 0; x < resolution && drawnQuads < drawBudget; x++) {
-                    double x0 = mesh.originX + x * step;
-                    double x1 = mesh.originX + (x + 1) * step;
+                    double x0 = sampleWorldX[x];
+                    double x1 = sampleWorldX[x + 1];
                     if (!tileEntirelyInsideRenderBand) {
                         double centerX = (x0 + x1) * 0.5;
                         double centerZ = (z0 + z1) * 0.5;
@@ -649,6 +650,8 @@ public final class FarTerrainRenderer {
         int side = resolution + 1;
         int[] heights = mesh.heights;
         int[] colors = mesh.colors;
+        int[] sampleWorldX = mesh.sampleWorldX;
+        int[] sampleWorldZ = mesh.sampleWorldZ;
         double step = (double) mesh.spanBlocks / resolution;
         int depth = Math.max(SKIRT_MIN_DEPTH, (int) Math.min(96, step * 0.2));
 
@@ -662,20 +665,20 @@ public final class FarTerrainRenderer {
                 double bz;
                 if (edge == 0) {
                     a = i; b = i + 1;
-                    ax = mesh.originX + i * step; az = mesh.originZ;
-                    bx = mesh.originX + (i + 1) * step; bz = mesh.originZ;
+                    ax = sampleWorldX[i]; az = sampleWorldZ[0];
+                    bx = sampleWorldX[i + 1]; bz = sampleWorldZ[0];
                 } else if (edge == 1) {
                     a = resolution * side + i; b = a + 1;
-                    ax = mesh.originX + i * step; az = mesh.originZ + mesh.spanBlocks;
-                    bx = mesh.originX + (i + 1) * step; bz = az;
+                    ax = sampleWorldX[i]; az = sampleWorldZ[resolution];
+                    bx = sampleWorldX[i + 1]; bz = az;
                 } else if (edge == 2) {
                     a = i * side; b = (i + 1) * side;
-                    ax = mesh.originX; az = mesh.originZ + i * step;
-                    bx = ax; bz = mesh.originZ + (i + 1) * step;
+                    ax = sampleWorldX[0]; az = sampleWorldZ[i];
+                    bx = ax; bz = sampleWorldZ[i + 1];
                 } else {
                     a = i * side + resolution; b = (i + 1) * side + resolution;
-                    ax = mesh.originX + mesh.spanBlocks; az = mesh.originZ + i * step;
-                    bx = ax; bz = mesh.originZ + (i + 1) * step;
+                    ax = sampleWorldX[resolution]; az = sampleWorldZ[i];
+                    bx = ax; bz = sampleWorldZ[i + 1];
                 }
 
                 double midX = (ax + bx) * 0.5;
@@ -862,9 +865,11 @@ public final class FarTerrainRenderer {
     private record TileMesh(long revision, double generationMillis,
                             TileKey key, int originX, int originZ, int spanBlocks,
                             int seaLevel, boolean waterSurfaceEnabled,
+                            int[] sampleWorldX, int[] sampleWorldZ,
                             int[] heights, int[] colors, int[] waterColors) {
         private long estimatedBytes() {
-            return ((long) heights.length + colors.length + waterColors.length) * Integer.BYTES;
+            return ((long) sampleWorldX.length + sampleWorldZ.length
+                    + heights.length + colors.length + waterColors.length) * Integer.BYTES;
         }
     }
 }
