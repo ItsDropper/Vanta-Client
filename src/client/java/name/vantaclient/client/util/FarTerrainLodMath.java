@@ -58,6 +58,33 @@ public final class FarTerrainLodMath {
                 && farthestDistanceSquared <= outerRadiusSquared;
     }
 
+    /** A queued or running job is obsolete when its world revision changed or its tile left the plan. */
+    public static boolean isWorkObsolete(long taskRevision, long currentRevision, boolean tileDesired) {
+        return taskRevision != currentRevision || !tileDesired;
+    }
+
+    /**
+     * Adds a short pause between tile jobs when the client is under sustained load.
+     * This trades far-terrain convergence speed for foreground frame/tick headroom.
+     */
+    public static int workerBackoffMillis(double worldRenderMs, double clientTickMs, int fps) {
+        if (worldRenderMs <= 0.0 && clientTickMs <= 0.0) {
+            if (fps > 0 && fps < 30) return 40;
+            if (fps > 0 && fps < 45) return 20;
+            return 0;
+        }
+        if (worldRenderMs >= 32.0 || clientTickMs >= 40.0 || (fps > 0 && fps < 30)) {
+            return 40;
+        }
+        if (worldRenderMs >= 22.0 || clientTickMs >= 28.0 || (fps > 0 && fps < 45)) {
+            return 20;
+        }
+        if (worldRenderMs >= 16.0 || clientTickMs >= 20.0 || (fps > 0 && fps < 60)) {
+            return 8;
+        }
+        return 0;
+    }
+
     public static int desiredTileSizeForDistanceSquared(double distanceSquared) {
         if (distanceSquared < 64.0 * 64.0) return 8;
         if (distanceSquared < 128.0 * 128.0) return 16;
