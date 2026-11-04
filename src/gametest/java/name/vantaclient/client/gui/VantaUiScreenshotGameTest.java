@@ -8,6 +8,7 @@ import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.PotionEffectsHudElement;
+import name.vantaclient.client.hud.TotemCounterHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
@@ -72,6 +73,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyHudHitboxGeometry(context);
         verifyHudVisibilitySnapshot(context);
         verifyPotionHudSnapshotPolicy(context);
+        verifyTotemCounterSnapshotPolicy(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -885,6 +887,23 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyTotemCounterSnapshotPolicy(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            Object world = new Object();
+            Object player = new Object();
+            if (TotemCounterHudElement.shouldRefreshInventoryCount(
+                    100L, 100L, world, world, player, player)
+                    || !TotemCounterHudElement.shouldRefreshInventoryCount(
+                    100L, 101L, world, world, player, player)
+                    || !TotemCounterHudElement.shouldRefreshInventoryCount(
+                    100L, 100L, world, new Object(), player, player)
+                    || !TotemCounterHudElement.shouldRefreshInventoryCount(
+                    100L, 100L, world, world, player, new Object())) {
+                throw new AssertionError("Totem Counter inventory cache failed tick, world, or player invalidation.");
             }
         });
     }
