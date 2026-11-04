@@ -158,6 +158,13 @@ public final class VantaRemoteSessionManager {
      */
     public static void onHostPlayerJoined(ServerGamePacketListenerImpl handler, MinecraftServer server) {
         if (handler == null || handler.player == null || server == null || !server.isSingleplayer()) return;
+
+        // The integrated server is also published to the LAN. Only correlate
+        // connections created by this remote-session manager's fixed 127.0.0.1
+        // tunnel; an unrelated LAN join must never satisfy a pending relay request.
+        if (!(handler.getRemoteAddress() instanceof java.net.InetSocketAddress remoteAddress)
+                || remoteAddress.getAddress() == null
+                || !remoteAddress.getAddress().isLoopbackAddress()) return;
         String actualUUID = handler.player.getUUID().toString().toLowerCase(Locale.ROOT);
         String actualName = handler.player.getGameProfile().name();
         var chatSession = handler.player.getChatSession();
