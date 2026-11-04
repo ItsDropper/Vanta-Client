@@ -16,7 +16,6 @@ import name.vantaclient.client.util.ClientPerformanceMetrics;
 import name.vantaclient.client.hud.HudPerformanceCache;
 import name.vantaclient.client.hud.ClickRateTracker;
 import name.vantaclient.client.hudeditor.HudManager;
-import name.vantaclient.client.util.InGameOverlayCache;
 import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
