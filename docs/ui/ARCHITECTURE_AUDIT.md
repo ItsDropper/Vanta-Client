@@ -45,7 +45,7 @@ The settings and library screens use `VantaUiRuntime` to map Minecraft GUI-scale
 ## 5. Highest-impact limitations
 
 1. The retained framework still needs broader interaction tests beyond targeted smoke tests and screenshot coverage.
-2. The Controls page edits the five registered Vanta mappings, detects duplicate assignments across Minecraft and Vanta mappings, and supports keyboard/mouse capture, reset and unbind. A feature-level keybinding model is not defined. Generic dialog/progress components and comprehensive layout/input tests remain unfinished.
+2. The Controls page edits the five global Vanta mappings and optional per-feature toggle shortcuts for every registered feature. All mappings share Minecraft/Vanta duplicate detection and support keyboard/mouse capture, reset and unbind. Generic dialog/progress components and comprehensive layout/input tests remain unfinished.
 3. External mods that provide their own Mod Menu config screens remain outside Vanta's framework control.
 4. The HUD canvas selection/drag overlay intentionally remains specialized rendering; only its toolbar and inspector use the shared component runtime.
 5. Manual gameplay-session validation and performance profiling remain outstanding.
