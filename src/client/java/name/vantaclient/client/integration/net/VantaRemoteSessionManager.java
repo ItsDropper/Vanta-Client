@@ -145,7 +145,12 @@ public final class VantaRemoteSessionManager {
                         bumpRevisionLocked();
                     }
                 }
-                if (!accepted) opened.close();
+                if (!accepted) {
+                    opened.close();
+                } else if (!opened.isOpen()) {
+                    onHostControlError(generation,
+                            new IOException("Relay host control closed during session startup."));
+                }
             } catch (Exception exception) {
                 if (control != null) control.close();
                 synchronized (LOCK) {
@@ -498,12 +503,27 @@ public final class VantaRemoteSessionManager {
     }
 
     private static void onHostControlError(long generation, Throwable error) {
+        final HostSession failedSession;
+        final List<TcpStreamTunnel> tunnels;
         synchronized (LOCK) {
             if (generation != hostGeneration || hostSession == null) return;
-            hostStatus = "Relay control connection lost: "
+            ++hostGeneration;
+            failedSession = hostSession;
+            hostSession = null;
+            hostedServer = null;
+            hostBusy = false;
+            PENDING.clear();
+            tunnels = new ArrayList<>(HOST_TUNNELS.values());
+            HOST_TUNNELS.clear();
+            hostStatus = "Relay control connection lost. Remote guests were disconnected; "
+                    + "your local world remains open. "
                     + safeMessage(error, "connection closed");
             bumpRevisionLocked();
         }
+        executeIo(() -> {
+            failedSession.control.close();
+            tunnels.forEach(TcpStreamTunnel::close);
+        });
     }
 
     private static void onHostTunnelClosed(long generation, String requestId) {

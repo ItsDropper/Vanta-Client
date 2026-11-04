@@ -262,6 +262,10 @@ public final class VantaRelayClient {
             this.listener = listener;
         }
 
+        public boolean isOpen() {
+            return listener.isOpen();
+        }
+
         public void approve(String requestId) throws IOException {
             sendAndAwait(new ControlMessage("approve", validateRequestId(requestId), null),
                     "approved");
@@ -349,6 +353,7 @@ public final class VantaRelayClient {
         private final Consumer<RelayEvent> events;
         private final Consumer<Throwable> errors;
         private final StringBuilder text = new StringBuilder();
+        private volatile boolean connected;
         private final java.util.concurrent.ConcurrentHashMap<String,
                 java.util.concurrent.CompletableFuture<RelayEvent>> acknowledgements =
                 new java.util.concurrent.ConcurrentHashMap<>();
@@ -374,6 +379,10 @@ public final class VantaRelayClient {
             acknowledgements.remove(requestId, future);
         }
 
+        private boolean isOpen() {
+            return connected;
+        }
+
         private void failAcknowledgements(Throwable error) {
             for (var entry : acknowledgements.entrySet()) {
                 if (acknowledgements.remove(entry.getKey(), entry.getValue())) {
@@ -384,6 +393,7 @@ public final class VantaRelayClient {
 
         @Override
         public void onOpen(java.net.http.WebSocket webSocket) {
+            connected = true;
             webSocket.request(1);
         }
 
@@ -424,6 +434,7 @@ public final class VantaRelayClient {
 
         @Override
         public void onError(java.net.http.WebSocket webSocket, Throwable error) {
+            connected = false;
             failAcknowledgements(error);
             errors.accept(error);
         }
@@ -431,6 +442,7 @@ public final class VantaRelayClient {
         @Override
         public java.util.concurrent.CompletionStage<?> onClose(
                 java.net.http.WebSocket webSocket, int statusCode, String reason) {
+            connected = false;
             IOException error = new IOException("Relay host control connection closed.");
             failAcknowledgements(error);
             errors.accept(error);
