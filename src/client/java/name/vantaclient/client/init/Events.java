@@ -20,6 +20,7 @@ import name.vantaclient.client.util.ExplosionEffects;
 import name.vantaclient.client.util.FarViewController;
 import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.util.SprintSneakToggles;
+import name.vantaclient.client.util.AdaptiveEntityDistanceController;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 
@@ -103,6 +104,7 @@ public class Events {
                 SprintSneakToggles.toggleSneak();
             }
             SprintSneakToggles.tick(client);
+            AdaptiveEntityDistanceController.tick(client);
             FeatureKeybinds.tick(gameplayInputAllowed);
 
             if (client.player != null) {
