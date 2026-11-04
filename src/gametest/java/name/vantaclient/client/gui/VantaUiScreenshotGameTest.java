@@ -10,6 +10,7 @@ import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.PotionEffectsHudElement;
 import name.vantaclient.client.hud.TotemCounterHudElement;
 import name.vantaclient.client.hud.ArmorHudElement;
+import name.vantaclient.client.hud.ClickRateTracker;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
@@ -76,6 +77,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyPotionHudSnapshotPolicy(context);
         verifyTotemCounterSnapshotPolicy(context);
         verifyArmorHudSnapshotPolicy(context);
+        verifyClickRateSnapshot(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -889,6 +891,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyClickRateSnapshot(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            ClickRateTracker.recordLeftClick();
+            ClickRateTracker.recordRightClick();
+            ClickRateTracker.refreshSnapshot();
+            if (ClickRateTracker.getSnapshotLeftCps() < 1
+                    || ClickRateTracker.getSnapshotRightCps() < 1) {
+                throw new AssertionError("CPS HUD snapshot did not include recent left and right clicks.");
             }
         });
     }
