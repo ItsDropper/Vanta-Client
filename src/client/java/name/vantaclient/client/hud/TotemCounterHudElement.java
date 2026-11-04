@@ -18,6 +18,8 @@ public class TotemCounterHudElement extends HudElement {
     private long lastInventoryTick = Long.MIN_VALUE;
     private Object cachedWorld;
     private Object cachedPlayer;
+    private int lastDisplayedCount = Integer.MIN_VALUE;
+    private String cachedCountText = "0";
 
     public TotemCounterHudElement() {
         super(DropperUtilsConfig.get().totemHudX, DropperUtilsConfig.get().totemHudY);
@@ -35,7 +37,7 @@ public class TotemCounterHudElement extends HudElement {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         graphics.renderItem(TOTEM_ICON, 0, 0);
-        graphics.drawString(mc.font, Integer.toString(getCount(mc)), 20, 5, 0xFF00FF00);
+        graphics.drawString(mc.font, getCountText(mc), 20, 5, 0xFF00FF00);
     }
 
     private int getCount(Minecraft mc) {
@@ -61,6 +63,15 @@ public class TotemCounterHudElement extends HudElement {
         return cachedInventoryTotems;
     }
 
+    private String getCountText(Minecraft mc) {
+        int count = getCount(mc);
+        if (count != lastDisplayedCount) {
+            lastDisplayedCount = count;
+            cachedCountText = Integer.toString(count);
+        }
+        return cachedCountText;
+    }
+
     public static boolean shouldRefreshInventoryCount(long lastGameTime, long currentGameTime,
                                                        Object previousWorld, Object currentWorld,
                                                        Object previousPlayer, Object currentPlayer) {
@@ -72,7 +83,7 @@ public class TotemCounterHudElement extends HudElement {
     @Override
     public int getWidth() {
         Minecraft mc = Minecraft.getInstance();
-        return Math.max(16, 20 + mc.font.width(Integer.toString(getCount(mc))));
+        return Math.max(16, 20 + mc.font.width(getCountText(mc)));
     }
 
     @Override
