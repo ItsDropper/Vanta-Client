@@ -45,6 +45,19 @@ public final class FarTerrainLodMath {
         return dx * dx + dz * dz;
     }
 
+    public static boolean isEntireTileInsideInnerRadius(double farthestDistanceSquared,
+                                                                  double innerRadiusSquared) {
+        return farthestDistanceSquared <= innerRadiusSquared;
+    }
+
+    public static boolean isEntireTileInsideRenderBand(double nearestDistanceSquared,
+                                                        double farthestDistanceSquared,
+                                                        double innerRadiusSquared,
+                                                        double outerRadiusSquared) {
+        return nearestDistanceSquared >= innerRadiusSquared
+                && farthestDistanceSquared <= outerRadiusSquared;
+    }
+
     public static int desiredTileSizeForDistanceSquared(double distanceSquared) {
         if (distanceSquared < 64.0 * 64.0) return 8;
         if (distanceSquared < 128.0 * 128.0) return 16;
