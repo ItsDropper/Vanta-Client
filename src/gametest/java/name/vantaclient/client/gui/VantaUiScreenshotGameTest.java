@@ -9,6 +9,7 @@ import name.vantaclient.client.hud.HudBackgroundRenderer;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.PotionEffectsHudElement;
 import name.vantaclient.client.hud.TotemCounterHudElement;
+import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
@@ -74,6 +75,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyHudVisibilitySnapshot(context);
         verifyPotionHudSnapshotPolicy(context);
         verifyTotemCounterSnapshotPolicy(context);
+        verifyArmorHudSnapshotPolicy(context);
         verifyKeybindCaptureLifecycle(context);
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
@@ -887,6 +889,25 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } finally {
                 ChatTimestampsFeature.setFormat(originalFormat);
+            }
+        });
+    }
+
+    private static void verifyArmorHudSnapshotPolicy(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            Object world = new Object();
+            Object player = new Object();
+            if (ArmorHudElement.shouldRefreshArmorSnapshot(
+                    100L, 100L, world, world, player, player)
+                    || !ArmorHudElement.shouldRefreshArmorSnapshot(
+                    100L, 101L, world, world, player, player)
+                    || !ArmorHudElement.shouldRefreshArmorSnapshot(
+                    100L, 100L, world, new Object(), player, player)
+                    || !ArmorHudElement.shouldRefreshArmorSnapshot(
+                    100L, 100L, world, world, player, new Object())
+                    || !ArmorHudElement.shouldRefreshArmorSnapshot(
+                    101L, 100L, world, world, player, player)) {
+                throw new AssertionError("Armor HUD snapshot failed tick, world, player, or rewind invalidation.");
             }
         });
     }
