@@ -661,6 +661,7 @@ public final class VantaUiNode {
                 VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
                         VantaUiTheme.RADIUS_LARGE,
                         !enabled ? 0x55798593
+                                : focused ? VantaUiTheme.withAlpha(accent, 230)
                                 : over ? VantaUiTheme.BUTTON_OUTLINE_HOVER
                                 : VantaUiTheme.BUTTON_OUTLINE);
                 int labelX = x, labelWidth = width;
