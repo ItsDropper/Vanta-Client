@@ -57,8 +57,6 @@ public final class FarTerrainRenderer {
     private static final int MAX_QUEUED_TILE_JOBS = 96;
     private static final int MAX_DRAW_QUADS = 96_000;
     private static final int MAX_DESIRED_TILES = 4096;
-    // Keep the CPU-side LOD cache bounded even at 2,048 chunks and ULTRA quality.
-    private static final long MAX_MESH_CACHE_BYTES = 48L * 1024L * 1024L;
     private static final int SKIRT_MIN_DEPTH = 24;
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
@@ -529,10 +527,21 @@ public final class FarTerrainRenderer {
         for (TileMesh mesh : MESHES.values()) cachedMeshBytes += mesh.estimatedBytes();
     }
 
+    private static long getMeshCacheLimitBytes() {
+        long mebibyte = 1024L * 1024L;
+        return switch (FarViewFeature.getQuality()) {
+            case "PERFORMANCE" -> 64L * mebibyte;
+            case "HIGH" -> 128L * mebibyte;
+            case "ULTRA" -> 256L * mebibyte;
+            default -> 96L * mebibyte;
+        };
+    }
+
     private static void trimMeshCache() {
-        if (cachedMeshBytes <= MAX_MESH_CACHE_BYTES) return;
+        long cacheLimit = getMeshCacheLimitBytes();
+        if (cachedMeshBytes <= cacheLimit) return;
         // orderedTiles is nearest-first; discard the least useful distant meshes first.
-        for (int i = orderedTiles.size() - 1; i >= 0 && cachedMeshBytes > MAX_MESH_CACHE_BYTES; i--) {
+        for (int i = orderedTiles.size() - 1; i >= 0 && cachedMeshBytes > cacheLimit; i--) {
             TileKey key = orderedTiles.get(i);
             TileMesh removed = MESHES.remove(key);
             if (removed != null) {
@@ -674,6 +683,7 @@ public final class FarTerrainRenderer {
             if (mesh == null || mesh.trees.isEmpty()) continue;
             drawnQuads += emitTreeImpostors(consumer, positionMatrix, transformedVertex, mesh,
                     cameraX, cameraY, cameraZ, playerX, playerZ,
+                    hasHorizontalForward, forwardX, forwardZ,
                     innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
         }
         lastDrawnQuads = drawnQuads;
@@ -718,6 +728,7 @@ public final class FarTerrainRenderer {
                                           Vector3f transformedVertex, TileMesh mesh,
                                           double cameraX, double cameraY, double cameraZ,
                                           double playerX, double playerZ,
+                                          boolean hasHorizontalForward, double forwardX, double forwardZ,
                                           double innerRadiusSquared, double outerRadiusSquared,
                                           int alreadyDrawn, int maxQuads) {
         int emitted = 0;
@@ -728,6 +739,8 @@ public final class FarTerrainRenderer {
             double dz = tree.z - playerZ;
             double distanceSquared = dx * dx + dz * dz;
             if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+            if (hasHorizontalForward && FarTerrainLodMath.isOutsideHorizontalViewCone(
+                    dx, dz, forwardX, forwardZ, tree.canopyWidth * 0.9)) continue;
 
             double trunkHeight = tree.height * 0.68;
             double trunkWidth = Math.max(1.0, tree.canopyWidth * 0.12);
@@ -775,25 +788,27 @@ public final class FarTerrainRenderer {
         double maxY = bottomY + height;
         double minZ = centerZ - depth * 0.5;
         double maxZ = centerZ + depth * 0.5;
+        int side = shadeColor(color, 0.76);
+        int bottom = shadeColor(color, 0.52);
 
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
-                minX, minY, minZ, color, minX, maxY, minZ, color,
-                maxX, maxY, minZ, color, maxX, minY, minZ, color);
+                minX, minY, minZ, side, minX, maxY, minZ, side,
+                maxX, maxY, minZ, side, maxX, minY, minZ, side);
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
-                maxX, minY, maxZ, color, maxX, maxY, maxZ, color,
-                minX, maxY, maxZ, color, minX, minY, maxZ, color);
+                maxX, minY, maxZ, side, maxX, maxY, maxZ, side,
+                minX, maxY, maxZ, side, minX, minY, maxZ, side);
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
-                minX, minY, maxZ, color, minX, maxY, maxZ, color,
-                minX, maxY, minZ, color, minX, minY, minZ, color);
+                minX, minY, maxZ, side, minX, maxY, maxZ, side,
+                minX, maxY, minZ, side, minX, minY, minZ, side);
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
-                maxX, minY, minZ, color, maxX, maxY, minZ, color,
-                maxX, maxY, maxZ, color, maxX, minY, maxZ, color);
+                maxX, minY, minZ, side, maxX, maxY, minZ, side,
+                maxX, maxY, maxZ, side, maxX, minY, maxZ, side);
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
                 minX, maxY, minZ, color, minX, maxY, maxZ, color,
                 maxX, maxY, maxZ, color, maxX, maxY, minZ, color);
         emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
-                minX, minY, maxZ, color, minX, minY, minZ, color,
-                maxX, minY, minZ, color, maxX, minY, maxZ, color);
+                minX, minY, maxZ, bottom, minX, minY, minZ, bottom,
+                maxX, minY, minZ, bottom, maxX, minY, maxZ, bottom);
         return 6;
     }
 
@@ -940,7 +955,7 @@ public final class FarTerrainRenderer {
                 + " ready | " + WORKER.getQueue().size() + " queued | " + FAILED.size()
                 + " failed | " + CACHE_EVICTED.size() + " memory-evicted | cache "
                 + (cachedMeshBytes / (1024 * 1024)) + "/"
-                + (MAX_MESH_CACHE_BYTES / (1024 * 1024)) + " MiB | range "
+                + (getMeshCacheLimitBytes() / (1024 * 1024)) + " MiB | range "
                 + effectiveFarDistance + " chunks | plan "
                 + String.format(java.util.Locale.ROOT, "%.2f", lastTilePlanMs) + " ms/"
                 + tilePlanBuildCount + " rebuilds | mesh avg "
