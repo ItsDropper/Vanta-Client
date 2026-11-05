@@ -393,8 +393,11 @@ public final class FarTerrainRenderer {
                         QuartPos.fromBlock(worldZ), climateSampler);
                 int waterColor = opaqueRgb(biome.value().getWaterColor());
                 waterColors[index] = blendRgb(0xFF28566D, waterColor, 0.58f);
-                colors[index] = terrainColor(height, seaLevel,
-                        biome.value().getGrassColor(worldX, worldZ), biome.value().getWaterColor());
+                String biomePath = biome.unwrapKey()
+                        .map(key -> key.location().getPath()).orElse("");
+                colors[index] = terrainColor(biomePath, height, seaLevel,
+                        biome.value().getGrassColor(worldX, worldZ),
+                        biome.value().getWaterColor(), worldX, worldZ);
             }
         }
 
@@ -439,13 +442,10 @@ public final class FarTerrainRenderer {
         return 0xFF000000 | (red << 16) | (green << 8) | blue;
     }
 
-    private static int terrainColor(int height, int seaLevel, int grassColor, int waterColor) {
-        if (height <= seaLevel - 18) return blendRgb(0xFF244B69, opaqueRgb(waterColor), 0.38f);
-        if (height <= seaLevel - 5) return blendRgb(0xFF3A7F9C, opaqueRgb(waterColor), 0.52f);
-        if (height <= seaLevel + 2) return 0xFFC2B17B;
-        if (height >= seaLevel + 112) return 0xFFE1E4E2;
-        if (height >= seaLevel + 76) return 0xFF888985;
-        return opaqueRgb(grassColor);
+    private static int terrainColor(String biomePath, int height, int seaLevel,
+                                     int grassColor, int waterColor, int worldX, int worldZ) {
+        return FarTerrainMaterial.colorFor(biomePath, height, seaLevel,
+                grassColor, waterColor, worldX, worldZ);
     }
 
     private static int opaqueRgb(int rgb) {
