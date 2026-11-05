@@ -426,7 +426,8 @@ public final class FarTerrainRenderer {
         }
 
         List<TreeImpostor> trees = generateTreeImpostors(key, heights, sampleWorldX,
-                sampleWorldZ, biomeSource, climateSampler, seaLevel, sampleSpacing);
+                sampleWorldZ, biomeSource, climateSampler, seaLevel, sampleSpacing,
+                waterSurfaceEnabled);
         long[] waterCellMask = FarTerrainLodMath.createWaterCellMask(
                 heights, key.resolution, seaLevel, waterSurfaceEnabled);
         return new TileMesh(job.workKey.revision(),
@@ -439,7 +440,8 @@ public final class FarTerrainRenderer {
     private static List<TreeImpostor> generateTreeImpostors(
             TileKey key, int[] heights, int[] sampleWorldX, int[] sampleWorldZ,
             BiomeSource biomeSource, Climate.Sampler climateSampler,
-            int seaLevel, double sampleSpacing) {
+            int seaLevel, double sampleSpacing, boolean overworldVegetation) {
+        if (!overworldVegetation) return List.of();
         List<TreeImpostor> trees = new ArrayList<>();
         int resolution = key.resolution;
         int side = resolution + 1;
