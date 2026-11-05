@@ -651,20 +651,23 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             int forestTrees = 0;
             int plainsTrees = 0;
             int oceanTrees = 0;
+            int netherTrees = 0;
             int repeatedForestTrees = 0;
             for (int z = -256; z <= 256; z += 8) {
                 for (int x = -256; x <= 256; x += 8) {
                     if (FarTerrainVegetation.shouldPlaceTree("forest", x, z)) forestTrees++;
                     if (FarTerrainVegetation.shouldPlaceTree("plains", x, z)) plainsTrees++;
                     if (FarTerrainVegetation.shouldPlaceTree("deep_ocean", x, z)) oceanTrees++;
+                    if (FarTerrainVegetation.shouldPlaceTree("nether_wastes", x, z)
+                            || FarTerrainVegetation.shouldPlaceTree("warped_forest", x, z)) netherTrees++;
                     if (FarTerrainVegetation.shouldPlaceTree("forest", x, z)) repeatedForestTrees++;
                 }
             }
-            if (forestTrees <= plainsTrees || oceanTrees != 0
+            if (forestTrees <= plainsTrees || oceanTrees != 0 || netherTrees != 0
                     || repeatedForestTrees != forestTrees
                     || !FarTerrainVegetation.isConifer("snowy_taiga")
                     || FarTerrainVegetation.isConifer("birch_forest")
-                    || Math.abs(FarTerrainVegetation.jitter(10, 20, 100.0, true)) > 36.0) {
+                    || Math.abs(FarTerrainVegetation.jitter(10, 20, 100.0, true)) > 14.0) {
                 throw new AssertionError("FarView biome-aware vegetation placement policy failed.");
             }
 
