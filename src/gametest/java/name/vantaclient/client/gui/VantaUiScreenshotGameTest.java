@@ -32,6 +32,8 @@ import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
 import name.vantaclient.client.util.AdaptiveEntityDistanceController;
 import name.vantaclient.client.util.FarTerrainLodMath;
+import name.vantaclient.client.util.FarTerrainMaterial;
+import name.vantaclient.client.util.FarTerrainVegetation;
 import name.vantaclient.client.feature.FeatureRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -646,6 +648,26 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyFarTerrainPlanningMath(ClientGameTestContext context) {
         context.runOnClient(client -> {
+            int forestTrees = 0;
+            int plainsTrees = 0;
+            int oceanTrees = 0;
+            int repeatedForestTrees = 0;
+            for (int z = -256; z <= 256; z += 8) {
+                for (int x = -256; x <= 256; x += 8) {
+                    if (FarTerrainVegetation.shouldPlaceTree("forest", x, z)) forestTrees++;
+                    if (FarTerrainVegetation.shouldPlaceTree("plains", x, z)) plainsTrees++;
+                    if (FarTerrainVegetation.shouldPlaceTree("deep_ocean", x, z)) oceanTrees++;
+                    if (FarTerrainVegetation.shouldPlaceTree("forest", x, z)) repeatedForestTrees++;
+                }
+            }
+            if (forestTrees <= plainsTrees || oceanTrees != 0
+                    || repeatedForestTrees != forestTrees
+                    || !FarTerrainVegetation.isConifer("snowy_taiga")
+                    || FarTerrainVegetation.isConifer("birch_forest")
+                    || Math.abs(FarTerrainVegetation.jitter(10, 20, 100.0, true)) > 36.0) {
+                throw new AssertionError("FarView biome-aware vegetation placement policy failed.");
+            }
+
             int grass = FarTerrainMaterial.colorFor("plains", 90, 63,
                     0xFF70B050, 0xFF3F76E4, 120, -80);
             int desert = FarTerrainMaterial.colorFor("desert", 90, 63,
