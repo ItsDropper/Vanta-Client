@@ -646,6 +646,27 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyFarTerrainPlanningMath(ClientGameTestContext context) {
         context.runOnClient(client -> {
+            int grass = FarTerrainMaterial.colorFor("plains", 90, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80);
+            int desert = FarTerrainMaterial.colorFor("desert", 90, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80);
+            int snowy = FarTerrainMaterial.colorFor("snowy_plains", 110, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80);
+            int badlands = FarTerrainMaterial.colorFor("badlands", 110, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80);
+            int ocean = FarTerrainMaterial.colorFor("deep_ocean", 20, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80);
+            if (grass == desert || grass == snowy || desert == badlands
+                    || ocean == grass || (grass >>> 24) != 0xFF
+                    || (desert >>> 24) != 0xFF || (snowy >>> 24) != 0xFF
+                    || (badlands >>> 24) != 0xFF || (ocean >>> 24) != 0xFF) {
+                throw new AssertionError("FarView biome material palette collapsed distinct Minecraft surfaces.");
+            }
+            if (grass != FarTerrainMaterial.colorFor("plains", 90, 63,
+                    0xFF70B050, 0xFF3F76E4, 120, -80)) {
+                throw new AssertionError("FarView surface variation must be deterministic.");
+            }
+
             if (FarTerrainLodMath.shouldRebuildPlan(true,
                     100, -100, 103, -98, 32, 32, 16, 16, 512, 512)) {
                 throw new AssertionError("FarView rebuilt an unchanged plan after sub-threshold movement.");
