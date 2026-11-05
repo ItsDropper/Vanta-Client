@@ -25,7 +25,7 @@ public final class FarTerrainMaterial {
             color = badlandsColor(height, worldX, worldZ);
         } else if (isDesert(biome)) {
             color = height > seaLevel + 52 ? 0xFFB99A68 : 0xFFD8C58A;
-        } else if (isSnowy(biome) && height > seaLevel + 18) {
+        } else if (isSnowy(biome) && height > seaLevel - 5) {
             color = height > seaLevel + 72 ? 0xFFE5E9ED : 0xFFD5DCE0;
         } else if (isMountainous(biome) && height > seaLevel + 58) {
             color = height > seaLevel + 112 ? 0xFFE1E4E2 : 0xFF888985;
