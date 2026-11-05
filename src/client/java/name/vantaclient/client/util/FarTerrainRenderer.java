@@ -445,8 +445,8 @@ public final class FarTerrainRenderer {
         List<TreeImpostor> trees = new ArrayList<>();
         int resolution = key.resolution;
         int side = resolution + 1;
-        int stride = Math.max(1, resolution / 32);
-        int maxTrees = 192;
+        int stride = Math.max(1, resolution / 16);
+        int maxTrees = 256;
 
         for (int z = 1; z < resolution && trees.size() < maxTrees; z += stride) {
             for (int x = 1; x < resolution && trees.size() < maxTrees; x += stride) {
