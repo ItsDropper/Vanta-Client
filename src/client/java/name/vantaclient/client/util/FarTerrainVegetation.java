@@ -27,6 +27,12 @@ public final class FarTerrainVegetation {
         return unitHash(worldX, worldZ) < density;
     }
 
+    public static double jitter(int worldX, int worldZ, double spacing, boolean xAxis) {
+        long salt = xAxis ? 0x165667B19E3779F9L : 0x85EBCA77C2B2AE63L;
+        double centered = unitHash(worldX ^ (int) salt, worldZ ^ (int) (salt >>> 32)) - 0.5;
+        return centered * spacing * 0.72;
+    }
+
     public static boolean isConifer(String biomePath) {
         String biome = biomePath == null ? "" : biomePath;
         return biome.contains("taiga") || biome.contains("grove")
