@@ -427,12 +427,59 @@ public final class FarTerrainRenderer {
             }
         }
 
+        List<TreeImpostor> trees = generateTreeImpostors(key, heights, sampleWorldX,
+                sampleWorldZ, biomeSource, climateSampler, seaLevel, sampleSpacing);
         long[] waterCellMask = FarTerrainLodMath.createWaterCellMask(
                 heights, key.resolution, seaLevel, waterSurfaceEnabled);
         return new TileMesh(job.workKey.revision(),
                 (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
                 key, originX, originZ, spanBlocks, seaLevel,
-                sampleWorldX, sampleWorldZ, heights, colors, waterColors, waterCellMask);
+                sampleWorldX, sampleWorldZ, heights, colors, waterColors, waterCellMask,
+                List.copyOf(trees));
+    }
+
+    private static List<TreeImpostor> generateTreeImpostors(
+            TileKey key, int[] heights, int[] sampleWorldX, int[] sampleWorldZ,
+            BiomeSource biomeSource, Climate.Sampler climateSampler,
+            int seaLevel, double sampleSpacing) {
+        List<TreeImpostor> trees = new ArrayList<>();
+        int resolution = key.resolution;
+        int side = resolution + 1;
+        int stride = Math.max(1, resolution / 32);
+        int maxTrees = 192;
+
+        for (int z = 1; z < resolution && trees.size() < maxTrees; z += stride) {
+            for (int x = 1; x < resolution && trees.size() < maxTrees; x += stride) {
+                int index = z * side + x;
+                int height = heights[index];
+                if (height <= seaLevel + 1) continue;
+
+                int localMin = Math.min(Math.min(heights[index - 1], heights[index + 1]),
+                        Math.min(heights[index - side], heights[index + side]));
+                int localMax = Math.max(Math.max(heights[index - 1], heights[index + 1]),
+                        Math.max(heights[index - side], heights[index + side]));
+                if (localMax - localMin > Math.max(14.0, sampleSpacing * 0.18)) continue;
+
+                int worldX = sampleWorldX[x];
+                int worldZ = sampleWorldZ[z];
+                Holder<Biome> biome = biomeSource.getNoiseBiome(
+                        QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
+                        QuartPos.fromBlock(worldZ), climateSampler);
+                String biomePath = biome.unwrapKey()
+                        .map(resourceKey -> resourceKey.location().getPath()).orElse("");
+                if (!FarTerrainVegetation.shouldPlaceTree(biomePath, worldX, worldZ)) continue;
+
+                double treeHeight = Math.max(6.0, Math.min(36.0, sampleSpacing * 0.20));
+                double canopyWidth = Math.max(4.0, Math.min(28.0, sampleSpacing * 0.22));
+                double jitterX = FarTerrainVegetation.jitter(worldX, worldZ, sampleSpacing, true);
+                double jitterZ = FarTerrainVegetation.jitter(worldX, worldZ, sampleSpacing, false);
+                trees.add(new TreeImpostor(worldX + jitterX, height, worldZ + jitterZ,
+                        treeHeight, canopyWidth, biome.value().getFoliageColor(),
+                        FarTerrainVegetation.trunkColor(biomePath),
+                        FarTerrainVegetation.isConifer(biomePath)));
+            }
+        }
+        return trees;
     }
 
     private static int shadeColor(int color, double brightness) {
@@ -523,6 +570,7 @@ public final class FarTerrainRenderer {
 
         long renderStartNanos = System.nanoTime();
         int drawBudget = getDrawBudget();
+        int terrainDrawBudget = Math.max(1, drawBudget * 3 / 4);
         Matrix4f positionMatrix = context.matrices().last().pose();
         if (context.consumers() == null) return;
         VertexConsumer consumer = context.consumers().getBuffer(FarTerrainRenderType.TYPE);
@@ -534,7 +582,7 @@ public final class FarTerrainRenderer {
         for (TileKey key : orderedTiles) {
             TileMesh mesh = MESHES.get(key);
             if (mesh == null) continue;
-            if (drawnQuads >= drawBudget) break;
+            if (drawnQuads >= terrainDrawBudget) break;
 
             double tileCenterX = mesh.originX + mesh.spanBlocks * 0.5;
             double tileCenterZ = mesh.originZ + mesh.spanBlocks * 0.5;
@@ -571,10 +619,10 @@ public final class FarTerrainRenderer {
             int[] sampleWorldX = mesh.sampleWorldX;
             int[] sampleWorldZ = mesh.sampleWorldZ;
 
-            for (int z = 0; z < resolution && drawnQuads < drawBudget; z++) {
+            for (int z = 0; z < resolution && drawnQuads < terrainDrawBudget; z++) {
                 double z0 = sampleWorldZ[z];
                 double z1 = sampleWorldZ[z + 1];
-                for (int x = 0; x < resolution && drawnQuads < drawBudget; x++) {
+                for (int x = 0; x < resolution && drawnQuads < terrainDrawBudget; x++) {
                     double x0 = sampleWorldX[x];
                     double x1 = sampleWorldX[x + 1];
                     if (!tileEntirelyInsideRenderBand) {
@@ -613,12 +661,20 @@ public final class FarTerrainRenderer {
                 }
             }
 
-            if (drawnQuads < drawBudget) {
+            if (drawnQuads < terrainDrawBudget) {
                 drawnQuads += emitSkirts(consumer, positionMatrix, transformedVertex, mesh, cameraX, cameraY, cameraZ,
                         playerX, playerZ, innerRadiusSquared, outerRadiusSquared,
-                        drawnQuads, drawBudget);
+                        drawnQuads, terrainDrawBudget);
             }
             submittedMeshes++;
+        }
+        for (TileKey key : orderedTiles) {
+            if (drawnQuads >= drawBudget) break;
+            TileMesh mesh = MESHES.get(key);
+            if (mesh == null || mesh.trees.isEmpty()) continue;
+            drawnQuads += emitTreeImpostors(consumer, positionMatrix, transformedVertex, mesh,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
         }
         lastDrawnQuads = drawnQuads;
         lastSubmittedMeshes = submittedMeshes;
@@ -656,6 +712,89 @@ public final class FarTerrainRenderer {
         drawBudgetAdjustmentFrames = 0;
         adaptiveDrawBudget = FarTerrainLodMath.adjustDrawBudget(
                 adaptiveDrawBudget, averageMeshSubmitMs, 12_000, MAX_DRAW_QUADS);
+    }
+
+    private static int emitTreeImpostors(VertexConsumer consumer, Matrix4f positionMatrix,
+                                          Vector3f transformedVertex, TileMesh mesh,
+                                          double cameraX, double cameraY, double cameraZ,
+                                          double playerX, double playerZ,
+                                          double innerRadiusSquared, double outerRadiusSquared,
+                                          int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        for (TreeImpostor tree : mesh.trees) {
+            int treeCost = tree.conifer ? 24 : 18;
+            if (alreadyDrawn + emitted + treeCost > maxQuads) break;
+            double dx = tree.x - playerX;
+            double dz = tree.z - playerZ;
+            double distanceSquared = dx * dx + dz * dz;
+            if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+
+            double trunkHeight = tree.height * 0.68;
+            double trunkWidth = Math.max(1.0, tree.canopyWidth * 0.12);
+            int trunk = shadeColor(tree.trunkColor, 0.82);
+            int leaves = shadeColor(tree.leafColor, 0.88);
+            emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, tree.x, tree.y, tree.z,
+                    trunkWidth, trunkHeight, trunkWidth, trunk);
+
+            if (tree.conifer) {
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.28,
+                        tree.z, tree.canopyWidth, tree.height * 0.34,
+                        tree.canopyWidth, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.49,
+                        tree.z, tree.canopyWidth * 0.76, tree.height * 0.30,
+                        tree.canopyWidth * 0.76, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.68,
+                        tree.z, tree.canopyWidth * 0.48, tree.height * 0.24,
+                        tree.canopyWidth * 0.48, leaves);
+            } else {
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.39,
+                        tree.z, tree.canopyWidth, tree.height * 0.43,
+                        tree.canopyWidth, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.66,
+                        tree.z, tree.canopyWidth * 0.72, tree.height * 0.34,
+                        tree.canopyWidth * 0.72, leaves);
+            }
+        }
+        return emitted;
+    }
+
+    private static int emitBox(VertexConsumer consumer, Matrix4f positionMatrix,
+                               Vector3f transformedVertex,
+                               double cameraX, double cameraY, double cameraZ,
+                               double centerX, double bottomY, double centerZ,
+                               double width, double height, double depth, int color) {
+        double minX = centerX - width * 0.5;
+        double maxX = centerX + width * 0.5;
+        double minY = bottomY;
+        double maxY = bottomY + height;
+        double minZ = centerZ - depth * 0.5;
+        double maxZ = centerZ + depth * 0.5;
+
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, minZ, color, minX, maxY, minZ, color,
+                maxX, maxY, minZ, color, maxX, minY, minZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                maxX, minY, maxZ, color, maxX, maxY, maxZ, color,
+                minX, maxY, maxZ, color, minX, minY, maxZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, maxZ, color, minX, maxY, maxZ, color,
+                minX, maxY, minZ, color, minX, minY, minZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                maxX, minY, minZ, color, maxX, maxY, minZ, color,
+                maxX, maxY, maxZ, color, maxX, minY, maxZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, maxY, minZ, color, minX, maxY, maxZ, color,
+                maxX, maxY, maxZ, color, maxX, maxY, minZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, maxZ, color, minX, minY, minZ, color,
+                maxX, minY, minZ, color, maxX, minY, maxZ, color);
+        return 6;
     }
 
     private static int emitSkirts(VertexConsumer consumer, Matrix4f positionMatrix,
@@ -880,14 +1019,20 @@ public final class FarTerrainRenderer {
 
     private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
+    private record TreeImpostor(double x, double y, double z,
+                                 double height, double canopyWidth,
+                                 int leafColor, int trunkColor, boolean conifer) {}
+
     private record TileMesh(long revision, double generationMillis,
                             TileKey key, int originX, int originZ, int spanBlocks,
                             int seaLevel, int[] sampleWorldX, int[] sampleWorldZ,
-                            int[] heights, int[] colors, int[] waterColors, long[] waterCellMask) {
+                            int[] heights, int[] colors, int[] waterColors, long[] waterCellMask,
+                            List<TreeImpostor> trees) {
         private long estimatedBytes() {
             return ((long) sampleWorldX.length + sampleWorldZ.length
                     + heights.length + colors.length + waterColors.length) * Integer.BYTES
-                    + (long) waterCellMask.length * Long.BYTES;
+                    + (long) waterCellMask.length * Long.BYTES
+                    + (long) trees.size() * 64L;
         }
     }
 }
