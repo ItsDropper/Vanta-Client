@@ -7,7 +7,8 @@ public final class FarTerrainVegetation {
     public static boolean shouldPlaceTree(String biomePath, int worldX, int worldZ) {
         String biome = biomePath == null ? "" : biomePath;
         double density;
-        if (biome.contains("ocean") || biome.contains("river") || biome.contains("beach")
+        if (biome.contains("nether") || biome.contains("crimson") || biome.contains("warped")
+                || biome.contains("end") || biome.contains("ocean") || biome.contains("river") || biome.contains("beach")
                 || biome.contains("desert") || biome.contains("badlands")
                 || biome.contains("mushroom_fields") || biome.contains("barren")) {
             return false;
@@ -35,6 +36,7 @@ public final class FarTerrainVegetation {
 
     public static boolean isConifer(String biomePath) {
         String biome = biomePath == null ? "" : biomePath;
+        if (biome.contains("birch") || biome.contains("cherry")) return false;
         return biome.contains("taiga") || biome.contains("grove")
                 || biome.contains("snowy") || biome.contains("old_growth")
                 || biome.contains("spruce");
