@@ -32,7 +32,7 @@ Features can be enabled independently and retain their existing configuration. O
 
 ## FarView limitations
 
-FarView currently renders coarse **base terrain** generated from the integrated singleplayer server. It does not currently represent distant trees, structures, caves, or post-generation block edits. It does not extend multiplayer simulation distance or request full chunks across the configured far range. Its adaptive distance and quality settings are performance controls, not a guarantee of a particular frame rate.
+FarView currently renders coarse **base terrain** generated from the integrated singleplayer server, with biome-aware surface materials and deterministic blocky tree impostors derived from biome data. These trees are visual approximations, not copies of the world's exact generated tree placements. Structures, caves, foliage variants, and post-generation block edits are not represented yet. Far terrain is a singleplayer visual LOD; it does not extend multiplayer simulation distance or request full chunks across the configured far range. Cache limits scale with the selected quality profile, and adaptive settings are performance controls rather than a guarantee of a particular frame rate.
 
 ## Mod library and hot-loading
 
