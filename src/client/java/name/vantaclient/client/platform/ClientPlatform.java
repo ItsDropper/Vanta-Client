@@ -29,6 +29,22 @@ public final class ClientPlatform {
         return configured;
     }
 
+    public static Path gameDirectory() {
+        return configDirectory().getParent();
+    }
+
+    public static Path modsDirectory() {
+        return gameDirectory().resolve("mods");
+    }
+
+    public static String minecraftVersion() {
+        return System.getProperty("vanta.minecraft.version", "unknown");
+    }
+
+    public static String clientVersion() {
+        return "2.3.0";
+    }
+
     public static boolean isFabric() {
         return fabric;
     }
