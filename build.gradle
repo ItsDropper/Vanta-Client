@@ -40,7 +40,38 @@ fabricApi {
 	}
 }
 
+// VantaLoader's API is compile-only: the loader owns these classes at runtime.
+def vantaLoaderApiFile = layout.buildDirectory.file("vanta-loader/VantaLoader-api.jar")
+def resolveVantaLoaderApi = tasks.register("resolveVantaLoaderApi") {
+	outputs.file(vantaLoaderApiFile)
+	doLast {
+		def target = vantaLoaderApiFile.get().asFile
+		target.parentFile.mkdirs()
+		if (!target.isFile() || !target.bytes) {
+			def temporary = new File(target.parentFile, target.name + ".tmp")
+			new URL("https://github.com/ItsDropper/VantaLoader/releases/download/nightly-0.1.0-20261106-fcfe266/VantaLoader-api.jar").withInputStream { input ->
+				temporary.withOutputStream { output -> output << input }
+			}
+			def digest = java.security.MessageDigest.getInstance("SHA-256")
+			def actual = digest.digest(temporary.bytes).encodeHex().toString()
+			if (actual != "534c75e5fdc22756f86489015d23c54d30c8de8d04a243a624ee5ae1c3377bbe") {
+				temporary.delete()
+				throw new GradleException("VantaLoader API checksum mismatch: " + actual)
+			}
+			if (!temporary.renameTo(target)) {
+				target.bytes = temporary.bytes
+				temporary.delete()
+			}
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	dependsOn(resolveVantaLoaderApi)
+}
+
 dependencies {
+	compileOnly files(vantaLoaderApiFile)
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings loom.officialMojangMappings()
