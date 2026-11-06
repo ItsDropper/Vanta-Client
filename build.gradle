@@ -98,11 +98,11 @@ def resolveVantaLoaderRuntime = tasks.register("resolveVantaLoaderRuntime") {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	dependsOn(resolveVantaLoaderApi)
+	dependsOn(resolveVantaLoaderRuntime)
 }
 
 tasks.matching { it.name == "remapSourcesJar" }.configureEach {
-	dependsOn(resolveVantaLoaderApi)
+	dependsOn(resolveVantaLoaderRuntime)
 }
 
 dependencies {
