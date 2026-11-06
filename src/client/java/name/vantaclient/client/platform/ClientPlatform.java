@@ -38,7 +38,9 @@ public final class ClientPlatform {
     }
 
     public static String minecraftVersion() {
-        return System.getProperty("vanta.minecraft.version", "unknown");
+        String configured = System.getProperty("vanta.minecraft.version", "unknown");
+        if (!configured.isBlank() && !"unknown".equalsIgnoreCase(configured)) return configured;
+        return net.minecraft.SharedConstants.getCurrentVersion().name();
     }
 
     public static String clientVersion() {
