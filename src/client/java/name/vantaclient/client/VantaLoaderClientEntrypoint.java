@@ -8,6 +8,8 @@ import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.BuiltInIntegration;
 import name.vantaclient.client.platform.ClientPlatform;
 import name.vantaclient.client.init.Events;
+import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.init.FeatureKeybinds;
 
 /**
  * Native VantaLoader entrypoint. Fabric's entrypoint remains separate so this
@@ -21,6 +23,8 @@ public final class VantaLoaderClientEntrypoint implements VantaMod {
         VantaClientPreferences.load();
         FeatureRegistry.loadConfigs();
         BuiltInIntegration.register();
+        Keybinds.registerNative();
+        FeatureKeybinds.registerNative();
         Events.registerVantaLoader(context.events());
         context.logger().info("Vanta Client native bootstrap initialized for Minecraft "
                 + context.minecraftVersion());
