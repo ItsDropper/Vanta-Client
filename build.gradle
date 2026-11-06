@@ -70,6 +70,10 @@ tasks.withType(JavaCompile).configureEach {
 	dependsOn(resolveVantaLoaderApi)
 }
 
+tasks.matching { it.name == "remapSourcesJar" }.configureEach {
+	dependsOn(resolveVantaLoaderApi)
+}
+
 dependencies {
 	compileOnly files(vantaLoaderApiFile)
 	// To change the versions see the gradle.properties file
