@@ -166,7 +166,7 @@ public final class VantaClientPreferences {
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.ATOMIC_MOVE);
             } catch (IOException unsupportedAtomicMove) {
-                Files.move(temporary, FILE, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException exception) {
             System.err.println("[Vanta Client] Could not save interface preferences: " + exception.getMessage());
