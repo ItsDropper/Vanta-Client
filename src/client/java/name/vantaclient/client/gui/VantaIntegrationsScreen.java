@@ -10,6 +10,7 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.platform.ClientPlatform;
+import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -381,6 +382,11 @@ public final class VantaIntegrationsScreen extends Screen {
     }
 
     private void hotLoadMod(String id) {
+        if (!ClientPlatform.isFabric()) {
+            hotLoadStatus = "Session hotloading is not supported by VantaLoader.";
+            rebuildRetainedUi();
+            return;
+        }
         if (modScanInProgress) return;
         ExperimentalModHotLoader.Result result = ExperimentalModHotLoader.scanAndLoad(id);
         hotLoadStatus = result.summary();
@@ -418,6 +424,11 @@ public final class VantaIntegrationsScreen extends Screen {
      * decoded/registered on the client thread after the immutable inventory result arrives.
      */
     private void startAvailableModScan() {
+        if (!ClientPlatform.isFabric()) {
+            availableMods = List.of();
+            hotLoadStatus = "Fabric mod inventory and hotloading are unavailable under VantaLoader.";
+            return;
+        }
         if (modScanInProgress) return;
         modScanInProgress = true;
         CompletableFuture.supplyAsync(ExperimentalModHotLoader::getAvailableMods)
