@@ -3,6 +3,8 @@ package name.vantaclient.mixin;
 import name.vantaclient.client.feature.SaturationFeature;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
+import name.vantaclient.client.hud.HudRenderer;
+import name.vantaclient.client.platform.ClientPlatform;
 import name.vantaclient.client.hud.VanillaHudLayout;
 import name.vantaclient.client.gui.VantaNotificationManager;
 
@@ -69,6 +71,17 @@ public class GuiMixin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.screen != null) return;
         HudBackgroundRenderer.render(graphics);
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void renderVantaClientHud(
+            GuiGraphics graphics,
+            DeltaTracker deltaTracker,
+            CallbackInfo ci
+    ) {
+        Minecraft mc = Minecraft.getInstance();
+        if (ClientPlatform.isFabric() || mc.options.hideGui || mc.screen != null) return;
+        HudRenderer.render(graphics);
     }
 
     @Inject(
