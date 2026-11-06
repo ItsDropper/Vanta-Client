@@ -8,8 +8,6 @@ import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.BuiltInIntegration;
 import name.vantaclient.client.platform.ClientPlatform;
 import name.vantaclient.client.init.VantaLoaderEvents;
-import name.vantaclient.client.init.Keybinds;
-import name.vantaclient.client.init.FeatureKeybinds;
 
 /**
  * Native VantaLoader entrypoint. Fabric's entrypoint remains separate so this
