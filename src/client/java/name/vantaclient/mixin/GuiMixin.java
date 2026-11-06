@@ -27,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public class GuiMixin {
+    /** Set -Dvanta.client.loaderHud=true to re-enable custom HUD rendering on VantaLoader. */
+    private static final boolean LOADER_HUD_ENABLED = Boolean.getBoolean("vanta.client.loaderHud");
     private static final Identifier SATURATION_TEXTURE =
             Identifier.fromNamespaceAndPath("dropperutils", "textures/gui/saturation.png");
 
@@ -70,6 +72,7 @@ public class GuiMixin {
     ) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.screen != null) return;
+        if (!ClientPlatform.isFabric() && !LOADER_HUD_ENABLED) return;
         HudBackgroundRenderer.render(graphics);
     }
 
@@ -80,7 +83,8 @@ public class GuiMixin {
             CallbackInfo ci
     ) {
         Minecraft mc = Minecraft.getInstance();
-        if (ClientPlatform.isFabric() || mc.options.hideGui || mc.screen != null) return;
+        if (ClientPlatform.isFabric() || !LOADER_HUD_ENABLED
+                || mc.options.hideGui || mc.screen != null) return;
         HudRenderer.render(graphics);
     }
 
