@@ -7,7 +7,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -108,9 +108,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
         header.add(identity);
         if (width >= WIDE_LAYOUT_THRESHOLD) {
             header.add(VantaUiNode.text("Minecraft "
-                    + FabricLoader.getInstance().getModContainer("minecraft")
-                            .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
-                            .orElse("unknown"),
+                    + ClientPlatform.minecraftVersion(),
                     VantaUiTheme.TEXT_MUTED));
         }
         header.add(VantaUiNode.button("Back", VantaUiNode.Icon.OVERVIEW,
@@ -408,8 +406,22 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     private void refreshLoadedStates() {
         Set<String> fabricLoaded = new HashSet<>();
-        for (var container : FabricLoader.getInstance().getAllMods()) {
-            fabricLoaded.add(container.getMetadata().getId());
+        if (ClientPlatform.isFabric()) {
+            // Fabric-only discovery; VantaLoader's native mod list is not a Fabric mod list.
+            try {
+                Class<?> loaderType = Class.forName("net.fabricmc.loader.api.FabricLoader");
+                Object loader = loaderType.getMethod("getInstance").invoke(null);
+                Object mods = loaderType.getMethod("getAllMods").invoke(loader);
+                if (mods instanceof Iterable<?> iterable) {
+                    for (Object container : iterable) {
+                        Object metadata = container.getClass().getMethod("getMetadata").invoke(container);
+                        Object id = metadata.getClass().getMethod("getId").invoke(metadata);
+                        fabricLoaded.add(String.valueOf(id));
+                    }
+                }
+            } catch (ReflectiveOperationException | LinkageError ignored) {
+                // Optional Fabric metadata is unavailable; leave the set empty.
+            }
         }
         Set<String> sessionLoaded = new HashSet<>();
         for (ExperimentalModHotLoader.HotLoadedMod mod : ExperimentalModHotLoader.getHotLoadedMods()) {
