@@ -2,7 +2,7 @@ package name.vantaclient.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,7 +42,9 @@ public final class VantaClientPreferences {
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("vanta-client.json");
+    private static Path file() {
+        return ClientPlatform.configDirectory().resolve("vanta-client.json");
+    }
     private static VantaClientPreferences instance;
 
     public Accent accent = Accent.BLUE;
@@ -78,8 +80,8 @@ public final class VantaClientPreferences {
 
     public static void load() {
         try {
-            if (Files.isRegularFile(FILE)) {
-                try (var reader = Files.newBufferedReader(FILE)) {
+            if (Files.isRegularFile(file())) {
+                try (var reader = Files.newBufferedReader(file())) {
                     instance = GSON.fromJson(reader, VantaClientPreferences.class);
                 }
             }
@@ -153,14 +155,15 @@ public final class VantaClientPreferences {
 
     public static void save() {
         VantaClientPreferences current = get();
-        Path temporary = FILE.resolveSibling(FILE.getFileName() + ".tmp");
+        Path target = file();
+        Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
         try {
-            Files.createDirectories(FILE.getParent());
+            Files.createDirectories(target.getParent());
             try (var writer = Files.newBufferedWriter(temporary)) {
                 GSON.toJson(current, writer);
             }
             try {
-                Files.move(temporary, FILE, StandardCopyOption.REPLACE_EXISTING,
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.ATOMIC_MOVE);
             } catch (IOException unsupportedAtomicMove) {
                 Files.move(temporary, FILE, StandardCopyOption.REPLACE_EXISTING);
