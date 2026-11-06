@@ -99,9 +99,10 @@ public final class ModrinthBrowserService {
         if (projectId == null || !projectId.matches("[A-Za-z0-9_-]{1,64}")) {
             throw new IOException("Invalid Modrinth project ID.");
         }
-        String minecraft = FabricLoader.getInstance().getModContainer("minecraft")
-                .orElseThrow(() -> new IOException("Could not determine Minecraft version."))
-                .getMetadata().getVersion().getFriendlyString();
+        if (!ClientPlatform.isFabric()) {
+            throw new IOException("Fabric mod installation is unavailable under VantaLoader.");
+        }
+        String minecraft = ClientPlatform.minecraftVersion();
         Path mods = ClientPlatform.modsDirectory();
         Files.createDirectories(mods);
         List<Path> installed = new ArrayList<>();
