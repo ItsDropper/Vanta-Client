@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "vanta-client",
+  "id": "dropperutils",
   "name": "Vanta Client",
-  "version": "2.3.0",
+  "version": "${version}",
   "description": "A configurable Minecraft client with native VantaLoader integration.",
   "license": "MIT",
   "website": "https://github.com/ItsDropper/Vanta-Client",
