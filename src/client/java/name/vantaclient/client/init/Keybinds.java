@@ -94,7 +94,14 @@ public class Keybinds {
 
     static KeyMapping nativeRegister(KeyMapping mapping) {
         try {
-            Field field = Options.class.getDeclaredField("keyMappings");
+            Field[] mappingFields = Arrays.stream(Options.class.getDeclaredFields())
+                    .filter(candidate -> candidate.getType() == KeyMapping[].class)
+                    .toArray(Field[]::new);
+            if (mappingFields.length != 1) {
+                throw new IllegalStateException("Expected exactly one KeyMapping[] field in Minecraft Options, found "
+                        + mappingFields.length);
+            }
+            Field field = mappingFields[0];
             field.setAccessible(true);
             Options options = Minecraft.getInstance().options;
             KeyMapping[] current = (KeyMapping[]) field.get(options);
