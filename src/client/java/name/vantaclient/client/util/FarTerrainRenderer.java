@@ -392,7 +392,7 @@ public final class FarTerrainRenderer {
                 int waterColor = opaqueRgb(biome.value().getWaterColor());
                 waterColors[index] = blendRgb(0xFF28566D, waterColor, 0.58f);
                 String biomePath = biome.unwrapKey()
-                        .map(key -> key.location().getPath()).orElse("");
+                        .map(biomeKey -> biomeKey.identifier().getPath()).orElse("");
                 colors[index] = terrainColor(biomePath, height, seaLevel,
                         biome.value().getGrassColor(worldX, worldZ),
                         biome.value().getWaterColor(), worldX, worldZ);
@@ -466,7 +466,7 @@ public final class FarTerrainRenderer {
                         QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
                         QuartPos.fromBlock(worldZ), climateSampler);
                 String biomePath = biome.unwrapKey()
-                        .map(resourceKey -> resourceKey.location().getPath()).orElse("");
+                        .map(resourceKey -> resourceKey.identifier().getPath()).orElse("");
                 if (!FarTerrainVegetation.shouldPlaceTree(biomePath, worldX, worldZ)) continue;
 
                 double treeHeight = Math.max(6.0, Math.min(36.0, sampleSpacing * 0.20));
