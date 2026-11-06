@@ -40,27 +40,58 @@ fabricApi {
 	}
 }
 
-// VantaLoader's API is compile-only: the loader owns these classes at runtime.
+// Keep the loader API compile-only; the loader supplies it at runtime.
+// Resolve the matching agent separately so it can be installed as the JVM agent.
+def vantaLoaderReleaseTag = "nightly-0.1.0-20261106-5a9190a"
+def vantaLoaderReleaseBaseUrl = "https://github.com/ItsDropper/VantaLoader/releases/download/${vantaLoaderReleaseTag}"
 def vantaLoaderApiFile = layout.buildDirectory.file("vanta-loader/VantaLoader-api.jar")
-def resolveVantaLoaderApi = tasks.register("resolveVantaLoaderApi") {
-	outputs.file(vantaLoaderApiFile)
+def vantaLoaderAgentFile = layout.buildDirectory.file("libs/VantaLoader-agent.jar")
+
+def vantaLoaderSha256 = { File file ->
+	def digest = java.security.MessageDigest.getInstance("SHA-256")
+	digest.digest(file.bytes).encodeHex().toString()
+}
+
+def resolveVantaLoaderRuntime = tasks.register("resolveVantaLoaderRuntime") {
+	outputs.files(vantaLoaderApiFile, vantaLoaderAgentFile)
 	doLast {
-		def target = vantaLoaderApiFile.get().asFile
-		target.parentFile.mkdirs()
-		if (!target.isFile() || !target.bytes) {
-			def temporary = new File(target.parentFile, target.name + ".tmp")
-			new URL("https://github.com/ItsDropper/VantaLoader/releases/download/nightly-0.1.0-20261106-fcfe266/VantaLoader-api.jar").withInputStream { input ->
-				temporary.withOutputStream { output -> output << input }
-			}
-			def digest = java.security.MessageDigest.getInstance("SHA-256")
-			def actual = digest.digest(temporary.bytes).encodeHex().toString()
-			if (actual != "534c75e5fdc22756f86489015d23c54d30c8de8d04a243a624ee5ae1c3377bbe") {
-				temporary.delete()
-				throw new GradleException("VantaLoader API checksum mismatch: " + actual)
-			}
-			if (!temporary.renameTo(target)) {
-				target.bytes = temporary.bytes
-				temporary.delete()
+		def artifacts = [
+			[
+				name: "VantaLoader-api.jar",
+					target: vantaLoaderApiFile.get().asFile,
+					sha256: "f278a7ddaf631e4c9c74f41dc3c02a1370e457668a226e4d8bd838ad503a6eb1"
+			],
+			[
+				name: "VantaLoader-agent.jar",
+				target: vantaLoaderAgentFile.get().asFile,
+				sha256: "79349e50986268521e47a9832da09f1f8eacb4599f7b4c81f6be92713a21eb11"
+			]
+		]
+
+		artifacts.each { artifact ->
+			def target = artifact.target as File
+			target.parentFile.mkdirs()
+
+			if (!target.isFile() || vantaLoaderSha256(target) != artifact.sha256) {
+				def temporary = new File(target.parentFile, target.name + ".tmp")
+				if (temporary.exists()) {
+					temporary.delete()
+				}
+
+				new URL("${vantaLoaderReleaseBaseUrl}/${artifact.name}").withInputStream { input ->
+					temporary.withOutputStream { output -> output << input }
+				}
+
+				def actual = vantaLoaderSha256(temporary)
+				if (actual != artifact.sha256) {
+					temporary.delete()
+					throw new GradleException("VantaLoader ${artifact.name} checksum mismatch: " + actual)
+				}
+
+				if (!temporary.renameTo(target)) {
+					target.bytes = temporary.bytes
+					temporary.delete()
+				}
 			}
 		}
 	}
