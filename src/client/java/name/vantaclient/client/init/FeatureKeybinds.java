@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,5 +68,22 @@ public final class FeatureKeybinds {
                 if (gameplayInputAllowed) binding.feature().toggle();
             }
         }
+    }
+
+    /** Native registration path used when Fabric's KeyBindingHelper is unavailable. */
+    public static void registerNative() {
+        if (registered) return;
+        registered = true;
+        for (Feature feature : FeatureRegistry.FEATURES) {
+            String id = feature.getClass().getSimpleName()
+                    .replaceFirst("Feature$", "")
+                    .toLowerCase(Locale.ROOT);
+            String translationKey = "key.dropperutils.feature." + id;
+            KeyMapping mapping = Keybinds.nativeRegister(new KeyMapping(
+                    translationKey, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN,
+                    Keybinds.CATEGORY));
+            BINDINGS.add(new Binding(feature, mapping));
+        }
+        KeyMapping.resetMapping();
     }
 }
