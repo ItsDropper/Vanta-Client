@@ -92,18 +92,33 @@ public class Keybinds {
                 InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
     }
 
+
+    private static boolean containsIdentity(KeyMapping[] mappings, KeyMapping expected) {
+        return Arrays.stream(mappings).anyMatch(candidate -> candidate == expected);
+    }
+
     static KeyMapping nativeRegister(KeyMapping mapping) {
         try {
+            Options options = Minecraft.getInstance().options;
             Field[] mappingFields = Arrays.stream(Options.class.getDeclaredFields())
                     .filter(candidate -> candidate.getType() == KeyMapping[].class)
+                    .filter(candidate -> {
+                        try {
+                            candidate.setAccessible(true);
+                            KeyMapping[] values = (KeyMapping[]) candidate.get(options);
+                            return containsIdentity(values, options.keyUp)
+                                    && containsIdentity(values, options.keyAttack);
+                        } catch (ReflectiveOperationException | RuntimeException ignored) {
+                            return false;
+                        }
+                    })
                     .toArray(Field[]::new);
             if (mappingFields.length != 1) {
-                throw new IllegalStateException("Expected exactly one KeyMapping[] field in Minecraft Options, found "
+                throw new IllegalStateException("Expected exactly one all-key mapping array in Minecraft Options, found "
                         + mappingFields.length);
             }
             Field field = mappingFields[0];
             field.setAccessible(true);
-            Options options = Minecraft.getInstance().options;
             KeyMapping[] current = (KeyMapping[]) field.get(options);
             KeyMapping[] updated = Arrays.copyOf(current, current.length + 1);
             updated[current.length] = mapping;
