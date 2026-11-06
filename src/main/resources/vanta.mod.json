@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "vanta-client",
+  "name": "Vanta Client",
+  "version": "2.3.0",
+  "description": "A configurable Minecraft client with native VantaLoader integration.",
+  "license": "MIT",
+  "website": "https://github.com/ItsDropper/Vanta-Client",
+  "sources": "https://github.com/ItsDropper/Vanta-Client",
+  "entrypoints": {
+    "main": "name.vantaclient.client.VantaLoaderClientEntrypoint"
+  },
+  "mixins": [
+    "dropperutils.mixins.json"
+  ]
+}
