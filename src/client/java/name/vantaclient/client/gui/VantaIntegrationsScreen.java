@@ -9,7 +9,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModConfigDiscovery;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -241,7 +241,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private VantaUiNode buildRetainedModCard(ExperimentalModHotLoader.AvailableMod mod,
                                               Set<String> hotLoadedIds) {
-        boolean fabricLoaded = FabricLoader.getInstance().isModLoaded(mod.id());
+        boolean fabricLoaded = ClientPlatform.isModLoaded(mod.id());
         boolean sessionLoaded = hotLoadedIds.contains(mod.id());
         VantaUiNode card = VantaUiNode.column(6, 9)
                 .flex(1)
@@ -331,7 +331,7 @@ public final class VantaIntegrationsScreen extends Screen {
                             Screen configScreen = ModConfigDiscovery.open(configFactory, this);
                             if (configScreen != null) minecraft.setScreen(configScreen);
                         }).height(34));
-            } else if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+            } else if (ClientPlatform.isModLoaded("modmenu")) {
                 details.add(VantaUiNode.button("Open Mod Menu",
                         VantaUiNode.Icon.DISPLAY, this::openModMenu).height(34));
             } else {
