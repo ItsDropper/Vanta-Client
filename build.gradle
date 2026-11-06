@@ -119,7 +119,7 @@ tasks.named("remapJar") {
 // named-mapping class files produced by Loom before remapJar converts them to
 // Fabric intermediary names. Keep this artifact separate from the Fabric JAR.
 tasks.register("vantaLoaderJar", Jar) {
-	dependsOn(tasks.named("classes"))
+	dependsOn(tasks.named("classes"), tasks.named("clientClasses"))
 	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}-vantaloader.jar"
 	from(sourceSets.main.output)
 	from(sourceSets.client.output)
