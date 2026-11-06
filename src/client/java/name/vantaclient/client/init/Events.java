@@ -38,6 +38,29 @@ public class Events {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> VantaRemoteSessionManager.onGuestJoined());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VantaRemoteSessionManager.onGuestDisconnected());
 
+        initializeFeatures();
+
+        ClientTickEvents.END_CLIENT_TICK.register(Events::onEndClientTick);
+
+        ClientTickEvents.END_CLIENT_TICK.register(VantaRemoteSessionManager::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
+    }
+
+
+    public static void registerVantaLoader(EventBus eventBus) {
+        initializeFeatures();
+        eventBus.subscribe(ClientTickEvent.class, 0, event -> {
+            if (event.phase() == ClientTickEvent.Phase.START) {
+                ClientPerformanceMetrics.beginClientTick();
+            } else {
+                onEndClientTick((Minecraft) event.client());
+                VantaRemoteSessionManager.tick((Minecraft) event.client());
+                ClientPerformanceMetrics.endClientTick();
+            }
+        });
+    }
+
+    private static void initializeFeatures() {
         FullbrightFeature.INSTANCE.setEnabled(
                 DropperUtilsConfig.get().fullbright
         );
@@ -74,19 +97,6 @@ public class Events {
         KeystrokesFeature.INSTANCE.loadConfig();
         CpsHudFeature.INSTANCE.loadConfig();
         SprintSneakToggles.load();
-
-
-        ClientTickEvents.END_CLIENT_TICK.register(Events::onEndClientTick);
-
-        ClientTickEvents.END_CLIENT_TICK.register(VantaRemoteSessionManager::tick);
-        ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
-    }
-
-
-    public static void registerVantaLoader(EventBus eventBus) {
-        eventBus.subscribe(ClientTickEvent.class, 0, event -> {
-            if (event.phase() == ClientTickEvent.Phase.END) onEndClientTick((Minecraft) event.client());
-        });
     }
 
     private static void onEndClientTick(Minecraft client) {
