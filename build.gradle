@@ -115,6 +115,22 @@ tasks.named("remapJar") {
 	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}.jar"
 }
 
+// VantaLoader uses official Mojang names at runtime, so it must receive the
+// named-mapping class files produced by Loom before remapJar converts them to
+// Fabric intermediary names. Keep this artifact separate from the Fabric JAR.
+tasks.register("vantaLoaderJar", Jar) {
+	dependsOn(tasks.named("classes"))
+	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}-vantaloader.jar"
+	from(sourceSets.main.output)
+	from(sourceSets.client.output)
+	from("LICENSE.local") {
+		rename { "${it}_${project.name}" }
+	}
+	manifest {
+		attributes("Vanta-Mapping-Namespace": "official-mojang")
+	}
+}
+
 
 processResources {
 	def version = project.version
