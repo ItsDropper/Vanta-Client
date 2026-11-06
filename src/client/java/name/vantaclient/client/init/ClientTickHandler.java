@@ -1,6 +1,7 @@
 package name.vantaclient.client.init;
 
 import name.vantaclient.client.feature.*;
+import name.vantaclient.client.platform.ClientPlatform;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.init.FeatureKeybinds;
@@ -36,8 +37,10 @@ public final class ClientTickHandler {
                     HudPerformanceCache.tick(client);
                 }
         
-                FarViewController.tick(client);
-                FarTerrainRenderer.tick(client);
+                if (ClientPlatform.isFabric()) {
+                    FarViewController.tick(client);
+                    FarTerrainRenderer.tick(client);
+                }
                 VantaNotificationManager.tick();
                 FlyBoostFeature.tick(client);
                 DisableDoubleTapSprintFeature.tick(client);
