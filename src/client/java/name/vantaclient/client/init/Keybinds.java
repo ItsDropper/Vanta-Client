@@ -77,6 +77,10 @@ public class Keybinds {
 
     }
 
+    public static boolean isNativeRegistered() {
+        return fullbrightKey != null;
+    }
+
     /** Registers mappings directly with Minecraft when Fabric's helper is absent. */
     public static void registerNative() {
         if (fullbrightKey != null) return;
