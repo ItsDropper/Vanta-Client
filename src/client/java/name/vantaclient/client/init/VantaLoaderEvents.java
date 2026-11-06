@@ -4,7 +4,9 @@ import dev.itsdropper.vantaloader.api.ClientTickEvent;
 import dev.itsdropper.vantaloader.api.EventBus;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
-import net.minecraft.client.Minecraft;\nimport name.vantaclient.client.init.Keybinds;\nimport name.vantaclient.client.init.FeatureKeybinds;
+import net.minecraft.client.Minecraft;
+import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.init.FeatureKeybinds;
 
 /** VantaLoader-native event integration; intentionally has no Fabric API linkage. */
 public final class VantaLoaderEvents {
