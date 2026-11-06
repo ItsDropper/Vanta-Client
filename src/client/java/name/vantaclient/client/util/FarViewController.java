@@ -1,7 +1,7 @@
 package name.vantaclient.client.util;
 
 import name.vantaclient.client.feature.FarViewFeature;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.PrioritizeChunkUpdates;
 
@@ -138,7 +138,7 @@ public final class FarViewController {
     }
 
     public static boolean isNvidiumLoaded() {
-        return FabricLoader.getInstance().isModLoaded("nvidium");
+        return ClientPlatform.isModLoaded("nvidium");
     }
 
     public static int getEffectiveRenderDistance() {
