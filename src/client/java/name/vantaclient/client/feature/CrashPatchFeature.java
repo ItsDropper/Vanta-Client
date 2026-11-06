@@ -35,8 +35,8 @@ public final class CrashPatchFeature extends Feature {
                 }),
                 "Vanta Runtime Processors", safe(() -> Integer.toString(
                         Runtime.getRuntime().availableProcessors())),
-                "Vanta Loaded Mod Count", safe(() -> Integer.toString(
-                        ClientPlatform.isFabric() ? "available" : "not exposed by VantaLoader"))
+                "Vanta Loaded Mod Count", safe(() ->
+                        ClientPlatform.isFabric() ? "available" : "not exposed by VantaLoader")
         );
     }
 
