@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,9 +43,10 @@ public final class ModrinthBrowserService {
     public record InstallResult(List<Path> installed, String summary) {}
 
     public static List<Project> search(String query) throws IOException, InterruptedException {
-        String minecraft = FabricLoader.getInstance().getModContainer("minecraft")
-                .orElseThrow(() -> new IOException("Could not determine Minecraft version."))
-                .getMetadata().getVersion().getFriendlyString();
+        if (!ClientPlatform.isFabric()) {
+            throw new IOException("This browser currently installs Fabric mods only; native VantaLoader mod discovery is separate.");
+        }
+        String minecraft = ClientPlatform.minecraftVersion();
         String normalizedQuery = query == null ? "" : query.trim();
         String facets = URLEncoder.encode("[[\"project_type:mod\"],[\"categories:fabric\"],[\"versions:"
                 + minecraft + "\"]]", StandardCharsets.UTF_8);
@@ -101,7 +102,7 @@ public final class ModrinthBrowserService {
         String minecraft = FabricLoader.getInstance().getModContainer("minecraft")
                 .orElseThrow(() -> new IOException("Could not determine Minecraft version."))
                 .getMetadata().getVersion().getFriendlyString();
-        Path mods = FabricLoader.getInstance().getGameDir().resolve("mods");
+        Path mods = ClientPlatform.modsDirectory();
         Files.createDirectories(mods);
         List<Path> installed = new ArrayList<>();
         installRecursive(projectId, minecraft, mods, new HashSet<>(), installed);
