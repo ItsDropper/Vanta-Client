@@ -42,7 +42,7 @@ fabricApi {
 
 // Keep the loader API compile-only; the loader supplies it at runtime.
 // Resolve the matching agent separately so it can be installed as the JVM agent.
-def vantaLoaderReleaseTag = "nightly-0.1.0-20261106-5a9190a"
+def vantaLoaderReleaseTag = "nightly-0.1.0-20261106-9ef67ef"
 def vantaLoaderReleaseBaseUrl = "https://github.com/ItsDropper/VantaLoader/releases/download/${vantaLoaderReleaseTag}"
 def vantaLoaderApiFile = layout.buildDirectory.file("vanta-loader/VantaLoader-api.jar")
 def vantaLoaderAgentFile = layout.buildDirectory.file("libs/VantaLoader-agent.jar")
@@ -59,12 +59,12 @@ def resolveVantaLoaderRuntime = tasks.register("resolveVantaLoaderRuntime") {
 			[
 				name: "VantaLoader-api.jar",
 					target: vantaLoaderApiFile.get().asFile,
-					sha256: "f278a7ddaf631e4c9c74f41dc3c02a1370e457668a226e4d8bd838ad503a6eb1"
+					sha256: "21aaf700a21f87b0c489f648010df25e3f14f43ec4f1a9afa36dab590bfdf429"
 			],
 			[
 				name: "VantaLoader-agent.jar",
 				target: vantaLoaderAgentFile.get().asFile,
-				sha256: "79349e50986268521e47a9832da09f1f8eacb4599f7b4c81f6be92713a21eb11"
+				sha256: "8d0a6adf75c39cef573b65225318c43a3d04c23e82e4537f24c1396bd4fd7f10"
 			]
 		]
 
