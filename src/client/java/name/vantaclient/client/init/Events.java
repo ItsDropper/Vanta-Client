@@ -1,6 +1,9 @@
 package name.vantaclient.client.init;
 
 import name.vantaclient.client.feature.*;
+import dev.itsdropper.vantaloader.api.ClientTickEvent;
+import dev.itsdropper.vantaloader.api.EventBus;
+import net.minecraft.client.Minecraft;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -73,67 +76,76 @@ public class Events {
         SprintSneakToggles.load();
 
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-
-            if (CpsHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled()
-                    || PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-                ClickRateTracker.refreshSnapshot();
-            }
-
-            if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-                HudPerformanceCache.tick(client);
-            }
-
-            FarViewController.tick(client);
-            FarTerrainRenderer.tick(client);
-            VantaNotificationManager.tick();
-            FlyBoostFeature.tick(client);
-            DisableDoubleTapSprintFeature.tick(client);
-
-            boolean captureActive = Keybinds.isCaptureActive();
-            boolean gameplayInputAllowed = client.screen == null && !captureActive;
-
-            if (Keybinds.fullbrightKey.consumeClick() && gameplayInputAllowed) {
-                FullbrightFeature.INSTANCE.toggle();
-            }
-            if (Keybinds.guiKey.consumeClick() && gameplayInputAllowed) {
-                client.setScreen(new VantaSettingsScreen(null));
-            }
-
-            ZoomFeature.INSTANCE.tick(Keybinds.zoomKey, !gameplayInputAllowed);
-            if (Keybinds.sprintToggleKey.consumeClick() && gameplayInputAllowed) {
-                SprintSneakToggles.toggleSprint();
-            }
-            if (Keybinds.sneakToggleKey.consumeClick() && gameplayInputAllowed) {
-                SprintSneakToggles.toggleSneak();
-            }
-            SprintSneakToggles.tick(client);
-            AdaptiveEntityDistanceController.tick(client);
-            FeatureKeybinds.tick(gameplayInputAllowed);
-
-            if (client.player != null) {
-
-                ItemStack main = client.player.getMainHandItem();
-                ItemStack off = client.player.getOffhandItem();
-
-                if (main.is(Items.RESPAWN_ANCHOR)
-                        || off.is(Items.RESPAWN_ANCHOR)
-                        || main.is(Items.GLOWSTONE)
-                        || off.is(Items.GLOWSTONE)) {
-
-                    AnchorOptimizer.wakeUp();
-
-                }
-
-            }
-
-            AnchorOptimizer.tick();
-            AnchorPrediction.tick();
-            ExplosionEffects.tick();
-            HudManager.refreshVisibleElements();
-        });
+        ClientTickEvents.END_CLIENT_TICK.register(Events::onEndClientTick);
 
         ClientTickEvents.END_CLIENT_TICK.register(VantaRemoteSessionManager::tick);
         ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
+    }
+
+
+    public static void registerVantaLoader(EventBus eventBus) {
+        eventBus.subscribe(ClientTickEvent.class, 0, event -> {
+            if (event.phase() == ClientTickEvent.Phase.END) onEndClientTick((Minecraft) event.client());
+        });
+    }
+
+    private static void onEndClientTick(Minecraft client) {
+
+        if (CpsHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled()
+                || PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            ClickRateTracker.refreshSnapshot();
+        }
+
+        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
+            HudPerformanceCache.tick(client);
+        }
+
+        FarViewController.tick(client);
+        FarTerrainRenderer.tick(client);
+        VantaNotificationManager.tick();
+        FlyBoostFeature.tick(client);
+        DisableDoubleTapSprintFeature.tick(client);
+
+        boolean captureActive = Keybinds.isCaptureActive();
+        boolean gameplayInputAllowed = client.screen == null && !captureActive;
+
+        if (Keybinds.fullbrightKey.consumeClick() && gameplayInputAllowed) {
+            FullbrightFeature.INSTANCE.toggle();
+        }
+        if (Keybinds.guiKey.consumeClick() && gameplayInputAllowed) {
+            client.setScreen(new VantaSettingsScreen(null));
+        }
+
+        ZoomFeature.INSTANCE.tick(Keybinds.zoomKey, !gameplayInputAllowed);
+        if (Keybinds.sprintToggleKey.consumeClick() && gameplayInputAllowed) {
+            SprintSneakToggles.toggleSprint();
+        }
+        if (Keybinds.sneakToggleKey.consumeClick() && gameplayInputAllowed) {
+            SprintSneakToggles.toggleSneak();
+        }
+        SprintSneakToggles.tick(client);
+        AdaptiveEntityDistanceController.tick(client);
+        FeatureKeybinds.tick(gameplayInputAllowed);
+
+        if (client.player != null) {
+
+            ItemStack main = client.player.getMainHandItem();
+            ItemStack off = client.player.getOffhandItem();
+
+            if (main.is(Items.RESPAWN_ANCHOR)
+                    || off.is(Items.RESPAWN_ANCHOR)
+                    || main.is(Items.GLOWSTONE)
+                    || off.is(Items.GLOWSTONE)) {
+
+                AnchorOptimizer.wakeUp();
+
+            }
+
+        }
+
+        AnchorOptimizer.tick();
+        AnchorPrediction.tick();
+        ExplosionEffects.tick();
+        HudManager.refreshVisibleElements();
     }
 }
