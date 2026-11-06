@@ -1,9 +1,6 @@
 package name.vantaclient.client.init;
 
 import name.vantaclient.client.feature.*;
-import dev.itsdropper.vantaloader.api.ClientTickEvent;
-import dev.itsdropper.vantaloader.api.EventBus;
-import net.minecraft.client.Minecraft;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -38,9 +35,9 @@ public class Events {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> VantaRemoteSessionManager.onGuestJoined());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> VantaRemoteSessionManager.onGuestDisconnected());
 
-        initializeFeatures();
+        ClientBootstrap.initializeFeatures();
 
-        ClientTickEvents.END_CLIENT_TICK.register(Events::onEndClientTick);
+        ClientTickEvents.END_CLIENT_TICK.register(ClientTickHandler::tick);
 
         ClientTickEvents.END_CLIENT_TICK.register(VantaRemoteSessionManager::tick);
         ClientTickEvents.END_CLIENT_TICK.register(client -> ClientPerformanceMetrics.endClientTick());
@@ -60,102 +57,7 @@ public class Events {
         });
     }
 
-    private static void initializeFeatures() {
-        FullbrightFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().fullbright
-        );
 
-        ZoomFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().zoom
-        );
 
-        MotionBlurFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().motionBlur
-        );
 
-        TotemCounterFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().totemCounter
-        );
-
-        ArmorHudFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().armorHud
-        );
-
-        SaturationFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().saturation
-        );
-
-        DebugHudFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().debugHud
-        );
-
-        PotionEffectsFeature.INSTANCE.setEnabled(
-                DropperUtilsConfig.get().potionEffects
-        );
-        FpsHudFeature.INSTANCE.loadConfig();
-        PingHudFeature.INSTANCE.loadConfig();
-        KeystrokesFeature.INSTANCE.loadConfig();
-        CpsHudFeature.INSTANCE.loadConfig();
-        SprintSneakToggles.load();
-    }
-
-    private static void onEndClientTick(Minecraft client) {
-
-        if (CpsHudFeature.INSTANCE.isEnabled() || HudEditorFeature.INSTANCE.isEnabled()
-                || PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            ClickRateTracker.refreshSnapshot();
-        }
-
-        if (PerformanceOptimizerFeature.INSTANCE.isEnabled()) {
-            HudPerformanceCache.tick(client);
-        }
-
-        FarViewController.tick(client);
-        FarTerrainRenderer.tick(client);
-        VantaNotificationManager.tick();
-        FlyBoostFeature.tick(client);
-        DisableDoubleTapSprintFeature.tick(client);
-
-        boolean captureActive = Keybinds.isCaptureActive();
-        boolean gameplayInputAllowed = client.screen == null && !captureActive;
-
-        if (Keybinds.fullbrightKey.consumeClick() && gameplayInputAllowed) {
-            FullbrightFeature.INSTANCE.toggle();
-        }
-        if (Keybinds.guiKey.consumeClick() && gameplayInputAllowed) {
-            client.setScreen(new VantaSettingsScreen(null));
-        }
-
-        ZoomFeature.INSTANCE.tick(Keybinds.zoomKey, !gameplayInputAllowed);
-        if (Keybinds.sprintToggleKey.consumeClick() && gameplayInputAllowed) {
-            SprintSneakToggles.toggleSprint();
-        }
-        if (Keybinds.sneakToggleKey.consumeClick() && gameplayInputAllowed) {
-            SprintSneakToggles.toggleSneak();
-        }
-        SprintSneakToggles.tick(client);
-        AdaptiveEntityDistanceController.tick(client);
-        FeatureKeybinds.tick(gameplayInputAllowed);
-
-        if (client.player != null) {
-
-            ItemStack main = client.player.getMainHandItem();
-            ItemStack off = client.player.getOffhandItem();
-
-            if (main.is(Items.RESPAWN_ANCHOR)
-                    || off.is(Items.RESPAWN_ANCHOR)
-                    || main.is(Items.GLOWSTONE)
-                    || off.is(Items.GLOWSTONE)) {
-
-                AnchorOptimizer.wakeUp();
-
-            }
-
-        }
-
-        AnchorOptimizer.tick();
-        AnchorPrediction.tick();
-        ExplosionEffects.tick();
-        HudManager.refreshVisibleElements();
-    }
 }
