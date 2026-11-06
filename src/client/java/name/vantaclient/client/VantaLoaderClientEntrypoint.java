@@ -23,8 +23,6 @@ public final class VantaLoaderClientEntrypoint implements VantaMod {
         VantaClientPreferences.load();
         FeatureRegistry.loadConfigs();
         BuiltInIntegration.register();
-        Keybinds.registerNative();
-        FeatureKeybinds.registerNative();
         VantaLoaderEvents.register(context.events());
         context.logger().info("Vanta Client native bootstrap initialized for Minecraft "
                 + context.minecraftVersion());
