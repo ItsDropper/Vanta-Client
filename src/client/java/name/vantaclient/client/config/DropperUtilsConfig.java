@@ -2,7 +2,7 @@ package name.vantaclient.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import java.io.File;
 import java.io.FileReader;
@@ -10,8 +10,9 @@ import java.io.FileWriter;
 
 public class DropperUtilsConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File FILE = FabricLoader.getInstance().getConfigDir()
-            .resolve("dropperutils.json").toFile();
+    private static File file() {
+        return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
+    }
 
     public int configVersion = 19;
 
@@ -119,7 +120,7 @@ public class DropperUtilsConfig {
     }
 
     public static void save() {
-        try (FileWriter writer = new FileWriter(FILE)) {
+        try (FileWriter writer = new FileWriter(file())) {
             GSON.toJson(INSTANCE, writer);
         } catch (Exception exception) {
             exception.printStackTrace();
@@ -128,8 +129,8 @@ public class DropperUtilsConfig {
 
     public static void load() {
         try {
-            if (FILE.exists()) {
-                try (FileReader reader = new FileReader(FILE)) {
+            if (file().exists()) {
+                try (FileReader reader = new FileReader(file())) {
                     com.google.gson.JsonObject json = GSON.fromJson(reader,
                             com.google.gson.JsonObject.class);
                     boolean legacyConfig = !json.has("configVersion");
