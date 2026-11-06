@@ -1,6 +1,7 @@
 package name.vantaclient.client.integration;
 
 import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.gui.screens.Screen;
 
 import java.lang.reflect.Method;
@@ -21,6 +22,7 @@ public final class ModConfigDiscovery {
     private ModConfigDiscovery() {}
 
     public static Map<String, Object> discover() {
+        if (!ClientPlatform.isFabric()) return Map.of();
         FabricLoader loader = FabricLoader.getInstance();
         if (!loader.isModLoaded("modmenu")) return Map.of();
 
