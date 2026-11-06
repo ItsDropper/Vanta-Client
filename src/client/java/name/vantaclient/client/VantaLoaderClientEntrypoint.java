@@ -7,7 +7,7 @@ import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.BuiltInIntegration;
 import name.vantaclient.client.platform.ClientPlatform;
-import name.vantaclient.client.init.Events;
+import name.vantaclient.client.init.VantaLoaderEvents;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.init.FeatureKeybinds;
 
@@ -25,7 +25,7 @@ public final class VantaLoaderClientEntrypoint implements VantaMod {
         BuiltInIntegration.register();
         Keybinds.registerNative();
         FeatureKeybinds.registerNative();
-        Events.registerVantaLoader(context.events());
+        VantaLoaderEvents.register(context.events());
         context.logger().info("Vanta Client native bootstrap initialized for Minecraft "
                 + context.minecraftVersion());
     }
