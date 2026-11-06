@@ -12,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.client.renderer.PostPass;
-import net.minecraft.client.renderer.ShaderManager;
 import net.minecraft.resources.Identifier;
 
 import java.lang.reflect.Method;
@@ -121,11 +120,11 @@ public final class MotionBlurRenderer {
     private static PostChain loadChain(Minecraft client) {
         if (loadFailed) return null;
         try {
-            ShaderManager.CompilationCache cache =
+            Object cache =
                     ((ShaderManagerAccessor) client.getShaderManager()).dropperutils$getCompilationCache();
             if (cache == null) return null;
 
-            PostChain chain = cache.getOrLoadPostChain(EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
+            PostChain chain = loadPostChain(cache);
             if (chain != cachedChain) {
                 cachedChain = chain;
                 cachedUniforms = null;
@@ -138,6 +137,22 @@ public final class MotionBlurRenderer {
             System.err.println("[Vanta Client] Failed to load motion blur post-effect: " + error.getMessage());
             return null;
         }
+    }
+
+
+    private static PostChain loadPostChain(Object cache) throws ReflectiveOperationException {
+        for (Method method : cache.getClass().getDeclaredMethods()) {
+            if (!method.getName().equals("getOrLoadPostChain")
+                    || method.getParameterCount() != 2
+                    || !method.getParameterTypes()[0].isInstance(EFFECT_ID)
+                    || !method.getParameterTypes()[1].isInstance(LevelTargetBundle.MAIN_TARGETS)) {
+                continue;
+            }
+            method.setAccessible(true);
+            Object result = method.invoke(cache, EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
+            return result instanceof PostChain chain ? chain : null;
+        }
+        throw new NoSuchMethodException("Shader compilation cache has no compatible post-chain lookup");
     }
 
     private static void installUniformBuffer(PostChain chain) {
