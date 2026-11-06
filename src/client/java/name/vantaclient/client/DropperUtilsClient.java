@@ -1,6 +1,8 @@
 package name.vantaclient.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.feature.FeatureRegistry;
@@ -17,6 +19,7 @@ public class DropperUtilsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 
+		ClientPlatform.configure(FabricLoader.getInstance().getConfigDir(), true);
 		DropperUtilsConfig.load();
 		FeatureRegistry.loadConfigs();
 		BuiltInIntegration.register();
