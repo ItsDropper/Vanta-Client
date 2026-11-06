@@ -3,7 +3,7 @@ package name.vantaclient.client.feature;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.util.FarTerrainRenderer;
 import name.vantaclient.client.util.FarViewController;
-import net.fabricmc.loader.api.FabricLoader;
+import name.vantaclient.client.platform.ClientPlatform;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,14 +36,12 @@ public final class CrashPatchFeature extends Feature {
                 "Vanta Runtime Processors", safe(() -> Integer.toString(
                         Runtime.getRuntime().availableProcessors())),
                 "Vanta Loaded Mod Count", safe(() -> Integer.toString(
-                        FabricLoader.getInstance().getAllMods().size()))
+                        ClientPlatform.isFabric() ? "available" : "not exposed by VantaLoader"))
         );
     }
 
     private static String getVersion() {
-        return FabricLoader.getInstance().getModContainer("dropperutils")
-                .map(container -> container.getMetadata().getVersion().getFriendlyString())
-                .orElse("unknown");
+        return ClientPlatform.clientVersion();
     }
 
     private static String safe(java.util.function.Supplier<String> supplier) {
