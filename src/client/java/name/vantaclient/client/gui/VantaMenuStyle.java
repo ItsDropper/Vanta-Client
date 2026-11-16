@@ -57,28 +57,24 @@ public final class VantaMenuStyle {
         if (Math.abs(target - current) < 0.012f) current = target;
         BUTTON_HOVER.put(button, current);
 
-        int idleAlpha = button.isActive() ? 0x42 : 0x24;
-        int hoverAlpha = button.isFocused() ? 0x72 : 0x62;
-        int surfaceAlpha = Math.round(idleAlpha + (hoverAlpha - idleAlpha) * current);
-        fillRounded(graphics, x, y, width, height, 5,
-                (surfaceAlpha << 24) | 0x00B7BEC8);
+        int accent = new VantaUiTheme().accent();
+        if (current > 0.01f || button.isFocused()) {
+            int surfaceAlpha = Math.round((button.isFocused() ? 0x68 : 0x42) * current);
+            fillRounded(graphics, x, y, width, height, 6,
+                    withAlpha(VantaUiTheme.SURFACE_HOVER, surfaceAlpha));
+        }
 
-        int borderAlpha = Math.round((button.isActive() ? 58 : 34)
-                + ((button.isFocused() ? 172 : 138) - (button.isActive() ? 58 : 34)) * current);
-        int border = withAlpha(0xFFDCE3EC, borderAlpha);
-        graphics.fill(x + 3, y, x + width - 3, y + 1, border);
-        graphics.fill(x + 3, y + height - 1, x + width - 3, y + height, border);
-        graphics.fill(x, y + 3, x + 1, y + height - 3, border);
-        graphics.fill(x + width - 1, y + 3, x + width, y + height - 3, border);
+        int borderAlpha = Math.round((button.isActive() ? 42 : 26)
+                + ((button.isFocused() ? 220 : 150) - (button.isActive() ? 42 : 26)) * current);
+        int border = withAlpha(button.isFocused() ? accent : 0xFF8FA5C0, borderAlpha);
+        graphics.fill(x + 4, y, x + width - 4, y + 1, border);
+        graphics.fill(x + 4, y + height - 1, x + width - 4, y + height, border);
+        graphics.fill(x, y + 4, x + 1, y + height - 4, border);
+        graphics.fill(x + width - 1, y + 4, x + width, y + height - 4, border);
 
-        if (current > 0.01f) {
-            if (button.isFocused()) {
-                graphics.fill(x + 2, y + 5, x + 3, y + height - 5,
-                        withAlpha(0xFFDDE8F5, Math.round(220 * current)));
-            } else {
-                graphics.fill(x + 9, y + height - 2, x + width - 9, y + height - 1,
-                        withAlpha(0xFFE7EDF5, Math.round(150 * current)));
-            }
+        if (current > 0.01f && button.isFocused()) {
+            graphics.fill(x + 2, y + 5, x + 3, y + height - 5,
+                    withAlpha(accent, Math.round(230 * current)));
         }
     }
 
@@ -278,7 +274,7 @@ public final class VantaMenuStyle {
         Font font = Minecraft.getInstance().font;
         graphics.drawString(font, ComponentText.footerLeft(), 14, screenHeight - 15,
                 0xFFAAB4C3, false);
-        String right = "VANTA CLIENT";
+        String right = "Vanta Client";
         graphics.drawString(font, ComponentText.footerRight(right),
                 screenWidth - font.width(ComponentText.footerRight(right)) - 14,
                 screenHeight - 15, 0xFFAAB4C3, false);
@@ -319,12 +315,12 @@ public final class VantaMenuStyle {
         }
 
         private static net.minecraft.network.chat.Component caption() {
-            return net.minecraft.network.chat.Component.literal("CLIENT EXPERIENCE")
+            return net.minecraft.network.chat.Component.literal("Client experience")
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
         private static net.minecraft.network.chat.Component account() {
-            return net.minecraft.network.chat.Component.literal("CURRENT ACCOUNT")
+            return net.minecraft.network.chat.Component.literal("Current account")
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
@@ -339,13 +335,13 @@ public final class VantaMenuStyle {
         }
 
         private static net.minecraft.network.chat.Component profileHint() {
-            return net.minecraft.network.chat.Component.literal("MINECRAFT PROFILE")
+            return net.minecraft.network.chat.Component.literal("Minecraft profile")
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
         private static net.minecraft.network.chat.Component profileState(boolean available) {
             return net.minecraft.network.chat.Component.literal(
-                    available ? "ACTIVE PROFILE" : "PROFILE OFFLINE")
+                    available ? "Active profile" : "Profile offline")
                     .withStyle(style -> style.withFont(CAPTION_FONT));
         }
 
