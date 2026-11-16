@@ -107,14 +107,14 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private VantaUiNode buildRetainedRoot() {
         boolean compact = width < 760;
-        VantaUiNode root = VantaUiNode.column(12, 14)
+        VantaUiNode root = VantaUiNode.column(14, 16)
                 .background(VantaUiTheme.CANVAS)
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(10, 0)
-                .height(52)
+                .height(54)
                 .background(VantaUiTheme.PANEL)
-                .padding(10)
+                .padding(14)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode identity = VantaUiNode.column(2, 0);
         identity.add(VantaUiNode.eyebrow("VANTA CLIENT / MOD LIBRARY"));
@@ -167,10 +167,10 @@ public final class VantaIntegrationsScreen extends Screen {
                 .size(72, 32).enabled(!modScanInProgress));
         root.add(toolbar);
 
-        VantaUiNode content = VantaUiNode.column(8, 10)
+        VantaUiNode content = VantaUiNode.column(10, 14)
                 .flex(1)
                 .background(VantaUiTheme.PANEL)
-                .padding(10);
+                .padding(14);
         VantaUiNode heading = VantaUiNode.row(8, 0)
                 .height(24)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -185,10 +185,10 @@ public final class VantaIntegrationsScreen extends Screen {
             content.add(VantaUiNode.progressIndicator("Scanning local mod inventory").height(30));
         }
 
-        VantaUiNode cards = VantaUiNode.column(8, 8)
+        VantaUiNode cards = VantaUiNode.column(10, 10)
                 .flex(1)
                 .background(VantaUiTheme.INPUT_SURFACE)
-                .padding(8)
+                .padding(10)
                 .scrollable();
         if (mods.isEmpty()) {
             VantaUiNode empty = VantaUiNode.column(8, 12)
