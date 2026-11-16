@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.hudeditor.HudElement;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -25,9 +26,18 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             float compensation = HudElement.guiScaleCompensation(framebufferWidth, guiWidth);
             ProbeHudElement element = new ProbeHudElement();
             int expectedWidth = Math.max(1, Math.round(100.0f * compensation));
-            if (element.getScaledWidth() != expectedWidth) {
-                throw new AssertionError("HUD hitbox width did not use the active GUI-scale compensation: "
-                        + element.getScaledWidth() + " != " + expectedWidth);
+            if (element.getScaledWidth() != expectedWidth
+                    || element.getHitboxWidth() != expectedWidth) {
+                throw new AssertionError("HUD rendering and hitbox width did not share GUI-scale compensation: "
+                        + element.getScaledWidth() + "/" + element.getHitboxWidth()
+                        + " != " + expectedWidth);
+            }
+
+            VanillaHudElement vanilla = new VanillaHudElement(VanillaHudElement.Part.HOTBAR);
+            int expectedVanillaWidth = Math.max(1,
+                    Math.round(vanilla.getWidth() * vanilla.getScale()));
+            if (vanilla.getScaledWidth() != expectedVanillaWidth) {
+                throw new AssertionError("Vanilla HUD editor proxies were incorrectly compensated.");
             }
 
             float physicalWidth = element.getScaledWidth() * framebufferWidth / (float) guiWidth;
