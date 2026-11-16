@@ -10,23 +10,23 @@ import net.minecraft.client.gui.GuiGraphics;
  * without rebuilding the screen tree.
  */
 public final class VantaUiTheme {
-    public static final int CANVAS = 0xD90A1019;
-    public static final int PANEL = 0xD91A2331;
-    public static final int PANEL_RAISED = 0xCA202D40;
-    public static final int SURFACE = 0x382E3B50;
-    public static final int SURFACE_HOVER = 0x693A4B62;
-    public static final int SURFACE_SELECTED = 0x6B3B76AC;
-    public static final int BORDER = 0x643A4D65;
-    public static final int BORDER_SUBTLE = 0x382E3C50;
-    public static final int BUTTON_OUTLINE = 0x8C9AA8B8;
-    public static final int BUTTON_OUTLINE_HOVER = 0xC0C9D3DF;
+    public static final int CANVAS = 0xF00B111B;
+    public static final int PANEL = 0xF0141E2B;
+    public static final int PANEL_RAISED = 0xF01B2939;
+    public static final int SURFACE = 0xFF202E40;
+    public static final int SURFACE_HOVER = 0xFF2A3B52;
+    public static final int SURFACE_SELECTED = 0xFF203D63;
+    public static final int BORDER = 0xFF34475E;
+    public static final int BORDER_SUBTLE = 0xFF263547;
+    public static final int BUTTON_OUTLINE = 0xFF34465A;
+    public static final int BUTTON_OUTLINE_HOVER = 0xFF5A83B7;
     public static final int TEXT_PRIMARY = 0xFFF1F5FC;
     public static final int TEXT_SECONDARY = 0xFFB5C0D0;
     public static final int TEXT_MUTED = 0xFF8290A4;
-    public static final int TRACK = 0xA02A3749;
-    public static final int INPUT_SURFACE = 0xA20B1320;
-    public static final int INPUT_FOCUS_SURFACE = 0xBE17263A;
-    public static final int TOOLTIP_SURFACE = 0xEE101925;
+    public static final int TRACK = 0xFF2B3B4F;
+    public static final int INPUT_SURFACE = 0xFF101A28;
+    public static final int INPUT_FOCUS_SURFACE = 0xFF17283D;
+    public static final int TOOLTIP_SURFACE = 0xFF101925;
     public static final int WHITE = 0xFFFFFFFF;
     public static final int STATUS_INFO = 0xFF78AFFF;
     public static final int STATUS_SUCCESS = 0xFF65C99E;
@@ -65,13 +65,13 @@ public final class VantaUiTheme {
     public static final int SPACE_5 = 20;
     public static final int SPACE_6 = 24;
 
-    public static final int CONTROL_HEIGHT = 32;
-    public static final int ROW_HEIGHT = 42;
-    public static final int SLIDER_HEIGHT = 46;
+    public static final int CONTROL_HEIGHT = 34;
+    public static final int ROW_HEIGHT = 46;
+    public static final int SLIDER_HEIGHT = 48;
 
-    public static final int RADIUS_SMALL = 4;
-    public static final int RADIUS_MEDIUM = 8;
-    public static final int RADIUS_LARGE = 12;
+    public static final int RADIUS_SMALL = 3;
+    public static final int RADIUS_MEDIUM = 6;
+    public static final int RADIUS_LARGE = 8;
 
     public static final int TEXT_LINE_HEIGHT = 11;
     public static final int CARET_BLINK_TICKS = 10;
