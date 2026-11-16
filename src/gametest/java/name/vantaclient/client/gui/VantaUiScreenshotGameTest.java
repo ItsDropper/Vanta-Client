@@ -949,9 +949,12 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             HudManager.refreshVisibleElements();
             MeasuringHudElement element = new MeasuringHudElement();
+            float guiScaleCompensation = HudElement.guiScaleCompensation(client.getWindow().getGuiScale());
+            int expectedDefaultWidth = Math.max(1, Math.round(41 * guiScaleCompensation));
+            int expectedDefaultHeight = Math.max(1, Math.round(19 * guiScaleCompensation));
             int firstWidth = element.getHitboxWidth();
             int firstHeight = element.getHitboxHeight();
-            if (firstWidth != 41 || firstHeight != 19
+            if (firstWidth != expectedDefaultWidth || firstHeight != expectedDefaultHeight
                     || element.widthCalls != 1 || element.heightCalls != 1) {
                 throw new AssertionError("HUD dimensions were not measured exactly once on first access.");
             }
@@ -965,13 +968,17 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
 
             element.setScale(2.0f);
-            if (element.getScaledWidth() != 82 || element.getScaledHeight() != 38
+            int expectedScaledWidth = Math.max(1, Math.round(82 * guiScaleCompensation));
+            int expectedScaledHeight = Math.max(1, Math.round(38 * guiScaleCompensation));
+            if (element.getScaledWidth() != expectedScaledWidth
+                    || element.getScaledHeight() != expectedScaledHeight
                     || element.widthCalls != 1 || element.heightCalls != 1) {
                 throw new AssertionError("HUD scale changes should reuse raw dimensions and apply scale live.");
             }
 
             HudManager.refreshVisibleElements();
-            if (element.getHitboxWidth() != 82 || element.getHitboxHeight() != 38
+            if (element.getHitboxWidth() != expectedScaledWidth
+                    || element.getHitboxHeight() != expectedScaledHeight
                     || element.widthCalls != 2 || element.heightCalls != 2) {
                 throw new AssertionError("HUD dimensions did not refresh after the manager tick revision advanced.");
             }
