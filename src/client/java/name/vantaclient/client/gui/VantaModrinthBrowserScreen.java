@@ -126,7 +126,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     value -> searchQuery = value,
                     100).flex(1).minSize(54, 30));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::search).size(66, 30).enabled(!busy));
+                    this::search).size(90, 30).enabled(!busy));
             search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
