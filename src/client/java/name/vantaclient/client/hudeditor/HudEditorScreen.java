@@ -74,7 +74,7 @@ public class HudEditorScreen extends Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(compact ? 70 : 84)
+                }).width(84)
                 .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaUiNode.button("Done", this::onClose)
