@@ -7,14 +7,12 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.mixin.PostChainAccessor;
 import name.vantaclient.mixin.PostPassAccessor;
-import name.vantaclient.mixin.ShaderManagerAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.client.renderer.PostPass;
 import net.minecraft.resources.Identifier;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -36,7 +34,6 @@ public final class MotionBlurRenderer {
     private static PostChain cachedChain;
     private static Map<String, GpuBuffer> cachedUniforms;
     private static GpuBuffer blendFactorUbo;
-    private static Method createBufferMethod;
     private static boolean loadFailed;
     private static boolean runtimeFailed;
     private static boolean historyPrimed;
@@ -120,11 +117,8 @@ public final class MotionBlurRenderer {
     private static PostChain loadChain(Minecraft client) {
         if (loadFailed) return null;
         try {
-            Object cache =
-                    ((ShaderManagerAccessor) client.getShaderManager()).dropperutils$getCompilationCache();
-            if (cache == null) return null;
-
-            PostChain chain = loadPostChain(cache);
+            PostChain chain = client.getShaderManager()
+                    .getPostChain(EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
             if (chain != cachedChain) {
                 cachedChain = chain;
                 cachedUniforms = null;
@@ -139,21 +133,6 @@ public final class MotionBlurRenderer {
         }
     }
 
-
-    private static PostChain loadPostChain(Object cache) throws ReflectiveOperationException {
-        for (Method method : cache.getClass().getDeclaredMethods()) {
-            if (!method.getName().equals("getOrLoadPostChain")
-                    || method.getParameterCount() != 2
-                    || !method.getParameterTypes()[0].isInstance(EFFECT_ID)
-                    || !method.getParameterTypes()[1].isInstance(LevelTargetBundle.MAIN_TARGETS)) {
-                continue;
-            }
-            method.setAccessible(true);
-            Object result = method.invoke(cache, EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
-            return result instanceof PostChain chain ? chain : null;
-        }
-        throw new NoSuchMethodException("Shader compilation cache has no compatible post-chain lookup");
-    }
 
     private static void installUniformBuffer(PostChain chain) {
         if (blendFactorUbo == null) {
