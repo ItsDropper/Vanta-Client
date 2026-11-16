@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.PostChain;
 import net.minecraft.client.renderer.PostPass;
 import net.minecraft.resources.Identifier;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -34,6 +35,7 @@ public final class MotionBlurRenderer {
     private static PostChain cachedChain;
     private static Map<String, GpuBuffer> cachedUniforms;
     private static GpuBuffer blendFactorUbo;
+    private static Method createBufferMethod;
     private static boolean loadFailed;
     private static boolean runtimeFailed;
     private static boolean historyPrimed;
