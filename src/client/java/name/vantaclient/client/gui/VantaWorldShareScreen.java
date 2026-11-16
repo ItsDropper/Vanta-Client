@@ -69,9 +69,10 @@ public final class VantaWorldShareScreen extends Screen {
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         lanStatus = VantaLanHostingService.status();
 
-        VantaUiNode root = VantaUiNode.column(10, 14).background(VantaUiTheme.CANVAS);
-        VantaUiNode header = VantaUiNode.row(12, 16)
-                .height(compact ? 46 : 54)
+        VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
+                .background(VantaUiTheme.CANVAS);
+        VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, compact ? 10 : 16)
+                .height(compact ? 36 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode heading = VantaUiNode.column(2, 0);
@@ -83,9 +84,9 @@ public final class VantaWorldShareScreen extends Screen {
                 .tooltip("Return to the previous screen"));
         root.add(header);
 
-        VantaUiNode content = VantaUiNode.column(16, 20)
+        VantaUiNode content = VantaUiNode.column(compact ? 8 : 16, compact ? 10 : 20)
                 .flex(1)
-                .padding(compact ? 12 : 18)
+                .padding(compact ? 8 : 18)
                 .background(VantaUiTheme.PANEL)
                 .scrollable();
 
