@@ -72,7 +72,7 @@ public final class VantaWorldShareScreen extends Screen {
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
                 .background(VantaUiTheme.CANVAS);
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, compact ? 10 : 16)
-                .height(compact ? 36 : 54)
+                .height(compact ? 52 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode heading = VantaUiNode.column(2, 0);
