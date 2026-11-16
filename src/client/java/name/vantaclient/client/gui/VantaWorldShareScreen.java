@@ -101,9 +101,9 @@ public final class VantaWorldShareScreen extends Screen {
 
     private void addRelaySettings(VantaUiNode content, boolean compact) {
         content.add(VantaUiNode.eyebrow("YOUR RELAY"));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "Use a relay you operate or trust. Remote relays must use HTTPS/WSS; no Vanta-operated public relay is configured.",
-                VantaUiTheme.TEXT_SECONDARY));
+                VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
         VantaUiNode endpointRow = VantaUiNode.row(8, 0)
                 .height(34)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -119,12 +119,12 @@ public final class VantaWorldShareScreen extends Screen {
                     preferences.remoteMaximumIpPrivacy = value;
                     VantaClientPreferences.save();
                 }).height(34));
-        content.add(VantaUiNode.text(
+        content.add(VantaUiNode.paragraph(
                 "When enabled, WebRTC uses TURN-only candidates so guests do not learn your home IP. This requires TURN infrastructure; the WebSocket relay remains the fallback.",
-                VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.text(
+                VantaUiTheme.TEXT_MUTED, compact ? 4 : 2));
+        content.add(VantaUiNode.paragraph(
                 "The relay forwards Minecraft TCP traffic without interpreting packets. Its operator can still see connection metadata and source network addresses.",
-                VantaUiTheme.TEXT_MUTED));
+                VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
         content.add(VantaUiNode.paragraph(
                 "Remote hosting also publishes the world to your local network. Nearby devices may discover and join it through normal Minecraft LAN discovery.",
                 VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
@@ -138,9 +138,9 @@ public final class VantaWorldShareScreen extends Screen {
         content.add(VantaUiNode.eyebrow("Host a world"));
         if (server == null) {
             content.add(VantaUiNode.title("Open a singleplayer world to host"));
-            content.add(VantaUiNode.text(
+            content.add(VantaUiNode.paragraph(
                     "Hosting is available while a singleplayer integrated server is running. You can still join a friend's invite from this screen.",
-                    VantaUiTheme.TEXT_SECONDARY));
+                    VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
             return;
         }
 
@@ -148,9 +148,9 @@ public final class VantaWorldShareScreen extends Screen {
             content.add(VantaUiNode.text("Your integrated server is ready for guests.",
                     VantaUiTheme.TEXT_SECONDARY));
         } else {
-            content.add(VantaUiNode.text(
+            content.add(VantaUiNode.paragraph(
                     "Vanta publishes the active singleplayer world through Minecraft's integrated server.",
-                    VantaUiTheme.TEXT_SECONDARY));
+                    VantaUiTheme.TEXT_SECONDARY, compact ? 2 : 1));
             content.add(VantaUiNode.dropdown("Guest game mode", GAME_MODES,
                     () -> gameTypeLabel(selectedGameType),
                     value -> selectedGameType = gameTypeFromLabel(value)).height(34));
@@ -194,10 +194,10 @@ public final class VantaWorldShareScreen extends Screen {
                                 : claimedProfile + " · unverified; approval required",
                         VantaUiTheme.TEXT_MUTED));
                 request.add(guestInfo);
-                request.add(VantaUiNode.button("APPROVE",
+                request.add(VantaUiNode.button("Approve",
                         () -> VantaRemoteSessionManager.approveGuest(guest.requestId()))
                         .size(76, 30).enabled(!guest.approving()));
-                request.add(VantaUiNode.button("REJECT",
+                request.add(VantaUiNode.button("Reject",
                         () -> VantaRemoteSessionManager.rejectGuest(guest.requestId()))
                         .size(64, 30).enabled(!guest.approving()));
                 content.add(request);
@@ -210,16 +210,16 @@ public final class VantaWorldShareScreen extends Screen {
                 active.add(VantaUiNode.text(guest.playerName(),
                         VantaUiTheme.TEXT_PRIMARY).flex(1));
                 active.add(VantaUiNode.text(guest.identityVerified()
-                                ? "ACCOUNT KEY VERIFIED" : "AWAITING ACCOUNT KEY",
+                                ? "Account key verified" : "Awaiting account key",
                         VantaUiTheme.TEXT_MUTED));
                 active.add(VantaUiNode.button("KICK",
                         () -> VantaRemoteSessionManager.kickGuest(guest.requestId()))
                         .size(62, 30));
                 content.add(active);
             }
-            content.add(VantaUiNode.text(
+            content.add(VantaUiNode.paragraph(
                     "Only matching Mojang-verified account keys are saved. Offline UUID mismatches do not block approved guests, but they are not saved as trusted profiles.",
-                    VantaUiTheme.TEXT_MUTED));
+                    VantaUiTheme.TEXT_MUTED, compact ? 4 : 2));
             List<String> savedProfiles = VantaRemoteSessionManager.whitelistedPlayerUUIDs();
             if (!savedProfiles.isEmpty()) {
                 content.add(VantaUiNode.eyebrow("Saved players for this world"));
@@ -229,21 +229,21 @@ public final class VantaWorldShareScreen extends Screen {
                             .align(VantaUiNode.Alignment.CENTER);
                     saved.add(VantaUiNode.text(profileUUID.substring(0, 8) + "…",
                             VantaUiTheme.TEXT_SECONDARY).flex(1));
-                    saved.add(VantaUiNode.button("REMOVE",
+                    saved.add(VantaUiNode.button("Remove",
                             () -> VantaRemoteSessionManager.revokeWhitelistedPlayer(profileUUID))
                             .size(72, 28));
                     content.add(saved);
                 }
             }
-            content.add(VantaUiNode.button("STOP REMOTE HOSTING",
+            content.add(VantaUiNode.button("Stop remote hosting",
                     VantaRemoteSessionManager::stopHosting).height(34));
         } else if (session.hostBusy()) {
             content.add(VantaUiNode.progressIndicator("Creating your invite room…").height(30));
-            content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
+            content.add(VantaUiNode.paragraph(session.hostStatus(), VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
         } else {
             content.add(VantaUiNode.button(
                     lanStatus.state() == VantaLanHostingService.State.HOSTED
-                            ? "CREATE REMOTE INVITE" : "HOST WORLD",
+                            ? "Create remote invite" : "Host world",
                     this::startRemoteHosting).height(36));
             content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
         }
@@ -268,17 +268,17 @@ public final class VantaWorldShareScreen extends Screen {
             content.add(VantaUiNode.progressIndicator("Waiting for the host…").height(30));
             content.add(VantaUiNode.paragraph(session.guestStatus(),
                     VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
-            content.add(VantaUiNode.button("CANCEL JOIN",
+            content.add(VantaUiNode.button("Cancel join",
                     VantaRemoteSessionManager::stopJoining).height(32));
         } else if (session.guestActive()) {
             content.add(VantaUiNode.paragraph(session.guestStatus(),
                     VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
-            content.add(VantaUiNode.button("DISCONNECT REMOTE WORLD",
+            content.add(VantaUiNode.button("Disconnect remote world",
                     VantaRemoteSessionManager::stopJoining).height(32));
         } else {
             content.add(VantaUiNode.button("Join remote world", this::joinRemoteWorld)
                     .height(36));
-            content.add(VantaUiNode.text(session.guestStatus(), VantaUiTheme.TEXT_MUTED));
+            content.add(VantaUiNode.paragraph(session.guestStatus(), VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
         }
     }
 
