@@ -89,11 +89,8 @@ public abstract class HudElement {
      * A GUI scale of 2 maps two physical pixels to one GUI pixel, so custom HUD
      * geometry must use half as many GUI pixels to retain its physical size.
      */
-    public static float guiScaleCompensation(int windowWidth, int guiScaledWidth) {
-        if (windowWidth <= 0 || guiScaledWidth <= 0) return 1.0f;
-        float density = windowWidth / (float) guiScaledWidth;
-        if (!Float.isFinite(density) || density <= 1.0f) return 1.0f;
-        return 1.0f / density;
+    public static float guiScaleCompensation(int guiScale) {
+        return guiScale <= 1 ? 1.0f : 1.0f / guiScale;
     }
 
     /** Override for editor representations of vanilla HUD parts, which Minecraft scales itself. */
@@ -105,7 +102,7 @@ public abstract class HudElement {
         if (!usesGuiScaleCompensation()) return scale;
         Minecraft mc = Minecraft.getInstance();
         var window = mc.getWindow();
-        return scale * guiScaleCompensation(window.getWidth(), window.getGuiScaledWidth());
+        return scale * guiScaleCompensation(window.getGuiScale());
     }
 
     public int getScaledWidth() {
