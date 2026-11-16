@@ -12,18 +12,17 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
     @Override
     public void runTest(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            assertScale(1920, 1920, 1.0f);
-            assertScale(1920, 960, 0.5f);
-            assertScale(1920, 640, 1.0f / 3.0f);
-            assertScale(1920, 480, 0.25f);
-            assertScale(1920, 320, 1.0f / 6.0f);
-            assertScale(1920, 160, 1.0f / 12.0f);
-            assertScale(0, 0, 1.0f);
+            assertScale(1, 1.0f);
+            assertScale(2, 0.5f);
+            assertScale(3, 1.0f / 3.0f);
+            assertScale(4, 0.25f);
+            assertScale(6, 1.0f / 6.0f);
+            assertScale(12, 1.0f / 12.0f);
+            assertScale(0, 1.0f);
 
             var window = client.getWindow();
-            int guiWidth = Math.max(1, window.getGuiScaledWidth());
-            int framebufferWidth = Math.max(1, window.getWidth());
-            float compensation = HudElement.guiScaleCompensation(framebufferWidth, guiWidth);
+            int guiScale = Math.max(1, window.getGuiScale());
+            float compensation = HudElement.guiScaleCompensation(guiScale);
             ProbeHudElement element = new ProbeHudElement();
             int expectedWidth = Math.max(1, Math.round(100.0f * compensation));
             if (element.getScaledWidth() != expectedWidth
@@ -40,18 +39,18 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
                 throw new AssertionError("Vanilla HUD editor proxies were incorrectly compensated.");
             }
 
-            float physicalWidth = element.getScaledWidth() * framebufferWidth / (float) guiWidth;
+            float physicalWidth = element.getScaledWidth() * guiScale;
             if (Math.abs(physicalWidth - 100.0f) > 2.0f) {
                 throw new AssertionError("HUD physical size changed with GUI scale: " + physicalWidth);
             }
         });
     }
 
-    private static void assertScale(int framebufferWidth, int guiWidth, float expected) {
-        float actual = HudElement.guiScaleCompensation(framebufferWidth, guiWidth);
+    private static void assertScale(int guiScale, float expected) {
+        float actual = HudElement.guiScaleCompensation(guiScale);
         if (Math.abs(actual - expected) > 0.001f) {
             throw new AssertionError("Unexpected GUI-scale compensation for "
-                    + framebufferWidth + "/" + guiWidth + ": " + actual + " != " + expected);
+                    + guiScale + ": " + actual + " != " + expected);
         }
     }
 
