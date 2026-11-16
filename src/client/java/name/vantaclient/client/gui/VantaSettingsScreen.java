@@ -94,13 +94,14 @@ public final class VantaSettingsScreen extends Screen {
         boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
         VantaUiNode root = VantaUiNode.column(10, 14).background(VantaUiTheme.CANVAS);
 
-        VantaUiNode header = VantaUiNode.row(14, 16)
-                .height(compact ? 46 : 54)
+        VantaUiNode header = VantaUiNode.row(compact ? 8 : 14, compact ? 10 : 16)
+                .height(compact ? 44 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode brand = VantaUiNode.row(10, 0).align(VantaUiNode.Alignment.CENTER);
         brand.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "dropperutils", "textures/gui/vanta_logo_transparent.png")).size(34, 25));
+                "dropperutils", "textures/gui/vanta_logo_transparent.png"))
+                .size(compact ? 28 : 34, compact ? 21 : 25));
         VantaUiNode brandLabels = VantaUiNode.column(1, 0);
         brandLabels.add(VantaUiNode.title("Vanta"));
         brandLabels.add(VantaUiNode.text("Minecraft client", VantaUiTheme.TEXT_MUTED));
@@ -119,10 +120,10 @@ public final class VantaSettingsScreen extends Screen {
             header.add(performance);
         } else {
             header.add(VantaUiNode.button("Mods", () -> Minecraft.getInstance().setScreen(
-                    new VantaIntegrationsScreen(this))).height(30));
+                    new VantaIntegrationsScreen(this))).size(48, 28));
         }
-        header.add(VantaUiNode.button("Close", this::onClose)
-                .height(30).tooltip("Close settings"));
+        header.add(VantaUiNode.button(compact ? "×" : "Close", this::onClose)
+                .size(compact ? 28 : 62, 30).tooltip("Close settings"));
         root.add(header);
 
         VantaUiNode body = compact
