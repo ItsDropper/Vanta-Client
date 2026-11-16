@@ -317,7 +317,7 @@ public final class VantaSettingsScreen extends Screen {
                 .filter(feature -> feature.getCategory() == category)
                 .filter(feature -> matchesSearch(feature))
                 .toList();
-        content.add(VantaUiNode.eyebrow("FEATURES / " + category.name()));
+        content.add(VantaUiNode.text("Features", VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.title(categoryTitle(category)));
         content.add(VantaUiNode.paragraph(categoryDescription(category),
                 VantaUiTheme.TEXT_SECONDARY, 2));
@@ -325,7 +325,7 @@ public final class VantaSettingsScreen extends Screen {
         VantaUiNode search = VantaUiNode.row(8, 8).height(40)
                 .background(VantaUiTheme.PANEL_RAISED).align(VantaUiNode.Alignment.CENTER);
         search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-        search.add(VantaUiNode.textField("Filter features...", () -> pendingSearch,
+        search.add(VantaUiNode.textField("Find a feature...", () -> pendingSearch,
                 value -> pendingSearch = value, 64).flex(1));
         if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
             search.add(VantaUiNode.button("Clear", () -> {
@@ -334,18 +334,18 @@ public final class VantaSettingsScreen extends Screen {
                 rebuildUi();
             }).height(28).tooltip("Clear the feature filter"));
         }
-        search.add(VantaUiNode.button("Apply", VantaUiNode.Icon.SEARCH, () -> {
+        search.add(VantaUiNode.button("Filter", VantaUiNode.Icon.SEARCH, () -> {
             searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
             rebuildUi();
         }).height(28));
         content.add(search);
-        content.add(VantaUiNode.text("Searches feature names, descriptions and available setting labels.",
+        content.add(VantaUiNode.text("Search feature names, descriptions and setting labels.",
                 VantaUiTheme.TEXT_MUTED));
 
         if (features.isEmpty()) {
             String emptyMessage = searchQuery.isBlank()
-                    ? "No features are assigned to this category yet."
-                    : "No features match this filter.";
+                    ? "There are no features in this category yet."
+                    : "No features match that search.";
             content.add(VantaUiNode.paragraph(emptyMessage, VantaUiTheme.TEXT_MUTED, 1));
             return;
         }
@@ -361,7 +361,7 @@ public final class VantaSettingsScreen extends Screen {
             }
             row.add(labels);
             if (!SettingRegistry.getSettings(feature).isEmpty()) {
-                row.add(VantaUiNode.button("Options", () -> {
+                row.add(VantaUiNode.button("Configure", () -> {
                     selectedFeature = feature;
                     rebuildUi();
                 }).height(28).tooltip("Configure " + feature.getName()));
@@ -378,8 +378,8 @@ public final class VantaSettingsScreen extends Screen {
         long totalInCategory = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category).count();
         String resultSummary = searchQuery.isBlank()
-                ? totalInCategory + " feature(s) in this category"
-                : "Showing " + features.size() + " of " + totalInCategory + " feature(s)";
+                ? totalInCategory + " features in this category"
+                : "Showing " + features.size() + " of " + totalInCategory + " features";
         content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
     }
 
@@ -404,7 +404,7 @@ public final class VantaSettingsScreen extends Screen {
                     selectedFeature = null;
                     rebuildUi();
                 }).height(30));
-        content.add(VantaUiNode.eyebrow("FEATURE / " + feature.getCategory().name()));
+        content.add(VantaUiNode.text(categoryTitle(feature.getCategory()), VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.title(feature.getName()));
         if (VantaClientPreferences.get().showDescriptions) {
             content.add(VantaUiNode.paragraph(feature.getDescription(),
@@ -420,7 +420,7 @@ public final class VantaSettingsScreen extends Screen {
             content.add(VantaUiNode.dynamicText(FarTerrainRenderer::getStatusLine,
                     VantaUiTheme.TEXT_SECONDARY));
         }
-        content.add(VantaUiNode.toggle("Enabled", feature::isEnabled, enabled -> {
+        content.add(VantaUiNode.toggle("Enable feature", feature::isEnabled, enabled -> {
             if (feature.isEnabled() != enabled) feature.toggle();
             feature.saveConfig();
             DropperUtilsConfig.save();
@@ -466,7 +466,7 @@ public final class VantaSettingsScreen extends Screen {
     }
 
     private void addControls(VantaUiNode content) {
-        content.add(VantaUiNode.eyebrow("INPUT / KEYBINDINGS"));
+        content.add(VantaUiNode.text("Input preferences", VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.title("Controls"));
         content.add(VantaUiNode.paragraph(
                 "Customize Vanta's built-in shortcuts. Vanilla Minecraft bindings remain in Options → Controls. "
@@ -495,7 +495,7 @@ public final class VantaSettingsScreen extends Screen {
         VantaUiNode featurePanel = VantaUiNode.column(6, 12)
                 .background(VantaUiTheme.PANEL_RAISED)
                 .padding(12);
-        featurePanel.add(VantaUiNode.eyebrow("FEATURE SHORTCUTS"));
+        featurePanel.add(VantaUiNode.text("Feature shortcuts", VantaUiTheme.TEXT_MUTED));
         featurePanel.add(VantaUiNode.text(
                 "Optional shortcuts that toggle individual Vanta features. They are unbound by default.",
                 VantaUiTheme.TEXT_SECONDARY));
@@ -599,7 +599,7 @@ public final class VantaSettingsScreen extends Screen {
 
     private void addAppearance(VantaUiNode content) {
         VantaClientPreferences preferences = VantaClientPreferences.get();
-        content.add(VantaUiNode.eyebrow("PREFERENCES / INTERFACE"));
+        content.add(VantaUiNode.text("Interface preferences", VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.title("Appearance"));
         content.add(VantaUiNode.paragraph(
                 "A restrained visual system shared by settings and the HUD editor.",
@@ -607,9 +607,11 @@ public final class VantaSettingsScreen extends Screen {
 
         VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
         panel.add(VantaUiNode.dropdown("Accent color",
-                List.of("BLUE", "VIOLET", "EMERALD", "CYAN"),
-                () -> VantaClientPreferences.get().accent.name(), value -> {
-                    VantaClientPreferences.get().accent = VantaClientPreferences.Accent.valueOf(value);
+                List.of("Blue", "Violet", "Emerald", "Cyan"),
+                () -> VantaClientPreferences.get().accent.name().charAt(0)
+                        + VantaClientPreferences.get().accent.name().substring(1).toLowerCase(Locale.ROOT), value -> {
+                    VantaClientPreferences.get().accent = VantaClientPreferences.Accent.valueOf(
+                            value.toUpperCase(Locale.ROOT));
                     VantaClientPreferences.save();
                 }));
         panel.add(divider());
@@ -638,7 +640,7 @@ public final class VantaSettingsScreen extends Screen {
                 () -> VantaClientPreferences.get().panelOpacity,
                 value -> { VantaClientPreferences.get().panelOpacity = value; VantaClientPreferences.save(); }));
         content.add(panel);
-        content.add(VantaUiNode.text("Changes are saved to config/vanta-client.json.",
+        content.add(VantaUiNode.text("Changes are saved to your local Vanta configuration.",
                 VantaUiTheme.TEXT_MUTED));
     }
 
