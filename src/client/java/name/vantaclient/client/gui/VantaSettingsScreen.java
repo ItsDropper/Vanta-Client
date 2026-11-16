@@ -92,10 +92,11 @@ public final class VantaSettingsScreen extends Screen {
 
     private VantaUiNode buildRoot() {
         boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
-        VantaUiNode root = VantaUiNode.column(10, 14).background(VantaUiTheme.CANVAS);
+        VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
+                .background(VantaUiTheme.CANVAS);
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 14, compact ? 10 : 16)
-                .height(compact ? 44 : 54)
+                .height(compact ? 36 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode brand = VantaUiNode.row(10, 0).align(VantaUiNode.Alignment.CENTER);
@@ -131,7 +132,7 @@ public final class VantaSettingsScreen extends Screen {
                 : VantaUiNode.row(14, 0).flex(1);
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(4, 4).height(40).background(VantaUiTheme.PANEL)
+            navigation = VantaUiNode.row(3, 3).height(32).background(VantaUiTheme.PANEL)
                     .justify(VantaUiNode.Justification.CENTER);
             navigation.add(compactNav(Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
@@ -161,7 +162,7 @@ public final class VantaSettingsScreen extends Screen {
                     VantaUiTheme.TEXT_MUTED));
         }
 
-        VantaUiNode content = VantaUiNode.column(16, compact ? 14 : 22)
+        VantaUiNode content = VantaUiNode.column(compact ? 8 : 16, compact ? 8 : 22)
                 .flex(1).background(VantaUiTheme.PANEL).scrollable();
         addPageContent(content);
         body.add(navigation);
@@ -184,7 +185,7 @@ public final class VantaSettingsScreen extends Screen {
             page = target;
             selectedFeature = null;
             rebuildUi();
-        }).size(42, 32).selected(page == target)
+        }).size(38, 28).selected(page == target)
                 .tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
     }
 
@@ -251,42 +252,65 @@ public final class VantaSettingsScreen extends Screen {
         hero.add(actions);
         top.add(hero);
 
-        VantaUiNode status = VantaUiNode.column(10, 14)
-                .flex(1)
-                .background(VantaUiTheme.PANEL)
-                .padding(compact ? 12 : 16);
-        status.add(VantaUiNode.eyebrow("Client status"));
-        VantaUiNode active = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-        active.add(VantaUiNode.column(2, 0)
-                .add(VantaUiNode.title(Long.toString(enabledCount)))
-                .add(VantaUiNode.text("Active features", VantaUiTheme.TEXT_MUTED)));
-        active.add(VantaUiNode.spacer(1).flex(1));
-        active.add(VantaUiNode.text("of " + totalCount, VantaUiTheme.TEXT_SECONDARY));
-        status.add(active);
-        VantaUiNode track = VantaUiNode.row(0, 0).height(5)
-                .background(VantaUiTheme.TRACK);
-        int activeWidth = totalCount == 0 ? 0
-                : (int) Math.round(100.0 * enabledCount / totalCount);
-        track.add(VantaUiNode.spacer(1).flex(activeWidth)
-                .background(VantaClientPreferences.get().accent.color()));
-        track.add(VantaUiNode.spacer(1).flex(Math.max(1, 100 - activeWidth))
-                .background(VantaUiTheme.TRACK));
-        status.add(track);
-        status.add(divider());
-        status.add(VantaUiNode.text("Interface accent",
-                VantaUiTheme.TEXT_MUTED));
-        status.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
-                .add(VantaUiNode.spacer(1).size(10, 10)
-                        .background(VantaClientPreferences.get().accent.color()))
-                .add(VantaUiNode.dynamicText(
-                        () -> VantaClientPreferences.get().accent.name(),
-                        VantaUiTheme.TEXT_PRIMARY)));
-        status.add(VantaUiNode.button("Personalize appearance",
-                VantaUiNode.Icon.DISPLAY, () -> {
-                    page = Page.APPEARANCE;
-                    selectedFeature = null;
-                    rebuildUi();
-                }).height(32));
+        VantaUiNode status;
+        if (compact) {
+            status = VantaUiNode.row(8, 10)
+                    .height(38)
+                    .background(VantaUiTheme.PANEL)
+                    .padding(8)
+                    .align(VantaUiNode.Alignment.CENTER);
+            status.add(VantaUiNode.dynamicText(
+                    () -> FeatureRegistry.FEATURES.stream()
+                            .filter(Feature::isEnabled).count() + " active",
+                    VantaUiTheme.TEXT_PRIMARY));
+            status.add(VantaUiNode.spacer(1).flex(1));
+            status.add(VantaUiNode.spacer(1).size(8, 8)
+                    .background(VantaClientPreferences.get().accent.color()));
+            status.add(VantaUiNode.dynamicText(
+                    () -> VantaClientPreferences.get().accent.name(),
+                    VantaUiTheme.TEXT_SECONDARY));
+            status.add(VantaUiNode.button("Appearance", VantaUiNode.Icon.DISPLAY, () -> {
+                page = Page.APPEARANCE;
+                selectedFeature = null;
+                rebuildUi();
+            }).height(28));
+        } else {
+            status = VantaUiNode.column(10, 14)
+                    .flex(1)
+                    .background(VantaUiTheme.PANEL)
+                    .padding(16);
+            status.add(VantaUiNode.eyebrow("Client status"));
+            VantaUiNode active = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+            active.add(VantaUiNode.column(2, 0)
+                    .add(VantaUiNode.title(Long.toString(enabledCount)))
+                    .add(VantaUiNode.text("Active features", VantaUiTheme.TEXT_MUTED)));
+            active.add(VantaUiNode.spacer(1).flex(1));
+            active.add(VantaUiNode.text("of " + totalCount, VantaUiTheme.TEXT_SECONDARY));
+            status.add(active);
+            VantaUiNode track = VantaUiNode.row(0, 0).height(5)
+                    .background(VantaUiTheme.TRACK);
+            int activeWidth = totalCount == 0 ? 0
+                    : (int) Math.round(100.0 * enabledCount / totalCount);
+            track.add(VantaUiNode.spacer(1).flex(Math.max(1, activeWidth))
+                    .background(VantaClientPreferences.get().accent.color()));
+            track.add(VantaUiNode.spacer(1).flex(Math.max(1, 100 - activeWidth))
+                    .background(VantaUiTheme.TRACK));
+            status.add(track);
+            status.add(divider());
+            status.add(VantaUiNode.text("Interface accent", VantaUiTheme.TEXT_MUTED));
+            status.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
+                    .add(VantaUiNode.spacer(1).size(10, 10)
+                            .background(VantaClientPreferences.get().accent.color()))
+                    .add(VantaUiNode.dynamicText(
+                            () -> VantaClientPreferences.get().accent.name(),
+                            VantaUiTheme.TEXT_PRIMARY)));
+            status.add(VantaUiNode.button("Personalize appearance",
+                    VantaUiNode.Icon.DISPLAY, () -> {
+                        page = Page.APPEARANCE;
+                        selectedFeature = null;
+                        rebuildUi();
+                    }).height(32));
+        }
         top.add(status);
         content.add(top);
 
