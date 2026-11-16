@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -64,6 +65,7 @@ public final class FarTerrainRenderer {
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final int MAX_CAPTURED_CHUNKS = 16_384;
+    private static final ConcurrentLinkedDeque<Long> CHUNK_SNAPSHOT_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
     private static volatile Set<TileKey> DESIRED = Set.of();
@@ -116,11 +118,14 @@ public final class FarTerrainRenderer {
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
         ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
             FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
-            CHUNK_SNAPSHOTS.put(chunk.getPos().toLong(), snapshot);
-            if (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
-                // Keep the most recently ingested terrain; the LOD cache is separately bounded.
-                CHUNK_SNAPSHOTS.keySet().stream().limit(CHUNK_SNAPSHOTS.size() - MAX_CAPTURED_CHUNKS)
-                        .forEach(CHUNK_SNAPSHOTS::remove);
+            long chunkKey = chunk.getPos().toLong();
+            CHUNK_SNAPSHOTS.put(chunkKey, snapshot);
+            CHUNK_SNAPSHOT_ORDER.remove(chunkKey);
+            CHUNK_SNAPSHOT_ORDER.addLast(chunkKey);
+            while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
+                Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
+                if (oldest == null) break;
+                CHUNK_SNAPSHOTS.remove(oldest);
             }
         });
     }
@@ -146,6 +151,7 @@ public final class FarTerrainRenderer {
 
         if (snapshotLevel != serverLevel) {
             CHUNK_SNAPSHOTS.clear();
+            CHUNK_SNAPSHOT_ORDER.clear();
             snapshotLevel = serverLevel;
         }
 
