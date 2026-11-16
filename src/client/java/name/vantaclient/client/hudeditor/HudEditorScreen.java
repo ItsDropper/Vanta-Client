@@ -39,19 +39,25 @@ public class HudEditorScreen extends Screen {
 
     private void buildToolbar() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
-        boolean showGridControl = width >= 560;
-        VantaUiNode root = VantaUiNode.row(0, 0).height(56)
+        boolean compact = width < 560;
+        boolean showGridControl = !compact;
+        int toolbarHeight = compact ? 44 : 56;
+
+        VantaUiNode root = VantaUiNode.row(0, 0).height(toolbarHeight)
                 .align(VantaUiNode.Alignment.START);
-        VantaUiNode toolbar = VantaUiNode.row(12, 14).height(56).flex(1)
+        VantaUiNode toolbar = VantaUiNode.row(compact ? 8 : 12, compact ? 8 : 14)
+                .height(toolbarHeight).flex(1)
                 .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(30, 22));
+                .size(compact ? 22 : 30, compact ? 16 : 22));
         VantaUiNode labels = VantaUiNode.column(2, 0);
         labels.add(VantaUiNode.title("HUD editor"));
-        labels.add(VantaUiNode.text("Arrange your on-screen elements",
-                VantaUiTheme.TEXT_MUTED));
+        if (!compact) {
+            labels.add(VantaUiNode.text("Arrange your on-screen elements",
+                    VantaUiTheme.TEXT_MUTED));
+        }
         toolbar.add(labels);
         toolbar.add(VantaUiNode.spacer(1).flex(1));
         if (showGridControl) {
@@ -68,11 +74,12 @@ public class HudEditorScreen extends Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(showGridControl ? 84 : 72)
+                }).width(84)
                 .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaUiNode.button("Done", this::onClose)
-                .height(32).background(VantaUiTheme.SURFACE_SELECTED)
+                .size(compact ? 60 : 82, compact ? 28 : 32)
+                .background(VantaUiTheme.SURFACE_SELECTED)
                 .tooltip("Finish editing the HUD"));
         root.add(toolbar);
         toolbarRuntime = new VantaUiRuntime(root);
