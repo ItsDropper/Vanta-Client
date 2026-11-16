@@ -69,21 +69,21 @@ public final class VantaWorldShareScreen extends Screen {
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         lanStatus = VantaLanHostingService.status();
 
-        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
-        VantaUiNode header = VantaUiNode.row(10, 12)
-                .height(compact ? 42 : 48)
+        VantaUiNode root = VantaUiNode.column(10, 14).background(VantaUiTheme.CANVAS);
+        VantaUiNode header = VantaUiNode.row(12, 16)
+                .height(compact ? 46 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode heading = VantaUiNode.column(2, 0);
-        heading.add(VantaUiNode.eyebrow("VANTA / MULTIPLAYER"));
-        heading.add(VantaUiNode.title("WORLD SHARING"));
+        heading.add(VantaUiNode.eyebrow("Vanta / multiplayer"));
+        heading.add(VantaUiNode.title("World sharing"));
         header.add(heading);
         header.add(VantaUiNode.spacer(1).flex(1));
-        header.add(VantaUiNode.button("BACK", this::onClose).height(30)
+        header.add(VantaUiNode.button("Back", this::onClose).height(30)
                 .tooltip("Return to the previous screen"));
         root.add(header);
 
-        VantaUiNode content = VantaUiNode.column(12, 16)
+        VantaUiNode content = VantaUiNode.column(16, 20)
                 .flex(1)
                 .padding(compact ? 12 : 18)
                 .background(VantaUiTheme.PANEL)
@@ -110,7 +110,7 @@ public final class VantaWorldShareScreen extends Screen {
         endpointRow.add(VantaUiNode.textField("https://your-relay.example", 
                 () -> relayEndpoint, value -> relayEndpoint = value, 256)
                 .flex(1).minSize(80, 30));
-        endpointRow.add(VantaUiNode.button("SAVE", this::saveRelayEndpoint)
+        endpointRow.add(VantaUiNode.button("Save", this::saveRelayEndpoint)
                 .size(62, 30));
         content.add(endpointRow);
         content.add(VantaUiNode.toggle("Maximum IP privacy (TURN only)",
@@ -135,7 +135,7 @@ public final class VantaWorldShareScreen extends Screen {
     }
 
     private void addHostSection(VantaUiNode content, MinecraftServer server, boolean compact) {
-        content.add(VantaUiNode.eyebrow("HOST A WORLD"));
+        content.add(VantaUiNode.eyebrow("Host a world"));
         if (server == null) {
             content.add(VantaUiNode.title("Open a singleplayer world to host"));
             content.add(VantaUiNode.text(
@@ -161,7 +161,7 @@ public final class VantaWorldShareScreen extends Screen {
         if (session.hostActive()) {
             content.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
             content.add(VantaUiNode.row(8, 0).height(22)
-                    .add(VantaUiNode.eyebrow("REMOTE INVITE ACTIVE"))
+                    .add(VantaUiNode.eyebrow("Remote invite active"))
                     .add(VantaUiNode.spacer(1).flex(1))
                     .add(VantaUiNode.text(session.connectedGuests() + " connected",
                             VantaUiTheme.TEXT_SECONDARY)));
@@ -169,7 +169,7 @@ public final class VantaWorldShareScreen extends Screen {
                     .height(36)
                     .align(VantaUiNode.Alignment.CENTER)
                     .add(VantaUiNode.title(session.roomCode()).flex(1))
-                    .add(VantaUiNode.button("COPY INVITE",
+                    .add(VantaUiNode.button("Copy invite",
                             () -> Minecraft.getInstance().keyboardHandler.setClipboard(session.roomCode()))
                             .size(104, 30)));
             if (session.roomExpiresAt() != null) {
@@ -222,7 +222,7 @@ public final class VantaWorldShareScreen extends Screen {
                     VantaUiTheme.TEXT_MUTED));
             List<String> savedProfiles = VantaRemoteSessionManager.whitelistedPlayerUUIDs();
             if (!savedProfiles.isEmpty()) {
-                content.add(VantaUiNode.eyebrow("SAVED PLAYERS FOR THIS WORLD"));
+                content.add(VantaUiNode.eyebrow("Saved players for this world"));
                 for (String profileUUID : savedProfiles) {
                     VantaUiNode saved = VantaUiNode.row(8, 4)
                             .height(34)
@@ -276,7 +276,7 @@ public final class VantaWorldShareScreen extends Screen {
             content.add(VantaUiNode.button("DISCONNECT REMOTE WORLD",
                     VantaRemoteSessionManager::stopJoining).height(32));
         } else {
-            content.add(VantaUiNode.button("JOIN REMOTE WORLD", this::joinRemoteWorld)
+            content.add(VantaUiNode.button("Join remote world", this::joinRemoteWorld)
                     .height(36));
             content.add(VantaUiNode.text(session.guestStatus(), VantaUiTheme.TEXT_MUTED));
         }
