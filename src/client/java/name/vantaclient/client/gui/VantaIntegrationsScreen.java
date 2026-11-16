@@ -149,7 +149,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     () -> modSearchQuery, value -> modSearchQuery = value, 64)
                     .flex(1).minSize(70, 28));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::rebuildRetainedUi).size(82, 28));
+                    this::rebuildRetainedUi).size(100, 28));
             root.add(search);
 
             VantaUiNode filters = VantaUiNode.row(6, 6)
