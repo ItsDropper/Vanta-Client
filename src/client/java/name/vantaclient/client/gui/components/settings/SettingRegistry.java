@@ -87,6 +87,19 @@ public final class SettingRegistry {
                     FarViewFeature::getQuality, FarViewFeature::setQuality));
             settings.add(new BooleanSetting("Adaptive Distance",
                     FarViewFeature::isAdaptiveEnabled, FarViewFeature::setAdaptiveEnabled));
+            settings.add(new SliderSetting("Terrain Sample Spacing", 2, 64, " chunks",
+                    () -> (double) FarViewFeature.getSampleSpacingChunks(),
+                    value -> FarViewFeature.setSampleSpacingChunks(value.intValue())));
+            settings.add(new BooleanSetting("Terrain Shading",
+                    FarViewFeature::isTerrainShadingEnabled,
+                    FarViewFeature::setTerrainShadingEnabled));
+            settings.add(new BooleanSetting("Distant Water",
+                    FarViewFeature::isWaterEnabled, FarViewFeature::setWaterEnabled));
+            settings.add(new BooleanSetting("Tree Silhouettes",
+                    FarViewFeature::isTreesEnabled, FarViewFeature::setTreesEnabled));
+            settings.add(new SliderSetting("Mesh Cache Budget", 64, 1024, " MiB",
+                    () -> (double) FarViewFeature.getCacheMegabytes(),
+                    value -> FarViewFeature.setCacheMegabytes(value.intValue())));
         }
 
         if (feature == MotionBlurFeature.INSTANCE) {
