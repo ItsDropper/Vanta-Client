@@ -93,6 +93,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
+        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
 
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
