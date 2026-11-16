@@ -7,7 +7,6 @@
     "MotionBlurMixin",
     "PostChainAccessor",
     "PostPassAccessor",
-    "ShaderManagerAccessor",
     "ZoomScrollMixin",
     "GuiMixin",
     "NotificationScreenMixin",
