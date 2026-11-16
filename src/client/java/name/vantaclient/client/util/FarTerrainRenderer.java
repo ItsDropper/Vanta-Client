@@ -114,7 +114,6 @@ public final class FarTerrainRenderer {
         FarTerrainRenderType.initialize();
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
         ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
-            if (!FarViewFeature.INSTANCE.isEnabled()) return;
             FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
             CHUNK_SNAPSHOTS.put(chunk.getPos().toLong(), snapshot);
             if (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
@@ -148,6 +147,7 @@ public final class FarTerrainRenderer {
 
         if (activeLevel != serverLevel) {
             clearWorld();
+            CHUNK_SNAPSHOTS.clear();
             activeLevel = serverLevel;
             effectiveFarDistance = FarViewFeature.getFarViewDistance();
         }
@@ -334,7 +334,8 @@ public final class FarTerrainRenderer {
                 climateSampler = randomState.sampler();
                 heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
                 seaLevel = level.getSeaLevel();
-                waterSurfaceEnabled = level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
+                waterSurfaceEnabled = FarViewFeature.isWaterEnabled()
+                        && level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
                 generationContextReady = true;
             }
             if (!PENDING.add(workKey)) continue;
@@ -451,9 +452,10 @@ public final class FarTerrainRenderer {
             }
         }
 
-        List<TreeImpostor> trees = generateTreeImpostors(key, heights, sampleWorldX,
+        List<TreeImpostor> trees = FarViewFeature.isTreesEnabled()
+                ? generateTreeImpostors(key, heights, sampleWorldX,
                 sampleWorldZ, biomeSource, climateSampler, seaLevel, sampleSpacing,
-                waterSurfaceEnabled);
+                waterSurfaceEnabled) : List.of();
         long[] waterCellMask = FarTerrainLodMath.createWaterCellMask(
                 heights, key.resolution, seaLevel, waterSurfaceEnabled);
         return new TileMesh(job.workKey.revision(),
@@ -556,13 +558,7 @@ public final class FarTerrainRenderer {
     }
 
     private static long getMeshCacheLimitBytes() {
-        long mebibyte = 1024L * 1024L;
-        return switch (FarViewFeature.getQuality()) {
-            case "PERFORMANCE" -> 64L * mebibyte;
-            case "HIGH" -> 128L * mebibyte;
-            case "ULTRA" -> 256L * mebibyte;
-            default -> 96L * mebibyte;
-        };
+        return (long) FarViewFeature.getCacheMegabytes() * 1024L * 1024L;
     }
 
     private static void trimMeshCache() {
