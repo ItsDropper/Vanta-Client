@@ -14,7 +14,7 @@ public class DropperUtilsConfig {
         return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
     }
 
-    public int configVersion = 19;
+    public int configVersion = 20;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -94,6 +94,11 @@ public class DropperUtilsConfig {
     /** Maximum singleplayer LOD range, in chunks. */
     public int farViewDistance = 2048;
     public String farViewQuality = "BALANCED";
+    public int farViewSampleSpacingChunks = 8;
+    public boolean farViewTerrainShading = true;
+    public boolean farViewWater = true;
+    public boolean farViewTrees = true;
+    public int farViewCacheMegabytes = 128;
 
     public float armorHudScale = 1.0f;
     public float debugHudScale = 1.0f;
@@ -156,6 +161,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 17) migrateV17();
                 if (INSTANCE.configVersion < 18) migrateV18();
                 if (INSTANCE.configVersion < 19) migrateV19();
+                if (INSTANCE.configVersion < 20) migrateV20();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -293,6 +299,17 @@ public class DropperUtilsConfig {
         INSTANCE.adaptiveEntityDistance = false;
         INSTANCE.minimumEntityDistanceRatio = 0.65f;
         INSTANCE.configVersion = 19;
+        save();
+    }
+
+    private static void migrateV20() {
+        System.out.println("[DropperUtils] Migrating config v19 -> v20");
+        INSTANCE.farViewSampleSpacingChunks = 8;
+        INSTANCE.farViewTerrainShading = true;
+        INSTANCE.farViewWater = true;
+        INSTANCE.farViewTrees = true;
+        INSTANCE.farViewCacheMegabytes = 128;
+        INSTANCE.configVersion = 20;
         save();
     }
 
