@@ -151,7 +151,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     this::showInstalled).height(22).flex(1)
                     .selected(installedView).enabled(!busy));
             sidebar.add(VantaUiNode.button("Discover", VantaUiNode.Icon.SEARCH,
-                    this::showDiscover).height(26).flex(1)
+                    this::showDiscover).height(22).flex(1)
                     .selected(!installedView).enabled(!busy));
         } else {
             sidebar.add(VantaUiNode.eyebrow("Library"));
@@ -320,18 +320,19 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     private VantaUiNode buildInstalledCard(ExperimentalModHotLoader.AvailableMod mod) {
-        VantaUiNode card = VantaUiNode.column(6, 10)
+        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
+        VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
                 .flex(1)
-                .height(132)
+                .height(compact ? 88 : 132)
                 .background(VantaUiTheme.PANEL_RAISED)
-                .padding(10);
+                .padding(compact ? 6 : 10);
         VantaUiNode top = VantaUiNode.row(8, 0)
-                .height(42)
+                .height(compact ? 28 : 42)
                 .align(VantaUiNode.Alignment.CENTER);
         String initial = mod.name().isBlank() ? "?" :
                 mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
         top.add(VantaUiNode.text(initial, VantaUiTheme.TEXT_PRIMARY)
-                .size(38, 38)
+                .size(compact ? 26 : 38, compact ? 26 : 38)
                 .background(VantaUiTheme.SURFACE_SELECTED)
                 .align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
@@ -349,12 +350,14 @@ public final class VantaModrinthBrowserScreen extends Screen {
         int stateColor = fabricLoaded ? 0xFF78D6A0
                 : sessionLoaded ? 0xFFFFC978 : VantaUiTheme.TEXT_SECONDARY;
         card.add(VantaUiNode.text(state, stateColor));
-        card.add(VantaUiNode.paragraph(fabricLoaded
-                        ? "Fabric loaded this mod at startup."
-                        : sessionLoaded
-                        ? "This mod was loaded experimentally in the current session."
-                        : "The JAR is present, but it has not been loaded by Fabric.",
-                VantaUiTheme.TEXT_MUTED, 2));
+        if (!compact) {
+            card.add(VantaUiNode.paragraph(fabricLoaded
+                            ? "Fabric loaded this mod at startup."
+                            : sessionLoaded
+                            ? "This mod was loaded experimentally in the current session."
+                            : "The JAR is present, but it has not been loaded by Fabric.",
+                    VantaUiTheme.TEXT_MUTED, 2));
+        }
         return card;
     }
 
