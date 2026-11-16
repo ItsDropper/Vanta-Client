@@ -708,14 +708,22 @@ public final class VantaSettingsScreen extends Screen {
                 VantaUiTheme.TEXT_SECONDARY, 2));
 
         VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
-        panel.add(VantaUiNode.dropdown("Accent color",
-                List.of("Blue", "Violet", "Emerald", "Cyan"),
-                () -> VantaClientPreferences.get().accent.name().charAt(0)
-                        + VantaClientPreferences.get().accent.name().substring(1).toLowerCase(Locale.ROOT), value -> {
-                    VantaClientPreferences.get().accent = VantaClientPreferences.Accent.valueOf(
-                            value.toUpperCase(Locale.ROOT));
-                    VantaClientPreferences.save();
-                }));
+        panel.add(VantaUiNode.text("Accent color", VantaUiTheme.TEXT_SECONDARY));
+        VantaUiNode accents = VantaUiNode.row(8, 8)
+                .height(34)
+                .align(VantaUiNode.Alignment.CENTER);
+        for (VantaClientPreferences.Accent accent : VantaClientPreferences.Accent.values()) {
+            String label = accent.name().charAt(0)
+                    + accent.name().substring(1).toLowerCase(Locale.ROOT);
+            accents.add(VantaUiNode.button(label, () -> {
+                VantaClientPreferences.get().accent = accent;
+                VantaClientPreferences.save();
+                rebuildUi();
+            }).height(30).background(accent.color())
+                    .selected(VantaClientPreferences.get().accent == accent)
+                    .tooltip("Use " + label.toLowerCase(Locale.ROOT) + " as the interface accent"));
+        }
+        panel.add(accents);
         panel.add(divider());
         panel.add(VantaUiNode.toggle("Interface animations", () -> VantaClientPreferences.get().animations,
                 value -> { VantaClientPreferences.get().animations = value; VantaClientPreferences.save(); }));
