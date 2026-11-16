@@ -161,8 +161,32 @@ public final class VantaUiNode {
         node.textFont = TITLE_FONT; node.preferredHeight = 22; node.boldText = true; return node;
     }
     public static VantaUiNode eyebrow(String value) {
-        VantaUiNode node = text(value, VantaUiTheme.TEXT_MUTED);
-        node.textFont = CAPTION_FONT; node.preferredHeight = 12; return node;
+        VantaUiNode node = text(sentenceCaseCaption(value), VantaUiTheme.TEXT_MUTED);
+        node.textFont = CAPTION_FONT;
+        node.preferredHeight = 13;
+        return node;
+    }
+
+    private static String sentenceCaseCaption(String value) {
+        if (value == null || value.isBlank()) return "";
+        String[] words = value.trim().toLowerCase(Locale.ROOT).split("\\s+");
+        StringBuilder result = new StringBuilder(value.length());
+        for (String word : words) {
+            if (result.length() > 0) result.append(' ');
+            String[] segments = word.split("/", -1);
+            for (int index = 0; index < segments.length; index++) {
+                if (index > 0) result.append('/');
+                String segment = segments[index];
+                if (segment.isEmpty()) continue;
+                String formatted = switch (segment) {
+                    case "hud", "fps", "cps", "ui", "api", "jar", "cpu", "gpu",
+                            "lan", "http", "https", "p2p", "rgb", "url" -> segment.toUpperCase(Locale.ROOT);
+                    default -> Character.toUpperCase(segment.charAt(0)) + segment.substring(1);
+                };
+                result.append(formatted);
+            }
+        }
+        return result.toString();
     }
     public static VantaUiNode icon(Icon icon) {
         if (icon == null) throw new IllegalArgumentException("Icon cannot be null.");
