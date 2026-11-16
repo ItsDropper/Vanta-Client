@@ -107,14 +107,14 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private VantaUiNode buildRetainedRoot() {
         boolean compact = width < 760;
-        VantaUiNode root = VantaUiNode.column(14, 16)
+        VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
                 .background(VantaUiTheme.CANVAS)
                 .clipToBounds();
 
-        VantaUiNode header = VantaUiNode.row(10, 0)
-                .height(54)
+        VantaUiNode header = VantaUiNode.row(compact ? 8 : 10, 0)
+                .height(compact ? 38 : 54)
                 .background(VantaUiTheme.PANEL)
-                .padding(14)
+                .padding(compact ? 8 : 14)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode identity = VantaUiNode.column(2, 0);
         identity.add(VantaUiNode.eyebrow("Mod library"));
@@ -131,15 +131,9 @@ public final class VantaIntegrationsScreen extends Screen {
             header.add(VantaUiNode.button("Settings", VantaUiNode.Icon.DISPLAY,
                     () -> minecraft.setScreen(new VantaSettingsScreen(this)))
                     .size(92, 32));
-        } else {
-            header.add(VantaUiNode.button("Modrinth", VantaUiNode.Icon.SEARCH,
-                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this)))
-                    .size(112, 30));
-            header.add(VantaUiNode.button("HUD", VantaUiNode.Icon.HUD,
-                    () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .size(84, 30));
         }
-        header.add(VantaUiNode.button("Close", this::onClose).size(compact ? 48 : 62, 32));
+        header.add(VantaUiNode.button(compact ? "×" : "Close", this::onClose)
+                .size(compact ? 28 : 62, 30));
         root.add(header);
 
         if (selection == Selection.INSTALLED_MOD) {
@@ -147,52 +141,82 @@ public final class VantaIntegrationsScreen extends Screen {
             return root;
         }
 
-        VantaUiNode toolbar = VantaUiNode.row(7, 0)
-                .height(38)
-                .align(VantaUiNode.Alignment.CENTER);
-        toolbar.add(VantaUiNode.textField("Search installed mods…",
-                () -> modSearchQuery, value -> modSearchQuery = value, 64)
-                .flex(1).minSize(70, 32));
-        toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                this::rebuildRetainedUi).size(100, 32));
-        toolbar.add(VantaUiNode.button("All", () -> {
-            favoritesOnly = false;
-            rebuildRetainedUi();
-        }).size(46, 32).selected(!favoritesOnly));
-        toolbar.add(VantaUiNode.button("★", () -> {
-            favoritesOnly = true;
-            rebuildRetainedUi();
-        }).size(42, 32).selected(favoritesOnly));
-        toolbar.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
-                .size(72, 32).enabled(!modScanInProgress));
-        root.add(toolbar);
+        if (compact) {
+            VantaUiNode search = VantaUiNode.row(6, 6)
+                    .height(34)
+                    .align(VantaUiNode.Alignment.CENTER);
+            search.add(VantaUiNode.textField("Search installed mods…",
+                    () -> modSearchQuery, value -> modSearchQuery = value, 64)
+                    .flex(1).minSize(70, 28));
+            search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
+                    this::rebuildRetainedUi).size(82, 28));
+            root.add(search);
 
-        VantaUiNode content = VantaUiNode.column(10, 14)
+            VantaUiNode filters = VantaUiNode.row(6, 6)
+                    .height(30)
+                    .align(VantaUiNode.Alignment.CENTER);
+            filters.add(VantaUiNode.button("All mods", () -> {
+                favoritesOnly = false;
+                rebuildRetainedUi();
+            }).size(92, 26).selected(!favoritesOnly));
+            filters.add(VantaUiNode.button("Favorites", () -> {
+                favoritesOnly = true;
+                rebuildRetainedUi();
+            }).size(92, 26).selected(favoritesOnly));
+            filters.add(VantaUiNode.spacer(1).flex(1));
+            filters.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
+                    .size(74, 26).enabled(!modScanInProgress));
+            root.add(filters);
+        } else {
+            VantaUiNode toolbar = VantaUiNode.row(7, 0)
+                    .height(38)
+                    .align(VantaUiNode.Alignment.CENTER);
+            toolbar.add(VantaUiNode.textField("Search installed mods…",
+                    () -> modSearchQuery, value -> modSearchQuery = value, 64)
+                    .flex(1).minSize(70, 32));
+            toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
+                    this::rebuildRetainedUi).size(100, 32));
+            toolbar.add(VantaUiNode.button("All", () -> {
+                favoritesOnly = false;
+                rebuildRetainedUi();
+            }).size(46, 32).selected(!favoritesOnly));
+            toolbar.add(VantaUiNode.button("★", () -> {
+                favoritesOnly = true;
+                rebuildRetainedUi();
+            }).size(42, 32).selected(favoritesOnly));
+            toolbar.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
+                    .size(72, 32).enabled(!modScanInProgress));
+            root.add(toolbar);
+        }
+
+        VantaUiNode content = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
                 .flex(1)
                 .background(VantaUiTheme.PANEL)
-                .padding(14);
+                .padding(compact ? 8 : 14);
         VantaUiNode heading = VantaUiNode.row(8, 0)
-                .height(24)
+                .height(compact ? 18 : 24)
                 .align(VantaUiNode.Alignment.CENTER);
         List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
-        heading.add(VantaUiNode.eyebrow(favoritesOnly ? "FAVORITE MODS" : "MODS IN THIS INSTANCE"));
+        heading.add(VantaUiNode.eyebrow(favoritesOnly ? "Favorites" : "Mods in this instance"));
         heading.add(VantaUiNode.spacer(1).flex(1));
         heading.add(VantaUiNode.dynamicText(
-                () -> modScanInProgress ? "SCANNING…" : filteredMods().size() + " / " + availableMods.size(),
+                () -> modScanInProgress ? "Scanning…" : filteredMods().size()
+                        + " / " + availableMods.size(),
                 VantaUiTheme.TEXT_MUTED));
         content.add(heading);
         if (modScanInProgress) {
-            content.add(VantaUiNode.progressIndicator("Scanning local mod inventory").height(30));
+            content.add(VantaUiNode.progressIndicator("Scanning local mod inventory")
+                    .height(compact ? 24 : 30));
         }
 
-        VantaUiNode cards = VantaUiNode.column(10, 10)
+        VantaUiNode cards = VantaUiNode.column(compact ? 6 : 10, compact ? 6 : 10)
                 .flex(1)
                 .background(VantaUiTheme.INPUT_SURFACE)
-                .padding(10)
+                .padding(compact ? 6 : 10)
                 .scrollable();
         if (mods.isEmpty()) {
             VantaUiNode empty = VantaUiNode.column(8, 12)
-                    .height(140)
+                    .height(compact ? 104 : 140)
                     .background(VantaUiTheme.PANEL_RAISED)
                     .align(VantaUiNode.Alignment.CENTER);
             empty.add(VantaUiNode.icon(modScanInProgress
@@ -213,8 +237,8 @@ public final class VantaIntegrationsScreen extends Screen {
         }
         content.add(cards);
         content.add(VantaUiNode.dynamicText(
-                () -> trim(hotLoadStatus, compact ? 42 : 108),
-                VantaUiTheme.TEXT_MUTED).height(26));
+                () -> trim(hotLoadStatus, compact ? 36 : 108),
+                VantaUiTheme.TEXT_MUTED).height(compact ? 18 : 26));
         root.add(content);
         return root;
     }
