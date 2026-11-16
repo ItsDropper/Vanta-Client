@@ -126,7 +126,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     value -> searchQuery = value,
                     100).flex(1).minSize(54, 30));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::search).size(90, 30).enabled(!busy));
+                    this::search).size(100, 30).enabled(!busy));
             search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
@@ -165,7 +165,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
         heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
         heading.add(VantaUiNode.spacer(1).flex(1));
         heading.add(VantaUiNode.dynamicText(
-                () -> busy ? "WORKING…" : trim(status, 24),
+                () -> busy ? "Working…" : trim(status, width < WIDE_LAYOUT_THRESHOLD ? 18 : 24),
                 VantaUiTheme.TEXT_MUTED).flex(1).align(VantaUiNode.Alignment.END));
         main.add(heading);
         if (busy) {
