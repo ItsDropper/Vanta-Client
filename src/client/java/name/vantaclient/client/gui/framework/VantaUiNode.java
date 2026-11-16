@@ -578,7 +578,16 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE, VantaUiTheme.applyPanelOpacity(background));
+        if (background != 0) {
+            int radius = background == VantaUiTheme.PANEL ? 9
+                    : background == VantaUiTheme.PANEL_RAISED ? 6 : VantaUiTheme.RADIUS_MEDIUM;
+            VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
+                    VantaUiTheme.applyPanelOpacity(background));
+            if (background == VantaUiTheme.PANEL) {
+                VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius,
+                        VantaUiTheme.BORDER_SUBTLE);
+            }
+        }
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
@@ -648,26 +657,23 @@ public final class VantaUiNode {
             }
             case BUTTON -> {
                 if (selected) {
-                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
-                            VantaUiTheme.withAlpha(accent, 46));
-                } else if (over) {
-                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM,
+                            VantaUiTheme.SURFACE_SELECTED);
+                    graphics.fill(x, y + 5, x + 2, y + height - 5, accent);
+                } else if (over || focused) {
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM,
                             VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
-                                    Math.round(110.0f + 45.0f * hoverAmount)));
-                } else if (focused) {
-                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_LARGE,
-                            VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER, 76));
+                                    Math.round(focused ? 220.0f : 165.0f + 35.0f * hoverAmount)));
                 }
-                VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
-                        VantaUiTheme.RADIUS_LARGE,
-                        !enabled ? 0x55798593
-                                : focused ? VantaUiTheme.withAlpha(accent, 230)
-                                : over ? VantaUiTheme.BUTTON_OUTLINE_HOVER
-                                : VantaUiTheme.BUTTON_OUTLINE);
+                if (focused) {
+                    VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
+                            VantaUiTheme.RADIUS_MEDIUM, VantaUiTheme.withAlpha(accent, 235));
+                }
                 int labelX = x, labelWidth = width;
                 if (icon != null) {
                     drawIcon(graphics, icon, x + 10, y + (height - 16) / 2, 16, 16,
-                            selected ? accent : over ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
+                            selected ? accent : over || focused
+                                    ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
                     labelX = x + 34;
                     labelWidth = width - 42;
                 }
