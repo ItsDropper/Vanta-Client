@@ -212,7 +212,7 @@ public final class VantaWorldShareScreen extends Screen {
                 active.add(VantaUiNode.text(guest.identityVerified()
                                 ? "Account key verified" : "Awaiting account key",
                         VantaUiTheme.TEXT_MUTED));
-                active.add(VantaUiNode.button("KICK",
+                active.add(VantaUiNode.button("Kick",
                         () -> VantaRemoteSessionManager.kickGuest(guest.requestId()))
                         .size(62, 30));
                 content.add(active);
@@ -245,7 +245,7 @@ public final class VantaWorldShareScreen extends Screen {
                     lanStatus.state() == VantaLanHostingService.State.HOSTED
                             ? "Create remote invite" : "Host world",
                     this::startRemoteHosting).height(36));
-            content.add(VantaUiNode.text(session.hostStatus(), VantaUiTheme.TEXT_MUTED));
+            content.add(VantaUiNode.paragraph(session.hostStatus(), VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
         }
 
         if (lanStatus.state() == VantaLanHostingService.State.FAILED) {
