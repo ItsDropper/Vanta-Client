@@ -105,7 +105,9 @@ public final class VantaSettingsScreen extends Screen {
                 .size(compact ? 28 : 34, compact ? 21 : 25));
         VantaUiNode brandLabels = VantaUiNode.column(1, 0);
         brandLabels.add(VantaUiNode.title("Vanta"));
-        brandLabels.add(VantaUiNode.text("Minecraft client", VantaUiTheme.TEXT_MUTED));
+        if (!compact) {
+            brandLabels.add(VantaUiNode.text("Minecraft client", VantaUiTheme.TEXT_MUTED));
+        }
         brand.add(brandLabels);
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
