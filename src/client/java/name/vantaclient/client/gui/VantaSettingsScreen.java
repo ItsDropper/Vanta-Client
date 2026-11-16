@@ -219,36 +219,38 @@ public final class VantaSettingsScreen extends Screen {
 
         VantaUiNode top = VantaUiNode.row(compact ? 0 : 14, 0);
         if (compact) top = VantaUiNode.column(10, 0);
-        VantaUiNode hero = VantaUiNode.column(14, 18)
+        VantaUiNode hero = VantaUiNode.column(compact ? 7 : 14, compact ? 9 : 18)
                 .flex(compact ? 1 : 2)
                 .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 12 : 18);
+                .padding(compact ? 9 : 18);
         VantaUiNode heroBrand = VantaUiNode.row(9, 0)
                 .align(VantaUiNode.Alignment.CENTER);
-        heroBrand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND)
-                .size(18, 18).iconColor(VantaClientPreferences.get().accent.color()));
-        heroBrand.add(VantaUiNode.text("Vanta workspace", VantaUiTheme.TEXT_SECONDARY));
-        heroBrand.add(VantaUiNode.spacer(1).flex(1));
-        heroBrand.add(VantaUiNode.text("Local configuration",
-                VantaUiTheme.STATUS_SUCCESS));
-        hero.add(heroBrand);
+        if (!compact) {
+            heroBrand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND)
+                    .size(18, 18).iconColor(VantaClientPreferences.get().accent.color()));
+            heroBrand.add(VantaUiNode.text("Vanta workspace", VantaUiTheme.TEXT_SECONDARY));
+            heroBrand.add(VantaUiNode.spacer(1).flex(1));
+            heroBrand.add(VantaUiNode.text("Local configuration",
+                    VantaUiTheme.STATUS_SUCCESS));
+            hero.add(heroBrand);
+        }
         hero.add(VantaUiNode.title(compact
                 ? "Your client, in control."
                 : "A better view of your game."));
         hero.add(VantaUiNode.paragraph(
                 "Shape the HUD, tune the visuals and keep useful tools close. Your settings stay on this device.",
-                VantaUiTheme.TEXT_SECONDARY, 3));
+                VantaUiTheme.TEXT_SECONDARY, compact ? 2 : 3));
         VantaUiNode actions = VantaUiNode.row(8, 0)
                 .align(VantaUiNode.Alignment.CENTER);
         actions.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD, () ->
                 Minecraft.getInstance().setScreen(
                         new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                .height(36).background(VantaUiTheme.SURFACE_SELECTED));
+                .height(compact ? 30 : 36).background(VantaUiTheme.SURFACE_SELECTED));
         actions.add(VantaUiNode.button("Browse modules", VantaUiNode.Icon.OVERVIEW, () -> {
             page = Page.HUD;
             selectedFeature = null;
             rebuildUi();
-        }).height(36));
+        }).height(compact ? 30 : 36));
         hero.add(actions);
         top.add(hero);
 
