@@ -224,12 +224,12 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 .height(compact ? 22 : 30)
                 .align(VantaUiNode.Alignment.CENTER);
         pagination.add(VantaUiNode.button("Previous", () -> changePage(-1))
-                .size(compact ? 52 : 64, compact ? 22 : 30).enabled(!busy && page > 0));
+                .size(compact ? 64 : 64, compact ? 24 : 30).enabled(!busy && page > 0));
         pagination.add(VantaUiNode.dynamicText(
                 () -> (page + 1) + " / " + pageCount(),
                 VantaUiTheme.TEXT_MUTED).width(34));
         pagination.add(VantaUiNode.button("Next", () -> changePage(1))
-                .size(compact ? 42 : 50, compact ? 22 : 30).enabled(!busy && page + 1 < pageCount()));
+                .size(compact ? 50 : 50, compact ? 24 : 30).enabled(!busy && page + 1 < pageCount()));
         pagination.add(VantaUiNode.spacer(1).flex(1));
         if (showSessionAction && !compactViewport) {
             pagination.add(VantaUiNode.button("Enable now*",
