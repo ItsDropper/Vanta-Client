@@ -15,6 +15,8 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             assertScale(1920, 960, 0.5f);
             assertScale(1920, 640, 1.0f / 3.0f);
             assertScale(1920, 480, 0.25f);
+            assertScale(1920, 320, 1.0f / 6.0f);
+            assertScale(1920, 160, 1.0f / 12.0f);
             assertScale(0, 0, 1.0f);
 
             var window = client.getWindow();
