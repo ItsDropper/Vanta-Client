@@ -84,8 +84,8 @@ public final class HudSettingsPanel {
         header.add(VantaUiNode.button("×", HudSettingsPanel::close)
                 .size(28, 28).tooltip("Close inspector"));
         panel.add(header);
-        panel.add(VantaUiNode.text("Changes apply immediately to the selected HUD element.",
-                VantaUiTheme.TEXT_SECONDARY));
+        panel.add(VantaUiNode.paragraph("Changes apply immediately to the selected HUD element.",
+                VantaUiTheme.TEXT_SECONDARY, 2));
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
 
         panel.add(VantaUiNode.text("Scale and position", VantaUiTheme.TEXT_MUTED));
@@ -139,9 +139,9 @@ public final class HudSettingsPanel {
                             Math.max(0, Math.min(24, (int) Math.round(value)));
                     VantaClientPreferences.save();
                 }));
-        panel.add(VantaUiNode.text(
+        panel.add(VantaUiNode.paragraph(
                 "Connected hitboxes merge into one continuous panel. Background opacity is 80%.",
-                VantaUiTheme.TEXT_MUTED));
+                VantaUiTheme.TEXT_MUTED, 2));
 
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
         panel.add(VantaUiNode.text("Grid and snapping", VantaUiTheme.TEXT_MUTED));
