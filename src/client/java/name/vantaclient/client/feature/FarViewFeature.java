@@ -8,7 +8,7 @@ public final class FarViewFeature extends Feature {
     public static final FarViewFeature INSTANCE = new FarViewFeature();
 
     private FarViewFeature() {
-        super("FarView", "Singleplayer distant-terrain LOD up to 2,048 chunks, with adjustable vanilla detail distance, biome-aware materials, blocky distant tree impostors, quality profiles and adaptive budgets. Structures, caves and post-generation edits are not represented.", Category.VISUAL);
+        super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback, adjustable sampling, water, shading, tree silhouettes and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
     }
 
     @Override
