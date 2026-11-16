@@ -66,7 +66,7 @@ public class HudEditorScreen extends Screen {
                     value -> {
                         VantaClientPreferences.get().hudShowGrid = value;
                         VantaClientPreferences.save();
-                    }).width(76).tooltip("Show or hide the alignment grid")
+                    }).width(92).tooltip("Show or hide the alignment grid")
                     .align(VantaUiNode.Alignment.CENTER));
         }
         toolbar.add(VantaUiNode.toggle("Snap",
