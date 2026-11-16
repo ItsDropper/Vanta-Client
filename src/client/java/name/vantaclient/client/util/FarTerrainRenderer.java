@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import name.vantaclient.client.feature.FarViewFeature;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -60,6 +62,8 @@ public final class FarTerrainRenderer {
     private static final int SKIRT_MIN_DEPTH = 24;
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
+    private static final int MAX_CAPTURED_CHUNKS = 16_384;
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
     private static volatile Set<TileKey> DESIRED = Set.of();
@@ -109,6 +113,18 @@ public final class FarTerrainRenderer {
     public static void register() {
         FarTerrainRenderType.initialize();
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
+        ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
+            if (!FarViewFeature.INSTANCE.isEnabled()) return;
+            FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
+            CHUNK_SNAPSHOTS.put(chunk.getPos().toLong(), snapshot);
+            if (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
+                // Keep the most recently ingested terrain; the LOD cache is separately bounded.
+                CHUNK_SNAPSHOTS.keySet().stream().limit(CHUNK_SNAPSHOTS.size() - MAX_CAPTURED_CHUNKS)
+                        .forEach(CHUNK_SNAPSHOTS::remove);
+            }
+        });
+        ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) ->
+                CHUNK_SNAPSHOTS.remove(chunk.getPos().toLong()));
     }
 
     public static void tick(Minecraft client) {
@@ -380,12 +396,22 @@ public final class FarTerrainRenderer {
             int worldZ = sampleWorldZ[z];
             for (int x = 0; x <= key.resolution; x++) {
                 int worldX = sampleWorldX[x];
-                int height = generator.getBaseHeight(worldX, worldZ,
-                        Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
+                FarTerrainChunkSnapshot actualChunk = CHUNK_SNAPSHOTS.get(
+                        net.minecraft.world.level.ChunkPos.asLong(
+                                Math.floorDiv(worldX, 16), Math.floorDiv(worldZ, 16)));
+                int localX = Math.floorMod(worldX, 16);
+                int localZ = Math.floorMod(worldZ, 16);
+                int height = actualChunk == null
+                        ? generator.getBaseHeight(worldX, worldZ,
+                                Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState)
+                        : actualChunk.height(localX, localZ);
                 height = Math.max(heightAccessor.getMinY(),
                         Math.min(heightAccessor.getMaxY(), height));
                 int index = z * side + x;
                 heights[index] = height;
+                if (actualChunk != null) {
+                    colors[index] = actualChunk.surfaceColor(localX, localZ);
+                }
                 Holder<Biome> biome = biomeSource.getNoiseBiome(
                         QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
                         QuartPos.fromBlock(worldZ), climateSampler);
@@ -393,7 +419,7 @@ public final class FarTerrainRenderer {
                 waterColors[index] = blendRgb(0xFF28566D, waterColor, 0.58f);
                 String biomePath = biome.unwrapKey()
                         .map(biomeKey -> biomeKey.identifier().getPath()).orElse("");
-                colors[index] = terrainColor(biomePath, height, seaLevel,
+                if (actualChunk == null) colors[index] = terrainColor(biomePath, height, seaLevel,
                         biome.value().getGrassColor(worldX, worldZ),
                         biome.value().getWaterColor(), worldX, worldZ);
             }
@@ -915,6 +941,7 @@ public final class FarTerrainRenderer {
 
     private static void clearWorld() {
         if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()) return;
+        CHUNK_SNAPSHOTS.clear();
         activeLevel = null;
         revision++;
         lastWorkerError = "";
