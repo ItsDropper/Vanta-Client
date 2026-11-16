@@ -40,7 +40,9 @@ public class HudEditorScreen extends Screen {
     private void buildToolbar() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
         boolean showGridControl = width >= 560;
-        VantaUiNode toolbar = VantaUiNode.row(12, 14).height(56)
+        VantaUiNode root = VantaUiNode.row(0, 0).height(56)
+                .align(VantaUiNode.Alignment.START);
+        VantaUiNode toolbar = VantaUiNode.row(12, 14).height(56).flex(1)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
@@ -72,7 +74,8 @@ public class HudEditorScreen extends Screen {
         toolbar.add(VantaUiNode.button("Done", this::onClose)
                 .height(32).background(VantaUiTheme.SURFACE_SELECTED)
                 .tooltip("Finish editing the HUD"));
-        toolbarRuntime = new VantaUiRuntime(toolbar);
+        root.add(toolbar);
+        toolbarRuntime = new VantaUiRuntime(root);
         toolbarRuntime.setScale((float) VantaClientPreferences.get().uiScale);
         toolbarRuntime.layout(font, width, height);
     }
