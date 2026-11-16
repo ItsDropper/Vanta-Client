@@ -137,7 +137,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     .size(112, 30));
             header.add(VantaUiNode.button("HUD", VantaUiNode.Icon.HUD,
                     () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .size(54, 30));
+                    .size(72, 30));
         }
         header.add(VantaUiNode.button("Close", this::onClose).size(compact ? 48 : 62, 32));
         root.add(header);
