@@ -25,11 +25,15 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             float compensation = HudElement.guiScaleCompensation(guiScale);
             ProbeHudElement element = new ProbeHudElement();
             int expectedWidth = Math.max(1, Math.round(100.0f * compensation));
+            int expectedHeight = Math.max(1, Math.round(20.0f * compensation));
             if (element.getScaledWidth() != expectedWidth
-                    || element.getHitboxWidth() != expectedWidth) {
-                throw new AssertionError("HUD rendering and hitbox width did not share GUI-scale compensation: "
-                        + element.getScaledWidth() + "/" + element.getHitboxWidth()
-                        + " != " + expectedWidth);
+                    || element.getHitboxWidth() != expectedWidth
+                    || element.getScaledHeight() != expectedHeight
+                    || element.getHitboxHeight() != expectedHeight) {
+                throw new AssertionError("HUD rendering and hitbox dimensions did not share GUI-scale compensation: "
+                        + element.getScaledWidth() + "x" + element.getScaledHeight() + "/"
+                        + element.getHitboxWidth() + "x" + element.getHitboxHeight()
+                        + " != " + expectedWidth + "x" + expectedHeight);
             }
 
             VanillaHudElement vanilla = new VanillaHudElement(VanillaHudElement.Part.HOTBAR);
@@ -40,9 +44,12 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             }
 
             float physicalWidth = element.getScaledWidth() * guiScale;
+            float physicalHeight = element.getScaledHeight() * guiScale;
             float roundingTolerance = Math.max(2.0f, guiScale * 0.5f + 0.5f);
-            if (Math.abs(physicalWidth - 100.0f) > roundingTolerance) {
-                throw new AssertionError("HUD physical size changed with GUI scale: " + physicalWidth);
+            if (Math.abs(physicalWidth - 100.0f) > roundingTolerance
+                    || Math.abs(physicalHeight - 20.0f) > roundingTolerance) {
+                throw new AssertionError("HUD physical size changed with GUI scale: "
+                        + physicalWidth + "x" + physicalHeight);
             }
         });
     }
