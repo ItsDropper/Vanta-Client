@@ -134,7 +134,7 @@ public final class VantaIntegrationsScreen extends Screen {
         } else {
             header.add(VantaUiNode.button("Modrinth", VantaUiNode.Icon.SEARCH,
                     () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this)))
-                    .size(90, 30));
+                    .size(112, 30));
             header.add(VantaUiNode.button("HUD", VantaUiNode.Icon.HUD,
                     () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
                     .size(54, 30));
@@ -154,7 +154,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 () -> modSearchQuery, value -> modSearchQuery = value, 64)
                 .flex(1).minSize(70, 32));
         toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                this::rebuildRetainedUi).size(66, 32));
+                this::rebuildRetainedUi).size(90, 32));
         toolbar.add(VantaUiNode.button("All", () -> {
             favoritesOnly = false;
             rebuildRetainedUi();
