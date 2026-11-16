@@ -41,7 +41,7 @@ public class HudEditorScreen extends Screen {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
         boolean compact = width < 560;
         boolean showGridControl = !compact;
-        int toolbarHeight = compact ? 44 : 56;
+        int toolbarHeight = compact ? 36 : 56;
 
         VantaUiNode root = VantaUiNode.row(0, 0).height(toolbarHeight)
                 .align(VantaUiNode.Alignment.START);
@@ -74,11 +74,11 @@ public class HudEditorScreen extends Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(84)
+                }).width(compact ? 70 : 84)
                 .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaUiNode.button("Done", this::onClose)
-                .size(compact ? 60 : 82, compact ? 28 : 32)
+                .size(compact ? 56 : 82, compact ? 26 : 32)
                 .background(VantaUiTheme.SURFACE_SELECTED)
                 .tooltip("Finish editing the HUD"));
         root.add(toolbar);
