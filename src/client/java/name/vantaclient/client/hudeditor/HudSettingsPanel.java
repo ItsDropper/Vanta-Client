@@ -70,7 +70,7 @@ public final class HudSettingsPanel {
         VantaUiNode panel = VantaUiNode.column(10, 14)
                 .width(268)
                 .height(panelHeight)
-                .background(VantaUiTheme.PANEL)
+                .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .scrollable();
 
         VantaUiNode header = VantaUiNode.row(8, 0)
