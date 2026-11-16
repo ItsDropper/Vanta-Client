@@ -84,12 +84,36 @@ public abstract class HudElement {
         return Float.isFinite(value) ? Math.max(0.25f, Math.min(value, 3.0f)) : 1.0f;
     }
 
+    /**
+     * Converts Minecraft's framebuffer-to-GUI density into a HUD compensation factor.
+     * A GUI scale of 2 maps two physical pixels to one GUI pixel, so custom HUD
+     * geometry must use half as many GUI pixels to retain its physical size.
+     */
+    public static float guiScaleCompensation(int windowWidth, int guiScaledWidth) {
+        if (windowWidth <= 0 || guiScaledWidth <= 0) return 1.0f;
+        float density = windowWidth / (float) guiScaledWidth;
+        if (!Float.isFinite(density) || density <= 1.0f) return 1.0f;
+        return Math.max(0.25f, 1.0f / density);
+    }
+
+    /** Override for editor representations of vanilla HUD parts, which Minecraft scales itself. */
+    protected boolean usesGuiScaleCompensation() {
+        return true;
+    }
+
+    private float effectiveScale() {
+        if (!usesGuiScaleCompensation()) return scale;
+        Minecraft mc = Minecraft.getInstance();
+        var window = mc.getWindow();
+        return scale * guiScaleCompensation(window.getWidth(), window.getGuiScaledWidth());
+    }
+
     public int getScaledWidth() {
-        return (int) (getMeasuredWidth() * scale);
+        return Math.max(1, Math.round(getMeasuredWidth() * effectiveScale()));
     }
 
     public int getScaledHeight() {
-        return (int) (getMeasuredHeight() * scale);
+        return Math.max(1, Math.round(getMeasuredHeight() * effectiveScale()));
     }
 
     /**
@@ -125,7 +149,7 @@ public abstract class HudElement {
     protected int getHitboxBottomOffset() { return 0; }
 
     private int scaledOffset(int offset) {
-        return Math.round(offset * scale);
+        return Math.round(offset * effectiveScale());
     }
 
     public int getHitboxX() { return getX() + scaledOffset(getHitboxLeftOffset()); }
@@ -180,7 +204,7 @@ public abstract class HudElement {
         graphics.pose().pushMatrix();
         try {
             graphics.pose().translate(getX(), getY());
-            graphics.pose().scale(scale);
+            graphics.pose().scale(effectiveScale());
             renderElement(graphics);
         } finally {
             graphics.pose().popMatrix();
