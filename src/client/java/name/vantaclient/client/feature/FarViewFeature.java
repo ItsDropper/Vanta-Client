@@ -70,18 +70,61 @@ public final class FarViewFeature extends Feature {
         if (!"PERFORMANCE".equals(value) && !"BALANCED".equals(value)
                 && !"HIGH".equals(value) && !"ULTRA".equals(value)) return;
         DropperUtilsConfig.get().farViewQuality = value;
+        DropperUtilsConfig.get().farViewSampleSpacingChunks = switch (value) {
+            case "PERFORMANCE" -> 64;
+            case "HIGH" -> 16;
+            case "ULTRA" -> 4;
+            default -> 32;
+        };
         DropperUtilsConfig.save();
         FarViewController.applyCurrentProfile();
     }
 
     /** Target grid-cell spacing for distant terrain, expressed in chunks. */
     public static int getSampleSpacingChunks() {
-        return switch (getQuality()) {
-            case "PERFORMANCE" -> 64;
-            case "HIGH" -> 16;
-            case "ULTRA" -> 8;
-            default -> 32;
-        };
+        return Math.max(2, Math.min(64,
+                DropperUtilsConfig.get().farViewSampleSpacingChunks));
+    }
+
+    public static void setSampleSpacingChunks(int value) {
+        DropperUtilsConfig.get().farViewSampleSpacingChunks = Math.max(2, Math.min(64, value));
+        DropperUtilsConfig.save();
+    }
+
+    public static boolean isTerrainShadingEnabled() {
+        return DropperUtilsConfig.get().farViewTerrainShading;
+    }
+
+    public static void setTerrainShadingEnabled(boolean value) {
+        DropperUtilsConfig.get().farViewTerrainShading = value;
+        DropperUtilsConfig.save();
+    }
+
+    public static boolean isWaterEnabled() {
+        return DropperUtilsConfig.get().farViewWater;
+    }
+
+    public static void setWaterEnabled(boolean value) {
+        DropperUtilsConfig.get().farViewWater = value;
+        DropperUtilsConfig.save();
+    }
+
+    public static boolean isTreesEnabled() {
+        return DropperUtilsConfig.get().farViewTrees;
+    }
+
+    public static void setTreesEnabled(boolean value) {
+        DropperUtilsConfig.get().farViewTrees = value;
+        DropperUtilsConfig.save();
+    }
+
+    public static int getCacheMegabytes() {
+        return Math.max(64, Math.min(1024, DropperUtilsConfig.get().farViewCacheMegabytes));
+    }
+
+    public static void setCacheMegabytes(int value) {
+        DropperUtilsConfig.get().farViewCacheMegabytes = Math.max(64, Math.min(1024, value));
+        DropperUtilsConfig.save();
     }
 
     public static boolean isAdaptiveEnabled() {
