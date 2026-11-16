@@ -43,7 +43,7 @@ public class HudEditorScreen extends Screen {
         VantaUiNode root = VantaUiNode.row(0, 0).height(56)
                 .align(VantaUiNode.Alignment.START);
         VantaUiNode toolbar = VantaUiNode.row(12, 14).height(56).flex(1)
-                .background(VantaUiTheme.PANEL)
+                .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
