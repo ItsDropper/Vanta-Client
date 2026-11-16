@@ -39,18 +39,17 @@ public class HudEditorScreen extends Screen {
 
     private void buildToolbar() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
-        int toolbarWidth = Math.min(520, Math.max(340, width - 24));
         boolean showGridControl = width >= 560;
-        VantaUiNode root = VantaUiNode.row(0, 0).height(52);
-        root.add(VantaUiNode.spacer(1).flex(1));
-        VantaUiNode toolbar = VantaUiNode.row(10, 10).width(toolbarWidth).height(48)
-                .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.START);
+        VantaUiNode toolbar = VantaUiNode.row(12, 14).height(56)
+                .background(VantaUiTheme.PANEL)
+                .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(24, 24).align(VantaUiNode.Alignment.CENTER));
-        VantaUiNode labels = VantaUiNode.column(2, 0).align(VantaUiNode.Alignment.CENTER);
-        labels.add(VantaUiNode.eyebrow("VANTA / HUD EDITOR"));
-        labels.add(VantaUiNode.text("Drag elements to position", VantaUiTheme.TEXT_SECONDARY));
+                .size(30, 22));
+        VantaUiNode labels = VantaUiNode.column(2, 0);
+        labels.add(VantaUiNode.title("HUD editor"));
+        labels.add(VantaUiNode.text("Arrange your on-screen elements",
+                VantaUiTheme.TEXT_MUTED));
         toolbar.add(labels);
         toolbar.add(VantaUiNode.spacer(1).flex(1));
         if (showGridControl) {
@@ -70,11 +69,10 @@ public class HudEditorScreen extends Screen {
                 }).width(showGridControl ? 84 : 72)
                 .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
-        toolbar.add(VantaUiNode.button("Done", this::onClose).height(30)
-                .align(VantaUiNode.Alignment.CENTER));
-        root.add(toolbar);
-        root.add(VantaUiNode.spacer(1).flex(1));
-        toolbarRuntime = new VantaUiRuntime(root);
+        toolbar.add(VantaUiNode.button("Done", this::onClose)
+                .height(32).background(VantaUiTheme.SURFACE_SELECTED)
+                .tooltip("Finish editing the HUD"));
+        toolbarRuntime = new VantaUiRuntime(toolbar);
         toolbarRuntime.setScale((float) VantaClientPreferences.get().uiScale);
         toolbarRuntime.layout(font, width, height);
     }
@@ -119,8 +117,8 @@ public class HudEditorScreen extends Screen {
 
     private void drawInteractionHint(GuiGraphics graphics, Minecraft mc) {
         String hint = HudSettingsPanel.isOpen()
-                ? "ADJUST SETTINGS  ·  DRAG TO REPOSITION  ·  ESC TO EXIT"
-                : "DRAG TO MOVE  ·  CLICK TO EDIT  ·  ESC TO EXIT";
+                ? "Adjust settings  ·  Drag to reposition  ·  Esc to exit"
+                : "Drag to move  ·  Click to edit  ·  Esc to exit";
         int width = mc.font.width(hint) + 28;
         int x = (this.width - width) / 2;
         int y = this.height - 30;
@@ -180,13 +178,13 @@ public class HudEditorScreen extends Screen {
     private void drawElementTag(GuiGraphics graphics, Minecraft mc,
                                 HudElement element, int accent) {
         String label = element instanceof VanillaHudElement vanilla
-                ? vanilla.getDisplayName().toUpperCase(java.util.Locale.ROOT)
+                ? vanilla.getDisplayName()
                 : switch (element.getClass().getSimpleName()) {
-                    case "ArmorHudElement" -> "ARMOR HUD";
-                    case "DebugHudElement" -> "DEBUG HUD";
-                    case "TotemCounterHudElement" -> "TOTEM COUNTER";
-                    case "PotionEffectsHudElement" -> "POTION EFFECTS";
-                    default -> "HUD ELEMENT";
+                    case "ArmorHudElement" -> "Armor HUD";
+                    case "DebugHudElement" -> "Debug HUD";
+                    case "TotemCounterHudElement" -> "Totem counter";
+                    case "PotionEffectsHudElement" -> "Potion effects";
+                    default -> "HUD element";
                 };
         int tagWidth = mc.font.width(label) + 16;
         int x = Math.max(8, Math.min(element.getHitboxX(), width - tagWidth - 8));
