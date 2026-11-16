@@ -485,47 +485,6 @@ public final class VantaSettingsScreen extends Screen {
         content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
     }
 
-        if (features.isEmpty()) {
-            String emptyMessage = searchQuery.isBlank()
-                    ? "There are no features in this category yet."
-                    : "No features match that search.";
-            content.add(VantaUiNode.paragraph(emptyMessage, VantaUiTheme.TEXT_MUTED, 1));
-            return;
-        }
-        VantaUiNode list = VantaUiNode.column(1, 8).background(VantaUiTheme.PANEL_RAISED);
-        for (Feature feature : features) {
-            VantaUiNode row = VantaUiNode.row(10, 7).align(VantaUiNode.Alignment.CENTER);
-            VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-            labels.add(VantaUiNode.text(feature.getName()));
-            if (VantaClientPreferences.get().showDescriptions
-                    && feature.getDescription() != null && !feature.getDescription().isBlank()) {
-                labels.add(VantaUiNode.paragraph(feature.getDescription(),
-                        VantaUiTheme.TEXT_MUTED, 2));
-            }
-            row.add(labels);
-            if (!SettingRegistry.getSettings(feature).isEmpty()) {
-                row.add(VantaUiNode.button("Configure", () -> {
-                    selectedFeature = feature;
-                    rebuildUi();
-                }).height(28).tooltip("Configure " + feature.getName()));
-            }
-            row.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
-                if (feature.isEnabled() != enabled) feature.toggle();
-                feature.saveConfig();
-                DropperUtilsConfig.save();
-            }).width(48).tooltip("Enable or disable " + feature.getName()));
-            list.add(row);
-            list.add(divider());
-        }
-        content.add(list);
-        long totalInCategory = FeatureRegistry.FEATURES.stream()
-                .filter(feature -> feature.getCategory() == category).count();
-        String resultSummary = searchQuery.isBlank()
-                ? totalInCategory + " features in this category"
-                : "Showing " + features.size() + " of " + totalInCategory + " features";
-        content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
-    }
-
     private boolean matchesSearch(Feature feature) {
         if (searchQuery.isBlank()) return true;
         if (feature.getName().toLowerCase(Locale.ROOT).contains(searchQuery)
