@@ -111,6 +111,13 @@ public final class VanillaHudElement extends HudElement {
     }
 
     @Override
+    protected boolean usesGuiScaleCompensation() {
+        // These are editor proxies for Minecraft-owned HUD elements. Their real
+        // renderers already apply the game's GUI scale and must not be compensated twice.
+        return false;
+    }
+
+    @Override
     public boolean shouldRender() {
         return HudEditorFeature.INSTANCE.isEnabled();
     }
