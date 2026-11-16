@@ -60,33 +60,63 @@ public final class HudSettingsPanel {
     private static VantaUiNode buildRoot() {
         Minecraft mc = Minecraft.getInstance();
         int viewportHeight = mc.getWindow().getGuiScaledHeight();
-        int panelHeight = Math.max(140, Math.min(390, viewportHeight - 104));
+        int panelHeight = Math.max(140, Math.min(430, viewportHeight - 104));
 
         VantaUiNode root = VantaUiNode.row(0, 0)
                 .height(Math.max(0, viewportHeight - 44))
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
 
-        VantaUiNode panel = VantaUiNode.column(9, 14)
-                .width(252)
+        VantaUiNode panel = VantaUiNode.column(10, 14)
+                .width(268)
                 .height(panelHeight)
                 .background(VantaUiTheme.PANEL)
                 .scrollable();
 
         VantaUiNode header = VantaUiNode.row(8, 0)
-                .height(34)
+                .height(38)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode labels = VantaUiNode.column(2, 0).flex(1);
-        labels.add(VantaUiNode.eyebrow("HUD / INSPECTOR"));
+        labels.add(VantaUiNode.text("Element inspector", VantaUiTheme.TEXT_MUTED));
         labels.add(VantaUiNode.dynamicText(HudSettingsPanel::selectedName,
                 VantaUiTheme.TEXT_PRIMARY));
         header.add(labels);
         header.add(VantaUiNode.button("×", HudSettingsPanel::close)
                 .size(28, 28).tooltip("Close inspector"));
         panel.add(header);
+        panel.add(VantaUiNode.text("Changes apply immediately to the selected HUD element.",
+                VantaUiTheme.TEXT_SECONDARY));
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
 
-        panel.add(VantaUiNode.eyebrow("BACKGROUND"));
+        panel.add(VantaUiNode.text("Scale and position", VantaUiTheme.TEXT_MUTED));
+        panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
+                () -> selected == null ? 1.0 : selected.getScale(),
+                value -> { if (selected != null) selected.setScale((float) value); }));
+        panel.add(VantaUiNode.button("Center on screen", () -> {
+            if (selected != null) selected.centerOnScreen();
+        }).height(32).tooltip("Move the selected HUD element to the center of the screen"));
+
+        if (selected instanceof ArmorHudElement armor) {
+            panel.add(VantaUiNode.dropdown("Orientation",
+                    java.util.List.of("Vertical", "Horizontal"),
+                    () -> armor.isHorizontal() ? "Horizontal" : "Vertical",
+                    value -> armor.setHorizontal(value.equals("Horizontal"))));
+        }
+
+        if (selected instanceof VanillaHudElement) {
+            panel.add(VantaUiNode.toggle("Apply vanilla HUD positions",
+                    VanillaHudFeature.INSTANCE::isEnabled,
+                    enabled -> {
+                        VanillaHudFeature.INSTANCE.setEnabled(enabled);
+                        VanillaHudFeature.INSTANCE.saveConfig();
+                    }));
+            panel.add(VantaUiNode.text(
+                    "Native Minecraft rendering is retained; this changes only the component position.",
+                    VantaUiTheme.TEXT_MUTED));
+        }
+
+        panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        panel.add(VantaUiNode.text("Background", VantaUiTheme.TEXT_MUTED));
         panel.add(VantaUiNode.toggle("Show dark background",
                 () -> selected != null && VantaClientPreferences.get()
                         .isHudBackgroundEnabled(selected.getBackgroundId()),
@@ -110,37 +140,11 @@ public final class HudSettingsPanel {
                     VantaClientPreferences.save();
                 }));
         panel.add(VantaUiNode.text(
-                "Dark gray at 80% opacity. Connected hitboxes merge into one continuous panel.",
+                "Connected hitboxes merge into one continuous panel. Background opacity is 80%.",
                 VantaUiTheme.TEXT_MUTED));
 
-        if (selected instanceof ArmorHudElement armor) {
-            panel.add(VantaUiNode.dropdown("Orientation",
-                    java.util.List.of("Vertical", "Horizontal"),
-                    () -> armor.isHorizontal() ? "Horizontal" : "Vertical",
-                    value -> armor.setHorizontal(value.equals("Horizontal"))));
-        }
-
-        if (selected instanceof VanillaHudElement) {
-            panel.add(VantaUiNode.toggle("Apply vanilla HUD positions",
-                    VanillaHudFeature.INSTANCE::isEnabled,
-                    enabled -> {
-                        VanillaHudFeature.INSTANCE.setEnabled(enabled);
-                        VanillaHudFeature.INSTANCE.saveConfig();
-                    }));
-            panel.add(VantaUiNode.text(
-                    "The selected vanilla component keeps its native rendering and uses the position set here.",
-                    VantaUiTheme.TEXT_MUTED));
-        }
-
-        panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
-                () -> selected == null ? 1.0 : selected.getScale(),
-                value -> { if (selected != null) selected.setScale((float) value); }));
-        panel.add(VantaUiNode.button("Center element", () -> {
-            if (selected != null) selected.centerOnScreen();
-        }).height(30).tooltip("Move the selected HUD element to the center of the screen"));
-
         panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
-        panel.add(VantaUiNode.eyebrow("ALIGNMENT"));
+        panel.add(VantaUiNode.text("Grid and snapping", VantaUiTheme.TEXT_MUTED));
         panel.add(VantaUiNode.toggle("Snap to grid",
                 () -> VantaClientPreferences.get().hudSnapToGrid,
                 value -> {
@@ -165,7 +169,7 @@ public final class HudSettingsPanel {
                 .height(30));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
-                .width(252)
+                .width(268)
                 .height(Math.max(0, viewportHeight - 44))
                 .align(VantaUiNode.Alignment.START);
         inspectorSlot.add(VantaUiNode.spacer(1).height(60));
