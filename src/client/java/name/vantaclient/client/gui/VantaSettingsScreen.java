@@ -412,7 +412,7 @@ public final class VantaSettingsScreen extends Screen {
                 .align(VantaUiNode.Alignment.END);
         summary.add(VantaUiNode.dynamicText(
                 () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " active",
-                VantaUiTheme.STATUS_SUCCESS));
+                VantaUiTheme.TEXT_SECONDARY));
         summary.add(VantaUiNode.text(categoryFeatures.size() + " available",
                 VantaUiTheme.TEXT_MUTED));
         hero.add(summary);
@@ -472,7 +472,6 @@ public final class VantaSettingsScreen extends Screen {
                 if (feature.isEnabled() != enabled) feature.toggle();
                 feature.saveConfig();
                 DropperUtilsConfig.save();
-                rebuildUi();
             }).width(48).tooltip("Enable or disable " + feature.getName()));
             list.add(row);
             list.add(divider());
