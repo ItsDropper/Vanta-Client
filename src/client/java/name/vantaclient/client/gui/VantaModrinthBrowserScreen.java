@@ -95,13 +95,13 @@ public final class VantaModrinthBrowserScreen extends Screen {
         if (runtime != null) runtime.dispose();
         boolean compact = width < WIDE_LAYOUT_THRESHOLD;
 
-        VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
+        VantaUiNode root = VantaUiNode.column(compact ? 4 : 14, compact ? 5 : 16)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
-                .padding(compact ? 6 : 14)
+                .padding(compact ? 4 : 14)
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, 0)
-                .height(compact ? 36 : 50)
+                .height(compact ? 30 : 50)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
         identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
@@ -118,7 +118,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
         if (!installedView) {
             VantaUiNode search = VantaUiNode.row(compact ? 6 : 10, compact ? 6 : 10)
-                    .height(compact ? 36 : 48)
+                    .height(compact ? 30 : 48)
                     .background(VantaUiTheme.INPUT_SURFACE)
                     .align(VantaUiNode.Alignment.CENTER);
             search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
@@ -128,7 +128,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                     100).flex(1).minSize(54, 30));
             search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
                     this::search).size(100, 30).enabled(!busy));
-            search.add(VantaUiNode.button("Clear", () -> {
+            if (!compact) search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
                 search();
@@ -140,7 +140,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                 ? VantaUiNode.column(6, 0).flex(1)
                 : VantaUiNode.row(14, 0).flex(1);
         VantaUiNode sidebar = compact
-                ? VantaUiNode.row(6, 6).height(32)
+                ? VantaUiNode.row(4, 4).height(26)
                         .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
                         .padding(4)
                 : VantaUiNode.column(8, 10).width(164)
@@ -148,7 +148,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
                         .padding(12);
         if (compact) {
             sidebar.add(VantaUiNode.button("Installed", VantaUiNode.Icon.OVERVIEW,
-                    this::showInstalled).height(26).flex(1)
+                    this::showInstalled).height(22).flex(1)
                     .selected(installedView).enabled(!busy));
             sidebar.add(VantaUiNode.button("Discover", VantaUiNode.Icon.SEARCH,
                     this::showDiscover).height(26).flex(1)
@@ -170,12 +170,12 @@ public final class VantaModrinthBrowserScreen extends Screen {
         }
         body.add(sidebar);
 
-        VantaUiNode main = VantaUiNode.column(compact ? 5 : 8, compact ? 6 : 10)
+        VantaUiNode main = VantaUiNode.column(compact ? 4 : 8, compact ? 4 : 10)
                 .flex(1)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                .padding(compact ? 7 : 14);
+                .padding(compact ? 5 : 14);
         VantaUiNode heading = VantaUiNode.row(8, 0)
-                .height(compact ? 18 : 24)
+                .height(compact ? 16 : 24)
                 .align(VantaUiNode.Alignment.CENTER);
         heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
         heading.add(VantaUiNode.spacer(1).flex(1));
@@ -187,10 +187,10 @@ public final class VantaModrinthBrowserScreen extends Screen {
             main.add(VantaUiNode.progressIndicator("Working…").height(30));
         }
 
-        VantaUiNode cards = VantaUiNode.column(compact ? 5 : 8, compact ? 5 : 8)
+        VantaUiNode cards = VantaUiNode.column(compact ? 4 : 8, compact ? 4 : 8)
                 .flex(1)
                 .background(VantaUiTheme.INPUT_SURFACE)
-                .padding(compact ? 5 : 8)
+                .padding(compact ? 4 : 8)
                 .scrollable();
         if (busy && visibleCount() == 0) {
             VantaUiNode loading = VantaUiNode.column(8, 16)
@@ -219,17 +219,17 @@ public final class VantaModrinthBrowserScreen extends Screen {
         boolean compactViewport = width < WIDE_LAYOUT_THRESHOLD;
         boolean showSessionAction = enableModId != null;
         VantaUiNode footer = VantaUiNode.column(4, 0)
-                .height(showSessionAction && compactViewport ? 62 : compact ? 28 : 32);
+                .height(showSessionAction && compactViewport ? 54 : compact ? 22 : 32);
         VantaUiNode pagination = VantaUiNode.row(6, 0)
-                .height(compact ? 26 : 30)
+                .height(compact ? 22 : 30)
                 .align(VantaUiNode.Alignment.CENTER);
         pagination.add(VantaUiNode.button("Previous", () -> changePage(-1))
-                .size(compact ? 58 : 64, compact ? 26 : 30).enabled(!busy && page > 0));
+                .size(compact ? 52 : 64, compact ? 22 : 30).enabled(!busy && page > 0));
         pagination.add(VantaUiNode.dynamicText(
                 () -> (page + 1) + " / " + pageCount(),
                 VantaUiTheme.TEXT_MUTED).width(34));
         pagination.add(VantaUiNode.button("Next", () -> changePage(1))
-                .size(compact ? 46 : 50, compact ? 26 : 30).enabled(!busy && page + 1 < pageCount()));
+                .size(compact ? 42 : 50, compact ? 22 : 30).enabled(!busy && page + 1 < pageCount()));
         pagination.add(VantaUiNode.spacer(1).flex(1));
         if (showSessionAction && !compactViewport) {
             pagination.add(VantaUiNode.button("Enable now*",
@@ -264,7 +264,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
         for (int index = start; index < end; index += columns) {
             VantaUiNode row = VantaUiNode.row(8, 0)
-                    .height(width < WIDE_LAYOUT_THRESHOLD ? 108 : 132)
+                    .height(width < WIDE_LAYOUT_THRESHOLD ? 88 : 132)
                     .align(VantaUiNode.Alignment.STRETCH);
             row.add(installedView
                     ? buildInstalledCard(installedMods.get(index))
@@ -281,20 +281,21 @@ public final class VantaModrinthBrowserScreen extends Screen {
     }
 
     private VantaUiNode buildProjectCard(ModrinthBrowserService.Project project) {
-        VantaUiNode card = VantaUiNode.column(6, 10)
+        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
+        VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
                 .flex(1)
-                .height(132)
+                .height(compact ? 88 : 132)
                 .background(VantaUiTheme.PANEL_RAISED)
-                .padding(10);
+                .padding(compact ? 6 : 10);
 
         VantaUiNode top = VantaUiNode.row(8, 0)
-                .height(42)
+                .height(compact ? 28 : 42)
                 .align(VantaUiNode.Alignment.CENTER);
         String initial = project.title().isBlank() ? "?" :
                 project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
         top.add(VantaUiNode.dynamicImage(
                 () -> projectIconTextures.get(project.id()), initial)
-                .size(38, 38)
+                .size(compact ? 26 : 38, compact ? 26 : 38)
                 .background(VantaUiTheme.SURFACE_SELECTED)
                 .align(VantaUiNode.Alignment.CENTER));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
@@ -302,16 +303,18 @@ public final class VantaModrinthBrowserScreen extends Screen {
         labels.add(VantaUiNode.text(trim(project.author(), 22), VantaUiTheme.TEXT_MUTED));
         top.add(labels);
         card.add(top);
-        card.add(VantaUiNode.paragraph(trim(project.description(), 180),
-                VantaUiTheme.TEXT_SECONDARY, 2).flex(1));
+        if (!compact) {
+            card.add(VantaUiNode.paragraph(trim(project.description(), 180),
+                    VantaUiTheme.TEXT_SECONDARY, 2).flex(1));
+        }
 
         VantaUiNode footer = VantaUiNode.row(8, 0)
-                .height(30)
+                .height(compact ? 24 : 30)
                 .align(VantaUiNode.Alignment.CENTER);
         footer.add(VantaUiNode.text(compact(project.downloads()) + " downloads",
                 VantaUiTheme.TEXT_MUTED).flex(1));
         footer.add(VantaUiNode.button("Install", VantaUiNode.Icon.SPARK,
-                () -> install(project)).height(28).enabled(!busy));
+                () -> install(project)).height(compact ? 24 : 28).enabled(!busy));
         card.add(footer);
         return card;
     }
