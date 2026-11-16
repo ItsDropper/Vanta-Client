@@ -607,7 +607,7 @@ public final class VantaUiNode {
                     : background == VantaUiTheme.PANEL_RAISED ? 6 : VantaUiTheme.RADIUS_MEDIUM;
             VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
                     VantaUiTheme.applyPanelOpacity(background));
-            if (background == VantaUiTheme.PANEL) {
+            if (background == VantaUiTheme.PANEL || background == VantaUiTheme.TOOLTIP_SURFACE) {
                 VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius,
                         VantaUiTheme.BORDER_SUBTLE);
             }
