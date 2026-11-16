@@ -92,37 +92,45 @@ public final class VantaSettingsScreen extends Screen {
 
     private VantaUiNode buildRoot() {
         boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
-        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
-        VantaUiNode header = VantaUiNode.row(12, 12)
-                .height(compact ? 42 : 48)
+        VantaUiNode root = VantaUiNode.column(10, 14).background(VantaUiTheme.CANVAS);
+
+        VantaUiNode header = VantaUiNode.row(14, 16)
+                .height(compact ? 46 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode brand = VantaUiNode.row(9, 0).align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode brand = VantaUiNode.row(10, 0).align(VantaUiNode.Alignment.CENTER);
         brand.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "dropperutils", "textures/gui/vanta_logo_transparent.png")).size(34, 24));
+                "dropperutils", "textures/gui/vanta_logo_transparent.png")).size(34, 25));
         VantaUiNode brandLabels = VantaUiNode.column(1, 0);
-        brandLabels.add(VantaUiNode.title("VANTA"));
-        brandLabels.add(VantaUiNode.eyebrow("CLIENT SETTINGS"));
+        brandLabels.add(VantaUiNode.title("Vanta"));
+        brandLabels.add(VantaUiNode.text("Minecraft client", VantaUiTheme.TEXT_MUTED));
         brand.add(brandLabels);
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
         if (!compact) {
-            header.add(VantaUiNode.dynamicText(() -> Minecraft.getInstance().getFps() + " FPS",
-                    VantaUiTheme.TEXT_MUTED));
+            VantaUiNode performance = VantaUiNode.row(7, 9).height(30)
+                    .background(VantaUiTheme.SURFACE)
+                    .align(VantaUiNode.Alignment.CENTER);
+            performance.add(VantaUiNode.icon(VantaUiNode.Icon.DISPLAY)
+                    .size(14, 14).iconColor(VantaUiTheme.STATUS_SUCCESS));
+            performance.add(VantaUiNode.dynamicText(
+                    () -> Minecraft.getInstance().getFps() + " FPS",
+                    VantaUiTheme.TEXT_SECONDARY));
+            header.add(performance);
         } else {
-            header.add(VantaUiNode.button("MODS", () -> Minecraft.getInstance().setScreen(
+            header.add(VantaUiNode.button("Mods", () -> Minecraft.getInstance().setScreen(
                     new VantaIntegrationsScreen(this))).height(30));
         }
-        header.add(VantaUiNode.button("CLOSE", this::onClose)
+        header.add(VantaUiNode.button("Close", this::onClose)
                 .height(30).tooltip("Close settings"));
         root.add(header);
 
         VantaUiNode body = compact
                 ? VantaUiNode.column(8, 0).flex(1)
-                : VantaUiNode.row(12, 0).flex(1);
+                : VantaUiNode.row(14, 0).flex(1);
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(4, 4).height(38).background(VantaUiTheme.PANEL)
+            navigation = VantaUiNode.row(4, 4).height(40).background(VantaUiTheme.PANEL)
                     .justify(VantaUiNode.Justification.CENTER);
             navigation.add(compactNav(Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
@@ -132,24 +140,27 @@ public final class VantaSettingsScreen extends Screen {
             navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
-            navigation = VantaUiNode.column(5, 10).width(154).background(VantaUiTheme.PANEL);
-            navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
+            navigation = VantaUiNode.column(6, 12).width(178).background(VantaUiTheme.PANEL);
+            navigation.add(VantaUiNode.text("Workspace", VantaUiTheme.TEXT_MUTED));
             navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(nav("HUD", Page.HUD, VantaUiNode.Icon.HUD));
             navigation.add(nav("Visual", Page.VISUAL, VantaUiNode.Icon.VISUALS));
             navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
             navigation.add(nav("Miscellaneous", Page.MISC, VantaUiNode.Icon.SPARK));
+            navigation.add(VantaUiNode.spacer(1).flex(1));
+            navigation.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+            navigation.add(VantaUiNode.text("Preferences", VantaUiTheme.TEXT_MUTED));
             navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(nav("Controls", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
             navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(VantaUiNode.eyebrow("TOOLS"));
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
                     () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
-                    .height(34).tooltip("Open installed mods and integrations"));
-            navigation.add(VantaUiNode.text("LOCAL CONFIGURATION", VantaUiTheme.TEXT_MUTED));
+                    .height(36).tooltip("Open installed mods and integrations"));
+            navigation.add(VantaUiNode.text("Configuration stays on this device",
+                    VantaUiTheme.TEXT_MUTED));
         }
 
-        VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 18)
+        VantaUiNode content = VantaUiNode.column(16, compact ? 14 : 22)
                 .flex(1).background(VantaUiTheme.PANEL).scrollable();
         addPageContent(content);
         body.add(navigation);
@@ -199,45 +210,76 @@ public final class VantaSettingsScreen extends Screen {
     }
 
     private void addOverview(VantaUiNode content) {
-        content.add(VantaUiNode.eyebrow("VANTA CLIENT / WORKSPACE"));
-        content.add(VantaUiNode.title("Settings"));
-        content.add(VantaUiNode.paragraph(
-                "A focused control center for your client features, HUD and interface preferences.",
+        VantaUiNode hero = VantaUiNode.column(12, 18)
+                .background(VantaUiTheme.PANEL_RAISED);
+        VantaUiNode heroTop = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+        heroTop.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND)
+                .size(18, 18).iconColor(VantaClientPreferences.get().accent.color()));
+        heroTop.add(VantaUiNode.text("Client workspace", VantaUiTheme.TEXT_SECONDARY));
+        heroTop.add(VantaUiNode.spacer(1).flex(1));
+        heroTop.add(VantaUiNode.text("Running in Minecraft",
+                VantaUiTheme.STATUS_SUCCESS));
+        hero.add(heroTop);
+        hero.add(VantaUiNode.title("Your setup, in view."));
+        hero.add(VantaUiNode.paragraph(
+                "Tune the information on screen, shape the visual experience, and keep every feature within reach.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
+        VantaUiNode actions = VantaUiNode.row(8, 0);
+        actions.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD, () ->
+                Minecraft.getInstance().setScreen(
+                        new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                .height(34));
+        actions.add(VantaUiNode.button("Browse modules", VantaUiNode.Icon.OVERVIEW, () -> {
+            page = Page.HUD;
+            selectedFeature = null;
+            rebuildUi();
+        }).height(34));
+        hero.add(actions);
+        content.add(hero);
 
-        VantaUiNode summary = VantaUiNode.row(10, 14).background(VantaUiTheme.PANEL_RAISED);
-        summary.add(metric("FEATURES", () -> Integer.toString(FeatureRegistry.FEATURES.size())));
-        summary.add(metric("ENABLED", () -> Long.toString(FeatureRegistry.FEATURES.stream()
-                .filter(Feature::isEnabled).count())));
-        summary.add(metric("ACCENT", () -> VantaClientPreferences.get().accent.name()));
-        content.add(summary);
+        VantaUiNode overviewStats = VantaUiNode.row(0, 0)
+                .background(VantaUiTheme.PANEL_RAISED);
+        overviewStats.add(metric("Available features",
+                () -> Integer.toString(FeatureRegistry.FEATURES.size())).flex(1));
+        overviewStats.add(VantaUiNode.spacer(1).width(1).background(VantaUiTheme.BORDER_SUBTLE));
+        overviewStats.add(metric("Currently enabled",
+                () -> Long.toString(FeatureRegistry.FEATURES.stream()
+                        .filter(Feature::isEnabled).count())).flex(1));
+        overviewStats.add(VantaUiNode.spacer(1).width(1).background(VantaUiTheme.BORDER_SUBTLE));
+        overviewStats.add(metric("Active accent",
+                () -> VantaClientPreferences.get().accent.name()).flex(1));
+        content.add(overviewStats);
 
-        content.add(sectionTitle(VantaUiNode.Icon.HUD, "Feature categories",
-                "Choose a category to configure its modules"));
-        VantaUiNode categories = VantaUiNode.column(4, 8).background(VantaUiTheme.PANEL_RAISED);
-        categories.add(categoryShortcut("HUD", "Overlays and on-screen information", Page.HUD,
-                VantaUiNode.Icon.HUD));
+        content.add(sectionTitle(VantaUiNode.Icon.HUD, "Feature areas",
+                "Choose where you want to make a change"));
+        VantaUiNode categories = VantaUiNode.column(0, 10)
+                .background(VantaUiTheme.PANEL_RAISED);
+        categories.add(categoryShortcut("HUD", "Overlays, counters and vanilla HUD positioning",
+                Page.HUD, VantaUiNode.Icon.HUD));
         categories.add(divider());
-        categories.add(categoryShortcut("Visual", "Rendering and visual effects", Page.VISUAL,
-                VantaUiNode.Icon.VISUALS));
+        categories.add(categoryShortcut("Visual", "Rendering, lighting and visual effects",
+                Page.VISUAL, VantaUiNode.Icon.VISUALS));
         categories.add(divider());
-        categories.add(categoryShortcut("Combat", "Combat-related utilities", Page.COMBAT,
-                VantaUiNode.Icon.CROSSHAIR));
+        categories.add(categoryShortcut("Combat", "Combat-related client utilities",
+                Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
         categories.add(divider());
-        categories.add(categoryShortcut("Miscellaneous", "Other client features", Page.MISC,
-                VantaUiNode.Icon.SPARK));
+        categories.add(categoryShortcut("Miscellaneous", "Additional tools and quality-of-life features",
+                Page.MISC, VantaUiNode.Icon.SPARK));
         content.add(categories);
 
-        content.add(sectionTitle(VantaUiNode.Icon.DISPLAY, "Interface", "Appearance and accessibility"));
-        VantaUiNode appearance = VantaUiNode.row(8, 10).background(VantaUiTheme.PANEL_RAISED)
+        VantaUiNode preferences = VantaUiNode.row(10, 12)
+                .background(VantaUiTheme.PANEL_RAISED)
                 .align(VantaUiNode.Alignment.CENTER);
-        appearance.add(VantaUiNode.text("Customize colors, spacing and motion", VantaUiTheme.TEXT_SECONDARY)
-                .flex(1));
-        appearance.add(VantaUiNode.button("Customize", VantaUiNode.Icon.DISPLAY, () -> {
+        VantaUiNode preferenceText = VantaUiNode.column(3, 0).flex(1);
+        preferenceText.add(VantaUiNode.text("Make the interface yours"));
+        preferenceText.add(VantaUiNode.text("Colors, scale, spacing and motion",
+                VantaUiTheme.TEXT_MUTED));
+        preferences.add(preferenceText);
+        preferences.add(VantaUiNode.button("Appearance", VantaUiNode.Icon.DISPLAY, () -> {
             page = Page.APPEARANCE;
             rebuildUi();
-        }));
-        content.add(appearance);
+        }).height(32));
+        content.add(preferences);
     }
 
     private VantaUiNode metric(String label, java.util.function.Supplier<String> value) {
