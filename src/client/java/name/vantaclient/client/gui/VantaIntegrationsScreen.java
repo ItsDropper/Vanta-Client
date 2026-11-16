@@ -112,7 +112,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 10, 0)
-                .height(compact ? 38 : 54)
+                .height(compact ? 52 : 54)
                 .background(VantaUiTheme.PANEL)
                 .padding(compact ? 8 : 14)
                 .align(VantaUiNode.Alignment.CENTER);
