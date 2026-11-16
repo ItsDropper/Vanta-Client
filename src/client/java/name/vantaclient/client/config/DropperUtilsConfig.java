@@ -94,7 +94,7 @@ public class DropperUtilsConfig {
     /** Maximum singleplayer LOD range, in chunks. */
     public int farViewDistance = 2048;
     public String farViewQuality = "BALANCED";
-    public int farViewSampleSpacingChunks = 8;
+    public int farViewSampleSpacingChunks = 32;
     public boolean farViewTerrainShading = true;
     public boolean farViewWater = true;
     public boolean farViewTrees = true;
@@ -304,7 +304,7 @@ public class DropperUtilsConfig {
 
     private static void migrateV20() {
         System.out.println("[DropperUtils] Migrating config v19 -> v20");
-        INSTANCE.farViewSampleSpacingChunks = 8;
+        INSTANCE.farViewSampleSpacingChunks = 32;
         INSTANCE.farViewTerrainShading = true;
         INSTANCE.farViewWater = true;
         INSTANCE.farViewTrees = true;
