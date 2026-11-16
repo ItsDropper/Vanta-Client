@@ -94,13 +94,13 @@ public final class VantaModrinthBrowserScreen extends Screen {
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
 
-        VantaUiNode root = VantaUiNode.column(12, 14)
+        VantaUiNode root = VantaUiNode.column(14, 16)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
                 .padding(14)
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(12, 0)
-                .height(44)
+                .height(50)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
         identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
@@ -116,8 +116,8 @@ public final class VantaModrinthBrowserScreen extends Screen {
         root.add(header);
 
         if (!installedView) {
-            VantaUiNode search = VantaUiNode.row(8, 8)
-                    .height(46)
+            VantaUiNode search = VantaUiNode.row(10, 10)
+                    .height(48)
                     .background(VantaUiTheme.INPUT_SURFACE)
                     .align(VantaUiNode.Alignment.CENTER);
             search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
@@ -135,11 +135,11 @@ public final class VantaModrinthBrowserScreen extends Screen {
             root.add(search);
         }
 
-        VantaUiNode body = VantaUiNode.row(12, 0).flex(1);
+        VantaUiNode body = VantaUiNode.row(14, 0).flex(1);
         VantaUiNode sidebar = VantaUiNode.column(8, 10)
-                .width(142)
+                .width(164)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                .padding(10);
+                .padding(12);
         sidebar.add(VantaUiNode.eyebrow("LIBRARY"));
         sidebar.add(VantaUiNode.button("Installed", VantaUiNode.Icon.OVERVIEW,
                 this::showInstalled).height(34).selected(installedView).enabled(!busy));
@@ -158,7 +158,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
         VantaUiNode main = VantaUiNode.column(8, 10)
                 .flex(1)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                .padding(10);
+                .padding(14);
         VantaUiNode heading = VantaUiNode.row(8, 0)
                 .height(24)
                 .align(VantaUiNode.Alignment.CENTER);
