@@ -1153,7 +1153,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             boolean originalOrientation = armor.isHorizontal();
             try {
                 armor.setHorizontal(true);
-                int expectedTopExpansion = Math.round(10 * armor.getScale());
+                float guiScaleCompensation = name.vantaclient.client.hudeditor.HudElement
+                        .guiScaleCompensation(client.getWindow().getGuiScale());
+                int expectedTopExpansion = Math.round(10 * armor.getScale() * guiScaleCompensation);
                 if (armor.getHeight() != 20
                         || armor.getHitboxY() != armor.getY() - expectedTopExpansion
                         || armor.getHitboxHeight() != armor.getScaledHeight() + expectedTopExpansion
