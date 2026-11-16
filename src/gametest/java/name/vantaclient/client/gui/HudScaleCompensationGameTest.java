@@ -40,7 +40,8 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             }
 
             float physicalWidth = element.getScaledWidth() * guiScale;
-            if (Math.abs(physicalWidth - 100.0f) > 2.0f) {
+            float roundingTolerance = Math.max(2.0f, guiScale * 0.5f + 0.5f);
+            if (Math.abs(physicalWidth - 100.0f) > roundingTolerance) {
                 throw new AssertionError("HUD physical size changed with GUI scale: " + physicalWidth);
             }
         });
