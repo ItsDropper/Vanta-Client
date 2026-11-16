@@ -390,7 +390,6 @@ public final class VantaSettingsScreen extends Screen {
         List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
                 .toList();
-        long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
         VantaUiNode.Icon categoryIcon = switch (category) {
             case HUD -> VantaUiNode.Icon.HUD;
             case VISUAL -> VantaUiNode.Icon.VISUALS;
@@ -412,7 +411,7 @@ public final class VantaSettingsScreen extends Screen {
         VantaUiNode summary = VantaUiNode.column(2, 0)
                 .align(VantaUiNode.Alignment.END);
         summary.add(VantaUiNode.dynamicText(
-                () -> enabledCount + " active",
+                () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " active",
                 VantaUiTheme.STATUS_SUCCESS));
         summary.add(VantaUiNode.text(categoryFeatures.size() + " available",
                 VantaUiTheme.TEXT_MUTED));
@@ -473,6 +472,7 @@ public final class VantaSettingsScreen extends Screen {
                 if (feature.isEnabled() != enabled) feature.toggle();
                 feature.saveConfig();
                 DropperUtilsConfig.save();
+                rebuildUi();
             }).width(48).tooltip("Enable or disable " + feature.getName()));
             list.add(row);
             list.add(divider());
