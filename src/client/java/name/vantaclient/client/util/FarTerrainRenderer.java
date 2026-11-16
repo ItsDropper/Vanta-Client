@@ -85,6 +85,7 @@ public final class FarTerrainRenderer {
     private static List<TileKey> orderedTiles = List.of();
 
     private static ServerLevel activeLevel;
+    private static ServerLevel snapshotLevel;
     private static volatile long revision;
     private static int ticksUntilAdaptiveUpdate;
     private static int effectiveFarDistance = 512;
@@ -122,8 +123,6 @@ public final class FarTerrainRenderer {
                         .forEach(CHUNK_SNAPSHOTS::remove);
             }
         });
-        ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) ->
-                CHUNK_SNAPSHOTS.remove(chunk.getPos().toLong()));
     }
 
     public static void tick(Minecraft client) {
@@ -145,9 +144,13 @@ public final class FarTerrainRenderer {
             return;
         }
 
+        if (snapshotLevel != serverLevel) {
+            CHUNK_SNAPSHOTS.clear();
+            snapshotLevel = serverLevel;
+        }
+
         if (activeLevel != serverLevel) {
             clearWorld();
-            CHUNK_SNAPSHOTS.clear();
             activeLevel = serverLevel;
             effectiveFarDistance = FarViewFeature.getFarViewDistance();
         }
@@ -937,7 +940,6 @@ public final class FarTerrainRenderer {
 
     private static void clearWorld() {
         if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()) return;
-        CHUNK_SNAPSHOTS.clear();
         activeLevel = null;
         revision++;
         lastWorkerError = "";
