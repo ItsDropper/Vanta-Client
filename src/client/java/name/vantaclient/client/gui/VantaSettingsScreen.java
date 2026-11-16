@@ -382,22 +382,48 @@ public final class VantaSettingsScreen extends Screen {
     }
 
     private void addFeatureCategory(VantaUiNode content) {
-        if (page == Page.HUD) {
-            content.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
-                    .add(VantaUiNode.button("Open HUD editor", VantaUiNode.Icon.HUD,
-                            () -> Minecraft.getInstance().setScreen(
-                                    new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                            .height(32)));
-        }
         Category category = toCategory(page);
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
-                .filter(feature -> matchesSearch(feature))
+                .filter(this::matchesSearch)
                 .toList();
-        content.add(VantaUiNode.text("Features", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.title(categoryTitle(category)));
-        content.add(VantaUiNode.paragraph(categoryDescription(category),
+        List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
+                .filter(feature -> feature.getCategory() == category)
+                .toList();
+        long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
+        VantaUiNode.Icon categoryIcon = switch (category) {
+            case HUD -> VantaUiNode.Icon.HUD;
+            case VISUAL -> VantaUiNode.Icon.VISUALS;
+            case COMBAT -> VantaUiNode.Icon.CROSSHAIR;
+            case MISC -> VantaUiNode.Icon.SPARK;
+        };
+
+        VantaUiNode hero = VantaUiNode.row(12, 14)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(14)
+                .align(VantaUiNode.Alignment.CENTER);
+        hero.add(VantaUiNode.icon(categoryIcon).size(28, 28)
+                .iconColor(VantaClientPreferences.get().accent.color()));
+        VantaUiNode identity = VantaUiNode.column(3, 0).flex(1);
+        identity.add(VantaUiNode.title(categoryTitle(category)));
+        identity.add(VantaUiNode.paragraph(categoryDescription(category),
                 VantaUiTheme.TEXT_SECONDARY, 2));
+        hero.add(identity);
+        VantaUiNode summary = VantaUiNode.column(2, 0)
+                .align(VantaUiNode.Alignment.END);
+        summary.add(VantaUiNode.dynamicText(
+                () -> enabledCount + " active",
+                VantaUiTheme.STATUS_SUCCESS));
+        summary.add(VantaUiNode.text(categoryFeatures.size() + " available",
+                VantaUiTheme.TEXT_MUTED));
+        hero.add(summary);
+        if (page == Page.HUD) {
+            hero.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
+                    () -> Minecraft.getInstance().setScreen(
+                            new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                    .height(32).background(VantaUiTheme.SURFACE_SELECTED));
+        }
+        content.add(hero);
 
         VantaUiNode search = VantaUiNode.row(8, 8).height(40)
                 .background(VantaUiTheme.PANEL_RAISED).align(VantaUiNode.Alignment.CENTER);
@@ -418,6 +444,46 @@ public final class VantaSettingsScreen extends Screen {
         content.add(search);
         content.add(VantaUiNode.text("Search feature names, descriptions and setting labels.",
                 VantaUiTheme.TEXT_MUTED));
+
+        if (features.isEmpty()) {
+            String emptyMessage = searchQuery.isBlank()
+                    ? "There are no features in this category yet."
+                    : "No features match that search.";
+            content.add(VantaUiNode.paragraph(emptyMessage, VantaUiTheme.TEXT_MUTED, 1));
+            return;
+        }
+        VantaUiNode list = VantaUiNode.column(1, 8).background(VantaUiTheme.PANEL_RAISED);
+        for (Feature feature : features) {
+            VantaUiNode row = VantaUiNode.row(10, 7).align(VantaUiNode.Alignment.CENTER);
+            VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+            labels.add(VantaUiNode.text(feature.getName()));
+            if (VantaClientPreferences.get().showDescriptions
+                    && feature.getDescription() != null && !feature.getDescription().isBlank()) {
+                labels.add(VantaUiNode.paragraph(feature.getDescription(),
+                        VantaUiTheme.TEXT_MUTED, 2));
+            }
+            row.add(labels);
+            if (!SettingRegistry.getSettings(feature).isEmpty()) {
+                row.add(VantaUiNode.button("Configure", () -> {
+                    selectedFeature = feature;
+                    rebuildUi();
+                }).height(28).tooltip("Configure " + feature.getName()));
+            }
+            row.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
+                if (feature.isEnabled() != enabled) feature.toggle();
+                feature.saveConfig();
+                DropperUtilsConfig.save();
+            }).width(48).tooltip("Enable or disable " + feature.getName()));
+            list.add(row);
+            list.add(divider());
+        }
+        content.add(list);
+        long totalInCategory = categoryFeatures.size();
+        String resultSummary = searchQuery.isBlank()
+                ? totalInCategory + " features in this category"
+                : "Showing " + features.size() + " of " + totalInCategory + " features";
+        content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
+    }
 
         if (features.isEmpty()) {
             String emptyMessage = searchQuery.isBlank()
