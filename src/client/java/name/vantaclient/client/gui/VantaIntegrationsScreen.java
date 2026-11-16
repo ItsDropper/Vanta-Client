@@ -117,7 +117,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 .padding(14)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode identity = VantaUiNode.column(2, 0);
-        identity.add(VantaUiNode.eyebrow("VANTA CLIENT / MOD LIBRARY"));
+        identity.add(VantaUiNode.eyebrow("Mod library"));
         identity.add(VantaUiNode.title(selection == Selection.INSTALLED_MOD
                 ? selectedModTitle() : "Installed mods"));
         header.add(identity.flex(1));
@@ -137,7 +137,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     .size(112, 30));
             header.add(VantaUiNode.button("HUD", VantaUiNode.Icon.HUD,
                     () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .size(72, 30));
+                    .size(84, 30));
         }
         header.add(VantaUiNode.button("Close", this::onClose).size(compact ? 48 : 62, 32));
         root.add(header);
@@ -154,7 +154,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 () -> modSearchQuery, value -> modSearchQuery = value, 64)
                 .flex(1).minSize(70, 32));
         toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                this::rebuildRetainedUi).size(90, 32));
+                this::rebuildRetainedUi).size(100, 32));
         toolbar.add(VantaUiNode.button("All", () -> {
             favoritesOnly = false;
             rebuildRetainedUi();
@@ -213,7 +213,7 @@ public final class VantaIntegrationsScreen extends Screen {
         }
         content.add(cards);
         content.add(VantaUiNode.dynamicText(
-                () -> trim(hotLoadStatus, compact ? 66 : 108),
+                () -> trim(hotLoadStatus, compact ? 42 : 108),
                 VantaUiTheme.TEXT_MUTED).height(26));
         root.add(content);
         return root;
