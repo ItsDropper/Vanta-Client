@@ -93,7 +93,7 @@ public abstract class HudElement {
         if (windowWidth <= 0 || guiScaledWidth <= 0) return 1.0f;
         float density = windowWidth / (float) guiScaledWidth;
         if (!Float.isFinite(density) || density <= 1.0f) return 1.0f;
-        return Math.max(0.25f, 1.0f / density);
+        return 1.0f / density;
     }
 
     /** Override for editor representations of vanilla HUD parts, which Minecraft scales itself. */
