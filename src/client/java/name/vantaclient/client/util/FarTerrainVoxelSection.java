@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 final class FarTerrainVoxelSection {
     static final int EDGE = 16;
     static final int VOXEL_COUNT = EDGE * EDGE * EDGE;
-    private static final Map<Integer, Integer> BLOCK_TEXTURE_COLORS = new ConcurrentHashMap<>();
+    private static final Map<Integer, int[]> BLOCK_FACE_TEXTURE_COLORS = new ConcurrentHashMap<>();
     private static final Map<Identifier, Integer> SPRITE_TEXTURE_COLORS = new ConcurrentHashMap<>();
 
     private final int sectionY;
@@ -41,20 +41,39 @@ final class FarTerrainVoxelSection {
     private final byte[] packedLight;
     private final int[] voxelColors;
     private final int[] paletteColors;
+    private final int[] paletteFaceColors;
     private final boolean[] solidPalette;
     private final boolean[] translucentPalette;
 
     FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
-                                   byte[] packedLight, int[] voxelColors, int[] paletteColors, boolean[] solidPalette,
-                                   boolean[] translucentPalette) {
+                                   byte[] packedLight, int[] voxelColors, int[] paletteColors,
+                                   boolean[] solidPalette, boolean[] translucentPalette) {
+        this(sectionY, palette, paletteIndices, packedLight, voxelColors, paletteColors,
+                defaultFaceColors(paletteColors), solidPalette, translucentPalette);
+    }
+
+    FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
+                           byte[] packedLight, int[] voxelColors, int[] paletteColors,
+                           int[] paletteFaceColors, boolean[] solidPalette,
+                           boolean[] translucentPalette) {
         this.sectionY = sectionY;
         this.palette = palette;
         this.paletteIndices = paletteIndices;
         this.packedLight = packedLight;
         this.voxelColors = voxelColors;
         this.paletteColors = paletteColors;
+        this.paletteFaceColors = paletteFaceColors;
         this.solidPalette = solidPalette;
         this.translucentPalette = translucentPalette;
+    }
+
+    private static int[] defaultFaceColors(int[] paletteColors) {
+        int[] result = new int[paletteColors.length * Direction.values().length];
+        for (int paletteIndex = 0; paletteIndex < paletteColors.length; paletteIndex++) {
+            java.util.Arrays.fill(result, paletteIndex * Direction.values().length,
+                    (paletteIndex + 1) * Direction.values().length, paletteColors[paletteIndex]);
+        }
+        return result;
     }
 
     static FarTerrainVoxelSection capture(LevelChunkSection section, int sectionY,
@@ -62,6 +81,7 @@ final class FarTerrainVoxelSection {
         Map<Integer, Integer> paletteLookup = new HashMap<>();
         List<Integer> palette = new ArrayList<>();
         List<Integer> colors = new ArrayList<>();
+        List<int[]> faceColors = new ArrayList<>();
         List<Boolean> solids = new ArrayList<>();
         List<Boolean> translucent = new ArrayList<>();
         short[] indices = new short[VOXEL_COUNT];
@@ -84,9 +104,10 @@ final class FarTerrainVoxelSection {
                         paletteIndex = palette.size();
                         paletteLookup.put(stateId, paletteIndex);
                         palette.add(stateId);
-                        int textureColor = BLOCK_TEXTURE_COLORS.computeIfAbsent(stateId,
-                                ignored -> averageBlockTextureColor(state, stateId, mapColor));
-                        colors.add(0xFF000000 | (textureColor & 0x00FFFFFF));
+                        int[] sampledFaces = BLOCK_FACE_TEXTURE_COLORS.computeIfAbsent(stateId,
+                                ignored -> blockFaceTextureColors(state, stateId, mapColor));
+                        faceColors.add(sampledFaces);
+                        colors.add(0xFF000000 | (averageRgb(sampledFaces) & 0x00FFFFFF));
                         boolean translucentState = isTranslucentState(state);
                         solids.add(!state.isAir() && !translucentState);
                         translucent.add(!state.isAir() && translucentState);
@@ -109,15 +130,18 @@ final class FarTerrainVoxelSection {
         if (!hasRenderableBlock) return null;
         int[] paletteArray = new int[palette.size()];
         int[] colorArray = new int[palette.size()];
+        int[] faceColorArray = new int[palette.size() * Direction.values().length];
         boolean[] solidArray = new boolean[palette.size()];
         boolean[] translucentArray = new boolean[palette.size()];
         for (int i = 0; i < palette.size(); i++) {
             paletteArray[i] = palette.get(i);
             colorArray[i] = colors.get(i);
+            System.arraycopy(faceColors.get(i), 0, faceColorArray,
+                    i * Direction.values().length, Direction.values().length);
             solidArray[i] = solids.get(i);
             translucentArray[i] = translucent.get(i);
         }
-        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, voxelColors, colorArray, solidArray, translucentArray);
+        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, voxelColors, colorArray, faceColorArray, solidArray, translucentArray);
     }
 
     static FarTerrainVoxelSection read(DataInput input, int version) throws IOException {
@@ -129,6 +153,7 @@ final class FarTerrainVoxelSection {
         int[] palette = new int[paletteSize];
         for (int i = 0; i < paletteSize; i++) palette[i] = input.readInt();
         int[] colors = new int[paletteSize];
+        int[] faceColors = new int[paletteSize * Direction.values().length];
         boolean[] solids = new boolean[paletteSize];
         boolean[] translucent = new boolean[paletteSize];
         if (version >= 3) {
@@ -137,11 +162,17 @@ final class FarTerrainVoxelSection {
             if (version >= 4) {
                 for (int i = 0; i < paletteSize; i++) translucent[i] = input.readBoolean();
             }
+            if (version >= 6) {
+                for (int i = 0; i < faceColors.length; i++) faceColors[i] = input.readInt();
+            } else {
+                faceColors = defaultFaceColors(colors);
+            }
         } else {
             for (int i = 0; i < paletteSize; i++) {
                 colors[i] = 0xFF858585;
                 solids[i] = palette[i] != 0;
             }
+            faceColors = defaultFaceColors(colors);
         }
         short[] indices = new short[VOXEL_COUNT];
         for (int i = 0; i < VOXEL_COUNT; i++) {
@@ -160,7 +191,7 @@ final class FarTerrainVoxelSection {
             }
         }
         return new FarTerrainVoxelSection(sectionY, palette, indices, light, voxelColors,
-                colors, solids, translucent);
+                colors, faceColors, solids, translucent);
     }
 
     void write(DataOutput output) throws IOException {
@@ -170,6 +201,7 @@ final class FarTerrainVoxelSection {
         for (int color : paletteColors) output.writeInt(color);
         for (boolean solid : solidPalette) output.writeBoolean(solid);
         for (boolean translucent : translucentPalette) output.writeBoolean(translucent);
+        for (int color : paletteFaceColors) output.writeInt(color);
         for (short paletteIndex : paletteIndices) output.writeShort(Short.toUnsignedInt(paletteIndex));
         output.write(packedLight);
         for (int color : voxelColors) output.writeInt(color);
@@ -183,6 +215,7 @@ final class FarTerrainVoxelSection {
                 + packedLight.length
                 + (long) voxelColors.length * Integer.BYTES
                 + (long) paletteColors.length * Integer.BYTES
+                + (long) paletteFaceColors.length * Integer.BYTES
                 + solidPalette.length + translucentPalette.length;
     }
 
@@ -192,6 +225,35 @@ final class FarTerrainVoxelSection {
 
     int materialColor(int x, int y, int z) {
         return voxelColors[index(x, y, z)];
+    }
+
+    int materialColor(int x, int y, int z, int axis, int direction) {
+        int voxelIndex = index(x, y, z);
+        int paletteIndex = Short.toUnsignedInt(paletteIndices[voxelIndex]);
+        int face = switch (axis) {
+            case 0 -> direction > 0 ? Direction.EAST.ordinal() : Direction.WEST.ordinal();
+            case 1 -> direction > 0 ? Direction.UP.ordinal() : Direction.DOWN.ordinal();
+            default -> direction > 0 ? Direction.SOUTH.ordinal() : Direction.NORTH.ordinal();
+        };
+        int baseAverage = paletteColors[paletteIndex];
+        int tintedAverage = voxelColors[voxelIndex];
+        int faceColor = paletteFaceColors[paletteIndex * Direction.values().length + face];
+        return 0xFF000000 | tintFaceColor(faceColor, baseAverage, tintedAverage);
+    }
+
+    private static int tintFaceColor(int faceColor, int baseAverage, int tintedAverage) {
+        int red = tintChannel((faceColor >>> 16) & 255,
+                (baseAverage >>> 16) & 255, (tintedAverage >>> 16) & 255);
+        int green = tintChannel((faceColor >>> 8) & 255,
+                (baseAverage >>> 8) & 255, (tintedAverage >>> 8) & 255);
+        int blue = tintChannel(faceColor & 255, baseAverage & 255, tintedAverage & 255);
+        return (red << 16) | (green << 8) | blue;
+    }
+
+    private static int tintChannel(int face, int base, int tinted) {
+        if (base == 0) return 0;
+        int tint = Math.min(255, tinted * 255 / base);
+        return face * tint / 255;
     }
 
     boolean isSolid(int x, int y, int z) {
@@ -329,17 +391,19 @@ final class FarTerrainVoxelSection {
         return !state.getFluidState().isEmpty() || state.getBlock() instanceof HalfTransparentBlock;
     }
 
-    private static int averageBlockTextureColor(BlockState state, int stateId, int fallbackColor) {
+    private static int[] blockFaceTextureColors(BlockState state, int stateId, int fallbackColor) {
+        int[] faceColors = new int[Direction.values().length];
+        java.util.Arrays.fill(faceColors, fallbackColor & 0x00FFFFFF);
         try {
             List<BlockModelPart> parts = new ArrayList<>();
             Minecraft.getInstance().getBlockRenderer().getBlockModel(state)
                     .collectParts(RandomSource.create(stateId), parts);
-            long red = 0L;
-            long green = 0L;
-            long blue = 0L;
-            int samples = 0;
-            for (BlockModelPart part : parts) {
-                for (Direction direction : Direction.values()) {
+            for (Direction direction : Direction.values()) {
+                long red = 0L;
+                long green = 0L;
+                long blue = 0L;
+                int samples = 0;
+                for (BlockModelPart part : parts) {
                     for (BakedQuad quad : part.getQuads(direction)) {
                         int color = spriteAverage(quad.sprite().contents().name());
                         if (color < 0) continue;
@@ -349,23 +413,30 @@ final class FarTerrainVoxelSection {
                         samples++;
                     }
                 }
-                for (BakedQuad quad : part.getQuads(null)) {
-                    int color = spriteAverage(quad.sprite().contents().name());
-                    if (color < 0) continue;
-                    red += (color >>> 16) & 255;
-                    green += (color >>> 8) & 255;
-                    blue += color & 255;
-                    samples++;
+                if (samples > 0) {
+                    faceColors[direction.ordinal()] = ((int) (red / samples) << 16)
+                            | ((int) (green / samples) << 8)
+                            | (int) (blue / samples);
                 }
             }
-            if (samples == 0) return fallbackColor & 0x00FFFFFF;
-            return ((int) (red / samples) << 16)
-                    | ((int) (green / samples) << 8)
-                    | (int) (blue / samples);
         } catch (RuntimeException | LinkageError ignored) {
-            // Missing or custom model implementations must not break chunk capture.
-            return fallbackColor & 0x00FFFFFF;
+            // Missing or custom model implementations retain the map-color fallback.
         }
+        return faceColors;
+    }
+
+    private static int averageRgb(int[] colors) {
+        long red = 0L;
+        long green = 0L;
+        long blue = 0L;
+        for (int color : colors) {
+            red += (color >>> 16) & 255;
+            green += (color >>> 8) & 255;
+            blue += color & 255;
+        }
+        return colors.length == 0 ? 0x858585
+                : ((int) (red / colors.length) << 16) | ((int) (green / colors.length) << 8)
+                | (int) (blue / colors.length);
     }
 
     private static int spriteAverage(Identifier spriteId) {

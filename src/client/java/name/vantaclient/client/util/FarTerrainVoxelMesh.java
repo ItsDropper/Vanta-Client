@@ -222,7 +222,7 @@ final class FarTerrainVoxelMesh {
     private record SectionVoxel(FarTerrainVoxelSection section, int x, int y, int z) {}
 
     private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent, int axis, int direction) {
-        int color = section.materialColor(x, y, z);
+        int color = section.materialColor(x, y, z, axis, direction);
         float sky = section.skyLight(x, y, z) / 15.0f;
         float block = section.blockLight(x, y, z) / 15.0f;
         float directional = axis == 1 ? (direction > 0 ? 1.0f : 0.52f)

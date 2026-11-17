@@ -23,6 +23,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyRegionStorageHandlesNegativeChunkCoordinates();
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
         verifyPackedGpuVertexCoordinatesRoundTrip();
+        verifyDirectionalBlockTextureColors();
         verifyGpuMeshletRadialCulling();
     }
 
@@ -214,6 +215,26 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         }
     }
 
+    private static void verifyDirectionalBlockTextureColors() {
+        int[] faceColors = {
+                0xFF000000, 0xFF000000, 0xFF000000,
+                0xFF000000, 0xFF000000, 0xFF000000,
+                0xFFAA0000, 0xFF00AA00, 0xFF0000AA,
+                0xFFAAAA00, 0xFF00AAAA, 0xFFAA00AA
+        };
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        indices[index(3, 4, 5)] = 1;
+        FarTerrainVoxelSection section = new FarTerrainVoxelSection(0, new int[]{0, 1}, indices,
+                new byte[FarTerrainVoxelSection.VOXEL_COUNT],
+                colorsForIndices(indices), new int[]{0xFF000000, 0xFF777777}, faceColors,
+                new boolean[]{false, true}, new boolean[]{false, false});
+        int east = section.materialColor(3, 4, 5, 0, 1);
+        int west = section.materialColor(3, 4, 5, 0, -1);
+        if (east != 0xFFAA00AA || west != 0xFF00AAAA) {
+            throw new AssertionError("Voxel face sampling did not retain directional block textures.");
+        }
+    }
+
     private static void verifyGpuMeshletRadialCulling() {
         if (FarTerrainVoxelGpuRenderer.intersectsRadialBand(
                 0.0, 0.0, 4.0, 0.0, 0.0, 10.0, 100.0)) {
@@ -257,7 +278,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             FarTerrainVoxelSection restored;
             try (java.io.DataInputStream input = new java.io.DataInputStream(
                     new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
-                restored = FarTerrainVoxelSection.read(input, 5);
+                restored = FarTerrainVoxelSection.read(input, 6);
             }
             if (restored.blockStateId(2, 6, 11) != 1
                     || !restored.isSolid(2, 6, 11)
