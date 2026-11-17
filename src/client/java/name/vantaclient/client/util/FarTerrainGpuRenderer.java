@@ -155,7 +155,7 @@ final class FarTerrainGpuRenderer {
             """;
 
     private static final String FRAGMENT_SHADER = """
-            #version 330 core
+            #version 450 core
             in vec4 vertexColor;
             out vec4 fragColor;
             void main() {
@@ -186,6 +186,13 @@ final class FarTerrainGpuRenderer {
                       double cameraX, double cameraZ, double playerX, double playerZ,
                       double innerRadius, double outerRadius, int maxQuads) {
         if (meshes.isEmpty() || maxQuads <= 0) return -1;
+        // The current meshlet format represents opaque terrain surfaces. Keep the
+        // established renderer for tiles containing sea-level water cells.
+        for (FarTerrainRenderer.TileMesh mesh : meshes) {
+            for (long waterMaskWord : mesh.waterCellMask()) {
+                if (waterMaskWord != 0L) return -1;
+            }
+        }
         if (unavailable || !isSupported()) return -1;
 
         try {
