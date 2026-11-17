@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import name.vantaclient.client.feature.FarViewFeature;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;\nimport net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -123,7 +123,7 @@ public final class FarTerrainRenderer {
         ClientChunkEvents.CHUNK_LOAD.register(FarTerrainRenderer::captureChunk);
         // Capture once more immediately before unload so block edits made while
         // the chunk was resident replace the older persisted surface snapshot.
-        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);
+        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);\n        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FarTerrainGpuRenderer.shutdown());
     }
 
     public static void tick(Minecraft client) {
@@ -745,6 +745,16 @@ public final class FarTerrainRenderer {
                 continue;
             }
 
+            if (gpuTerrainRendered) {
+                if (drawnQuads < terrainDrawBudget) {
+                    drawnQuads += emitSkirts(consumer, positionMatrix, transformedVertex, mesh,
+                            cameraX, cameraY, cameraZ, playerX, playerZ,
+                            innerRadiusSquared, outerRadiusSquared, drawnQuads, terrainDrawBudget);
+                }
+                submittedMeshes++;
+                continue;
+            }
+
             int resolution = mesh.key.resolution;
             int side = resolution + 1;
             int[] heights = mesh.heights;
@@ -1070,6 +1080,16 @@ public final class FarTerrainRenderer {
         workerBackoffNanos = 0L;
         lastPrunedQueuedJobs = 0;
         totalPrunedQueuedJobs = 0L;
+        FarTerrainGpuRenderer.clearWorld();
+    }
+
+    private static List<TileMesh> getGpuMeshes() {
+        List<TileMesh> result = new ArrayList<>(orderedTiles.size());
+        for (TileKey key : orderedTiles) {
+            TileMesh mesh = MESHES.get(key);
+            if (mesh != null) result.add(mesh);
+        }
+        return result;
     }
 
     public static String getStatusLine() {
@@ -1091,7 +1111,7 @@ public final class FarTerrainRenderer {
                 + " ms | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
                 + " ms | stale queue jobs " + lastPrunedQueuedJobs + " last / "
                 + totalPrunedQueuedJobs + " total | draw " + lastDrawnQuads + "/" + getDrawBudget()
-                + " quads, " + lastSubmittedMeshes + " tiles" + suffix;
+                + " quads, " + lastSubmittedMeshes + " tiles | " + FarTerrainGpuRenderer.getStatusLine() + suffix;
     }
 
     private static final class TileGenerationJob implements Runnable {
@@ -1157,13 +1177,13 @@ public final class FarTerrainRenderer {
         }
     }
 
-    private record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
+    record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
     private record TreeImpostor(double x, double y, double z,
                                  double height, double canopyWidth,
                                  int leafColor, int trunkColor, boolean conifer) {}
 
-    private record TileMesh(long revision, double generationMillis,
+    record TileMesh(long revision, double generationMillis,
                             TileKey key, int originX, int originZ, int spanBlocks,
                             int seaLevel, int[] sampleWorldX, int[] sampleWorldZ,
                             int[] heights, int[] colors, int[] waterColors, long[] waterCellMask,
