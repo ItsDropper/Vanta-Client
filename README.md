@@ -34,6 +34,12 @@ Features can be enabled independently and retain their existing configuration. O
 
 FarView uses an adaptive quadtree to render distant terrain in singleplayer. It ingests immutable surface snapshots from real client chunks (world-surface height plus the top block's map color), folds captured chunk samples into coarse LOD vertices, and persists them in a versioned, compressed cache under each world's `vanta/farview/<dimension>` directory. Cache reads and writes run on a bounded background worker; corrupt or missing entries are disposable. Captured terrain therefore survives game restarts and chunk unloads, and visible structure roofs or other blocks that form the captured world surface can contribute to the distant heightfield. Uncaptured areas still use procedural base-height and biome sampling, so unexplored structures and terrain edits are not guaranteed to appear. This remains a surface heightfield, not a full voxel LOD: it does not preserve caves, underground geometry, vertical structure walls, block entities, or detailed foliage geometry. It does not extend multiplayer chunk delivery or generate full chunks across the configured far range. Sampling density, terrain shading, distant water, tree silhouettes, and mesh-cache memory are independently configurable; higher detail and cache budgets consume more CPU and memory.
 
+### Nvidium compatibility
+
+Nvidium is optional and is not a compile-time, runtime, or bundled dependency. When it is installed and its accelerated renderer is active, Nvidium continues to own GPU-driven rendering and occlusion for Sodium's ordinary chunk terrain. FarView's distant LOD geometry remains in its separate Minecraft render pass, so the two render paths can coexist without FarView reaching into Sodium or Nvidium internals. The compatibility check uses reflection only and fails closed if Nvidium changes its internal status field.
+
+This is renderer coexistence, not injection of FarView LOD meshes into Nvidium's mesh-shader pipeline: Nvidium's exposed API currently provides section visibility and region transforms, not a public custom-geometry upload/draw contract. FarView does not claim Nvidium GPU occlusion for its own LOD tiles. Its independent GPU-driven LOD backend remains a separate implementation task.
+
 ## Mod library and hot-loading
 
 The in-game mod library discovers installed Fabric mods and can open compatible Mod Menu configuration screens or Vanta addon settings. The Modrinth browser searches and installs compatible Fabric projects with required dependencies.
