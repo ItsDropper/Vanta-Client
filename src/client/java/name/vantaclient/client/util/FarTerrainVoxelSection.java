@@ -344,7 +344,7 @@ final class FarTerrainVoxelSection {
                     }
                 }
                 for (BakedQuad quad : part.getQuads(null)) {
-                    int color = spriteAverage(quad.sprite().contents().getId());
+                    int color = spriteAverage(quad.sprite().contents().name());
                     if (color < 0) continue;
                     red += (color >>> 16) & 255;
                     green += (color >>> 8) & 255;
