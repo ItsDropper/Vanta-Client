@@ -9,6 +9,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         verifyUniformSectionCollapsesToOneOctreeLeaf();
+        verifyOctreeUsesWeightedDominantMaterial();
         verifySingleBlockProducesSixFaces();
         verifyAdjacentBlocksGreedyMerge();
         verifyUpperSectionUsesWorldHeight();
@@ -34,6 +35,27 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
         if (mesh == null || mesh.quadCount() != 6) {
             throw new AssertionError("A uniform 16^3 cube should greedily reduce to six faces.");
+        }
+    }
+
+    private static void verifyOctreeUsesWeightedDominantMaterial() {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        for (int y = 0; y < 2; y++) {
+            for (int z = 0; z < 2; z++) {
+                for (int x = 0; x < 2; x++) {
+                    indices[index(x, y, z)] = (short) (x == 1 && y == 1 && z == 1 ? 2 : 1);
+                }
+            }
+        }
+        int[] voxelColors = colorsForIndices(indices);
+        FarTerrainVoxelSection section = new FarTerrainVoxelSection(0,
+                new int[]{0, 1, 2}, indices, new byte[FarTerrainVoxelSection.VOXEL_COUNT],
+                voxelColors, new int[]{0xFF000000, 0xFF777777, 0xFF996633},
+                new boolean[]{false, true, true}, new boolean[]{false, false, false});
+        FarTerrainVoxelSection.Octree octree = section.buildOctree();
+        if (octree.isEmpty() || octree.materialId(octree.rootIndex()) != 1
+                || octree.solidCount(octree.rootIndex()) != 8) {
+            throw new AssertionError("Octree parent material must use solid-voxel frequency, not child count.");
         }
     }
 

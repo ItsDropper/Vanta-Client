@@ -423,6 +423,7 @@ final class FarTerrainVoxelSection {
         int child(int nodeIndex, int octant) { return childIndices[nodeIndex * 8 + octant]; }
         int size(int nodeIndex) { return Byte.toUnsignedInt(nodeSizes[nodeIndex]); }
         int solidCount(int nodeIndex) { return solidCounts[nodeIndex]; }
+        int materialId(int nodeIndex) { return materialIds[nodeIndex]; }
         int skyLight(int nodeIndex) { return (packedLight[nodeIndex] >>> 4) & 15; }
         int blockLight(int nodeIndex) { return packedLight[nodeIndex] & 15; }
     }
