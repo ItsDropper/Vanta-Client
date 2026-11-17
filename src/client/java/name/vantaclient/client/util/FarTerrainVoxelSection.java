@@ -16,6 +16,8 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -323,8 +325,9 @@ final class FarTerrainVoxelSection {
 
     private static int averageBlockTextureColor(BlockState state, int stateId, int fallbackColor) {
         try {
-            List<BlockModelPart> parts = Minecraft.getInstance().getBlockRenderer()
-                    .getBlockModel(state).getParts(RandomSource.create(stateId));
+            List<BlockModelPart> parts = new ArrayList<>();
+            Minecraft.getInstance().getBlockRenderer().getBlockModel(state)
+                    .collectParts(RandomSource.create(stateId), parts);
             long red = 0L;
             long green = 0L;
             long blue = 0L;
@@ -332,7 +335,7 @@ final class FarTerrainVoxelSection {
             for (BlockModelPart part : parts) {
                 for (Direction direction : Direction.values()) {
                     for (BakedQuad quad : part.getQuads(direction)) {
-                        int color = spriteAverage(quad.sprite().contents().getId());
+                        int color = spriteAverage(quad.sprite().contents().name());
                         if (color < 0) continue;
                         red += (color >>> 16) & 255;
                         green += (color >>> 8) & 255;
