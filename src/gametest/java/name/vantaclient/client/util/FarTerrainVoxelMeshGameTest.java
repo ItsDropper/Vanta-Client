@@ -23,6 +23,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyRegionStorageHandlesNegativeChunkCoordinates();
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
         verifyPackedGpuVertexCoordinatesRoundTrip();
+        verifyGpuMeshletRadialCulling();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -210,6 +211,21 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         if (section.estimatedBytes() < 24_000L
                 || snapshot.estimatedBytes() < section.estimatedBytes()) {
             throw new AssertionError("Snapshot byte accounting omitted its dense voxel and tint payload.");
+        }
+    }
+
+    private static void verifyGpuMeshletRadialCulling() {
+        if (FarTerrainVoxelGpuRenderer.intersectsRadialBand(
+                0.0, 0.0, 4.0, 0.0, 0.0, 10.0, 100.0)) {
+            throw new AssertionError("Meshlets fully inside the vanilla render radius must be rejected.");
+        }
+        if (!FarTerrainVoxelGpuRenderer.intersectsRadialBand(
+                30.0, 0.0, 4.0, 0.0, 0.0, 10.0, 100.0)) {
+            throw new AssertionError("Meshlets intersecting the far terrain band must be retained.");
+        }
+        if (FarTerrainVoxelGpuRenderer.intersectsRadialBand(
+                120.0, 0.0, 4.0, 0.0, 0.0, 10.0, 100.0)) {
+            throw new AssertionError("Meshlets fully beyond the far terrain radius must be rejected.");
         }
     }
 

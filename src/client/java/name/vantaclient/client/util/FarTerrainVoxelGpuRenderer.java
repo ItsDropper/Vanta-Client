@@ -175,7 +175,7 @@ final class FarTerrainVoxelGpuRenderer {
         try {
             ensureProgram();
             synchronizeMeshes(meshes);
-            selectMeshlets(maxQuads, playerX, playerZ);
+            selectMeshlets(maxQuads, playerX, playerZ, innerRadius, outerRadius);
             if (activeMeshletCount == 0) return meshlets.isEmpty() ? 0 : -1;
 
             Minecraft client = Minecraft.getInstance();
@@ -379,7 +379,8 @@ final class FarTerrainVoxelGpuRenderer {
         return (short) (packedPosition >>> 10);
     }
 
-    private static void selectMeshlets(int maxQuads, double playerX, double playerZ) {
+    private static void selectMeshlets(int maxQuads, double playerX, double playerZ,
+                                       double innerRadius, double outerRadius) {
         activeMeshletCount = 0;
         activeQuadCount = 0;
         List<FarTerrainVoxelMesh> nearestMeshes = new ArrayList<>(cachedMeshes);
@@ -391,6 +392,16 @@ final class FarTerrainVoxelGpuRenderer {
         List<Meshlet> selected = new ArrayList<>();
         for (FarTerrainVoxelMesh mesh : nearestMeshes) {
             for (Meshlet meshlet : meshletsByMesh.getOrDefault(mesh, List.of())) {
+                double originX = mesh.chunkX() * 16.0;
+                double originZ = mesh.chunkZ() * 16.0;
+                double centerX = originX + (meshlet.minX() + meshlet.maxX()) * 0.5;
+                double centerZ = originZ + (meshlet.minZ() + meshlet.maxZ()) * 0.5;
+                double halfX = (meshlet.maxX() - meshlet.minX()) * 0.5;
+                double halfY = (meshlet.maxY() - meshlet.minY()) * 0.5;
+                double halfZ = (meshlet.maxZ() - meshlet.minZ()) * 0.5;
+                double radius = Math.sqrt(halfX * halfX + halfY * halfY + halfZ * halfZ) + 1.0;
+                if (!intersectsRadialBand(centerX, centerZ, radius,
+                        playerX, playerZ, innerRadius, outerRadius)) continue;
                 if (activeQuadCount + meshlet.quadCount() > maxQuads) continue;
                 selected.add(meshlet);
                 activeQuadCount += meshlet.quadCount();
@@ -398,6 +409,13 @@ final class FarTerrainVoxelGpuRenderer {
         }
         activeMeshlets = List.copyOf(selected);
         activeMeshletCount = activeMeshlets.size();
+    }
+
+    static boolean intersectsRadialBand(double centerX, double centerZ, double radius,
+                                         double playerX, double playerZ,
+                                         double innerRadius, double outerRadius) {
+        double distance = Math.hypot(centerX - playerX, centerZ - playerZ);
+        return distance - radius <= outerRadius && distance + radius >= innerRadius;
     }
 
     private static void uploadFrameData(double cameraX, double cameraY, double cameraZ) {
