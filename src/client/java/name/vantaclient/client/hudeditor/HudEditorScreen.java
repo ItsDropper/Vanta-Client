@@ -39,7 +39,9 @@ public class HudEditorScreen extends Screen {
 
     private void buildToolbar() {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
-        boolean compact = width < 560;
+        // GUI scale 3 commonly yields a 640×360 viewport and scale 4
+        // roughly 480×270; compact the toolbar by either dimension.
+        boolean compact = width < 700 || height < 400;
         boolean showGridControl = !compact;
         int toolbarHeight = compact ? 36 : 56;
 
