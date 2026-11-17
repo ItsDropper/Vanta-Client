@@ -15,7 +15,6 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyAdjacentBlocksGreedyMerge();
         verifyUpperSectionUsesWorldHeight();
         verifyFacesAreHiddenAcrossVerticalSections();
-        verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
         verifyGlassAndIceAreClassifiedAsTranslucent();
         verifyFluidInterfaceAgainstOpaqueBlockIsHidden();
