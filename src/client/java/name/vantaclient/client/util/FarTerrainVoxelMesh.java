@@ -135,6 +135,18 @@ final class FarTerrainVoxelMesh {
     int[] colors() { return colors; }
     int octreeSectionCount() { return octrees.length; }
 
+    long estimatedBytes() {
+        long bytes = (long) positions.length * Float.BYTES + (long) colors.length * Integer.BYTES;
+        for (FarTerrainVoxelSection.Octree octree : octrees) {
+            bytes += (long) octree.materialIds().length * Integer.BYTES;
+            bytes += octree.packedLight().length;
+            bytes += (long) octree.childIndices().length * Integer.BYTES;
+            bytes += octree.nodeSizes().length;
+            bytes += (long) octree.solidCounts().length * Integer.BYTES;
+        }
+        return bytes;
+    }
+
     private static final class GeometryBuilder {
         private float[] positions = new float[4096];
         private int[] colors = new int[256];

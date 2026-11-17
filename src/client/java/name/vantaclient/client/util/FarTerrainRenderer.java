@@ -68,6 +68,9 @@ public final class FarTerrainRenderer {
     private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final int MAX_CAPTURED_CHUNKS = 256;
     private static final int MAX_VOXEL_MESHES = 128;
+    private static final long MAX_VOXEL_MESH_CACHE_BYTES = 64L * 1024L * 1024L;
+    private static final Object VOXEL_MESH_LOCK = new Object();
+    private static volatile long cachedVoxelMeshBytes;
     private static final ConcurrentMap<Long, FarTerrainVoxelMesh> VOXEL_MESHES = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedDeque<Long> VOXEL_MESH_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<VoxelWorkKey> VOXEL_PENDING = ConcurrentHashMap.newKeySet();
@@ -259,13 +262,20 @@ public final class FarTerrainRenderer {
                     if (expectedRevision != revision) return;
                     FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot);
                     if (mesh == null || expectedRevision != revision) return;
-                    VOXEL_MESHES.put(chunkKey, mesh);
-                    VOXEL_MESH_ORDER.remove(chunkKey);
-                    VOXEL_MESH_ORDER.addLast(chunkKey);
-                    while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES) {
-                        Long oldest = VOXEL_MESH_ORDER.pollFirst();
-                        if (oldest == null) break;
-                        VOXEL_MESHES.remove(oldest);
+                    synchronized (VOXEL_MESH_LOCK) {
+                        if (expectedRevision != revision) return;
+                        FarTerrainVoxelMesh previous = VOXEL_MESHES.put(chunkKey, mesh);
+                        if (previous != null) cachedVoxelMeshBytes -= previous.estimatedBytes();
+                        cachedVoxelMeshBytes += mesh.estimatedBytes();
+                        VOXEL_MESH_ORDER.remove(chunkKey);
+                        VOXEL_MESH_ORDER.addLast(chunkKey);
+                        while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES
+                                || cachedVoxelMeshBytes > voxelMeshCacheLimitBytes()) {
+                            Long oldest = VOXEL_MESH_ORDER.pollFirst();
+                            if (oldest == null) break;
+                            FarTerrainVoxelMesh removed = VOXEL_MESHES.remove(oldest);
+                            if (removed != null) cachedVoxelMeshBytes -= removed.estimatedBytes();
+                        }
                     }
                 } finally {
                     VOXEL_PENDING.remove(workKey);
@@ -1202,8 +1212,11 @@ public final class FarTerrainRenderer {
         drawBudgetAdjustmentFrames = 0;
         DESIRED = Set.of();
         MESHES.clear();
-        VOXEL_MESHES.clear();
-        VOXEL_MESH_ORDER.clear();
+        synchronized (VOXEL_MESH_LOCK) {
+            VOXEL_MESHES.clear();
+            VOXEL_MESH_ORDER.clear();
+            cachedVoxelMeshBytes = 0L;
+        }
         VOXEL_WORKER.getQueue().clear();
         VOXEL_PENDING.clear();
         cachedMeshBytes = 0L;
@@ -1241,6 +1254,11 @@ public final class FarTerrainRenderer {
             if (mesh != null) result.add(mesh);
         }
         return result;
+    }
+
+    private static long voxelMeshCacheLimitBytes() {
+        return Math.min(MAX_VOXEL_MESH_CACHE_BYTES,
+                Math.max(8L * 1024L * 1024L, getMeshCacheLimitBytes() / 3L));
     }
 
     private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes() {
