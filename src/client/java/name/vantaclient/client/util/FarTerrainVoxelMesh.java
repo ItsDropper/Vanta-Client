@@ -206,7 +206,8 @@ final class FarTerrainVoxelMesh {
         } else if (x >= EDGE) {
             neighborChunkX++;
             localX = 0;
-        } else if (z < 0) {
+        }
+        if (z < 0) {
             neighborChunkZ--;
             localZ = EDGE - 1;
         } else if (z >= EDGE) {
