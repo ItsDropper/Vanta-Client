@@ -25,6 +25,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyPackedGpuVertexCoordinatesRoundTrip();
         verifyDirectionalBlockTextureColors();
         verifyAmbientOcclusionPolicy();
+        verifyAmbientOcclusionAtChunkCorner();
         verifyGpuMeshletRadialCulling();
     }
 
@@ -213,6 +214,17 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         if (section.estimatedBytes() < 24_000L
                 || snapshot.estimatedBytes() < section.estimatedBytes()) {
             throw new AssertionError("Snapshot byte accounting omitted its dense voxel and tint payload.");
+        }
+    }
+
+    private static void verifyAmbientOcclusionAtChunkCorner() {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        indices[index(0, 8, 0)] = 1;
+        FarTerrainVoxelSection section = createSection(indices,
+                new byte[FarTerrainVoxelSection.VOXEL_COUNT]);
+        FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
+        if (mesh == null || mesh.quadCount() != 6) {
+            throw new AssertionError("Voxel AO sampling at a chunk corner must preserve exposed geometry.");
         }
     }
 
