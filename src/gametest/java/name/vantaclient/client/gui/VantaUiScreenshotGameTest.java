@@ -659,8 +659,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             DropperUtilsConfig defaults = new DropperUtilsConfig();
             if (!defaults.performanceOptimizer || !defaults.adaptiveEntityDistance
-                    || !defaults.farViewWorkerAdaptive) {
-                throw new AssertionError("New Vanta configurations must enable adaptive performance features by default.");
+                    || !defaults.farViewWorkerAdaptive || defaults.farViewAdaptive) {
+                throw new AssertionError("New Vanta configurations must enable adaptive performance features by default without coupling worker pacing to adaptive detail distance.");
             }
 
             double reduced = AdaptiveEntityDistanceController.calculateNextScale(
