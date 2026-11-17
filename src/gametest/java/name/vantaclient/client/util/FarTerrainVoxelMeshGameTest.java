@@ -233,7 +233,8 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         float partiallyOccluded = FarTerrainVoxelMesh.ambientOcclusionFactor(2, 1);
         float fullyOccluded = FarTerrainVoxelMesh.ambientOcclusionFactor(4, 4);
         if (open != 1.0f || !(partiallyOccluded < open)
-                || fullyOccluded != 0.68f || partiallyOccluded < fullyOccluded) {
+                || Math.abs(fullyOccluded - 0.68f) > 0.0001f
+                || partiallyOccluded < fullyOccluded) {
             throw new AssertionError("Voxel ambient occlusion must darken nearby geometry with a bounded floor.");
         }
     }
