@@ -18,6 +18,8 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -154,6 +156,7 @@ final class FarTerrainVoxelGpuRenderer {
     private static int outerRadiusLocation;
     private static List<FarTerrainVoxelMesh> cachedMeshes = List.of();
     private static List<Meshlet> meshlets = List.of();
+    private static Map<FarTerrainVoxelMesh, List<Meshlet>> meshletsByMesh = Map.of();
     private static List<Meshlet> activeMeshlets = List.of();
     private static int activeMeshletCount;
     private static int activeQuadCount;
@@ -248,6 +251,7 @@ final class FarTerrainVoxelGpuRenderer {
         if (unchanged) return;
 
         List<Meshlet> nextMeshlets = new ArrayList<>();
+        Map<FarTerrainVoxelMesh, List<Meshlet>> nextMeshletsByMesh = new IdentityHashMap<>();
         int totalQuads = 0;
         long totalBytes = 0L;
         for (FarTerrainVoxelMesh mesh : meshes) {
@@ -326,6 +330,7 @@ final class FarTerrainVoxelGpuRenderer {
         }
         cachedMeshes = List.copyOf(meshes);
         meshlets = List.copyOf(nextMeshlets);
+        meshletsByMesh = Map.copyOf(nextMeshletsByMesh);
         activeMeshlets = List.of();
         activeMeshletCount = 0;
         activeQuadCount = 0;
@@ -357,17 +362,19 @@ final class FarTerrainVoxelGpuRenderer {
     private static void selectMeshlets(int maxQuads, double playerX, double playerZ) {
         activeMeshletCount = 0;
         activeQuadCount = 0;
-        List<Meshlet> nearest = new ArrayList<>(meshlets);
-        nearest.sort(Comparator.comparingDouble(meshlet -> {
-            double dx = meshlet.mesh().chunkX() * 16.0 + 8.0 - playerX;
-            double dz = meshlet.mesh().chunkZ() * 16.0 + 8.0 - playerZ;
+        List<FarTerrainVoxelMesh> nearestMeshes = new ArrayList<>(cachedMeshes);
+        nearestMeshes.sort(Comparator.comparingDouble(mesh -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - playerX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - playerZ;
             return dx * dx + dz * dz;
         }));
         List<Meshlet> selected = new ArrayList<>();
-        for (Meshlet meshlet : nearest) {
-            if (activeQuadCount + meshlet.quadCount() > maxQuads) continue;
-            selected.add(meshlet);
-            activeQuadCount += meshlet.quadCount();
+        for (FarTerrainVoxelMesh mesh : nearestMeshes) {
+            for (Meshlet meshlet : meshletsByMesh.getOrDefault(mesh, List.of())) {
+                if (activeQuadCount + meshlet.quadCount() > maxQuads) continue;
+                selected.add(meshlet);
+                activeQuadCount += meshlet.quadCount();
+            }
         }
         activeMeshlets = List.copyOf(selected);
         activeMeshletCount = activeMeshlets.size();
@@ -476,6 +483,7 @@ final class FarTerrainVoxelGpuRenderer {
     static void clearWorld() {
         cachedMeshes = List.of();
         meshlets = List.of();
+        meshletsByMesh = Map.of();
         activeMeshlets = List.of();
         activeMeshletCount = 0;
         activeQuadCount = 0;
