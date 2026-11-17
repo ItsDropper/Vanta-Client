@@ -10,7 +10,6 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.platform.ClientPlatform;
-import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -112,7 +111,7 @@ public final class VantaIntegrationsScreen extends Screen {
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 10, 0)
-                .height(compact ? 52 : 54)
+                .height(compact ? 40 : 54)
                 .background(VantaUiTheme.PANEL)
                 .padding(compact ? 8 : 14)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -250,7 +249,7 @@ public final class VantaIntegrationsScreen extends Screen {
         ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
         for (int index = 0; index < mods.size(); index += columns) {
             VantaUiNode row = VantaUiNode.row(8, 0)
-                    .height(132)
+                    .height(compact ? 108 : 132)
                     .align(VantaUiNode.Alignment.STRETCH);
             for (int column = 0; column < columns && index + column < mods.size(); column++) {
                 row.add(buildRetainedModCard(mods.get(index + column), hotLoadedIds));
@@ -270,7 +269,7 @@ public final class VantaIntegrationsScreen extends Screen {
         boolean sessionLoaded = hotLoadedIds.contains(mod.id());
         VantaUiNode card = VantaUiNode.column(6, 9)
                 .flex(1)
-                .height(132)
+                .height(width < 760 ? 108 : 132)
                 .background(VantaUiTheme.PANEL_RAISED)
                 .padding(9);
         VantaUiNode top = VantaUiNode.row(8, 0)
