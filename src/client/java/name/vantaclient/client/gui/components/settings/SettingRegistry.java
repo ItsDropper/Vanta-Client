@@ -87,6 +87,8 @@ public final class SettingRegistry {
                     FarViewFeature::getQuality, FarViewFeature::setQuality));
             settings.add(new BooleanSetting("Adaptive Distance",
                     FarViewFeature::isAdaptiveEnabled, FarViewFeature::setAdaptiveEnabled));
+            settings.add(new BooleanSetting("Adaptive Worker Pacing",
+                    FarViewFeature::isWorkerAdaptiveEnabled, FarViewFeature::setWorkerAdaptiveEnabled));
             settings.add(new SliderSetting("Terrain Sample Spacing", 2, 64, " chunks",
                     () -> (double) FarViewFeature.getSampleSpacingChunks(),
                     value -> FarViewFeature.setSampleSpacingChunks(value.intValue())));
