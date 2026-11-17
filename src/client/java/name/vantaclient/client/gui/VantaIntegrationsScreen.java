@@ -232,7 +232,7 @@ public final class VantaIntegrationsScreen extends Screen {
                     VantaUiTheme.TEXT_MUTED, 2));
             cards.add(empty);
         } else {
-            addRetainedModCards(cards, mods, compact ? 1 : 3);
+            addRetainedModCards(cards, mods, compact ? 1 : 3, compact);
         }
         content.add(cards);
         content.add(VantaUiNode.dynamicText(
@@ -244,7 +244,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     private void addRetainedModCards(VantaUiNode cards,
                                      List<ExperimentalModHotLoader.AvailableMod> mods,
-                                     int columns) {
+                                     int columns, boolean compact) {
         Set<String> hotLoadedIds = new HashSet<>();
         ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
         for (int index = 0; index < mods.size(); index += columns) {
