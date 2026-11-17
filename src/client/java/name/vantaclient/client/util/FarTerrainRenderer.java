@@ -1323,11 +1323,8 @@ public final class FarTerrainRenderer {
 
     private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes(double playerX, double playerZ) {
         List<FarTerrainVoxelMesh> result = new ArrayList<>(VOXEL_MESHES.values());
-        result.sort(Comparator.comparingDouble(mesh -> {
-            double dx = mesh.chunkX() * 16.0 + 8.0 - playerX;
-            double dz = mesh.chunkZ() * 16.0 + 8.0 - playerZ;
-            return dx * dx + dz * dz;
-        }));
+        result.sort(Comparator.comparingInt(FarTerrainVoxelMesh::chunkX)
+                .thenComparingInt(FarTerrainVoxelMesh::chunkZ));
         return result;
     }
 
