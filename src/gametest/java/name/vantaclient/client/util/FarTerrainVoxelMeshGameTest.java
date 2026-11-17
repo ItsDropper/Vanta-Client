@@ -13,6 +13,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyAdjacentBlocksGreedyMerge();
         verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
+        verifyRegionStorageHandlesNegativeChunkCoordinates();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -73,6 +74,17 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             if ((color >>> 24) != 0xA0) {
                 throw new AssertionError("Translucent voxel material lost its alpha channel.");
             }
+        }
+    }
+
+    private static void verifyRegionStorageHandlesNegativeChunkCoordinates() {
+        java.nio.file.Path root = java.nio.file.Path.of("world", "vanta", "farview", "overworld");
+        if (!FarTerrainSnapshotStore.regionDirectory(root, -1, -1).endsWith("r_-1_-1")
+                || !FarTerrainSnapshotStore.regionDirectory(root, -32, -32).endsWith("r_-1_-1")
+                || !FarTerrainSnapshotStore.regionDirectory(root, -33, -33).endsWith("r_-2_-2")
+                || !FarTerrainSnapshotStore.regionDirectory(root, 31, 31).endsWith("r_0_0")
+                || !FarTerrainSnapshotStore.regionDirectory(root, 32, 32).endsWith("r_1_1")) {
+            throw new AssertionError("Spatial FarView cache sharding mishandled negative chunk coordinates.");
         }
     }
 
