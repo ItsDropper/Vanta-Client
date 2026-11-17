@@ -631,16 +631,11 @@ public final class FarTerrainRenderer {
                 if (actualChunk != null) {
                     colors[index] = actualChunk.surfaceColor(localX, localZ);
                 }
-                Holder<Biome> biome = biomeSource.getNoiseBiome(
-                        QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
-                        QuartPos.fromBlock(worldZ), climateSampler);
-                int waterColor = opaqueRgb(biome.value().getWaterColor());
-                waterColors[index] = blendRgb(0xFF28566D, waterColor, 0.58f);
-                String biomePath = biome.unwrapKey()
-                        .map(biomeKey -> biomeKey.identifier().getPath()).orElse("");
-                if (actualChunk == null) colors[index] = terrainColor(biomePath, height, seaLevel,
-                        biome.value().getGrassColor(worldX, worldZ),
-                        biome.value().getWaterColor(), worldX, worldZ);
+                FarTerrainBiomeBlender.SurfaceColors biomeColors =
+                        FarTerrainBiomeBlender.sample(biomeSource, climateSampler,
+                                worldX, height, worldZ, height, seaLevel);
+                waterColors[index] = biomeColors.waterColor();
+                if (actualChunk == null) colors[index] = biomeColors.terrainColor();
             }
         }
 
