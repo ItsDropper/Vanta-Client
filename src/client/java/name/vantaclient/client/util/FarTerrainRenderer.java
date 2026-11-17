@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.server.MinecraftServer;
@@ -18,6 +19,7 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -88,6 +90,8 @@ public final class FarTerrainRenderer {
 
     private static ServerLevel activeLevel;
     private static ServerLevel snapshotLevel;
+    private static ClientLevel snapshotClientLevel;
+    private static volatile FarTerrainSnapshotStore snapshotStore;
     private static volatile long revision;
     private static int ticksUntilAdaptiveUpdate;
     private static int effectiveFarDistance = 512;
@@ -118,15 +122,9 @@ public final class FarTerrainRenderer {
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
         ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
             FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
-            long chunkKey = chunk.getPos().toLong();
-            CHUNK_SNAPSHOTS.put(chunkKey, snapshot);
-            CHUNK_SNAPSHOT_ORDER.remove(chunkKey);
-            CHUNK_SNAPSHOT_ORDER.addLast(chunkKey);
-            while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
-                Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
-                if (oldest == null) break;
-                CHUNK_SNAPSHOTS.remove(oldest);
-            }
+            addChunkSnapshot(snapshot);
+            FarTerrainSnapshotStore store = snapshotStore;
+            if (store != null && snapshotClientLevel == world) store.save(snapshot);
         });
     }
 
@@ -153,6 +151,14 @@ public final class FarTerrainRenderer {
             CHUNK_SNAPSHOTS.clear();
             CHUNK_SNAPSHOT_ORDER.clear();
             snapshotLevel = serverLevel;
+            snapshotClientLevel = client.level;
+            FarTerrainSnapshotStore store = new FarTerrainSnapshotStore(
+                    server.getWorldPath(LevelResource.ROOT),
+                    serverLevel.dimension().location().toString());
+            snapshotStore = store;
+            store.loadAll(snapshot -> {
+                if (snapshotStore == store) addChunkSnapshotIfAbsent(snapshot);
+            });
         }
 
         if (activeLevel != serverLevel) {
@@ -186,6 +192,30 @@ public final class FarTerrainRenderer {
         }
 
         scheduleMissingTiles(serverLevel);
+    }
+
+    private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot) {
+        addChunkSnapshot(snapshot, true);
+    }
+
+    private static void addChunkSnapshotIfAbsent(FarTerrainChunkSnapshot snapshot) {
+        addChunkSnapshot(snapshot, false);
+    }
+
+    private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot, boolean replace) {
+        long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+        if (replace) {
+            CHUNK_SNAPSHOTS.put(key, snapshot);
+        } else if (CHUNK_SNAPSHOTS.putIfAbsent(key, snapshot) != null) {
+            return;
+        }
+        CHUNK_SNAPSHOT_ORDER.remove(key);
+        CHUNK_SNAPSHOT_ORDER.addLast(key);
+        while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
+            Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
+            if (oldest == null) break;
+            CHUNK_SNAPSHOTS.remove(oldest);
+        }
     }
 
     private static void updateAdaptiveDistance(Minecraft client) {
