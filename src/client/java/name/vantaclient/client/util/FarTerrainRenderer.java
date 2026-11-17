@@ -465,6 +465,56 @@ public final class FarTerrainRenderer {
             }
         }
 
+        // Fold every captured chunk in this tile into its nearest LOD vertex.
+        // Sampling only the exact grid coordinates discarded almost all explored
+        // chunk data when the LOD spacing was larger than one chunk.
+        long[] capturedHeightSums = new long[side * side];
+        long[] capturedColorSums = new long[side * side * 3];
+        int[] capturedCounts = new int[side * side];
+        for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
+            if (job.isObsolete()) return null;
+            int chunkOriginX = snapshot.chunkX() * 16;
+            int chunkOriginZ = snapshot.chunkZ() * 16;
+            if (chunkOriginX < originX || chunkOriginZ < originZ
+                    || chunkOriginX >= originX + spanBlocks
+                    || chunkOriginZ >= originZ + spanBlocks) continue;
+
+            double chunkCenterX = chunkOriginX + 8.0;
+            double chunkCenterZ = chunkOriginZ + 8.0;
+            int gridX = Math.max(0, Math.min(key.resolution,
+                    (int) Math.round((chunkCenterX - originX) / spanBlocks * key.resolution)));
+            int gridZ = Math.max(0, Math.min(key.resolution,
+                    (int) Math.round((chunkCenterZ - originZ) / spanBlocks * key.resolution)));
+            int gridIndex = gridZ * side + gridX;
+            long heightSum = 0L;
+            long redSum = 0L;
+            long greenSum = 0L;
+            long blueSum = 0L;
+            for (int sampleZ = 2; sampleZ < 16; sampleZ += 4) {
+                for (int sampleX = 2; sampleX < 16; sampleX += 4) {
+                    heightSum += snapshot.height(sampleX, sampleZ);
+                    int color = snapshot.surfaceColor(sampleX, sampleZ);
+                    redSum += (color >>> 16) & 0xFF;
+                    greenSum += (color >>> 8) & 0xFF;
+                    blueSum += color & 0xFF;
+                }
+            }
+            capturedHeightSums[gridIndex] += heightSum / 16L;
+            capturedColorSums[gridIndex * 3] += redSum / 16L;
+            capturedColorSums[gridIndex * 3 + 1] += greenSum / 16L;
+            capturedColorSums[gridIndex * 3 + 2] += blueSum / 16L;
+            capturedCounts[gridIndex]++;
+        }
+        for (int index = 0; index < capturedCounts.length; index++) {
+            int count = capturedCounts[index];
+            if (count == 0) continue;
+            heights[index] = (int) Math.round(capturedHeightSums[index] / (double) count);
+            int red = (int) (capturedColorSums[index * 3] / count);
+            int green = (int) (capturedColorSums[index * 3 + 1] / count);
+            int blue = (int) (capturedColorSums[index * 3 + 2] / count);
+            colors[index] = 0xFF000000 | (red << 16) | (green << 8) | blue;
+        }
+
         double sampleSpacing = (double) spanBlocks / key.resolution;
         for (int z = 0; z <= key.resolution; z++) {
             if (job.isObsolete()) return null;
