@@ -14,7 +14,7 @@ import org.lwjgl.opengl.NVMeshShader;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
-import java.nio.IntBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
