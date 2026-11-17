@@ -270,10 +270,14 @@ final class FarTerrainVoxelGpuRenderer {
                 maxY = Math.max(maxY, positions[i]);
             }
             int vertexBase = totalQuads * 4;
+            List<Meshlet> meshMeshlets = new ArrayList<>();
             for (int start = 0; start < count; start += QUADS_PER_MESHLET) {
                 int meshletQuads = Math.min(QUADS_PER_MESHLET, count - start);
-                nextMeshlets.add(new Meshlet(mesh, vertexBase + start * 4, meshletQuads, minY, maxY));
+                Meshlet meshlet = new Meshlet(mesh, vertexBase + start * 4, meshletQuads, minY, maxY);
+                nextMeshlets.add(meshlet);
+                meshMeshlets.add(meshlet);
             }
+            nextMeshletsByMesh.put(mesh, List.copyOf(meshMeshlets));
             totalQuads += count;
             totalBytes += meshBytes;
             if (totalQuads >= MAX_UPLOAD_QUADS) break;
@@ -282,6 +286,8 @@ final class FarTerrainVoxelGpuRenderer {
         if (nextMeshlets.isEmpty()) {
             cachedMeshes = List.copyOf(meshes);
             meshlets = List.of();
+            meshletsByMesh = Map.of();
+            activeMeshlets = List.of();
             activeMeshletCount = 0;
             activeQuadCount = 0;
             return;
