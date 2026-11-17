@@ -176,7 +176,7 @@ public final class HudSettingsPanel {
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
                 .width(panelWidth)
-                .height(Math.max(0, viewportHeight - 44))
+                .height(Math.max(0, layoutHeight - 44))
                 .align(VantaUiNode.Alignment.START);
         inspectorSlot.add(VantaUiNode.spacer(1).height(60));
         inspectorSlot.add(panel);
