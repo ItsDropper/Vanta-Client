@@ -236,7 +236,7 @@ final class FarTerrainVoxelMesh {
         int sideOccluders = 0;
         int cornerOccluders = 0;
 
-        for (int sign : new int[]{-1, 1}) {
+        for (int sign = -1; sign <= 1; sign += 2) {
             int sideUX = normalX + (uAxis == 0 ? sign : 0);
             int sideUY = normalY + (uAxis == 1 ? sign : 0);
             int sideUZ = normalZ + (uAxis == 2 ? sign : 0);
@@ -249,7 +249,7 @@ final class FarTerrainVoxelMesh {
             if (isSolid(chunkX, chunkZ, sections, adjacentSections, sideVX, sideVY, sideVZ)) {
                 sideOccluders++;
             }
-            for (int otherSign : new int[]{-1, 1}) {
+            for (int otherSign = -1; otherSign <= 1; otherSign += 2) {
                 int cornerX = normalX + (uAxis == 0 ? sign : 0)
                         + (vAxis == 0 ? otherSign : 0);
                 int cornerY = normalY + (uAxis == 1 ? sign : 0)
