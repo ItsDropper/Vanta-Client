@@ -24,7 +24,7 @@ import java.util.zip.GZIPOutputStream;
  */
 final class FarTerrainSnapshotStore {
     private static final int MAGIC = 0x56464C44; // VFLD
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
     private static final int MAX_FILES_TO_LOAD = 16_384;
     private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,

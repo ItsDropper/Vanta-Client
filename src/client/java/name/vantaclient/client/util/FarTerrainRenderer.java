@@ -68,6 +68,20 @@ public final class FarTerrainRenderer {
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final int MAX_CAPTURED_CHUNKS = 256;
+    private static final int MAX_VOXEL_MESHES = 128;
+    private static final ConcurrentMap<Long, FarTerrainVoxelMesh> VOXEL_MESHES = new ConcurrentHashMap<>();
+    private static final ConcurrentLinkedDeque<Long> VOXEL_MESH_ORDER = new ConcurrentLinkedDeque<>();
+    private static final ThreadPoolExecutor VOXEL_WORKER = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(128),
+            runnable -> {
+                Thread thread = new Thread(runnable, "Vanta-FarTerrain-Voxels");
+                thread.setDaemon(true);
+                thread.setPriority(Thread.NORM_PRIORITY - 1);
+                return thread;
+            },
+            new ThreadPoolExecutor.DiscardOldestPolicy()
+    );
     private static final ConcurrentLinkedDeque<Long> CHUNK_SNAPSHOT_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
@@ -164,7 +178,11 @@ public final class FarTerrainRenderer {
                 store.save(snapshot);
             }
             store.loadAll(snapshot -> {
-                if (snapshotStore == store) addChunkSnapshotIfAbsent(snapshot);
+                if (snapshotStore == store) {
+                    addChunkSnapshotIfAbsent(snapshot);
+                    long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+                    if (CHUNK_SNAPSHOTS.get(key) == snapshot) queueVoxelMesh(snapshot);
+                }
             });
         }
 
@@ -206,6 +224,29 @@ public final class FarTerrainRenderer {
         addChunkSnapshot(snapshot);
         FarTerrainSnapshotStore store = snapshotStore;
         if (store != null && snapshotClientLevel == world) store.save(snapshot);
+        queueVoxelMesh(snapshot);
+    }
+
+    private static void queueVoxelMesh(FarTerrainChunkSnapshot snapshot) {
+        long expectedRevision = revision;
+        try {
+            VOXEL_WORKER.execute(() -> {
+                if (expectedRevision != revision) return;
+                FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot);
+                if (mesh == null || expectedRevision != revision) return;
+                long key = net.minecraft.world.level.ChunkPos.asLong(mesh.chunkX(), mesh.chunkZ());
+                VOXEL_MESHES.put(key, mesh);
+                VOXEL_MESH_ORDER.remove(key);
+                VOXEL_MESH_ORDER.addLast(key);
+                while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES) {
+                    Long oldest = VOXEL_MESH_ORDER.pollFirst();
+                    if (oldest == null) break;
+                    VOXEL_MESHES.remove(oldest);
+                }
+            });
+        } catch (RejectedExecutionException ignored) {
+            // Chunk ingestion must never stall the client when the meshing queue is full.
+        }
     }
 
     private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot) {
@@ -817,6 +858,9 @@ public final class FarTerrainRenderer {
             }
             submittedMeshes++;
         }
+        drawnQuads += emitVoxelMeshes(consumer, positionMatrix, transformedVertex,
+                cameraX, cameraY, cameraZ, playerX, playerZ,
+                innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
         for (TileKey key : orderedTiles) {
             if (drawnQuads >= drawBudget) break;
             TileMesh mesh = MESHES.get(key);
@@ -952,6 +996,51 @@ public final class FarTerrainRenderer {
         return 6;
     }
 
+    private static int emitVoxelMeshes(VertexConsumer consumer, Matrix4f positionMatrix,
+                                        Vector3f transformedVertex,
+                                        double cameraX, double cameraY, double cameraZ,
+                                        double playerX, double playerZ,
+                                        double innerRadiusSquared, double outerRadiusSquared,
+                                        int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        for (FarTerrainVoxelMesh mesh : VOXEL_MESHES.values()) {
+            if (alreadyDrawn + emitted >= maxQuads) break;
+            double originX = mesh.chunkX() * 16.0;
+            double originZ = mesh.chunkZ() * 16.0;
+            double dx = originX + 8.0 - playerX;
+            double dz = originZ + 8.0 - playerZ;
+            double nearestX = Math.max(0.0, Math.abs(dx) - 8.0);
+            double nearestZ = Math.max(0.0, Math.abs(dz) - 8.0);
+            if (nearestX * nearestX + nearestZ * nearestZ > outerRadiusSquared) continue;
+            double farthestX = Math.abs(dx) + 8.0;
+            double farthestZ = Math.abs(dz) + 8.0;
+            if (farthestX * farthestX + farthestZ * farthestZ < innerRadiusSquared) continue;
+
+            float[] positions = mesh.positions();
+            int[] colors = mesh.colors();
+            for (int quad = 0; quad < mesh.quadCount() && alreadyDrawn + emitted < maxQuads; quad++) {
+                int offset = quad * 12;
+                double quadCenterX = originX + (positions[offset] + positions[offset + 3]
+                        + positions[offset + 6] + positions[offset + 9]) * 0.25;
+                double quadCenterZ = originZ + (positions[offset + 2] + positions[offset + 5]
+                        + positions[offset + 8] + positions[offset + 11]) * 0.25;
+                double qx = quadCenterX - playerX;
+                double qz = quadCenterZ - playerZ;
+                double distanceSquared = qx * qx + qz * qz;
+                if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+
+                int color = colors[quad];
+                emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                        originX + positions[offset], positions[offset + 1], originZ + positions[offset + 2], color,
+                        originX + positions[offset + 3], positions[offset + 4], originZ + positions[offset + 5], color,
+                        originX + positions[offset + 6], positions[offset + 7], originZ + positions[offset + 8], color,
+                        originX + positions[offset + 9], positions[offset + 10], originZ + positions[offset + 11], color);
+                emitted++;
+            }
+        }
+        return emitted;
+    }
+
     private static int emitSkirts(VertexConsumer consumer, Matrix4f positionMatrix,
                                   Vector3f transformedVertex, TileMesh mesh,
                                   double cameraX, double cameraY, double cameraZ,
@@ -1061,6 +1150,9 @@ public final class FarTerrainRenderer {
         drawBudgetAdjustmentFrames = 0;
         DESIRED = Set.of();
         MESHES.clear();
+        VOXEL_MESHES.clear();
+        VOXEL_MESH_ORDER.clear();
+        VOXEL_WORKER.getQueue().clear();
         cachedMeshBytes = 0L;
         FAILED.clear();
         CACHE_EVICTED.clear();

@@ -87,7 +87,7 @@ final class FarTerrainChunkSnapshot {
             int sectionCount = input.readUnsignedShort();
             if (sectionCount > 64) throw new IOException("Invalid FarView voxel section count");
             sections = new FarTerrainVoxelSection[sectionCount];
-            for (int i = 0; i < sectionCount; i++) sections[i] = FarTerrainVoxelSection.read(input);
+            for (int i = 0; i < sectionCount; i++) sections[i] = FarTerrainVoxelSection.read(input, version);
         }
         return new FarTerrainChunkSnapshot(chunkX, chunkZ, heights, colors, sections);
     }
