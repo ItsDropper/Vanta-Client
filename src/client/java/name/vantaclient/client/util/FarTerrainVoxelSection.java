@@ -44,6 +44,8 @@ final class FarTerrainVoxelSection {
     private final int[] paletteFaceColors;
     private final boolean[] solidPalette;
     private final boolean[] translucentPalette;
+    /** Persisted derived hierarchy; lazily rebuilt for legacy cache entries. */
+    private volatile Octree cachedOctree;
 
     FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
                                    byte[] packedLight, int[] voxelColors, int[] paletteColors,
@@ -190,8 +192,10 @@ final class FarTerrainVoxelSection {
                 voxelColors[i] = colors[Short.toUnsignedInt(indices[i])];
             }
         }
-        return new FarTerrainVoxelSection(sectionY, palette, indices, light, voxelColors,
-                colors, faceColors, solids, translucent);
+        FarTerrainVoxelSection result = new FarTerrainVoxelSection(sectionY, palette, indices, light,
+                voxelColors, colors, faceColors, solids, translucent);
+        if (version >= 7) result.cachedOctree = readOctree(input);
+        return result;
     }
 
     void write(DataOutput output) throws IOException {
@@ -205,6 +209,7 @@ final class FarTerrainVoxelSection {
         for (short paletteIndex : paletteIndices) output.writeShort(Short.toUnsignedInt(paletteIndex));
         output.write(packedLight);
         for (int color : voxelColors) output.writeInt(color);
+        writeOctree(output);
     }
 
     int sectionY() { return sectionY; }
@@ -216,7 +221,8 @@ final class FarTerrainVoxelSection {
                 + (long) voxelColors.length * Integer.BYTES
                 + (long) paletteColors.length * Integer.BYTES
                 + (long) paletteFaceColors.length * Integer.BYTES
-                + solidPalette.length + translucentPalette.length;
+                + solidPalette.length + translucentPalette.length
+                + (cachedOctree == null ? 0L : 8L + (long) cachedOctree.nodeCount() * 42L);
     }
 
     int blockStateId(int x, int y, int z) {
@@ -273,9 +279,68 @@ final class FarTerrainVoxelSection {
     }
 
     Octree buildOctree() {
-        OctreeBuilder builder = new OctreeBuilder();
-        int root = builder.build(0, 0, 0, EDGE);
-        return builder.finish(root);
+        Octree result = cachedOctree;
+        if (result != null) return result;
+        synchronized (this) {
+            result = cachedOctree;
+            if (result == null) {
+                OctreeBuilder builder = new OctreeBuilder();
+                int root = builder.build(0, 0, 0, EDGE);
+                result = builder.finish(root);
+                cachedOctree = result;
+            }
+        }
+        return result;
+    }
+
+    private static Octree readOctree(DataInput input) throws IOException {
+        int root = input.readInt();
+        int count = input.readInt();
+        if (count < 0 || count > 65_536 || (count == 0 ? root != -1 : root < 0 || root >= count)) {
+            throw new IOException("Invalid FarView octree header");
+        }
+        int[] materials = new int[count];
+        byte[] lights = new byte[count];
+        int[] children = new int[count * 8];
+        byte[] sizes = new byte[count];
+        int[] solidCounts = new int[count];
+        for (int node = 0; node < count; node++) {
+            materials[node] = input.readInt();
+            lights[node] = input.readByte();
+            int size = input.readUnsignedByte();
+            int solidCount = input.readInt();
+            if (size != 1 && size != 2 && size != 4 && size != 8 && size != 16) {
+                throw new IOException("Invalid FarView octree node size");
+            }
+            if (solidCount < 1 || solidCount > size * size * size) {
+                throw new IOException("Invalid FarView octree solid count");
+            }
+            sizes[node] = (byte) size;
+            solidCounts[node] = solidCount;
+            for (int child = 0; child < 8; child++) {
+                int childIndex = input.readInt();
+                if (childIndex < -1 || childIndex >= node) {
+                    throw new IOException("Invalid FarView octree child index");
+                }
+                children[node * 8 + child] = childIndex;
+            }
+        }
+        return new Octree(root, materials, lights, children, sizes, solidCounts);
+    }
+
+    private void writeOctree(DataOutput output) throws IOException {
+        Octree tree = buildOctree();
+        output.writeInt(tree.rootIndex());
+        output.writeInt(tree.nodeCount());
+        for (int node = 0; node < tree.nodeCount(); node++) {
+            output.writeInt(tree.materialIds()[node]);
+            output.writeByte(tree.packedLight()[node]);
+            output.writeByte(tree.nodeSizes()[node]);
+            output.writeInt(tree.solidCounts()[node]);
+            for (int child = 0; child < 8; child++) {
+                output.writeInt(tree.childIndices()[node * 8 + child]);
+            }
+        }
     }
 
     /** Sparse octree builder: omit empty branches and collapse uniform solid regions. */

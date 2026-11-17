@@ -302,14 +302,26 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             FarTerrainVoxelSection restored;
             try (java.io.DataInputStream input = new java.io.DataInputStream(
                     new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
-                restored = FarTerrainVoxelSection.read(input, 6);
+                restored = FarTerrainVoxelSection.read(input, 7);
+            }
+            if (restored.buildOctree() != restored.buildOctree()) {
+                throw new AssertionError("Persisted octree should be cached rather than rebuilt after loading.");
             }
             if (restored.blockStateId(2, 6, 11) != 1
                     || !restored.isSolid(2, 6, 11)
                     || restored.materialColor(2, 6, 11) != 0xFF12AB34
                     || restored.skyLight(2, 6, 11) != 12
-                    || restored.blockLight(2, 6, 11) != 5) {
+                    || restored.blockLight(2, 6, 11) != 5
+                    || restored.buildOctree().isEmpty()
+                    || restored.buildOctree().nodeCount() != source.buildOctree().nodeCount()) {
                 throw new AssertionError("Version 5 voxel payload lost palette, per-voxel material, or packed light data.");
+            }
+            try (java.io.DataInputStream legacyInput = new java.io.DataInputStream(
+                    new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
+                FarTerrainVoxelSection legacy = FarTerrainVoxelSection.read(legacyInput, 6);
+                if (legacy.blockStateId(2, 6, 11) != 1 || legacy.buildOctree().isEmpty()) {
+                    throw new AssertionError("Version 6 snapshots must still rebuild their missing octree.");
+                }
             }
         } catch (java.io.IOException error) {
             throw new AssertionError("Voxel payload round-trip failed.", error);

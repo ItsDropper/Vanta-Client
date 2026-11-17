@@ -8,7 +8,7 @@ public final class FarViewFeature extends Feature {
     public static final FarViewFeature INSTANCE = new FarViewFeature();
 
     private FarViewFeature() {
-        super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback with biome-blended materials and directional ridge shadows, captured voxel ambient occlusion, adjustable sampling, water, shading, tree silhouettes, adaptive background mesh pacing and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
+        super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback with biome-blended materials and directional ridge shadows, persisted sparse 3D voxel octrees, captured voxel ambient occlusion, adjustable sampling, water, shading, tree silhouettes, adaptive background mesh pacing and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
     }
 
     @Override
