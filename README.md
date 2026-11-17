@@ -38,7 +38,9 @@ FarView uses an adaptive quadtree to render distant terrain in singleplayer. It 
 
 Nvidium is optional and is not a compile-time, runtime, or bundled dependency. When it is installed and its accelerated renderer is active, Nvidium continues to own GPU-driven rendering and occlusion for Sodium's ordinary chunk terrain. FarView's distant LOD geometry remains in its separate Minecraft render pass, so the two render paths can coexist without FarView reaching into Sodium or Nvidium internals. The compatibility check uses reflection only and fails closed if Nvidium changes its internal status field.
 
-This is renderer coexistence, not injection of FarView LOD meshes into Nvidium's mesh-shader pipeline: Nvidium's exposed API currently provides section visibility and region transforms, not a public custom-geometry upload/draw contract. FarView does not claim Nvidium GPU occlusion for its own LOD tiles. Its independent GPU-driven LOD backend remains a separate implementation task.
+This is renderer coexistence, not injection of FarView LOD meshes into Nvidium's mesh-shader pipeline: Nvidium's exposed API currently provides section visibility and region transforms, not a public custom-geometry upload/draw contract. FarView does not claim Nvidium GPU occlusion for its own LOD tiles.
+
+On NVIDIA drivers exposing `GL_NV_mesh_shader`, FarView can use its own optional OpenGL mesh-shader backend without loading or linking against Nvidium. It uploads bounded terrain height/color grids to shader-storage buffers, dispatches 8×8-cell meshlets, and performs per-meshlet frustum and near/far-band rejection in the mesh shader. The existing Minecraft `VertexConsumer` path remains the fallback when the extension or shader program is unavailable. The initial GPU path deliberately falls back for terrain sets containing distant water cells; it also retains CPU-side tile planning, mesh generation, tree silhouettes, and edge skirts. This is GPU meshlet rendering and culling, not yet hierarchical GPU quadtree traversal or depth-pyramid occlusion.
 
 ## Mod library and hot-loading
 
