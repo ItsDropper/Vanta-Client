@@ -65,11 +65,15 @@ public final class HudSettingsPanel {
                 VantaClientPreferences.get().uiScale));
         int layoutWidth = Math.max(1, Math.round(viewportWidth / uiScale));
         int layoutHeight = Math.max(1, Math.round(viewportHeight / uiScale));
+        int physicalMargin = Math.max(8, Math.min(22,
+                Math.round(Math.min(viewportWidth, viewportHeight) * 0.06f)));
+        int layoutMargin = Math.max(1, Math.round(physicalMargin / uiScale));
+        int contentHeight = Math.max(0, layoutHeight - layoutMargin * 2);
         int panelWidth = Math.max(160, Math.min(268, Math.round(layoutWidth * 0.48f)));
         int panelHeight = Math.max(112, Math.min(430, layoutHeight - 104));
 
         VantaUiNode root = VantaUiNode.row(0, 0)
-                .height(Math.max(0, layoutHeight - 44))
+                .height(contentHeight)
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
 
@@ -176,7 +180,7 @@ public final class HudSettingsPanel {
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
                 .width(panelWidth)
-                .height(Math.max(0, layoutHeight - 44))
+                .height(contentHeight)
                 .align(VantaUiNode.Alignment.START);
         inspectorSlot.add(VantaUiNode.spacer(1).height(60));
         inspectorSlot.add(panel);
