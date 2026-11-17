@@ -119,7 +119,10 @@ final class FarTerrainVoxelMesh {
                                 if (translucentPass
                                         ? neighborOpaque || neighborTranslucent
                                         : neighborOpaque) continue;
-                                mask[v * EDGE + u] = litColor(section, x, localY, z, translucentPass, axis, direction);
+                                float ambientOcclusion = ambientOcclusion(chunkX, chunkZ, bySectionY,
+                                        adjacentSections, x, y, z, axis, direction);
+                                mask[v * EDGE + u] = litColor(section, x, localY, z,
+                                        translucentPass, axis, direction, ambientOcclusion);
                             }
                         }
 
@@ -221,13 +224,61 @@ final class FarTerrainVoxelMesh {
 
     private record SectionVoxel(FarTerrainVoxelSection section, int x, int y, int z) {}
 
-    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent, int axis, int direction) {
+    private static float ambientOcclusion(int chunkX, int chunkZ,
+                                          Map<Integer, FarTerrainVoxelSection> sections,
+                                          Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections,
+                                          int x, int y, int z, int axis, int direction) {
+        int normalX = x + (axis == 0 ? direction : 0);
+        int normalY = y + (axis == 1 ? direction : 0);
+        int normalZ = z + (axis == 2 ? direction : 0);
+        int uAxis = (axis + 1) % 3;
+        int vAxis = (axis + 2) % 3;
+        int sideOccluders = 0;
+        int cornerOccluders = 0;
+
+        for (int sign : new int[]{-1, 1}) {
+            int sideUX = normalX + (uAxis == 0 ? sign : 0);
+            int sideUY = normalY + (uAxis == 1 ? sign : 0);
+            int sideUZ = normalZ + (uAxis == 2 ? sign : 0);
+            if (isSolid(chunkX, chunkZ, sections, adjacentSections, sideUX, sideUY, sideUZ)) {
+                sideOccluders++;
+            }
+            int sideVX = normalX + (vAxis == 0 ? sign : 0);
+            int sideVY = normalY + (vAxis == 1 ? sign : 0);
+            int sideVZ = normalZ + (vAxis == 2 ? sign : 0);
+            if (isSolid(chunkX, chunkZ, sections, adjacentSections, sideVX, sideVY, sideVZ)) {
+                sideOccluders++;
+            }
+            for (int otherSign : new int[]{-1, 1}) {
+                int cornerX = normalX + (uAxis == 0 ? sign : 0)
+                        + (vAxis == 0 ? otherSign : 0);
+                int cornerY = normalY + (uAxis == 1 ? sign : 0)
+                        + (vAxis == 1 ? otherSign : 0);
+                int cornerZ = normalZ + (uAxis == 2 ? sign : 0)
+                        + (vAxis == 2 ? otherSign : 0);
+                if (isSolid(chunkX, chunkZ, sections, adjacentSections,
+                        cornerX, cornerY, cornerZ)) cornerOccluders++;
+            }
+        }
+        return ambientOcclusionFactor(sideOccluders, cornerOccluders);
+    }
+
+    static float ambientOcclusionFactor(int sideOccluders, int cornerOccluders) {
+        int sides = Math.max(0, Math.min(4, sideOccluders));
+        int corners = Math.max(0, Math.min(4, cornerOccluders));
+        return Math.max(0.68f, 1.0f - sides * 0.04f - corners * 0.04f);
+    }
+
+    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z,
+                                boolean translucent, int axis, int direction,
+                                float ambientOcclusion) {
         int color = section.materialColor(x, y, z, axis, direction);
         float sky = section.skyLight(x, y, z) / 15.0f;
         float block = section.blockLight(x, y, z) / 15.0f;
         float directional = axis == 1 ? (direction > 0 ? 1.0f : 0.52f)
                 : axis == 0 ? 0.78f : 0.88f;
-        float brightness = Math.max(0.12f, Math.max(sky * 0.92f, block)) * directional;
+        float brightness = Math.max(0.12f, Math.max(sky * 0.92f, block))
+                * directional * ambientOcclusion;
         int red = channel(color, 16, brightness + block * 0.08f);
         int green = channel(color, 8, brightness + block * 0.025f);
         int blue = channel(color, 0, brightness - block * 0.06f);
