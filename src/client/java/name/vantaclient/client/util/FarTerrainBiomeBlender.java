@@ -16,10 +16,9 @@ final class FarTerrainBiomeBlender {
     private FarTerrainBiomeBlender() {}
 
     static SurfaceColors sample(BiomeSource source, Climate.Sampler sampler,
-                                int worldX, int surfaceY, int worldZ,
-                                int height, int seaLevel) {
+                                int worldX, int height, int worldZ, int seaLevel) {
         int centerQuartX = QuartPos.fromBlock(worldX);
-        int quartY = QuartPos.fromBlock(surfaceY);
+        int quartY = QuartPos.fromBlock(height);
         int centerQuartZ = QuartPos.fromBlock(worldZ);
         double totalWeight = 0.0;
         double terrainRed = 0.0;
