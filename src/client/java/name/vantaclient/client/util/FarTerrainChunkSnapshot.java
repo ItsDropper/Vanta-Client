@@ -62,7 +62,7 @@ final class FarTerrainChunkSnapshot {
         }
         LevelChunkSection[] sourceSections = chunk.getSections();
         List<FarTerrainVoxelSection> voxelSections = new ArrayList<>(sourceSections.length);
-        int minSection = level.getMinSection();
+        int minSection = Math.floorDiv(level.getMinY(), FarTerrainVoxelSection.EDGE);
         for (int i = 0; i < sourceSections.length; i++) {
             LevelChunkSection section = sourceSections[i];
             if (section.hasOnlyAir()) continue;
