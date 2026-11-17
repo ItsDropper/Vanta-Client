@@ -314,7 +314,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
                     || restored.blockLight(2, 6, 11) != 5
                     || restored.buildOctree().isEmpty()
                     || restored.buildOctree().nodeCount() != source.buildOctree().nodeCount()) {
-                throw new AssertionError("Version 5 voxel payload lost palette, per-voxel material, or packed light data.");
+                throw new AssertionError("Version 7 voxel payload lost palette, per-voxel material, packed light, or persisted octree data.");
             }
             try (java.io.DataInputStream legacyInput = new java.io.DataInputStream(
                     new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
