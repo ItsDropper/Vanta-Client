@@ -29,6 +29,7 @@ import java.util.List;
 final class FarTerrainVoxelGpuRenderer {
     private static final int MESH_SHADER_NV = 0x9559;
     private static final int QUADS_PER_MESHLET = 32;
+    private static final int MAX_UPLOAD_QUADS = 96_000;
     private static final int MAX_GPU_BYTES = 96 * 1024 * 1024;
 
     private static final String MESH_SHADER = """
@@ -147,7 +148,8 @@ final class FarTerrainVoxelGpuRenderer {
     private static int outerRadiusLocation;
     private static List<FarTerrainVoxelMesh> cachedMeshes = List.of();
     private static List<Meshlet> meshlets = List.of();
-    private static int cachedMaxQuads = -1;
+    private static int activeMeshletCount;
+    private static int activeQuadCount;
     private static int lastDrawnQuads;
     private static String failure = "";
     private static boolean unavailable;
@@ -162,16 +164,17 @@ final class FarTerrainVoxelGpuRenderer {
         if (unavailable || !isSupported()) return -1;
         try {
             ensureProgram();
-            synchronizeMeshes(meshes, maxQuads);
-            if (meshlets.isEmpty()) return 0;
+            synchronizeMeshes(meshes);
+            selectMeshlets(maxQuads);
+            if (activeMeshletCount == 0) return meshlets.isEmpty() ? 0 : -1;
 
             Minecraft client = Minecraft.getInstance();
             PoseStack.Pose pose = context.matrices().last();
             Matrix4f mvp = new Matrix4f(context.gameRenderer()
                     .getProjectionMatrix(client.options.fov().get())).mul(pose.pose());
             uploadFrameData(cameraX, cameraY, cameraZ);
-            draw(mvp, playerX - cameraX, playerZ - cameraZ, innerRadius, outerRadius);
-            lastDrawnQuads = meshlets.stream().mapToInt(Meshlet::quadCount).sum();
+            draw(mvp, playerX - cameraX, playerZ - cameraZ, innerRadius, outerRadius, activeMeshletCount);
+            lastDrawnQuads = activeQuadCount;
             failure = "";
             return lastDrawnQuads;
         } catch (RuntimeException | LinkageError error) {
@@ -225,8 +228,8 @@ final class FarTerrainVoxelGpuRenderer {
         return shader;
     }
 
-    private static void synchronizeMeshes(List<FarTerrainVoxelMesh> meshes, int maxQuads) {
-        boolean unchanged = maxQuads == cachedMaxQuads && meshes.size() == cachedMeshes.size();
+    private static void synchronizeMeshes(List<FarTerrainVoxelMesh> meshes) {
+        boolean unchanged = meshes.size() == cachedMeshes.size();
         if (unchanged) {
             for (int i = 0; i < meshes.size(); i++) {
                 if (meshes.get(i) != cachedMeshes.get(i)) {
@@ -241,7 +244,7 @@ final class FarTerrainVoxelGpuRenderer {
         int totalQuads = 0;
         long totalBytes = 0L;
         for (FarTerrainVoxelMesh mesh : meshes) {
-            int count = Math.min(mesh.quadCount(), maxQuads - totalQuads);
+            int count = Math.min(mesh.quadCount(), MAX_UPLOAD_QUADS - totalQuads);
             if (count <= 0) break;
             long meshBytes = (long) count * 4L * 4L * Float.BYTES;
             if (totalBytes + meshBytes > MAX_GPU_BYTES) break;
@@ -259,13 +262,14 @@ final class FarTerrainVoxelGpuRenderer {
             }
             totalQuads += count;
             totalBytes += meshBytes;
-            if (totalQuads >= maxQuads) break;
+            if (totalQuads >= MAX_UPLOAD_QUADS) break;
         }
 
         if (nextMeshlets.isEmpty()) {
             cachedMeshes = List.copyOf(meshes);
-            cachedMaxQuads = maxQuads;
             meshlets = List.of();
+            activeMeshletCount = 0;
+            activeQuadCount = 0;
             return;
         }
 
@@ -274,11 +278,12 @@ final class FarTerrainVoxelGpuRenderer {
         int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
         try {
             int baseVertex = 0;
+            int remainingQuads = totalQuads;
             for (FarTerrainVoxelMesh mesh : meshes) {
-                if (baseVertex >= totalQuads * 4) break;
+                if (remainingQuads <= 0) break;
                 float[] positions = mesh.positions();
                 int[] colors = mesh.colors();
-                int count = Math.min(mesh.quadCount(), maxQuads - baseVertex / 4);
+                int count = Math.min(mesh.quadCount(), remainingQuads);
                 for (int quad = 0; quad < count; quad++) {
                     int offset = quad * 12;
                     for (int corner = 0; corner < 4; corner++) {
@@ -290,6 +295,7 @@ final class FarTerrainVoxelGpuRenderer {
                     }
                 }
                 baseVertex += count * 4;
+                remainingQuads -= count;
             }
             for (Meshlet meshlet : nextMeshlets) {
                 metadata.put(meshlet.vertexBase()).put(meshlet.quadCount()).put(0).put(0);
@@ -313,16 +319,28 @@ final class FarTerrainVoxelGpuRenderer {
             GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, previousBuffer);
         }
         cachedMeshes = List.copyOf(meshes);
-        cachedMaxQuads = maxQuads;
         meshlets = List.copyOf(nextMeshlets);
+        activeMeshletCount = 0;
+        activeQuadCount = 0;
+    }
+
+    private static void selectMeshlets(int maxQuads) {
+        activeMeshletCount = 0;
+        activeQuadCount = 0;
+        for (Meshlet meshlet : meshlets) {
+            if (activeQuadCount + meshlet.quadCount() > maxQuads) break;
+            activeQuadCount += meshlet.quadCount();
+            activeMeshletCount++;
+        }
     }
 
     private static void uploadFrameData(double cameraX, double cameraY, double cameraZ) {
-        FloatBuffer transforms = MemoryUtil.memAllocFloat(meshlets.size() * 4);
-        FloatBuffer bounds = MemoryUtil.memAllocFloat(meshlets.size() * 4);
+        FloatBuffer transforms = MemoryUtil.memAllocFloat(activeMeshletCount * 4);
+        FloatBuffer bounds = MemoryUtil.memAllocFloat(activeMeshletCount * 4);
         int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
         try {
-            for (Meshlet meshlet : meshlets) {
+            for (int meshletIndex = 0; meshletIndex < activeMeshletCount; meshletIndex++) {
+                Meshlet meshlet = meshlets.get(meshletIndex);
                 double originX = meshlet.mesh().chunkX() * 16.0;
                 double originZ = meshlet.mesh().chunkZ() * 16.0;
                 double centerX = originX + 8.0;
@@ -351,7 +369,7 @@ final class FarTerrainVoxelGpuRenderer {
     }
 
     private static void draw(Matrix4f mvp, double playerX, double playerZ,
-                             double innerRadius, double outerRadius) {
+                             double innerRadius, double outerRadius, int meshletCount) {
         int previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int previousVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
@@ -382,7 +400,7 @@ final class FarTerrainVoxelGpuRenderer {
             GL11.glDepthMask(true);
             GL11.glDisable(GL11.GL_BLEND);
             GL11.glDisable(GL11.GL_CULL_FACE);
-            NVMeshShader.glDrawMeshTasksNV(0, meshlets.size());
+            NVMeshShader.glDrawMeshTasksNV(0, meshletCount);
         } finally {
             for (int binding = 0; binding < previousIndexed.length; binding++) {
                 GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, binding, previousIndexed[binding]);
@@ -413,7 +431,8 @@ final class FarTerrainVoxelGpuRenderer {
     static void clearWorld() {
         cachedMeshes = List.of();
         meshlets = List.of();
-        cachedMaxQuads = -1;
+        activeMeshletCount = 0;
+        activeQuadCount = 0;
         lastDrawnQuads = 0;
         if (hasCurrentContext()) releaseBuffers();
     }
@@ -424,7 +443,8 @@ final class FarTerrainVoxelGpuRenderer {
         failure = "";
         cachedMeshes = List.of();
         meshlets = List.of();
-        cachedMaxQuads = -1;
+        activeMeshletCount = 0;
+        activeQuadCount = 0;
     }
 
     private static void release() {
