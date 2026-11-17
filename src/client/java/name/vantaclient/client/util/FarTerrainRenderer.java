@@ -156,7 +156,7 @@ public final class FarTerrainRenderer {
             snapshotClientLevel = client.level;
             FarTerrainSnapshotStore store = new FarTerrainSnapshotStore(
                     server.getWorldPath(LevelResource.ROOT),
-                    serverLevel.dimension().location().toString());
+                    serverLevel.dimension().identifier().toString());
             snapshotStore = store;
             for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
                 store.save(snapshot);
