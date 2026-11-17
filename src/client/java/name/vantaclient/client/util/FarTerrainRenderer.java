@@ -917,6 +917,12 @@ public final class FarTerrainRenderer {
                     cameraX, cameraY, cameraZ, playerX, playerZ,
                     innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
         }
+        if (drawnQuads < drawBudget) {
+            VertexConsumer translucentConsumer = context.consumers().getBuffer(FarTerrainRenderType.TRANSLUCENT_TYPE);
+            drawnQuads += emitTranslucentVoxelMeshes(translucentConsumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+        }
         for (TileKey key : orderedTiles) {
             if (drawnQuads >= drawBudget) break;
             TileMesh mesh = MESHES.get(key);
@@ -1050,6 +1056,48 @@ public final class FarTerrainRenderer {
                 minX, minY, maxZ, bottom, minX, minY, minZ, bottom,
                 maxX, minY, minZ, bottom, maxX, minY, maxZ, bottom);
         return 6;
+    }
+
+    private static int emitTranslucentVoxelMeshes(VertexConsumer consumer, Matrix4f positionMatrix,
+                                                      Vector3f transformedVertex,
+                                                      double cameraX, double cameraY, double cameraZ,
+                                                      double playerX, double playerZ,
+                                                      double innerRadiusSquared, double outerRadiusSquared,
+                                                      int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        List<FarTerrainVoxelMesh> meshes = new ArrayList<>(VOXEL_MESHES.values());
+        meshes.sort(Comparator.comparingDouble((FarTerrainVoxelMesh mesh) -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - cameraX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - cameraZ;
+            return dx * dx + dz * dz;
+        }).reversed());
+        for (FarTerrainVoxelMesh mesh : meshes) {
+            if (alreadyDrawn + emitted >= maxQuads) break;
+            double originX = mesh.chunkX() * 16.0;
+            double originZ = mesh.chunkZ() * 16.0;
+            float[] positions = mesh.translucentPositions();
+            int[] colors = mesh.translucentColors();
+            for (int quad = 0; quad < mesh.translucentQuadCount()
+                    && alreadyDrawn + emitted < maxQuads; quad++) {
+                int offset = quad * 12;
+                double centerX = originX + (positions[offset] + positions[offset + 3]
+                        + positions[offset + 6] + positions[offset + 9]) * 0.25;
+                double centerZ = originZ + (positions[offset + 2] + positions[offset + 5]
+                        + positions[offset + 8] + positions[offset + 11]) * 0.25;
+                double dx = centerX - playerX;
+                double dz = centerZ - playerZ;
+                double distanceSquared = dx * dx + dz * dz;
+                if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+                int color = colors[quad];
+                emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                        originX + positions[offset], positions[offset + 1], originZ + positions[offset + 2], color,
+                        originX + positions[offset + 3], positions[offset + 4], originZ + positions[offset + 5], color,
+                        originX + positions[offset + 6], positions[offset + 7], originZ + positions[offset + 8], color,
+                        originX + positions[offset + 9], positions[offset + 10], originZ + positions[offset + 11], color);
+                emitted++;
+            }
+        }
+        return emitted;
     }
 
     private static int emitVoxelMeshes(VertexConsumer consumer, Matrix4f positionMatrix,

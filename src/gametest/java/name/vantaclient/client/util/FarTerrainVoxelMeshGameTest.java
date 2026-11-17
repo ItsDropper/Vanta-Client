@@ -12,6 +12,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifySingleBlockProducesSixFaces();
         verifyAdjacentBlocksGreedyMerge();
         verifyVoxelPayloadRoundTrip();
+        verifyFluidVoxelUsesTranslucentMesh();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -57,6 +58,24 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         }
     }
 
+    private static void verifyFluidVoxelUsesTranslucentMesh() {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        indices[index(4, 7, 9)] = 1;
+        FarTerrainVoxelSection section = new FarTerrainVoxelSection(0,
+                new int[]{0, 1}, indices, new byte[FarTerrainVoxelSection.VOXEL_COUNT],
+                new int[]{0xFF000000, 0xFF5577AA},
+                new boolean[]{false, false}, new boolean[]{false, true});
+        FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
+        if (mesh == null || mesh.quadCount() != 0 || mesh.translucentQuadCount() != 6) {
+            throw new AssertionError("Fluid-only sections must create a separate six-face translucent mesh.");
+        }
+        for (int color : mesh.translucentColors()) {
+            if ((color >>> 24) != 0xA0) {
+                throw new AssertionError("Translucent voxel material lost its alpha channel.");
+            }
+        }
+    }
+
     private static void verifyVoxelPayloadRoundTrip() {
         short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
         byte[] light = new byte[FarTerrainVoxelSection.VOXEL_COUNT];
@@ -71,7 +90,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             FarTerrainVoxelSection restored;
             try (java.io.DataInputStream input = new java.io.DataInputStream(
                     new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
-                restored = FarTerrainVoxelSection.read(input, 3);
+                restored = FarTerrainVoxelSection.read(input, 4);
             }
             if (restored.blockStateId(2, 6, 11) != 1
                     || !restored.isSolid(2, 6, 11)
@@ -97,7 +116,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         return new FarTerrainVoxelSection(0,
                 new int[]{0, 1}, indices, light,
                 new int[]{0xFF000000, 0xFF777777},
-                new boolean[]{false, true});
+                new boolean[]{false, true}, new boolean[]{false, false});
     }
 
     private static FarTerrainChunkSnapshot snapshot(FarTerrainVoxelSection section) {

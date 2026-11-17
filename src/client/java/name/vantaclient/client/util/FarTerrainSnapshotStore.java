@@ -28,7 +28,7 @@ import java.util.zip.GZIPOutputStream;
  */
 final class FarTerrainSnapshotStore {
     private static final int MAGIC = 0x56464C44; // VFLD
-    private static final int VERSION = 3;
+    private static final int VERSION = 4;
     private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(512),

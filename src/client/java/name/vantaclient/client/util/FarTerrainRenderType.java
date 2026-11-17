@@ -1,5 +1,6 @@
 package name.vantaclient.client.util;
 
+import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
@@ -24,6 +25,23 @@ public final class FarTerrainRenderType {
     public static final RenderType TYPE = RenderType.create(
             "dropperutils_far_terrain",
             RenderSetup.builder(PIPELINE)
+                    .bufferSize(RenderType.BIG_BUFFER_SIZE)
+                    .createRenderSetup()
+    );
+
+    private static final RenderPipeline TRANSLUCENT_PIPELINE = RenderPipeline.builder(
+                    RenderPipelines.DEBUG_FILLED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath(
+                    "dropperutils", "pipeline/far_terrain_translucent"))
+            .withBlend(BlendFunction.TRANSLUCENT)
+            .withDepthWrite(false)
+            .withCull(false)
+            .build();
+
+    public static final RenderType TRANSLUCENT_TYPE = RenderType.create(
+            "dropperutils_far_terrain_translucent",
+            RenderSetup.builder(TRANSLUCENT_PIPELINE)
+                    .sortOnUpload()
                     .bufferSize(RenderType.BIG_BUFFER_SIZE)
                     .createRenderSetup()
     );

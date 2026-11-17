@@ -26,15 +26,18 @@ final class FarTerrainVoxelSection {
     private final byte[] packedLight;
     private final int[] paletteColors;
     private final boolean[] solidPalette;
+    private final boolean[] translucentPalette;
 
     FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
-                                   byte[] packedLight, int[] paletteColors, boolean[] solidPalette) {
+                                   byte[] packedLight, int[] paletteColors, boolean[] solidPalette,
+                                   boolean[] translucentPalette) {
         this.sectionY = sectionY;
         this.palette = palette;
         this.paletteIndices = paletteIndices;
         this.packedLight = packedLight;
         this.paletteColors = paletteColors;
         this.solidPalette = solidPalette;
+        this.translucentPalette = translucentPalette;
     }
 
     static FarTerrainVoxelSection capture(LevelChunkSection section, int sectionY,
@@ -43,11 +46,12 @@ final class FarTerrainVoxelSection {
         List<Integer> palette = new ArrayList<>();
         List<Integer> colors = new ArrayList<>();
         List<Boolean> solids = new ArrayList<>();
+        List<Boolean> translucent = new ArrayList<>();
         short[] indices = new short[VOXEL_COUNT];
         byte[] light = new byte[VOXEL_COUNT];
         BlockPos.MutableBlockPos position = new BlockPos.MutableBlockPos();
         int baseY = sectionY * EDGE;
-        boolean hasSolidBlock = false;
+        boolean hasRenderableBlock = false;
 
         for (int y = 0; y < EDGE; y++) {
             for (int z = 0; z < EDGE; z++) {
@@ -64,10 +68,11 @@ final class FarTerrainVoxelSection {
                         int mapColor = state.getMapColor(level, position).col;
                         colors.add(0xFF000000 | (mapColor & 0x00FFFFFF));
                         solids.add(!state.isAir() && state.getFluidState().isEmpty());
+                        translucent.add(!state.isAir() && !state.getFluidState().isEmpty());
                     }
                     indices[index] = (short) (int) paletteIndex;
-                    if (!state.isAir() && state.getFluidState().isEmpty()) {
-                        hasSolidBlock = true;
+                    if (!state.isAir()) {
+                        hasRenderableBlock = true;
                         int sky = level.getBrightness(LightLayer.SKY, position) & 15;
                         int block = level.getBrightness(LightLayer.BLOCK, position) & 15;
                         light[index] = (byte) ((sky << 4) | block);
@@ -76,16 +81,18 @@ final class FarTerrainVoxelSection {
             }
         }
 
-        if (!hasSolidBlock) return null;
+        if (!hasRenderableBlock) return null;
         int[] paletteArray = new int[palette.size()];
         int[] colorArray = new int[palette.size()];
         boolean[] solidArray = new boolean[palette.size()];
+        boolean[] translucentArray = new boolean[palette.size()];
         for (int i = 0; i < palette.size(); i++) {
             paletteArray[i] = palette.get(i);
             colorArray[i] = colors.get(i);
             solidArray[i] = solids.get(i);
+            translucentArray[i] = translucent.get(i);
         }
-        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, colorArray, solidArray);
+        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, colorArray, solidArray, translucentArray);
     }
 
     static FarTerrainVoxelSection read(DataInput input, int version) throws IOException {
@@ -98,9 +105,13 @@ final class FarTerrainVoxelSection {
         for (int i = 0; i < paletteSize; i++) palette[i] = input.readInt();
         int[] colors = new int[paletteSize];
         boolean[] solids = new boolean[paletteSize];
+        boolean[] translucent = new boolean[paletteSize];
         if (version >= 3) {
             for (int i = 0; i < paletteSize; i++) colors[i] = input.readInt();
             for (int i = 0; i < paletteSize; i++) solids[i] = input.readBoolean();
+            if (version >= 4) {
+                for (int i = 0; i < paletteSize; i++) translucent[i] = input.readBoolean();
+            }
         } else {
             for (int i = 0; i < paletteSize; i++) {
                 colors[i] = 0xFF858585;
@@ -115,7 +126,7 @@ final class FarTerrainVoxelSection {
         }
         byte[] light = new byte[VOXEL_COUNT];
         input.readFully(light);
-        return new FarTerrainVoxelSection(sectionY, palette, indices, light, colors, solids);
+        return new FarTerrainVoxelSection(sectionY, palette, indices, light, colors, solids, translucent);
     }
 
     void write(DataOutput output) throws IOException {
@@ -124,6 +135,7 @@ final class FarTerrainVoxelSection {
         for (int stateId : palette) output.writeInt(stateId);
         for (int color : paletteColors) output.writeInt(color);
         for (boolean solid : solidPalette) output.writeBoolean(solid);
+        for (boolean translucent : translucentPalette) output.writeBoolean(translucent);
         for (short paletteIndex : paletteIndices) output.writeShort(Short.toUnsignedInt(paletteIndex));
         output.write(packedLight);
     }
@@ -140,6 +152,10 @@ final class FarTerrainVoxelSection {
 
     boolean isSolid(int x, int y, int z) {
         return solidPalette[Short.toUnsignedInt(paletteIndices[index(x, y, z)])];
+    }
+
+    boolean isTranslucent(int x, int y, int z) {
+        return translucentPalette[Short.toUnsignedInt(paletteIndices[index(x, y, z)])];
     }
 
     int skyLight(int x, int y, int z) {

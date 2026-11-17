@@ -14,14 +14,19 @@ final class FarTerrainVoxelMesh {
     private final int chunkZ;
     private final float[] positions;
     private final int[] colors;
+    private final float[] translucentPositions;
+    private final int[] translucentColors;
     private final FarTerrainVoxelSection.Octree[] octrees;
 
-    private FarTerrainVoxelMesh(int chunkX, int chunkZ, float[] positions,
-                                int[] colors, FarTerrainVoxelSection.Octree[] octrees) {
+    private FarTerrainVoxelMesh(int chunkX, int chunkZ, float[] positions, int[] colors,
+                                float[] translucentPositions, int[] translucentColors,
+                                FarTerrainVoxelSection.Octree[] octrees) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.positions = positions;
         this.colors = colors;
+        this.translucentPositions = translucentPositions;
+        this.translucentColors = translucentColors;
         this.octrees = octrees;
     }
 
@@ -41,6 +46,17 @@ final class FarTerrainVoxelMesh {
             maxY = Math.max(maxY, section.sectionY() * EDGE + EDGE - 1);
         }
 
+        GeometryBuilder opaque = buildGeometry(sections, bySectionY, false);
+        GeometryBuilder translucent = buildGeometry(sections, bySectionY, true);
+        if (opaque.quadCount() == 0 && translucent.quadCount() == 0) return null;
+        return new FarTerrainVoxelMesh(snapshot.chunkX(), snapshot.chunkZ(),
+                opaque.positions(), opaque.colors(),
+                translucent.positions(), translucent.colors(), octrees);
+    }
+
+    private static GeometryBuilder buildGeometry(FarTerrainVoxelSection[] sections,
+                                                   Map<Integer, FarTerrainVoxelSection> bySectionY,
+                                                   boolean translucentPass) {
         GeometryBuilder geometry = new GeometryBuilder();
         int[] mask = new int[EDGE * EDGE];
         for (FarTerrainVoxelSection section : sections) {
@@ -69,13 +85,21 @@ final class FarTerrainVoxelMesh {
                                     y = sectionBaseY + v;
                                     z = slice;
                                 }
-                                if (!section.isSolid(x, y - sectionBaseY, z)) continue;
+                                int localY = y - sectionBaseY;
+                                boolean occupied = translucentPass
+                                        ? section.isTranslucent(x, localY, z)
+                                        : section.isSolid(x, localY, z);
+                                if (!occupied) continue;
 
                                 int nx = x + (axis == 0 ? direction : 0);
                                 int ny = y + (axis == 1 ? direction : 0);
                                 int nz = z + (axis == 2 ? direction : 0);
-                                if (isSolid(bySectionY, nx, ny, nz)) continue;
-                                mask[v * EDGE + u] = litColor(section, x, y - sectionBaseY, z);
+                                boolean neighborOpaque = isSolid(bySectionY, nx, ny, nz);
+                                boolean neighborTranslucent = isTranslucent(bySectionY, nx, ny, nz);
+                                if (translucentPass
+                                        ? neighborOpaque || neighborTranslucent
+                                        : neighborOpaque) continue;
+                                mask[v * EDGE + u] = litColor(section, x, localY, z, translucentPass);
                             }
                         }
 
@@ -126,9 +150,14 @@ final class FarTerrainVoxelMesh {
                 }
             }
         }
-        if (geometry.quadCount() == 0) return null;
-        return new FarTerrainVoxelMesh(snapshot.chunkX(), snapshot.chunkZ(),
-                geometry.positions(), geometry.colors(), octrees);
+        return geometry;
+    }
+
+    private static boolean isTranslucent(Map<Integer, FarTerrainVoxelSection> sections,
+                                          int x, int y, int z) {
+        if (x < 0 || x >= EDGE || z < 0 || z >= EDGE) return false;
+        FarTerrainVoxelSection section = sections.get(Math.floorDiv(y, EDGE));
+        return section != null && section.isTranslucent(x, y, z);
     }
 
     private static boolean isSolid(Map<Integer, FarTerrainVoxelSection> sections,
@@ -138,7 +167,7 @@ final class FarTerrainVoxelMesh {
         return section != null && section.isSolid(x, y, z);
     }
 
-    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z) {
+    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent) {
         int color = section.materialColor(x, y, z);
         float sky = section.skyLight(x, y, z) / 15.0f;
         float block = section.blockLight(x, y, z) / 15.0f;
@@ -146,7 +175,7 @@ final class FarTerrainVoxelMesh {
         int red = channel(color, 16, brightness + block * 0.08f);
         int green = channel(color, 8, brightness + block * 0.025f);
         int blue = channel(color, 0, brightness - block * 0.06f);
-        return 0xFF000000 | (red << 16) | (green << 8) | blue;
+        return (translucent ? 0xA0000000 : 0xFF000000) | (red << 16) | (green << 8) | blue;
     }
 
     private static int channel(int color, int shift, float multiplier) {
@@ -158,10 +187,14 @@ final class FarTerrainVoxelMesh {
     int quadCount() { return colors.length; }
     float[] positions() { return positions; }
     int[] colors() { return colors; }
+    int translucentQuadCount() { return translucentColors.length; }
+    float[] translucentPositions() { return translucentPositions; }
+    int[] translucentColors() { return translucentColors; }
     int octreeSectionCount() { return octrees.length; }
 
     long estimatedBytes() {
-        long bytes = (long) positions.length * Float.BYTES + (long) colors.length * Integer.BYTES;
+        long bytes = (long) (positions.length + translucentPositions.length) * Float.BYTES
+                + (long) (colors.length + translucentColors.length) * Integer.BYTES;
         for (FarTerrainVoxelSection.Octree octree : octrees) {
             bytes += (long) octree.materialIds().length * Integer.BYTES;
             bytes += octree.packedLight().length;
