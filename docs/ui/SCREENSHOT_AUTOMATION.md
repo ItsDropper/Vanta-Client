@@ -40,7 +40,7 @@ All ten states are captured at four configurations:
 
 Expected output: **80 PNG files**. The workflow independently asserts that exactly 80 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
-The 60-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at six viewport/GUI-scale combinations, including true GUI scales 3 and 4. Four captures exercise the retained-mode Modrinth browser at desktop, compact, GUI scale 3 and GUI scale 4. Eight capture the retained-mode installed-mod library and selected-mod details view at those same four sizes. Four capture world sharing at the same sizes. All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
+The 60-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at six viewport/GUI-scale combinations, including true GUI scales 3 and 4. Four viewport configurations exercise the retained-mode Modrinth browser (eight screenshots including its progress state), the installed-mod library and selected-mod details (eight screenshots), and world sharing (four screenshots). All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
 
 ## Interaction smoke check
 
