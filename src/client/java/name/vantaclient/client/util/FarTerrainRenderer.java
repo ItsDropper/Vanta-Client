@@ -67,7 +67,7 @@ public final class FarTerrainRenderer {
 
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
-    private static final int MAX_CAPTURED_CHUNKS = 16_384;
+    private static final int MAX_CAPTURED_CHUNKS = 256;
     private static final ConcurrentLinkedDeque<Long> CHUNK_SNAPSHOT_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
     private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
