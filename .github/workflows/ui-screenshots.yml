@@ -55,7 +55,7 @@ jobs:
           set -o pipefail
           for attempt in 1 2 3; do
             echo "Minecraft screenshot attempt $attempt/3"
-            xvfb-run -a ./gradlew runClientGameTest --stacktrace 2>&1 | tee "/tmp/vanta-screenshot-$attempt.log"
+            xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew runClientGameTest --stacktrace 2>&1 | tee "/tmp/vanta-screenshot-$attempt.log"
             status=${PIPESTATUS[0]}
             if [ "$status" -eq 0 ]; then
               exit 0
@@ -74,7 +74,7 @@ jobs:
           find build/run/clientGameTest/screenshots -type f -name '*.png' -maxdepth 1 -print
           count=$(find build/run/clientGameTest/screenshots -maxdepth 1 -type f -name '*.png' | wc -l)
           echo "Captured screenshot count: $count"
-          test "$count" -eq 50
+          test "$count" -eq 80
 
       - name: Upload Minecraft screenshots
         if: always()
