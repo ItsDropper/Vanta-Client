@@ -15,6 +15,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyFluidVoxelUsesTranslucentMesh();
         verifyRegionStorageHandlesNegativeChunkCoordinates();
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
+        verifyPackedGpuVertexCoordinatesRoundTrip();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -95,6 +96,15 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         if (section.estimatedBytes() < 24_000L
                 || snapshot.estimatedBytes() < section.estimatedBytes()) {
             throw new AssertionError("Snapshot byte accounting omitted its dense voxel and tint payload.");
+        }
+    }
+
+    private static void verifyPackedGpuVertexCoordinatesRoundTrip() {
+        int packed = FarTerrainVoxelGpuRenderer.packPosition(16.0f, -64.0f, 15.0f);
+        if (FarTerrainVoxelGpuRenderer.unpackX(packed) != 16
+                || FarTerrainVoxelGpuRenderer.unpackY(packed) != -64
+                || FarTerrainVoxelGpuRenderer.unpackZ(packed) != 15) {
+            throw new AssertionError("Packed 64-bit GPU vertex format corrupted block coordinates.");
         }
     }
 

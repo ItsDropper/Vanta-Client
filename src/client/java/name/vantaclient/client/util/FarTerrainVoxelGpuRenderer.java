@@ -14,7 +14,7 @@ import org.lwjgl.opengl.NVMeshShader;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
-import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ final class FarTerrainVoxelGpuRenderer {
             layout(triangles, max_vertices = 128, max_primitives = 64) out;
 
             layout(std430, binding = 0) readonly buffer VoxelVertices {
-                vec4 voxelVertices[];
+                uvec2 voxelVertices[];
             };
             layout(std430, binding = 1) readonly buffer VoxelMeshletMetadata {
                 ivec4 meshletMetadata[];
@@ -97,15 +97,19 @@ final class FarTerrainVoxelGpuRenderer {
                     uint firstVertex = uint(meta.x + quad * 4);
                     uint outputVertex = uint(quad * 4);
                     for (uint corner = 0u; corner < 4u; corner++) {
-                        vec4 packedVertex = voxelVertices[firstVertex + corner];
+                        uvec2 packedVertex = voxelVertices[firstVertex + corner];
+                        uint packedPosition = packedVertex.x;
+                        float localX = float(packedPosition & 31u);
+                        float localZ = float((packedPosition >> 5u) & 31u);
+                        int worldY = int(packedPosition << 6u) >> 16;
                         vec3 position = vec3(
-                            transform.x + packedVertex.x,
-                            transform.z + packedVertex.y,
-                            transform.y + packedVertex.z
+                            transform.x + localX,
+                            transform.z + float(worldY),
+                            transform.y + localZ
                         );
                         gl_MeshVerticesNV[outputVertex + corner].gl_Position =
                             uMvp * vec4(position, 1.0);
-                        uint color = floatBitsToUint(packedVertex.w);
+                        uint color = packedVertex.y;
                         vertexColor[outputVertex + corner] = vec4(
                             float((color >> 16u) & 255u),
                             float((color >> 8u) & 255u),
@@ -247,7 +251,7 @@ final class FarTerrainVoxelGpuRenderer {
         for (FarTerrainVoxelMesh mesh : meshes) {
             int count = Math.min(mesh.quadCount(), MAX_UPLOAD_QUADS - totalQuads);
             if (count <= 0) break;
-            long meshBytes = (long) count * 4L * 4L * Float.BYTES;
+            long meshBytes = (long) count * 4L * 2L * Integer.BYTES;
             if (totalBytes + meshBytes > MAX_GPU_BYTES) break;
             float[] positions = mesh.positions();
             float minY = Float.POSITIVE_INFINITY;
@@ -274,7 +278,7 @@ final class FarTerrainVoxelGpuRenderer {
             return;
         }
 
-        FloatBuffer vertices = MemoryUtil.memAllocFloat(totalQuads * 4 * 4);
+        IntBuffer vertices = MemoryUtil.memAllocInt(totalQuads * 4 * 2);
         IntBuffer metadata = MemoryUtil.memAllocInt(nextMeshlets.size() * 4);
         int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
         try {
@@ -289,10 +293,9 @@ final class FarTerrainVoxelGpuRenderer {
                     int offset = quad * 12;
                     for (int corner = 0; corner < 4; corner++) {
                         int positionOffset = offset + corner * 3;
-                        vertices.put(positions[positionOffset]);
-                        vertices.put(positions[positionOffset + 1]);
-                        vertices.put(positions[positionOffset + 2]);
-                        vertices.put(Float.intBitsToFloat(colors[quad]));
+                        vertices.put(packPosition(positions[positionOffset],
+                                positions[positionOffset + 1], positions[positionOffset + 2]));
+                        vertices.put(colors[quad]);
                     }
                 }
                 baseVertex += count * 4;
@@ -323,6 +326,29 @@ final class FarTerrainVoxelGpuRenderer {
         meshlets = List.copyOf(nextMeshlets);
         activeMeshletCount = 0;
         activeQuadCount = 0;
+    }
+
+    static int packPosition(float x, float worldY, float z) {
+        int blockX = Math.round(x);
+        int blockY = Math.round(worldY);
+        int blockZ = Math.round(z);
+        if (blockX < 0 || blockX > 31 || blockZ < 0 || blockZ > 31
+                || blockY < Short.MIN_VALUE || blockY > Short.MAX_VALUE) {
+            throw new IllegalArgumentException("Voxel vertex is outside the packed coordinate range");
+        }
+        return (blockX & 31) | ((blockZ & 31) << 5) | ((blockY & 0xFFFF) << 10);
+    }
+
+    static int unpackX(int packedPosition) {
+        return packedPosition & 31;
+    }
+
+    static int unpackZ(int packedPosition) {
+        return (packedPosition >>> 5) & 31;
+    }
+
+    static int unpackY(int packedPosition) {
+        return (short) (packedPosition >>> 10);
     }
 
     private static void selectMeshlets(int maxQuads) {
