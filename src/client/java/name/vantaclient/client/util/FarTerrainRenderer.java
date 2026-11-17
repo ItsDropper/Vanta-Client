@@ -783,7 +783,8 @@ public final class FarTerrainRenderer {
     private static void render(WorldRenderContext context) {
         Minecraft client = Minecraft.getInstance();
         if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null
-                || !client.hasSingleplayerServer() || activeLevel == null || orderedTiles.isEmpty()) return;
+                || !client.hasSingleplayerServer() || activeLevel == null
+                || (orderedTiles.isEmpty() && VOXEL_MESHES.isEmpty())) return;
 
         Camera camera = client.gameRenderer.getMainCamera();
         Vec3 cameraPosition = camera.position();
