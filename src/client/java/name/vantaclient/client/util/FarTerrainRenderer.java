@@ -148,14 +148,21 @@ public final class FarTerrainRenderer {
         }
 
         if (snapshotLevel != serverLevel) {
-            CHUNK_SNAPSHOTS.clear();
-            CHUNK_SNAPSHOT_ORDER.clear();
+            // Preserve chunks captured during initial world attachment; only clear
+            // when switching away from an already-established world/dimension.
+            if (snapshotLevel != null) {
+                CHUNK_SNAPSHOTS.clear();
+                CHUNK_SNAPSHOT_ORDER.clear();
+            }
             snapshotLevel = serverLevel;
             snapshotClientLevel = client.level;
             FarTerrainSnapshotStore store = new FarTerrainSnapshotStore(
                     server.getWorldPath(LevelResource.ROOT),
                     serverLevel.dimension().location().toString());
             snapshotStore = store;
+            for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
+                store.save(snapshot);
+            }
             store.loadAll(snapshot -> {
                 if (snapshotStore == store) addChunkSnapshotIfAbsent(snapshot);
             });
