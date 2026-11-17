@@ -222,7 +222,11 @@ final class FarTerrainVoxelSection {
 
     record Octree(int[] materialIds, byte[] packedLight, int[] childIndices) {
         int nodeCount() { return materialIds.length; }
-        boolean isLeaf(int nodeIndex) { return childIndices[nodeIndex * 8] < 0; }
+        boolean isLeaf(int nodeIndex) {
+            int offset = nodeIndex * 8;
+            for (int i = 0; i < 8; i++) if (childIndices[offset + i] >= 0) return false;
+            return true;
+        }
         int child(int nodeIndex, int octant) { return childIndices[nodeIndex * 8 + octant]; }
         int skyLight(int nodeIndex) { return (packedLight[nodeIndex] >>> 4) & 15; }
         int blockLight(int nodeIndex) { return packedLight[nodeIndex] & 15; }
