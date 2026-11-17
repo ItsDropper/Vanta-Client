@@ -711,7 +711,10 @@ public final class FarTerrainRenderer {
         // Reuse one position scratch vector for every emitted vertex. The PoseStack
         // VertexConsumer overload allocates a temporary Vector3f per vertex.
         Vector3f transformedVertex = new Vector3f();
-        int drawnQuads = 0;
+        int gpuDrawnQuads = FarTerrainGpuRenderer.render(context, getGpuMeshes(),
+                cameraX, cameraZ, playerX, playerZ, innerRadius, outerRadius, terrainDrawBudget);
+        boolean gpuTerrainRendered = gpuDrawnQuads >= 0;
+        int drawnQuads = gpuTerrainRendered ? gpuDrawnQuads : 0;
         int submittedMeshes = 0;
         for (TileKey key : orderedTiles) {
             TileMesh mesh = MESHES.get(key);
