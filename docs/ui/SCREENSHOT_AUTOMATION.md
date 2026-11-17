@@ -27,7 +27,7 @@ No local Minecraft installation, multiplayer server or authenticated Minecraft a
 - A built-in feature settings subpage
 - HUD editor with a selected element and inspector
 
-All ten states are captured at four configurations:
+All ten states are captured at six configurations:
 
 | Window size | GUI scale | Effective GUI viewport |
 |---|---:|---:|
