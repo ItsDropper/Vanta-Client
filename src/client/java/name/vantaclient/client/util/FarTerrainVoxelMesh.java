@@ -136,38 +136,34 @@ final class FarTerrainVoxelMesh {
     int octreeSectionCount() { return octrees.length; }
 
     private static final class GeometryBuilder {
-        private final List<Float> positions = new ArrayList<>();
-        private final List<Integer> colors = new ArrayList<>();
+        private float[] positions = new float[4096];
+        private int[] colors = new int[256];
+        private int positionSize;
+        private int colorSize;
 
-        int quadCount() { return colors.size(); }
+        int quadCount() { return colorSize; }
 
         void addFace(int axis, int direction, int slice,
                      int uAxis, int u0, int u1, int vAxis, int v0, int v1, int color) {
             float plane = slice + (direction > 0 ? 1.0f : 0.0f);
-            float[][] corners = new float[4][3];
-            for (float[] corner : corners) corner[axis] = plane;
-            corners[0][uAxis] = u0; corners[0][vAxis] = v0;
-            corners[1][uAxis] = u1; corners[1][vAxis] = v0;
-            corners[2][uAxis] = u1; corners[2][vAxis] = v1;
-            corners[3][uAxis] = u0; corners[3][vAxis] = v1;
-            for (float[] corner : corners) {
-                positions.add(corner[0]);
-                positions.add(corner[1]);
-                positions.add(corner[2]);
+            addVertex(axis, plane, uAxis, u0, vAxis, v0);
+            addVertex(axis, plane, uAxis, u1, vAxis, v0);
+            addVertex(axis, plane, uAxis, u1, vAxis, v1);
+            addVertex(axis, plane, uAxis, u0, vAxis, v1);
+            if (colorSize == colors.length) colors = java.util.Arrays.copyOf(colors, colors.length * 2);
+            colors[colorSize++] = color;
+        }
+
+        private void addVertex(int axis, float plane, int uAxis, float u, int vAxis, float v) {
+            if (positionSize + 3 > positions.length) {
+                positions = java.util.Arrays.copyOf(positions, positions.length * 2);
             }
-            colors.add(color);
+            positions[positionSize++] = axis == 0 ? plane : (uAxis == 0 ? u : v);
+            positions[positionSize++] = axis == 1 ? plane : (uAxis == 1 ? u : v);
+            positions[positionSize++] = axis == 2 ? plane : (uAxis == 2 ? u : v);
         }
 
-        float[] positions() {
-            float[] result = new float[positions.size()];
-            for (int i = 0; i < result.length; i++) result[i] = positions.get(i);
-            return result;
-        }
-
-        int[] colors() {
-            int[] result = new int[colors.size()];
-            for (int i = 0; i < result.length; i++) result[i] = colors.get(i);
-            return result;
-        }
+        float[] positions() { return java.util.Arrays.copyOf(positions, positionSize); }
+        int[] colors() { return java.util.Arrays.copyOf(colors, colorSize); }
     }
 }

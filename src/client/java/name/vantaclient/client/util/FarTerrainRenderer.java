@@ -71,6 +71,7 @@ public final class FarTerrainRenderer {
     private static final int MAX_VOXEL_MESHES = 128;
     private static final ConcurrentMap<Long, FarTerrainVoxelMesh> VOXEL_MESHES = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedDeque<Long> VOXEL_MESH_ORDER = new ConcurrentLinkedDeque<>();
+    private static final Set<VoxelWorkKey> VOXEL_PENDING = ConcurrentHashMap.newKeySet();
     private static final ThreadPoolExecutor VOXEL_WORKER = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(128),
@@ -80,7 +81,7 @@ public final class FarTerrainRenderer {
                 thread.setPriority(Thread.NORM_PRIORITY - 1);
                 return thread;
             },
-            new ThreadPoolExecutor.DiscardOldestPolicy()
+            new ThreadPoolExecutor.AbortPolicy()
     );
     private static final ConcurrentLinkedDeque<Long> CHUNK_SNAPSHOT_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
@@ -108,6 +109,8 @@ public final class FarTerrainRenderer {
     private static ClientLevel snapshotClientLevel;
     private static volatile FarTerrainSnapshotStore snapshotStore;
     private static volatile long revision;
+    private static int lastSnapshotQueryChunkX = Integer.MIN_VALUE;
+    private static int lastSnapshotQueryChunkZ = Integer.MIN_VALUE;
     private static int ticksUntilAdaptiveUpdate;
     private static int effectiveFarDistance = 512;
     private static int lastSampleSpacing = -1;
@@ -177,13 +180,18 @@ public final class FarTerrainRenderer {
             for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
                 store.save(snapshot);
             }
-            store.loadAll(snapshot -> {
-                if (snapshotStore == store) {
-                    addChunkSnapshotIfAbsent(snapshot);
-                    long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
-                    if (CHUNK_SNAPSHOTS.get(key) == snapshot) queueVoxelMesh(snapshot);
-                }
-            });
+            lastSnapshotQueryChunkX = client.player.chunkPosition().x;
+            lastSnapshotQueryChunkZ = client.player.chunkPosition().z;
+            loadNearestSnapshots(store, lastSnapshotQueryChunkX, lastSnapshotQueryChunkZ);
+        } else {
+            int playerChunkX = client.player.chunkPosition().x;
+            int playerChunkZ = client.player.chunkPosition().z;
+            if (Math.abs(playerChunkX - lastSnapshotQueryChunkX) >= 32
+                    || Math.abs(playerChunkZ - lastSnapshotQueryChunkZ) >= 32) {
+                lastSnapshotQueryChunkX = playerChunkX;
+                lastSnapshotQueryChunkZ = playerChunkZ;
+                loadNearestSnapshots(snapshotStore, playerChunkX, playerChunkZ);
+            }
         }
 
         if (activeLevel != serverLevel) {
@@ -217,6 +225,17 @@ public final class FarTerrainRenderer {
         }
 
         scheduleMissingTiles(serverLevel);
+        scheduleMissingVoxelMeshes();
+    }
+
+    private static void loadNearestSnapshots(FarTerrainSnapshotStore store, int centerChunkX, int centerChunkZ) {
+        if (store == null) return;
+        store.loadNearest(centerChunkX, centerChunkZ, MAX_CAPTURED_CHUNKS, snapshot -> {
+            if (snapshotStore != store) return;
+            addChunkSnapshotIfAbsent(snapshot);
+            long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+            if (CHUNK_SNAPSHOTS.get(key) == snapshot) queueVoxelMesh(snapshot);
+        });
     }
 
     private static void captureChunk(ClientLevel world, net.minecraft.world.level.chunk.LevelChunk chunk) {
@@ -228,24 +247,42 @@ public final class FarTerrainRenderer {
     }
 
     private static void queueVoxelMesh(FarTerrainChunkSnapshot snapshot) {
+        long chunkKey = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
         long expectedRevision = revision;
+        VoxelWorkKey workKey = new VoxelWorkKey(chunkKey, expectedRevision);
+        if (!VOXEL_PENDING.add(workKey)) return;
         try {
             VOXEL_WORKER.execute(() -> {
-                if (expectedRevision != revision) return;
-                FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot);
-                if (mesh == null || expectedRevision != revision) return;
-                long key = net.minecraft.world.level.ChunkPos.asLong(mesh.chunkX(), mesh.chunkZ());
-                VOXEL_MESHES.put(key, mesh);
-                VOXEL_MESH_ORDER.remove(key);
-                VOXEL_MESH_ORDER.addLast(key);
-                while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES) {
-                    Long oldest = VOXEL_MESH_ORDER.pollFirst();
-                    if (oldest == null) break;
-                    VOXEL_MESHES.remove(oldest);
+                try {
+                    if (expectedRevision != revision) return;
+                    FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot);
+                    if (mesh == null || expectedRevision != revision) return;
+                    VOXEL_MESHES.put(chunkKey, mesh);
+                    VOXEL_MESH_ORDER.remove(chunkKey);
+                    VOXEL_MESH_ORDER.addLast(chunkKey);
+                    while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES) {
+                        Long oldest = VOXEL_MESH_ORDER.pollFirst();
+                        if (oldest == null) break;
+                        VOXEL_MESHES.remove(oldest);
+                    }
+                } finally {
+                    VOXEL_PENDING.remove(workKey);
                 }
             });
         } catch (RejectedExecutionException ignored) {
-            // Chunk ingestion must never stall the client when the meshing queue is full.
+            VOXEL_PENDING.remove(workKey);
+        }
+    }
+
+    private static void scheduleMissingVoxelMeshes() {
+        int scheduled = 0;
+        for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
+            if (scheduled >= 3) break;
+            long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+            if (VOXEL_MESHES.containsKey(key)
+                    || VOXEL_PENDING.contains(new VoxelWorkKey(key, revision))) continue;
+            queueVoxelMesh(snapshot);
+            scheduled++;
         }
     }
 
@@ -1003,7 +1040,13 @@ public final class FarTerrainRenderer {
                                         double innerRadiusSquared, double outerRadiusSquared,
                                         int alreadyDrawn, int maxQuads) {
         int emitted = 0;
-        for (FarTerrainVoxelMesh mesh : VOXEL_MESHES.values()) {
+        List<FarTerrainVoxelMesh> orderedVoxelMeshes = new ArrayList<>(VOXEL_MESHES.values());
+        orderedVoxelMeshes.sort(Comparator.comparingDouble(mesh -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - playerX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - playerZ;
+            return dx * dx + dz * dz;
+        }));
+        for (FarTerrainVoxelMesh mesh : orderedVoxelMeshes) {
             if (alreadyDrawn + emitted >= maxQuads) break;
             double originX = mesh.chunkX() * 16.0;
             double originZ = mesh.chunkZ() * 16.0;
@@ -1153,6 +1196,7 @@ public final class FarTerrainRenderer {
         VOXEL_MESHES.clear();
         VOXEL_MESH_ORDER.clear();
         VOXEL_WORKER.getQueue().clear();
+        VOXEL_PENDING.clear();
         cachedMeshBytes = 0L;
         FAILED.clear();
         CACHE_EVICTED.clear();
@@ -1276,6 +1320,7 @@ public final class FarTerrainRenderer {
 
     record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
     private record WorkKey(TileKey key, long revision) {}
+    private record VoxelWorkKey(long chunkKey, long revision) {}
     private record TreeImpostor(double x, double y, double z,
                                  double height, double canopyWidth,
                                  int leafColor, int trunkColor, boolean conifer) {}

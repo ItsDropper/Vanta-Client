@@ -9,6 +9,10 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +29,6 @@ import java.util.zip.GZIPOutputStream;
 final class FarTerrainSnapshotStore {
     private static final int MAGIC = 0x56464C44; // VFLD
     private static final int VERSION = 3;
-    private static final int MAX_FILES_TO_LOAD = 16_384;
     private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(512),
@@ -45,25 +48,62 @@ final class FarTerrainSnapshotStore {
         this.directory = worldRoot.resolve("vanta").resolve("farview").resolve(safeDimension);
     }
 
-    void loadAll(Consumer<FarTerrainChunkSnapshot> consumer) {
+    void loadNearest(int centerChunkX, int centerChunkZ, int maxSnapshots,
+                     Consumer<FarTerrainChunkSnapshot> consumer) {
+        if (maxSnapshots < 1) return;
         IO.execute(() -> {
             if (!Files.isDirectory(directory)) return;
+            PriorityQueue<ChunkFile> nearest = new PriorityQueue<>(
+                    Comparator.comparingLong(ChunkFile::distanceSquared).reversed());
             try (Stream<Path> files = Files.list(directory)) {
                 files.filter(path -> path.getFileName().toString().endsWith(".vflod"))
-                        .limit(MAX_FILES_TO_LOAD)
                         .forEach(path -> {
-                            try {
-                                FarTerrainChunkSnapshot snapshot = read(path);
-                                if (snapshot != null) consumer.accept(snapshot);
-                            } catch (IOException ignored) {
-                                // A corrupt or interrupted cache entry is disposable.
+                            ChunkFile candidate = parseChunkFile(path, centerChunkX, centerChunkZ);
+                            if (candidate == null) return;
+                            if (nearest.size() < maxSnapshots) {
+                                nearest.add(candidate);
+                            } else if (candidate.distanceSquared() < nearest.peek().distanceSquared()) {
+                                nearest.poll();
+                                nearest.add(candidate);
                             }
                         });
             } catch (IOException ignored) {
-                // The cache is optional; generation continues from live chunks/procedural terrain.
+                return;
+            }
+
+            // Feed farther entries first so the bounded in-memory LRU retains
+            // the closest explored chunks around the current player position.
+            List<ChunkFile> ordered = new ArrayList<>(nearest);
+            ordered.sort(Comparator.comparingLong(ChunkFile::distanceSquared).reversed());
+            for (ChunkFile entry : ordered) {
+                try {
+                    FarTerrainChunkSnapshot snapshot = read(entry.path());
+                    if (snapshot != null) consumer.accept(snapshot);
+                } catch (IOException ignored) {
+                    // A corrupt or interrupted cache entry is disposable.
+                }
             }
         });
     }
+
+    private static ChunkFile parseChunkFile(Path path, int centerChunkX, int centerChunkZ) {
+        String name = path.getFileName().toString();
+        if (!name.endsWith(".vflod")) return null;
+        String coordinates = name.substring(0, name.length() - ".vflod".length());
+        int separator = coordinates.lastIndexOf('_');
+        if (separator <= 0 || separator == coordinates.length() - 1) return null;
+        try {
+            int chunkX = Integer.parseInt(coordinates.substring(0, separator));
+            int chunkZ = Integer.parseInt(coordinates.substring(separator + 1));
+            long dx = (long) chunkX - centerChunkX;
+            long dz = (long) chunkZ - centerChunkZ;
+            return new ChunkFile(path, dx * dx + dz * dz);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private record ChunkFile(Path path, long distanceSquared) {}
 
     void save(FarTerrainChunkSnapshot snapshot) {
         IO.execute(() -> write(snapshot));
