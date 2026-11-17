@@ -99,7 +99,7 @@ final class FarTerrainVoxelMesh {
                                 if (translucentPass
                                         ? neighborOpaque || neighborTranslucent
                                         : neighborOpaque) continue;
-                                mask[v * EDGE + u] = litColor(section, x, localY, z, translucentPass);
+                                mask[v * EDGE + u] = litColor(section, x, localY, z, translucentPass, axis, direction);
                             }
                         }
 
@@ -167,11 +167,13 @@ final class FarTerrainVoxelMesh {
         return section != null && section.isSolid(x, y, z);
     }
 
-    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent) {
+    private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent, int axis, int direction) {
         int color = section.materialColor(x, y, z);
         float sky = section.skyLight(x, y, z) / 15.0f;
         float block = section.blockLight(x, y, z) / 15.0f;
-        float brightness = Math.max(0.12f, Math.max(sky * 0.92f, block));
+        float directional = axis == 1 ? (direction > 0 ? 1.0f : 0.52f)
+                : axis == 0 ? 0.78f : 0.88f;
+        float brightness = Math.max(0.12f, Math.max(sky * 0.92f, block)) * directional;
         int red = channel(color, 16, brightness + block * 0.08f);
         int green = channel(color, 8, brightness + block * 0.025f);
         int blue = channel(color, 0, brightness - block * 0.06f);

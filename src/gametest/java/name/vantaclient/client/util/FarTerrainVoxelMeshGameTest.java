@@ -64,7 +64,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         indices[index(4, 7, 9)] = 1;
         FarTerrainVoxelSection section = new FarTerrainVoxelSection(0,
                 new int[]{0, 1}, indices, new byte[FarTerrainVoxelSection.VOXEL_COUNT],
-                new int[]{0xFF000000, 0xFF5577AA},
+                colorsForIndices(indices), new int[]{0xFF000000, 0xFF5577AA},
                 new boolean[]{false, false}, new boolean[]{false, true});
         FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
         if (mesh == null || mesh.quadCount() != 0 || mesh.translucentQuadCount() != 6) {
@@ -93,7 +93,12 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         byte[] light = new byte[FarTerrainVoxelSection.VOXEL_COUNT];
         indices[index(2, 6, 11)] = 1;
         light[index(2, 6, 11)] = (byte) 0xC5;
-        FarTerrainVoxelSection source = createSection(indices, light);
+        int[] voxelColors = colorsForIndices(indices);
+        voxelColors[index(2, 6, 11)] = 0xFF12AB34;
+        FarTerrainVoxelSection source = new FarTerrainVoxelSection(0,
+                new int[]{0, 1}, indices, light, voxelColors,
+                new int[]{0xFF000000, 0xFF777777},
+                new boolean[]{false, true}, new boolean[]{false, false});
         try {
             java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
             try (java.io.DataOutputStream output = new java.io.DataOutputStream(bytes)) {
@@ -102,11 +107,11 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             FarTerrainVoxelSection restored;
             try (java.io.DataInputStream input = new java.io.DataInputStream(
                     new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
-                restored = FarTerrainVoxelSection.read(input, 4);
+                restored = FarTerrainVoxelSection.read(input, 5);
             }
             if (restored.blockStateId(2, 6, 11) != 1
                     || !restored.isSolid(2, 6, 11)
-                    || restored.materialColor(2, 6, 11) != 0xFF777777
+                    || restored.materialColor(2, 6, 11) != 0xFF12AB34
                     || restored.skyLight(2, 6, 11) != 12
                     || restored.blockLight(2, 6, 11) != 5) {
                 throw new AssertionError("Version 3 voxel payload lost palette, material, or packed light data.");
@@ -114,6 +119,14 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         } catch (java.io.IOException error) {
             throw new AssertionError("Voxel payload round-trip failed.", error);
         }
+    }
+
+    private static int[] colorsForIndices(short[] indices) {
+        int[] colors = new int[FarTerrainVoxelSection.VOXEL_COUNT];
+        for (int i = 0; i < colors.length; i++) {
+            colors[i] = Short.toUnsignedInt(indices[i]) == 0 ? 0xFF000000 : 0xFF777777;
+        }
+        return colors;
     }
 
     private static FarTerrainVoxelSection createFullSection() {
@@ -127,7 +140,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
     private static FarTerrainVoxelSection createSection(short[] indices, byte[] light) {
         return new FarTerrainVoxelSection(0,
                 new int[]{0, 1}, indices, light,
-                new int[]{0xFF000000, 0xFF777777},
+                colorsForIndices(indices), new int[]{0xFF000000, 0xFF777777},
                 new boolean[]{false, true}, new boolean[]{false, false});
     }
 

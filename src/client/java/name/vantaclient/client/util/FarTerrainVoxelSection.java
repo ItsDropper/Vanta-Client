@@ -1,5 +1,6 @@
 package name.vantaclient.client.util;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LightLayer;
@@ -24,17 +25,19 @@ final class FarTerrainVoxelSection {
     private final int[] palette;
     private final short[] paletteIndices;
     private final byte[] packedLight;
+    private final int[] voxelColors;
     private final int[] paletteColors;
     private final boolean[] solidPalette;
     private final boolean[] translucentPalette;
 
     FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
-                                   byte[] packedLight, int[] paletteColors, boolean[] solidPalette,
+                                   byte[] packedLight, int[] voxelColors, int[] paletteColors, boolean[] solidPalette,
                                    boolean[] translucentPalette) {
         this.sectionY = sectionY;
         this.palette = palette;
         this.paletteIndices = paletteIndices;
         this.packedLight = packedLight;
+        this.voxelColors = voxelColors;
         this.paletteColors = paletteColors;
         this.solidPalette = solidPalette;
         this.translucentPalette = translucentPalette;
@@ -49,6 +52,7 @@ final class FarTerrainVoxelSection {
         List<Boolean> translucent = new ArrayList<>();
         short[] indices = new short[VOXEL_COUNT];
         byte[] light = new byte[VOXEL_COUNT];
+        int[] voxelColors = new int[VOXEL_COUNT];
         BlockPos.MutableBlockPos position = new BlockPos.MutableBlockPos();
         int baseY = sectionY * EDGE;
         boolean hasRenderableBlock = false;
@@ -60,17 +64,20 @@ final class FarTerrainVoxelSection {
                     int stateId = Block.getId(state);
                     int index = index(x, y, z);
                     position.set(chunkMinX + x, baseY + y, chunkMinZ + z);
+                    int mapColor = state.getMapColor(level, position).col;
                     Integer paletteIndex = paletteLookup.get(stateId);
                     if (paletteIndex == null) {
                         paletteIndex = palette.size();
                         paletteLookup.put(stateId, paletteIndex);
                         palette.add(stateId);
-                        int mapColor = state.getMapColor(level, position).col;
                         colors.add(0xFF000000 | (mapColor & 0x00FFFFFF));
                         solids.add(!state.isAir() && state.getFluidState().isEmpty());
                         translucent.add(!state.isAir() && !state.getFluidState().isEmpty());
                     }
                     indices[index] = (short) (int) paletteIndex;
+                    int tint = Minecraft.getInstance().getBlockColors().getColor(state, level, position, 0);
+                    voxelColors[index] = 0xFF000000 | (tint == -1
+                            ? mapColor & 0x00FFFFFF : multiplyRgb(mapColor, tint));
                     if (!state.isAir()) {
                         hasRenderableBlock = true;
                         int sky = level.getBrightness(LightLayer.SKY, position) & 15;
@@ -92,7 +99,7 @@ final class FarTerrainVoxelSection {
             solidArray[i] = solids.get(i);
             translucentArray[i] = translucent.get(i);
         }
-        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, colorArray, solidArray, translucentArray);
+        return new FarTerrainVoxelSection(sectionY, paletteArray, indices, light, voxelColors, colorArray, solidArray, translucentArray);
     }
 
     static FarTerrainVoxelSection read(DataInput input, int version) throws IOException {
@@ -126,7 +133,16 @@ final class FarTerrainVoxelSection {
         }
         byte[] light = new byte[VOXEL_COUNT];
         input.readFully(light);
-        return new FarTerrainVoxelSection(sectionY, palette, indices, light, colors, solids, translucent);
+        int[] voxelColors = new int[VOXEL_COUNT];
+        if (version >= 5) {
+            for (int i = 0; i < VOXEL_COUNT; i++) voxelColors[i] = input.readInt();
+        } else {
+            for (int i = 0; i < VOXEL_COUNT; i++) {
+                voxelColors[i] = colors[Short.toUnsignedInt(indices[i])];
+            }
+        }
+        return new FarTerrainVoxelSection(sectionY, palette, indices, light, voxelColors,
+                colors, solids, translucent);
     }
 
     void write(DataOutput output) throws IOException {
@@ -138,6 +154,7 @@ final class FarTerrainVoxelSection {
         for (boolean translucent : translucentPalette) output.writeBoolean(translucent);
         for (short paletteIndex : paletteIndices) output.writeShort(Short.toUnsignedInt(paletteIndex));
         output.write(packedLight);
+        for (int color : voxelColors) output.writeInt(color);
     }
 
     int sectionY() { return sectionY; }
@@ -147,7 +164,7 @@ final class FarTerrainVoxelSection {
     }
 
     int materialColor(int x, int y, int z) {
-        return paletteColors[Short.toUnsignedInt(paletteIndices[index(x, y, z)])];
+        return voxelColors[index(x, y, z)];
     }
 
     boolean isSolid(int x, int y, int z) {
@@ -279,6 +296,13 @@ final class FarTerrainVoxelSection {
                     java.util.Arrays.copyOf(sizes, count),
                     java.util.Arrays.copyOf(solidCounts, count));
         }
+    }
+
+    private static int multiplyRgb(int left, int right) {
+        int red = ((left >>> 16) & 255) * ((right >>> 16) & 255) / 255;
+        int green = ((left >>> 8) & 255) * ((right >>> 8) & 255) / 255;
+        int blue = (left & 255) * (right & 255) / 255;
+        return (red << 16) | (green << 8) | blue;
     }
 
     private static int index(int x, int y, int z) {

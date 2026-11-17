@@ -28,7 +28,7 @@ import java.util.zip.GZIPOutputStream;
  */
 final class FarTerrainSnapshotStore {
     private static final int MAGIC = 0x56464C44; // VFLD
-    private static final int VERSION = 4;
+    private static final int VERSION = 5;
     private static final int REGION_SIZE_CHUNKS = 32;
     private static final int MAX_REGION_SEARCH_RADIUS = 64;
     private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(
