@@ -136,7 +136,7 @@ final class FarTerrainSnapshotStore {
     }
 
     static Path regionDirectory(Path root, int chunkX, int chunkZ) {
-        return regionDirectory(root,
+        return regionDirectoryForRegion(root,
                 Math.floorDiv(chunkX, REGION_SIZE_CHUNKS),
                 Math.floorDiv(chunkZ, REGION_SIZE_CHUNKS));
     }
