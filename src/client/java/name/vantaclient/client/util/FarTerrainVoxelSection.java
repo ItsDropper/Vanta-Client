@@ -2,24 +2,35 @@ package name.vantaclient.client.util;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BlockModelPart;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
-import java.io.DataInput;
-import java.io.DataOutput;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 /** Immutable palette-compressed 16^3 block-state volume with packed light/material data. */
 final class FarTerrainVoxelSection {
     static final int EDGE = 16;
     static final int VOXEL_COUNT = EDGE * EDGE * EDGE;
+    private static final Map<Integer, Integer> BLOCK_TEXTURE_COLORS = new ConcurrentHashMap<>();
+    private static final Map<Identifier, Integer> SPRITE_TEXTURE_COLORS = new ConcurrentHashMap<>();
 
     private final int sectionY;
     private final int[] palette;
@@ -70,14 +81,17 @@ final class FarTerrainVoxelSection {
                         paletteIndex = palette.size();
                         paletteLookup.put(stateId, paletteIndex);
                         palette.add(stateId);
-                        colors.add(0xFF000000 | (mapColor & 0x00FFFFFF));
+                        int textureColor = BLOCK_TEXTURE_COLORS.computeIfAbsent(stateId,
+                                ignored -> averageBlockTextureColor(state, stateId, mapColor));
+                        colors.add(0xFF000000 | (textureColor & 0x00FFFFFF));
                         solids.add(!state.isAir() && state.getFluidState().isEmpty());
                         translucent.add(!state.isAir() && !state.getFluidState().isEmpty());
                     }
                     indices[index] = (short) (int) paletteIndex;
+                    int baseColor = colors.get(paletteIndex) & 0x00FFFFFF;
                     int tint = Minecraft.getInstance().getBlockColors().getColor(state, level, position, 0);
                     voxelColors[index] = 0xFF000000 | (tint == -1
-                            ? mapColor & 0x00FFFFFF : multiplyRgb(mapColor, tint));
+                            ? baseColor : multiplyRgb(baseColor, tint));
                     if (!state.isAir()) {
                         hasRenderableBlock = true;
                         int sky = level.getBrightness(LightLayer.SKY, position) & 15;
@@ -305,6 +319,82 @@ final class FarTerrainVoxelSection {
                     java.util.Arrays.copyOf(sizes, count),
                     java.util.Arrays.copyOf(solidCounts, count));
         }
+    }
+
+    private static int averageBlockTextureColor(BlockState state, int stateId, int fallbackColor) {
+        try {
+            List<BlockModelPart> parts = Minecraft.getInstance().getBlockRenderer()
+                    .getBlockModel(state).getParts(RandomSource.create(stateId));
+            long red = 0L;
+            long green = 0L;
+            long blue = 0L;
+            int samples = 0;
+            for (BlockModelPart part : parts) {
+                for (Direction direction : Direction.values()) {
+                    for (BakedQuad quad : part.getQuads(direction)) {
+                        int color = spriteAverage(quad.sprite().contents().getId());
+                        if (color < 0) continue;
+                        red += (color >>> 16) & 255;
+                        green += (color >>> 8) & 255;
+                        blue += color & 255;
+                        samples++;
+                    }
+                }
+                for (BakedQuad quad : part.getQuads(null)) {
+                    int color = spriteAverage(quad.sprite().contents().getId());
+                    if (color < 0) continue;
+                    red += (color >>> 16) & 255;
+                    green += (color >>> 8) & 255;
+                    blue += color & 255;
+                    samples++;
+                }
+            }
+            if (samples == 0) return fallbackColor & 0x00FFFFFF;
+            return ((int) (red / samples) << 16)
+                    | ((int) (green / samples) << 8)
+                    | (int) (blue / samples);
+        } catch (RuntimeException | LinkageError ignored) {
+            // Missing or custom model implementations must not break chunk capture.
+            return fallbackColor & 0x00FFFFFF;
+        }
+    }
+
+    private static int spriteAverage(Identifier spriteId) {
+        return SPRITE_TEXTURE_COLORS.computeIfAbsent(spriteId, id -> {
+            Identifier textureId = Identifier.fromNamespaceAndPath(
+                    id.getNamespace(), "textures/" + id.getPath() + ".png");
+            try {
+                Resource resource = Minecraft.getInstance().getResourceManager()
+                        .getResource(textureId).orElse(null);
+                if (resource == null) return -1;
+                try (InputStream input = resource.open()) {
+                    BufferedImage image = ImageIO.read(input);
+                    if (image == null) return -1;
+                    int stepX = Math.max(1, image.getWidth() / 16);
+                    int stepY = Math.max(1, image.getHeight() / 16);
+                    long red = 0L;
+                    long green = 0L;
+                    long blue = 0L;
+                    int samples = 0;
+                    for (int y = 0; y < image.getHeight(); y += stepY) {
+                        for (int x = 0; x < image.getWidth(); x += stepX) {
+                            int pixel = image.getRGB(x, y);
+                            if ((pixel >>> 24) < 32) continue;
+                            red += (pixel >>> 16) & 255;
+                            green += (pixel >>> 8) & 255;
+                            blue += pixel & 255;
+                            samples++;
+                        }
+                    }
+                    if (samples == 0) return -1;
+                    return ((int) (red / samples) << 16)
+                            | ((int) (green / samples) << 8)
+                            | (int) (blue / samples);
+                }
+            } catch (IOException | RuntimeException ignored) {
+                return -1;
+            }
+        });
     }
 
     private static int multiplyRgb(int left, int right) {
