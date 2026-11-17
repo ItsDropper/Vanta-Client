@@ -425,7 +425,7 @@ public final class FarTerrainRenderer {
     }
 
     private static void updateWorkerBackoff(Minecraft client) {
-        if (!FarViewFeature.isAdaptiveEnabled()) {
+        if (!FarViewFeature.isWorkerAdaptiveEnabled()) {
             workerBackoffNanos = 0L;
             return;
         }
