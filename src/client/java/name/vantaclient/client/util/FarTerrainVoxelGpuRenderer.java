@@ -57,7 +57,7 @@ final class FarTerrainVoxelGpuRenderer {
             uniform float uInnerRadius;
             uniform float uOuterRadius;
 
-            out vec4 vertexColor[];
+            pervertexNV out vec4 vertexColor[];
 
             bool outsidePlane(vec4 plane, vec3 center, float radius) {
                 return dot(plane, vec4(center, 1.0)) < -radius * length(plane.xyz);
@@ -121,6 +121,7 @@ final class FarTerrainVoxelGpuRenderer {
                     gl_PrimitiveIndicesNV[(primitive + 1u) * 3u + 1u] = outputVertex + 2u;
                     gl_PrimitiveIndicesNV[(primitive + 1u) * 3u + 2u] = outputVertex + 3u;
                 }
+                barrier();
                 if (gl_LocalInvocationIndex == 0u) {
                     gl_PrimitiveCountNV = uint(quadCount * 2);
                 }

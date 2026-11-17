@@ -907,7 +907,7 @@ public final class FarTerrainRenderer {
             }
             submittedMeshes++;
         }
-        int gpuVoxelQuads = FarTerrainVoxelGpuRenderer.render(context, getGpuVoxelMeshes(),
+        int gpuVoxelQuads = FarTerrainVoxelGpuRenderer.render(context, getGpuVoxelMeshes(playerX, playerZ),
                 cameraX, cameraY, cameraZ, playerX, playerZ,
                 innerRadius, outerRadius, drawBudget - drawnQuads);
         if (gpuVoxelQuads >= 0) {
@@ -1261,10 +1261,13 @@ public final class FarTerrainRenderer {
                 Math.max(8L * 1024L * 1024L, getMeshCacheLimitBytes() / 3L));
     }
 
-    private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes() {
+    private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes(double playerX, double playerZ) {
         List<FarTerrainVoxelMesh> result = new ArrayList<>(VOXEL_MESHES.values());
-        result.sort(Comparator.comparingInt(FarTerrainVoxelMesh::chunkX)
-                .thenComparingInt(FarTerrainVoxelMesh::chunkZ));
+        result.sort(Comparator.comparingDouble(mesh -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - playerX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - playerZ;
+            return dx * dx + dz * dz;
+        }));
         return result;
     }
 
@@ -1284,7 +1287,9 @@ public final class FarTerrainRenderer {
                 + "/" + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
                 + " ms last/avg over " + tileGenerationSamples + " jobs | submit avg "
                 + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
-                + " ms | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
+                + " ms | voxel meshes " + VOXEL_MESHES.size() + "/" + (cachedVoxelMeshBytes / (1024 * 1024))
+                + " MiB | " + FarTerrainVoxelGpuRenderer.getStatusLine()
+                + " | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
                 + " ms | stale queue jobs " + lastPrunedQueuedJobs + " last / "
                 + totalPrunedQueuedJobs + " total | draw " + lastDrawnQuads + "/" + getDrawBudget()
                 + " quads, " + lastSubmittedMeshes + " tiles | " + FarTerrainGpuRenderer.getStatusLine() + suffix;
