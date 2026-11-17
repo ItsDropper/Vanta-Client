@@ -118,20 +118,44 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         capturePages(context, screen, "960x540-gui2");
         captureHudEditor(context, screen, "960x540-gui2");
 
+        // Full-HD window dimensions keep the effective viewport representative:
+        // GUI scale 3 => 640×360; GUI scale 4 => 480×270.
+        configureViewport(context, 1920, 1080, 3);
+        captureTitleScreen(context, screen, "1920x1080-gui3");
+        capturePages(context, screen, "1920x1080-gui3");
+        captureHudEditor(context, screen, "1920x1080-gui3");
+
+        configureViewport(context, 1920, 1080, 4);
+        captureTitleScreen(context, screen, "1920x1080-gui4");
+        capturePages(context, screen, "1920x1080-gui4");
+        captureHudEditor(context, screen, "1920x1080-gui4");
+
         configureViewport(context, 1280, 720, 1);
         captureModrinthBrowser(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureModrinthBrowser(context, screen, "960x540-gui2");
+        configureViewport(context, 1920, 1080, 3);
+        captureModrinthBrowser(context, screen, "1920x1080-gui3");
+        configureViewport(context, 1920, 1080, 4);
+        captureModrinthBrowser(context, screen, "1920x1080-gui4");
 
         configureViewport(context, 1280, 720, 1);
         captureIntegrationsLibrary(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureIntegrationsLibrary(context, screen, "960x540-gui2");
+        configureViewport(context, 1920, 1080, 3);
+        captureIntegrationsLibrary(context, screen, "1920x1080-gui3");
+        configureViewport(context, 1920, 1080, 4);
+        captureIntegrationsLibrary(context, screen, "1920x1080-gui4");
 
         configureViewport(context, 1280, 720, 1);
         captureWorldShareScreen(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureWorldShareScreen(context, screen, "960x540-gui2");
+        configureViewport(context, 1920, 1080, 3);
+        captureWorldShareScreen(context, screen, "1920x1080-gui3");
+        configureViewport(context, 1920, 1080, 4);
+        captureWorldShareScreen(context, screen, "1920x1080-gui4");
 
         context.setScreen(() -> null);
         context.waitTicks(1);
