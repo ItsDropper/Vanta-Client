@@ -256,7 +256,10 @@ final class FarTerrainVoxelGpuRenderer {
         long totalBytes = 0L;
         for (FarTerrainVoxelMesh mesh : meshes) {
             int count = Math.min(mesh.quadCount(), MAX_UPLOAD_QUADS - totalQuads);
-            if (count <= 0) break;
+            if (count <= 0) {
+                if (totalQuads >= MAX_UPLOAD_QUADS) break;
+                continue;
+            }
             long meshBytes = (long) count * 4L * 2L * Integer.BYTES;
             if (totalBytes + meshBytes > MAX_GPU_BYTES) break;
             float[] positions = mesh.positions();
