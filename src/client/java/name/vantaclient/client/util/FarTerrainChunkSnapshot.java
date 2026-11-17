@@ -6,24 +6,34 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 /**
- * Immutable, compact surface data captured from a real client chunk.
+ * Immutable, compact block-derived surface data captured from a real client chunk.
  *
- * Chunk and world objects are only read on the client thread during ingestion.
- * FarView workers consume these primitive arrays and never touch live chunks.
+ * The chunk and world are only read on the client thread during ingestion. LOD
+ * workers and the persistence layer consume primitive arrays, never live chunks.
  */
 final class FarTerrainChunkSnapshot {
+    static final int COLUMN_COUNT = 16 * 16;
+
+    private final int chunkX;
+    private final int chunkZ;
     private final int[] heights;
     private final int[] surfaceColors;
 
-    private FarTerrainChunkSnapshot(int[] heights, int[] surfaceColors) {
+    private FarTerrainChunkSnapshot(int chunkX, int chunkZ, int[] heights, int[] surfaceColors) {
+        this.chunkX = chunkX;
+        this.chunkZ = chunkZ;
         this.heights = heights;
         this.surfaceColors = surfaceColors;
     }
 
     static FarTerrainChunkSnapshot capture(ClientLevel level, LevelChunk chunk) {
-        int[] heights = new int[16 * 16];
-        int[] colors = new int[16 * 16];
+        int[] heights = new int[COLUMN_COUNT];
+        int[] colors = new int[COLUMN_COUNT];
         BlockPos.MutableBlockPos position = new BlockPos.MutableBlockPos();
         int originX = chunk.getPos().getMinBlockX();
         int originZ = chunk.getPos().getMinBlockZ();
@@ -44,7 +54,32 @@ final class FarTerrainChunkSnapshot {
                 colors[index] = 0xFF000000 | (mapColor & 0x00FFFFFF);
             }
         }
-        return new FarTerrainChunkSnapshot(heights, colors);
+        return new FarTerrainChunkSnapshot(chunk.getPos().x, chunk.getPos().z, heights, colors);
+    }
+
+    static FarTerrainChunkSnapshot read(DataInput input) throws IOException {
+        int chunkX = input.readInt();
+        int chunkZ = input.readInt();
+        int[] heights = new int[COLUMN_COUNT];
+        int[] colors = new int[COLUMN_COUNT];
+        for (int i = 0; i < COLUMN_COUNT; i++) heights[i] = input.readInt();
+        for (int i = 0; i < COLUMN_COUNT; i++) colors[i] = input.readInt();
+        return new FarTerrainChunkSnapshot(chunkX, chunkZ, heights, colors);
+    }
+
+    void write(DataOutput output) throws IOException {
+        output.writeInt(chunkX);
+        output.writeInt(chunkZ);
+        for (int height : heights) output.writeInt(height);
+        for (int color : surfaceColors) output.writeInt(color);
+    }
+
+    int chunkX() {
+        return chunkX;
+    }
+
+    int chunkZ() {
+        return chunkZ;
     }
 
     int height(int localX, int localZ) {
