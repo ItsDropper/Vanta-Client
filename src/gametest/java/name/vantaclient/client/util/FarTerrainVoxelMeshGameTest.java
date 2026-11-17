@@ -11,8 +11,11 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyUniformSectionCollapsesToOneOctreeLeaf();
         verifySingleBlockProducesSixFaces();
         verifyAdjacentBlocksGreedyMerge();
+        verifyUpperSectionUsesWorldHeight();
+        verifyFacesAreHiddenAcrossVerticalSections();
         verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
+        verifyVoxelPayloadRoundTrip();
         verifyRegionStorageHandlesNegativeChunkCoordinates();
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
         verifyPackedGpuVertexCoordinatesRoundTrip();
@@ -59,6 +62,44 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         if (mesh == null || mesh.quadCount() != 6) {
             throw new AssertionError("Two adjacent equal-material voxels should merge into six cuboid faces.");
         }
+    }
+
+    private static void verifyUpperSectionUsesWorldHeight() {
+        FarTerrainVoxelSection upper = createFullSectionAtY(5);
+        FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(upper));
+        if (mesh == null) throw new AssertionError("Upper section did not produce voxel geometry.");
+        float[] positions = mesh.positions();
+        for (int i = 1; i < positions.length; i += 3) {
+            if (positions[i] >= 80.0f) return;
+        }
+        throw new AssertionError("Upper-section geometry was incorrectly collapsed into Y=0..16.");
+    }
+
+    private static void verifyFacesAreHiddenAcrossVerticalSections() {
+        short[] lowerIndices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        short[] upperIndices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        lowerIndices[index(8, 15, 8)] = 1;
+        upperIndices[index(8, 0, 8)] = 1;
+        FarTerrainVoxelSection lower = createSectionAtY(0, lowerIndices);
+        FarTerrainVoxelSection upper = createSectionAtY(1, upperIndices);
+        FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(new FarTerrainChunkSnapshot(
+                0, 0, new int[256], new int[256], new FarTerrainVoxelSection[]{lower, upper}));
+        if (mesh == null || mesh.quadCount() != 10) {
+            throw new AssertionError("Adjacent voxels across vertical sections must not emit their shared face.");
+        }
+    }
+
+    private static FarTerrainVoxelSection createFullSectionAtY(int sectionY) {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        java.util.Arrays.fill(indices, (short) 1);
+        return createSectionAtY(sectionY, indices);
+    }
+
+    private static FarTerrainVoxelSection createSectionAtY(int sectionY, short[] indices) {
+        return new FarTerrainVoxelSection(sectionY,
+                new int[]{0, 1}, indices, new byte[FarTerrainVoxelSection.VOXEL_COUNT],
+                colorsForIndices(indices), new int[]{0xFF000000, 0xFF777777},
+                new boolean[]{false, true}, new boolean[]{false, false});
     }
 
     private static void verifyFluidVoxelUsesTranslucentMesh() {
@@ -134,7 +175,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
                     || restored.materialColor(2, 6, 11) != 0xFF12AB34
                     || restored.skyLight(2, 6, 11) != 12
                     || restored.blockLight(2, 6, 11) != 5) {
-                throw new AssertionError("Version 3 voxel payload lost palette, material, or packed light data.");
+                throw new AssertionError("Version 5 voxel payload lost palette, per-voxel material, or packed light data.");
             }
         } catch (java.io.IOException error) {
             throw new AssertionError("Voxel payload round-trip failed.", error);
