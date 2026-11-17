@@ -44,15 +44,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * Singleplayer-only far terrain renderer.
+ * Singleplayer far-terrain renderer with two complementary data paths.
  *
- * The integrated server's generator supplies base terrain heights. A bounded,
- * single-worker pipeline turns those immutable height samples into coarse meshes;
- * rendering consumes only completed snapshots on the render thread. It never
- * requests millions of full chunks or reads live chunk state from worker threads.
- *
- * This is a base-terrain LOD: structures, foliage, caves, and post-generation
- * block edits are intentionally not represented outside vanilla view distance.
+ * Unexplored terrain uses bounded base-height sampling from the integrated
+ * generator. Explored chunks are captured as palette-compressed 3D block-state
+ * sections with sky/block light, persisted per chunk, reduced into sparse
+ * octrees, and greedily meshed on a dedicated worker. Opaque voxel meshes use
+ * the optional NV mesh-shader backend or the Minecraft VertexConsumer fallback.
+ * Live chunk/world objects never leave the client-thread capture boundary.
  */
 public final class FarTerrainRenderer {
     private static final int MAX_FAR_DISTANCE = 2048;

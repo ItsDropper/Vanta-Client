@@ -22,7 +22,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Versioned, per-dimension disk cache for ingested FarView chunk surfaces.
+ * Versioned, per-dimension disk cache for surface samples and palette-compressed 3D chunk sections.
  * All disk work runs on a bounded daemon executor; client/render threads never
  * block on filesystem access.
  */

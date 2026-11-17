@@ -27,7 +27,7 @@ final class FarTerrainVoxelSection {
     private final int[] paletteColors;
     private final boolean[] solidPalette;
 
-    private FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
+    FarTerrainVoxelSection(int sectionY, int[] palette, short[] paletteIndices,
                                    byte[] packedLight, int[] paletteColors, boolean[] solidPalette) {
         this.sectionY = sectionY;
         this.palette = palette;

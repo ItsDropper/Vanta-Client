@@ -28,7 +28,7 @@ final class FarTerrainChunkSnapshot {
     private final int[] surfaceColors;
     private final FarTerrainVoxelSection[] voxelSections;
 
-    private FarTerrainChunkSnapshot(int chunkX, int chunkZ, int[] heights, int[] surfaceColors,
+    FarTerrainChunkSnapshot(int chunkX, int chunkZ, int[] heights, int[] surfaceColors,
                                     FarTerrainVoxelSection[] voxelSections) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
