@@ -142,7 +142,10 @@ public final class FarTerrainRenderer {
         // Capture once more immediately before unload so block edits made while
         // the chunk was resident replace the older persisted surface snapshot.
         ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FarTerrainGpuRenderer.shutdown());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            FarTerrainGpuRenderer.shutdown();
+            FarTerrainVoxelGpuRenderer.shutdown();
+        });
     }
 
     public static void tick(Minecraft client) {
@@ -895,9 +898,16 @@ public final class FarTerrainRenderer {
             }
             submittedMeshes++;
         }
-        drawnQuads += emitVoxelMeshes(consumer, positionMatrix, transformedVertex,
+        int gpuVoxelQuads = FarTerrainVoxelGpuRenderer.render(context, getGpuVoxelMeshes(),
                 cameraX, cameraY, cameraZ, playerX, playerZ,
-                innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+                innerRadius, outerRadius, drawBudget - drawnQuads);
+        if (gpuVoxelQuads >= 0) {
+            drawnQuads += gpuVoxelQuads;
+        } else {
+            drawnQuads += emitVoxelMeshes(consumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+        }
         for (TileKey key : orderedTiles) {
             if (drawnQuads >= drawBudget) break;
             TileMesh mesh = MESHES.get(key);
@@ -1222,6 +1232,7 @@ public final class FarTerrainRenderer {
         lastPrunedQueuedJobs = 0;
         totalPrunedQueuedJobs = 0L;
         FarTerrainGpuRenderer.clearWorld();
+        FarTerrainVoxelGpuRenderer.clearWorld();
     }
 
     private static List<TileMesh> getGpuMeshes() {
@@ -1230,6 +1241,13 @@ public final class FarTerrainRenderer {
             TileMesh mesh = MESHES.get(key);
             if (mesh != null) result.add(mesh);
         }
+        return result;
+    }
+
+    private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes() {
+        List<FarTerrainVoxelMesh> result = new ArrayList<>(VOXEL_MESHES.values());
+        result.sort(Comparator.comparingInt(FarTerrainVoxelMesh::chunkX)
+                .thenComparingInt(FarTerrainVoxelMesh::chunkZ));
         return result;
     }
 
