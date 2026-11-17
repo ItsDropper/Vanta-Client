@@ -8,7 +8,7 @@ public final class FarViewFeature extends Feature {
     public static final FarViewFeature INSTANCE = new FarViewFeature();
 
     private FarViewFeature() {
-        super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback, adjustable sampling, water, shading, tree silhouettes and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
+        super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback, adjustable sampling, water, shading, tree silhouettes, adaptive background mesh pacing and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
     }
 
     @Override
@@ -135,5 +135,15 @@ public final class FarViewFeature extends Feature {
         DropperUtilsConfig.get().farViewAdaptive = value;
         DropperUtilsConfig.save();
         FarViewController.resetAdaptiveTarget();
+    }
+
+    /** Whether background FarView mesh work should yield under foreground frame pressure. */
+    public static boolean isWorkerAdaptiveEnabled() {
+        return DropperUtilsConfig.get().farViewWorkerAdaptive;
+    }
+
+    public static void setWorkerAdaptiveEnabled(boolean value) {
+        DropperUtilsConfig.get().farViewWorkerAdaptive = value;
+        DropperUtilsConfig.save();
     }
 }
