@@ -12,8 +12,6 @@ import net.minecraft.world.level.biome.Climate;
  */
 final class FarTerrainBiomeBlender {
     private static final int BIOME_BLEND_RADIUS = 1;
-    private static final int SAMPLE_COUNT = (BIOME_BLEND_RADIUS * 2 + 1)
-            * (BIOME_BLEND_RADIUS * 2 + 1);
 
     private FarTerrainBiomeBlender() {}
 
