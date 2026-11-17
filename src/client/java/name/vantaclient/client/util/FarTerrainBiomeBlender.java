@@ -23,10 +23,13 @@ final class FarTerrainBiomeBlender {
         int centerQuartX = QuartPos.fromBlock(worldX);
         int quartY = QuartPos.fromBlock(surfaceY);
         int centerQuartZ = QuartPos.fromBlock(worldZ);
-        int[] terrainColors = new int[SAMPLE_COUNT];
-        int[] waterColors = new int[SAMPLE_COUNT];
-        double[] weights = new double[SAMPLE_COUNT];
-        int sample = 0;
+        double totalWeight = 0.0;
+        double terrainRed = 0.0;
+        double terrainGreen = 0.0;
+        double terrainBlue = 0.0;
+        double waterRed = 0.0;
+        double waterGreen = 0.0;
+        double waterBlue = 0.0;
 
         for (int dz = -BIOME_BLEND_RADIUS; dz <= BIOME_BLEND_RADIUS; dz++) {
             for (int dx = -BIOME_BLEND_RADIUS; dx <= BIOME_BLEND_RADIUS; dx++) {
@@ -38,18 +41,24 @@ final class FarTerrainBiomeBlender {
                 Biome biome = holder.value();
                 String biomePath = holder.unwrapKey()
                         .map(key -> key.identifier().getPath()).orElse("");
-                terrainColors[sample] = FarTerrainMaterial.colorFor(
+                int terrain = FarTerrainMaterial.colorFor(
                         biomePath, height, seaLevel,
                         biome.getGrassColor(sampleX, sampleZ), biome.getWaterColor(),
                         sampleX, sampleZ);
-                waterColors[sample] = opaqueRgb(biome.getWaterColor());
-                weights[sample] = 1.0 / (dx * dx + dz * dz + 0.2);
-                sample++;
+                int water = biome.getWaterColor();
+                double weight = 1.0 / (dx * dx + dz * dz + 0.2);
+                totalWeight += weight;
+                terrainRed += ((terrain >>> 16) & 0xFF) * weight;
+                terrainGreen += ((terrain >>> 8) & 0xFF) * weight;
+                terrainBlue += (terrain & 0xFF) * weight;
+                waterRed += ((water >>> 16) & 0xFF) * weight;
+                waterGreen += ((water >>> 8) & 0xFF) * weight;
+                waterBlue += (water & 0xFF) * weight;
             }
         }
 
-        int terrain = blendColors(terrainColors, weights);
-        int water = blendColors(waterColors, weights);
+        int terrain = packColor(terrainRed, terrainGreen, terrainBlue, totalWeight);
+        int water = packColor(waterRed, waterGreen, waterBlue, totalWeight);
         return new SurfaceColors(terrain, blend(0xFF28566D, water, 0.58));
     }
 
@@ -73,6 +82,14 @@ final class FarTerrainBiomeBlender {
             blue += (color & 0xFF) * weight;
         }
         if (totalWeight <= 0.0) return opaqueRgb(colors[0]);
+        return 0xFF000000
+                | (clamp((int) Math.round(red / totalWeight)) << 16)
+                | (clamp((int) Math.round(green / totalWeight)) << 8)
+                | clamp((int) Math.round(blue / totalWeight));
+    }
+
+    private static int packColor(double red, double green, double blue, double totalWeight) {
+        if (totalWeight <= 0.0) return 0xFF000000;
         return 0xFF000000
                 | (clamp((int) Math.round(red / totalWeight)) << 16)
                 | (clamp((int) Math.round(green / totalWeight)) << 8)
