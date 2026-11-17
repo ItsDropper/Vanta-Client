@@ -124,7 +124,8 @@ public final class FarTerrainRenderer {
         ClientChunkEvents.CHUNK_LOAD.register(FarTerrainRenderer::captureChunk);
         // Capture once more immediately before unload so block edits made while
         // the chunk was resident replace the older persisted surface snapshot.
-        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);\n        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FarTerrainGpuRenderer.shutdown());
+        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FarTerrainGpuRenderer.shutdown());
     }
 
     public static void tick(Minecraft client) {
