@@ -6,8 +6,6 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 
-import java.util.Optional;
-
 /**
  * Smooths the procedural distant-terrain palette across the same 4-block biome
  * sampling grid used by Minecraft. The close chunk renderer remains authoritative.
