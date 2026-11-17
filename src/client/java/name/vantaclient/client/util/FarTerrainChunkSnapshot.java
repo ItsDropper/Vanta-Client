@@ -4,11 +4,14 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Immutable, compact block-derived surface data captured from a real client chunk.
@@ -23,12 +26,15 @@ final class FarTerrainChunkSnapshot {
     private final int chunkZ;
     private final int[] heights;
     private final int[] surfaceColors;
+    private final FarTerrainVoxelSection[] voxelSections;
 
-    private FarTerrainChunkSnapshot(int chunkX, int chunkZ, int[] heights, int[] surfaceColors) {
+    private FarTerrainChunkSnapshot(int chunkX, int chunkZ, int[] heights, int[] surfaceColors,
+                                    FarTerrainVoxelSection[] voxelSections) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.heights = heights;
         this.surfaceColors = surfaceColors;
+        this.voxelSections = voxelSections;
     }
 
     static FarTerrainChunkSnapshot capture(ClientLevel level, LevelChunk chunk) {
@@ -54,17 +60,36 @@ final class FarTerrainChunkSnapshot {
                 colors[index] = 0xFF000000 | (mapColor & 0x00FFFFFF);
             }
         }
-        return new FarTerrainChunkSnapshot(chunk.getPos().x, chunk.getPos().z, heights, colors);
+        LevelChunkSection[] sourceSections = chunk.getSections();
+        List<FarTerrainVoxelSection> voxelSections = new ArrayList<>(sourceSections.length);
+        int minSection = level.getMinSection();
+        for (int i = 0; i < sourceSections.length; i++) {
+            LevelChunkSection section = sourceSections[i];
+            if (section.hasOnlyAir()) continue;
+            FarTerrainVoxelSection captured = FarTerrainVoxelSection.capture(
+                    section, minSection + i, level, originX, originZ);
+            if (captured != null) voxelSections.add(captured);
+        }
+
+        return new FarTerrainChunkSnapshot(chunk.getPos().x, chunk.getPos().z, heights, colors,
+                voxelSections.toArray(FarTerrainVoxelSection[]::new));
     }
 
-    static FarTerrainChunkSnapshot read(DataInput input) throws IOException {
+    static FarTerrainChunkSnapshot read(DataInput input, int version) throws IOException {
         int chunkX = input.readInt();
         int chunkZ = input.readInt();
         int[] heights = new int[COLUMN_COUNT];
         int[] colors = new int[COLUMN_COUNT];
         for (int i = 0; i < COLUMN_COUNT; i++) heights[i] = input.readInt();
         for (int i = 0; i < COLUMN_COUNT; i++) colors[i] = input.readInt();
-        return new FarTerrainChunkSnapshot(chunkX, chunkZ, heights, colors);
+        FarTerrainVoxelSection[] sections = new FarTerrainVoxelSection[0];
+        if (version >= 2) {
+            int sectionCount = input.readUnsignedShort();
+            if (sectionCount > 64) throw new IOException("Invalid FarView voxel section count");
+            sections = new FarTerrainVoxelSection[sectionCount];
+            for (int i = 0; i < sectionCount; i++) sections[i] = FarTerrainVoxelSection.read(input);
+        }
+        return new FarTerrainChunkSnapshot(chunkX, chunkZ, heights, colors, sections);
     }
 
     void write(DataOutput output) throws IOException {
@@ -72,6 +97,8 @@ final class FarTerrainChunkSnapshot {
         output.writeInt(chunkZ);
         for (int height : heights) output.writeInt(height);
         for (int color : surfaceColors) output.writeInt(color);
+        output.writeShort(voxelSections.length);
+        for (FarTerrainVoxelSection section : voxelSections) section.write(output);
     }
 
     int chunkX() {
@@ -88,5 +115,9 @@ final class FarTerrainChunkSnapshot {
 
     int surfaceColor(int localX, int localZ) {
         return surfaceColors[(localZ & 15) * 16 + (localX & 15)];
+    }
+
+    FarTerrainVoxelSection[] voxelSections() {
+        return voxelSections;
     }
 }
