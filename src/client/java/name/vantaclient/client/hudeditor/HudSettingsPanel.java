@@ -59,7 +59,9 @@ public final class HudSettingsPanel {
 
     private static VantaUiNode buildRoot() {
         Minecraft mc = Minecraft.getInstance();
+        int viewportWidth = mc.getWindow().getGuiScaledWidth();
         int viewportHeight = mc.getWindow().getGuiScaledHeight();
+        int panelWidth = Math.max(184, Math.min(268, Math.round(viewportWidth * 0.48f)));
         int panelHeight = Math.max(140, Math.min(430, viewportHeight - 104));
 
         VantaUiNode root = VantaUiNode.row(0, 0)
@@ -68,7 +70,7 @@ public final class HudSettingsPanel {
         root.add(VantaUiNode.spacer(1).flex(1));
 
         VantaUiNode panel = VantaUiNode.column(10, 14)
-                .width(268)
+                .width(panelWidth)
                 .height(panelHeight)
                 .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .scrollable();
@@ -169,7 +171,7 @@ public final class HudSettingsPanel {
                 .height(30));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
-                .width(268)
+                .width(panelWidth)
                 .height(Math.max(0, viewportHeight - 44))
                 .align(VantaUiNode.Alignment.START);
         inspectorSlot.add(VantaUiNode.spacer(1).height(60));
