@@ -633,7 +633,7 @@ public final class FarTerrainRenderer {
                 }
                 FarTerrainBiomeBlender.SurfaceColors biomeColors =
                         FarTerrainBiomeBlender.sample(biomeSource, climateSampler,
-                                worldX, height, worldZ, height, seaLevel);
+                                worldX, height, worldZ, seaLevel);
                 waterColors[index] = biomeColors.waterColor();
                 if (actualChunk == null) colors[index] = biomeColors.terrainColor();
             }
