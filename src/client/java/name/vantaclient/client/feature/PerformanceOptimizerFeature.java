@@ -10,7 +10,7 @@ public final class PerformanceOptimizerFeature extends Feature {
     private PerformanceOptimizerFeature() {
         super(
                 "Performance Optimizer",
-                "Caches frequently rendered HUD data and can adapt entity draw distance to measured frame performance.",
+                "Enabled by default: reuses tick-refreshed HUD snapshots and automatically reduces only client-side entity draw distance under sustained frame pressure, then restores the user-selected distance when headroom returns.",
                 Category.MISC
         );
     }
