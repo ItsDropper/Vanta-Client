@@ -262,7 +262,6 @@ public final class FarTerrainRenderer {
         if (store != null && snapshotClientLevel == world) store.save(snapshot);
         queueVoxelMesh(snapshot);
         queueAdjacentVoxelMeshes(snapshot);
-        queueAdjacentVoxelMeshes(snapshot);
     }
 
     private static void queueAdjacentVoxelMeshes(FarTerrainChunkSnapshot snapshot) {
@@ -1328,7 +1327,9 @@ public final class FarTerrainRenderer {
     }
 
     private static void clearWorld() {
-        if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()) return;
+        if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()
+                && VOXEL_MESHES.isEmpty() && VOXEL_EMPTY.isEmpty()
+                && VOXEL_PENDING.isEmpty()) return;
         activeLevel = null;
         revision++;
         lastWorkerError = "";
