@@ -263,17 +263,28 @@ final class FarTerrainVoxelGpuRenderer {
             long meshBytes = (long) count * 4L * 2L * Integer.BYTES;
             if (totalBytes + meshBytes > MAX_GPU_BYTES) break;
             float[] positions = mesh.positions();
-            float minY = Float.POSITIVE_INFINITY;
-            float maxY = Float.NEGATIVE_INFINITY;
-            for (int i = 1; i < count * 12; i += 3) {
-                minY = Math.min(minY, positions[i]);
-                maxY = Math.max(maxY, positions[i]);
-            }
             int vertexBase = totalQuads * 4;
             List<Meshlet> meshMeshlets = new ArrayList<>();
             for (int start = 0; start < count; start += QUADS_PER_MESHLET) {
                 int meshletQuads = Math.min(QUADS_PER_MESHLET, count - start);
-                Meshlet meshlet = new Meshlet(mesh, vertexBase + start * 4, meshletQuads, minY, maxY);
+                int firstPosition = start * 12;
+                int lastPosition = (start + meshletQuads) * 12;
+                float minX = Float.POSITIVE_INFINITY;
+                float maxX = Float.NEGATIVE_INFINITY;
+                float minY = Float.POSITIVE_INFINITY;
+                float maxY = Float.NEGATIVE_INFINITY;
+                float minZ = Float.POSITIVE_INFINITY;
+                float maxZ = Float.NEGATIVE_INFINITY;
+                for (int i = firstPosition; i < lastPosition; i += 3) {
+                    minX = Math.min(minX, positions[i]);
+                    maxX = Math.max(maxX, positions[i]);
+                    minY = Math.min(minY, positions[i + 1]);
+                    maxY = Math.max(maxY, positions[i + 1]);
+                    minZ = Math.min(minZ, positions[i + 2]);
+                    maxZ = Math.max(maxZ, positions[i + 2]);
+                }
+                Meshlet meshlet = new Meshlet(mesh, vertexBase + start * 4, meshletQuads,
+                        minX, maxX, minY, maxY, minZ, maxZ);
                 nextMeshlets.add(meshlet);
                 meshMeshlets.add(meshlet);
             }
@@ -400,11 +411,13 @@ final class FarTerrainVoxelGpuRenderer {
                 metadata.put(meshlet.vertexBase()).put(meshlet.quadCount()).put(0).put(0);
                 double originX = meshlet.mesh().chunkX() * 16.0;
                 double originZ = meshlet.mesh().chunkZ() * 16.0;
-                double centerX = originX + 8.0;
-                double centerZ = originZ + 8.0;
+                double centerX = originX + (meshlet.minX() + meshlet.maxX()) * 0.5;
+                double centerZ = originZ + (meshlet.minZ() + meshlet.maxZ()) * 0.5;
                 double centerY = (meshlet.minY() + meshlet.maxY()) * 0.5;
+                double halfX = (meshlet.maxX() - meshlet.minX()) * 0.5;
                 double halfY = (meshlet.maxY() - meshlet.minY()) * 0.5;
-                float radius = (float) Math.sqrt(8.0 * 8.0 + 8.0 * 8.0 + halfY * halfY) + 2.0f;
+                double halfZ = (meshlet.maxZ() - meshlet.minZ()) * 0.5;
+                float radius = (float) Math.sqrt(halfX * halfX + halfY * halfY + halfZ * halfZ) + 1.0f;
                 transforms.put((float) (originX - cameraX))
                         .put((float) (originZ - cameraZ))
                         .put((float) -cameraY).put(0.0f);
@@ -544,5 +557,6 @@ final class FarTerrainVoxelGpuRenderer {
     }
 
     private record Meshlet(FarTerrainVoxelMesh mesh, int vertexBase, int quadCount,
-                           float minY, float maxY) {}
+                           float minX, float maxX, float minY, float maxY,
+                           float minZ, float maxZ) {}
 }
