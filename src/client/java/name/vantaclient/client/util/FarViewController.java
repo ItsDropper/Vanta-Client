@@ -1,16 +1,14 @@
 package name.vantaclient.client.util;
 
 import name.vantaclient.client.feature.FarViewFeature;
-import name.vantaclient.client.platform.ClientPlatform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.PrioritizeChunkUpdates;
 
 /**
  * Applies FarView's client-side view-distance and chunk-builder profile.
  *
- * This first implementation deliberately stays on Minecraft's supported
- * client options. It does not change simulation distance, server settings,
- * chunk packet handling, or renderer internals.
+ * It leaves simulation distance, server settings, and chunk packet handling
+ * untouched. Optional renderer integrations are isolated behind reflection.
  */
 public final class FarViewController {
     private static final int MIN_ADAPTIVE_DISTANCE = 8;
