@@ -120,12 +120,10 @@ public final class FarTerrainRenderer {
     public static void register() {
         FarTerrainRenderType.initialize();
         WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
-        ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
-            FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
-            addChunkSnapshot(snapshot);
-            FarTerrainSnapshotStore store = snapshotStore;
-            if (store != null && snapshotClientLevel == world) store.save(snapshot);
-        });
+        ClientChunkEvents.CHUNK_LOAD.register(FarTerrainRenderer::captureChunk);
+        // Capture once more immediately before unload so block edits made while
+        // the chunk was resident replace the older persisted surface snapshot.
+        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);
     }
 
     public static void tick(Minecraft client) {
@@ -199,6 +197,13 @@ public final class FarTerrainRenderer {
         }
 
         scheduleMissingTiles(serverLevel);
+    }
+
+    private static void captureChunk(ClientLevel world, net.minecraft.world.level.chunk.LevelChunk chunk) {
+        FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
+        addChunkSnapshot(snapshot);
+        FarTerrainSnapshotStore store = snapshotStore;
+        if (store != null && snapshotClientLevel == world) store.save(snapshot);
     }
 
     private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot) {
