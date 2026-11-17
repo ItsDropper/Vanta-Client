@@ -434,7 +434,8 @@ final class FarTerrainVoxelGpuRenderer {
         activeMeshletCount = 0;
         activeQuadCount = 0;
         lastDrawnQuads = 0;
-        if (hasCurrentContext()) releaseBuffers();
+        // Keep the program and buffer objects alive across world changes. The
+        // next mesh-list revision replaces their contents without recompiling.
     }
 
     static void shutdown() {
