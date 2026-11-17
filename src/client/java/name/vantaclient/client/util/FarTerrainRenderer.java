@@ -77,6 +77,7 @@ public final class FarTerrainRenderer {
     private static final ConcurrentMap<Long, FarTerrainVoxelMesh> VOXEL_MESHES = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedDeque<Long> VOXEL_MESH_ORDER = new ConcurrentLinkedDeque<>();
     private static final Set<VoxelWorkKey> VOXEL_PENDING = ConcurrentHashMap.newKeySet();
+    private static final Set<Long> VOXEL_REQUEUE = ConcurrentHashMap.newKeySet();
     private static final ThreadPoolExecutor VOXEL_WORKER = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(128),
@@ -245,7 +246,10 @@ public final class FarTerrainRenderer {
             if (snapshotStore != store) return;
             addChunkSnapshotIfAbsent(snapshot);
             long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
-            if (CHUNK_SNAPSHOTS.get(key) == snapshot) queueVoxelMesh(snapshot);
+            if (CHUNK_SNAPSHOTS.get(key) == snapshot) {
+                queueVoxelMesh(snapshot);
+                queueAdjacentVoxelMeshes(snapshot);
+            }
         });
     }
 
@@ -255,18 +259,38 @@ public final class FarTerrainRenderer {
         FarTerrainSnapshotStore store = snapshotStore;
         if (store != null && snapshotClientLevel == world) store.save(snapshot);
         queueVoxelMesh(snapshot);
+        queueAdjacentVoxelMeshes(snapshot);
+    }
+
+    private static void queueAdjacentVoxelMeshes(FarTerrainChunkSnapshot snapshot) {
+        for (int[] offset : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            long key = net.minecraft.world.level.ChunkPos.asLong(
+                    snapshot.chunkX() + offset[0], snapshot.chunkZ() + offset[1]);
+            FarTerrainChunkSnapshot neighbor = CHUNK_SNAPSHOTS.get(key);
+            if (neighbor != null) queueVoxelMesh(neighbor);
+        }
     }
 
     private static void queueVoxelMesh(FarTerrainChunkSnapshot snapshot) {
         long chunkKey = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
         long expectedRevision = revision;
         VoxelWorkKey workKey = new VoxelWorkKey(chunkKey, expectedRevision);
-        if (!VOXEL_PENDING.add(workKey)) return;
+        if (!VOXEL_PENDING.add(workKey)) {
+            VOXEL_REQUEUE.add(chunkKey);
+            return;
+        }
+        Map<Long, FarTerrainChunkSnapshot> adjacentSnapshots = new HashMap<>(4);
+        for (int[] offset : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            long neighborKey = net.minecraft.world.level.ChunkPos.asLong(
+                    snapshot.chunkX() + offset[0], snapshot.chunkZ() + offset[1]);
+            FarTerrainChunkSnapshot neighbor = CHUNK_SNAPSHOTS.get(neighborKey);
+            if (neighbor != null) adjacentSnapshots.put(neighborKey, neighbor);
+        }
         try {
             VOXEL_WORKER.execute(() -> {
                 try {
                     if (expectedRevision != revision) return;
-                    FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot);
+                    FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot, adjacentSnapshots);
                     if (mesh == null || expectedRevision != revision) return;
                     synchronized (VOXEL_MESH_LOCK) {
                         if (expectedRevision != revision) return;
@@ -285,6 +309,10 @@ public final class FarTerrainRenderer {
                     }
                 } finally {
                     VOXEL_PENDING.remove(workKey);
+                    if (VOXEL_REQUEUE.remove(chunkKey) && expectedRevision == revision) {
+                        FarTerrainChunkSnapshot latest = CHUNK_SNAPSHOTS.get(chunkKey);
+                        if (latest != null) queueVoxelMesh(latest);
+                    }
                 }
             });
         } catch (RejectedExecutionException ignored) {
@@ -1276,6 +1304,8 @@ public final class FarTerrainRenderer {
         synchronized (VOXEL_MESH_LOCK) {
             VOXEL_MESHES.clear();
             VOXEL_MESH_ORDER.clear();
+            VOXEL_REQUEUE.clear();
+            VOXEL_PENDING.clear();
             cachedVoxelMeshBytes = 0L;
         }
         VOXEL_WORKER.getQueue().clear();

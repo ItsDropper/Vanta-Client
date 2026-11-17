@@ -15,6 +15,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyAdjacentBlocksGreedyMerge();
         verifyUpperSectionUsesWorldHeight();
         verifyFacesAreHiddenAcrossVerticalSections();
+        verifyFacesAreHiddenAcrossHorizontalChunks();
         verifyFluidVoxelUsesTranslucentMesh();
         verifyGlassAndIceAreClassifiedAsTranslucent();
         verifyFluidInterfaceAgainstOpaqueBlockIsHidden();
@@ -110,6 +111,29 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
                 0, 0, new int[256], new int[256], new FarTerrainVoxelSection[]{lower, upper}));
         if (mesh == null || mesh.quadCount() != 10) {
             throw new AssertionError("Adjacent voxels across vertical sections must not emit their shared face.");
+        }
+    }
+
+    private static void verifyFacesAreHiddenAcrossHorizontalChunks() {
+        short[] leftIndices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        short[] rightIndices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        leftIndices[index(15, 8, 8)] = 1;
+        rightIndices[index(0, 8, 8)] = 1;
+        FarTerrainChunkSnapshot left = new FarTerrainChunkSnapshot(0, 0,
+                new int[256], new int[256], new FarTerrainVoxelSection[]{createSection(leftIndices,
+                new byte[FarTerrainVoxelSection.VOXEL_COUNT])});
+        FarTerrainChunkSnapshot right = new FarTerrainChunkSnapshot(1, 0,
+                new int[256], new int[256], new FarTerrainVoxelSection[]{createSection(rightIndices,
+                new byte[FarTerrainVoxelSection.VOXEL_COUNT])});
+        java.util.Map<Long, FarTerrainChunkSnapshot> rightNeighbor = java.util.Map.of(
+                net.minecraft.world.level.ChunkPos.asLong(1, 0), right);
+        java.util.Map<Long, FarTerrainChunkSnapshot> leftNeighbor = java.util.Map.of(
+                net.minecraft.world.level.ChunkPos.asLong(0, 0), left);
+        FarTerrainVoxelMesh leftMesh = FarTerrainVoxelMesh.build(left, rightNeighbor);
+        FarTerrainVoxelMesh rightMesh = FarTerrainVoxelMesh.build(right, leftNeighbor);
+        if (leftMesh == null || rightMesh == null
+                || leftMesh.quadCount() != 5 || rightMesh.quadCount() != 5) {
+            throw new AssertionError("Adjacent chunk meshes must cull their shared opaque boundary face.");
         }
     }
 

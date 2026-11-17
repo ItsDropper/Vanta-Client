@@ -31,6 +31,11 @@ final class FarTerrainVoxelMesh {
     }
 
     static FarTerrainVoxelMesh build(FarTerrainChunkSnapshot snapshot) {
+        return build(snapshot, Map.of());
+    }
+
+    static FarTerrainVoxelMesh build(FarTerrainChunkSnapshot snapshot,
+                                     Map<Long, FarTerrainChunkSnapshot> adjacentSnapshots) {
         FarTerrainVoxelSection[] sections = snapshot.voxelSections();
         if (sections.length == 0) return null;
 
@@ -46,16 +51,29 @@ final class FarTerrainVoxelMesh {
             maxY = Math.max(maxY, section.sectionY() * EDGE + EDGE - 1);
         }
 
-        GeometryBuilder opaque = buildGeometry(sections, bySectionY, false);
-        GeometryBuilder translucent = buildGeometry(sections, bySectionY, true);
+        Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections = new HashMap<>();
+        for (Map.Entry<Long, FarTerrainChunkSnapshot> entry : adjacentSnapshots.entrySet()) {
+            Map<Integer, FarTerrainVoxelSection> indexed = new HashMap<>();
+            for (FarTerrainVoxelSection section : entry.getValue().voxelSections()) {
+                indexed.put(section.sectionY(), section);
+            }
+            adjacentSections.put(entry.getKey(), indexed);
+        }
+
+        GeometryBuilder opaque = buildGeometry(snapshot.chunkX(), snapshot.chunkZ(),
+                sections, bySectionY, adjacentSections, false);
+        GeometryBuilder translucent = buildGeometry(snapshot.chunkX(), snapshot.chunkZ(),
+                sections, bySectionY, adjacentSections, true);
         if (opaque.quadCount() == 0 && translucent.quadCount() == 0) return null;
         return new FarTerrainVoxelMesh(snapshot.chunkX(), snapshot.chunkZ(),
                 opaque.positions(), opaque.colors(),
                 translucent.positions(), translucent.colors(), octrees);
     }
 
-    private static GeometryBuilder buildGeometry(FarTerrainVoxelSection[] sections,
+    private static GeometryBuilder buildGeometry(int chunkX, int chunkZ,
+                                                   FarTerrainVoxelSection[] sections,
                                                    Map<Integer, FarTerrainVoxelSection> bySectionY,
+                                                   Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections,
                                                    boolean translucentPass) {
         GeometryBuilder geometry = new GeometryBuilder();
         int[] mask = new int[EDGE * EDGE];
@@ -94,8 +112,10 @@ final class FarTerrainVoxelMesh {
                                 int nx = x + (axis == 0 ? direction : 0);
                                 int ny = y + (axis == 1 ? direction : 0);
                                 int nz = z + (axis == 2 ? direction : 0);
-                                boolean neighborOpaque = isSolid(bySectionY, nx, ny, nz);
-                                boolean neighborTranslucent = isTranslucent(bySectionY, nx, ny, nz);
+                                boolean neighborOpaque = isSolid(chunkX, chunkZ, bySectionY,
+                                        adjacentSections, nx, ny, nz);
+                                boolean neighborTranslucent = isTranslucent(chunkX, chunkZ, bySectionY,
+                                        adjacentSections, nx, ny, nz);
                                 if (translucentPass
                                         ? neighborOpaque || neighborTranslucent
                                         : neighborOpaque) continue;
@@ -153,19 +173,53 @@ final class FarTerrainVoxelMesh {
         return geometry;
     }
 
-    private static boolean isTranslucent(Map<Integer, FarTerrainVoxelSection> sections,
+    private static boolean isTranslucent(int chunkX, int chunkZ,
+                                          Map<Integer, FarTerrainVoxelSection> sections,
+                                          Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections,
                                           int x, int y, int z) {
-        if (x < 0 || x >= EDGE || z < 0 || z >= EDGE) return false;
-        FarTerrainVoxelSection section = sections.get(Math.floorDiv(y, EDGE));
-        return section != null && section.isTranslucent(x, y, z);
+        SectionVoxel voxel = sectionVoxel(chunkX, chunkZ, sections, adjacentSections, x, y, z);
+        return voxel != null && voxel.section().isTranslucent(voxel.x(), voxel.y(), voxel.z());
     }
 
-    private static boolean isSolid(Map<Integer, FarTerrainVoxelSection> sections,
+    private static boolean isSolid(int chunkX, int chunkZ,
+                                   Map<Integer, FarTerrainVoxelSection> sections,
+                                   Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections,
                                    int x, int y, int z) {
-        if (x < 0 || x >= EDGE || z < 0 || z >= EDGE) return false;
-        FarTerrainVoxelSection section = sections.get(Math.floorDiv(y, EDGE));
-        return section != null && section.isSolid(x, y, z);
+        SectionVoxel voxel = sectionVoxel(chunkX, chunkZ, sections, adjacentSections, x, y, z);
+        return voxel != null && voxel.section().isSolid(voxel.x(), voxel.y(), voxel.z());
     }
+
+    private static SectionVoxel sectionVoxel(int chunkX, int chunkZ,
+                                             Map<Integer, FarTerrainVoxelSection> sections,
+                                             Map<Long, Map<Integer, FarTerrainVoxelSection>> adjacentSections,
+                                             int x, int y, int z) {
+        int neighborChunkX = chunkX;
+        int neighborChunkZ = chunkZ;
+        int localX = x;
+        int localZ = z;
+        if (x < 0) {
+            neighborChunkX--;
+            localX = EDGE - 1;
+        } else if (x >= EDGE) {
+            neighborChunkX++;
+            localX = 0;
+        } else if (z < 0) {
+            neighborChunkZ--;
+            localZ = EDGE - 1;
+        } else if (z >= EDGE) {
+            neighborChunkZ++;
+            localZ = 0;
+        }
+        Map<Integer, FarTerrainVoxelSection> source = neighborChunkX == chunkX
+                && neighborChunkZ == chunkZ ? sections
+                : adjacentSections.get(net.minecraft.world.level.ChunkPos.asLong(
+                        neighborChunkX, neighborChunkZ));
+        if (source == null) return null;
+        FarTerrainVoxelSection section = source.get(Math.floorDiv(y, EDGE));
+        return section == null ? null : new SectionVoxel(section, localX, Math.floorMod(y, EDGE), localZ);
+    }
+
+    private record SectionVoxel(FarTerrainVoxelSection section, int x, int y, int z) {}
 
     private static int litColor(FarTerrainVoxelSection section, int x, int y, int z, boolean translucent, int axis, int direction) {
         int color = section.materialColor(x, y, z);
