@@ -185,6 +185,39 @@ public final class FarTerrainLodMath {
         return bounded;
     }
 
+    /**
+     * Approximates directional terrain self-shadowing from the sampled heightfield.
+     * Samples toward the fixed distant sun direction and darkens vertices hidden
+     * behind nearby ridges. Returns a multiplier in [0.76, 1.0].
+     */
+    public static double terrainShadowFactor(int[] heights, int resolution,
+                                             int x, int z, double sampleSpacing) {
+        if (resolution <= 0 || heights == null
+                || heights.length != (resolution + 1) * (resolution + 1)
+                || x < 0 || x > resolution || z < 0 || z > resolution
+                || !Double.isFinite(sampleSpacing) || sampleSpacing <= 0.0) {
+            throw new IllegalArgumentException("Invalid terrain shadow sampling input.");
+        }
+
+        int side = resolution + 1;
+        int centerHeight = heights[z * side + x];
+        double shadow = 0.0;
+        for (int step = 1; step <= 3; step++) {
+            int sampleX = x - step;
+            int sampleZ = z - step;
+            if (sampleX < 0 || sampleZ < 0) break;
+            int sampleHeight = heights[sampleZ * side + sampleX];
+            double horizontalDistance = sampleSpacing * step * Math.sqrt(2.0);
+            double riseAboveSunHorizon = sampleHeight - centerHeight
+                    - horizontalDistance * 0.72;
+            if (riseAboveSunHorizon <= 0.0) continue;
+            double occlusion = Math.min(0.24,
+                    riseAboveSunHorizon / (horizontalDistance * 1.8 + 12.0) * 0.24);
+            shadow = Math.max(shadow, occlusion);
+        }
+        return Math.max(0.76, 1.0 - shadow);
+    }
+
     public static int desiredTileSizeForDistanceSquared(double distanceSquared) {
         if (distanceSquared < 64.0 * 64.0) return 8;
         if (distanceSquared < 128.0 * 128.0) return 16;
