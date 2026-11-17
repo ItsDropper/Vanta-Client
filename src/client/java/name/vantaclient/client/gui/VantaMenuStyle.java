@@ -265,7 +265,7 @@ public final class VantaMenuStyle {
         graphics.drawString(client.font, ComponentText.playerName(safeName), textX, y + (compact ? 24 : 38),
                 withAlpha(0xFFF2F5FA, alpha), false);
         graphics.drawString(client.font, ComponentText.profileState(profileId != null),
-                textX, y + 56, withAlpha(0xFF9AA8BA, alpha), false);
+                textX, y + (compact ? 42 : 56), withAlpha(0xFF9AA8BA, alpha), false);
         graphics.fill(textX, y + (compact ? 54 : 68), x + width - 12, y + (compact ? 55 : 69),
                 withAlpha(0x465C6C82, alpha));
         graphics.drawString(client.font, ComponentText.profileHint(),
