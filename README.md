@@ -19,8 +19,9 @@ Vanta Client is a Fabric client mod for Minecraft **1.21.11**. It combines confi
 - FarView distant-terrain LOD for singleplayer worlds.
 - Local chat timestamps for signed player chat and system messages, with 24-hour, 24-hour-with-seconds and 12-hour formats; plus configurable animation profiles.
 - Sprint/sneak toggles and double-tap sprint controls.
+- Performance Optimizer is enabled by default. It reuses tick-refreshed HUD snapshots and automatically adapts client-side entity draw distance under sustained frame pressure, then gradually restores the user's configured value when headroom returns. Both the optimizer and **Adaptive entity distance** can be disabled independently in Vanta Settings. The controller never changes entity AI, ticks, collision, or server simulation.
+- FarView's **Adaptive Worker Pacing** is enabled by default independently of adaptive detail distance. Its background mesh worker yields when measured client frame/tick load rises, protecting foreground rendering while allowing distant terrain generation to catch up when headroom returns. This can be disabled in FarView settings.
 - Performance diagnostics and opt-in local CrashPatch diagnostics.
-- Optional adaptive entity draw distance in Performance Optimizer: reduces client-side entity rendering distance under sustained frame load, then gradually restores the user's configured value when headroom returns. It never changes entity AI, ticks, collision, or server simulation.
 
 ### Combat and gameplay utilities
 
@@ -38,7 +39,7 @@ FarView uses an adaptive quadtree to render distant terrain in singleplayer. It 
 
 Nvidium is optional and is not a compile-time, runtime, or bundled dependency. When it is installed and its accelerated renderer is active, Nvidium continues to own GPU-driven rendering and occlusion for Sodium's ordinary chunk terrain. FarView's distant LOD geometry remains in its separate Minecraft render pass, so the two render paths can coexist without FarView reaching into Sodium or Nvidium internals. The compatibility check uses reflection only and fails closed if Nvidium changes its internal status field.
 
-This is renderer coexistence, not injection of FarView LOD meshes into Nvidium's mesh-shader pipeline: Nvidium's exposed API currently provides section visibility and region transforms, not a public custom-geometry upload/draw contract. FarView does not claim Nvidium GPU occlusion for its own LOD tiles.
+Vanta's adaptive entity-distance controller and FarView background worker pacing do not modify Sodium or Nvidium terrain submission, visibility, mesh buffers, or occlusion state. This is renderer coexistence, not injection of FarView LOD meshes into Nvidium's mesh-shader pipeline: Nvidium's exposed API currently provides section visibility and region transforms, not a public custom-geometry upload/draw contract. FarView does not claim Nvidium GPU occlusion for its own LOD tiles.
 
 On NVIDIA drivers exposing `GL_NV_mesh_shader`, FarView can use its own optional OpenGL mesh-shader backend without loading or linking against Nvidium. It uploads bounded terrain height/color grids to shader-storage buffers, dispatches 8×8-cell meshlets, and performs per-meshlet frustum and near/far-band rejection in the mesh shader. The existing Minecraft `VertexConsumer` path remains the fallback when the extension or shader program is unavailable. The initial GPU path deliberately falls back for terrain sets containing distant water cells; it also retains CPU-side tile planning, mesh generation, tree silhouettes, and edge skirts. This is GPU meshlet rendering and culling, not yet hierarchical GPU quadtree traversal or depth-pyramid occlusion.
 
