@@ -203,7 +203,7 @@ final class FarTerrainGpuRenderer {
             Minecraft client = Minecraft.getInstance();
             PoseStack.Pose pose = context.matrices().last();
             Matrix4f mvp = new Matrix4f(context.gameRenderer()
-                    .getBasicProjectionMatrix(client.options.fov().get()))
+                    .getProjectionMatrix(client.options.fov().get()))
                     .mul(pose.pose());
 
             uploadFrameTransforms(cameraX, cameraZ);
