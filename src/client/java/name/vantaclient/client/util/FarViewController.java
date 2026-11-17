@@ -138,7 +138,7 @@ public final class FarViewController {
     }
 
     public static boolean isNvidiumLoaded() {
-        return ClientPlatform.isModLoaded("nvidium");
+        return NvidiumCompatibility.isInstalled();
     }
 
     public static int getEffectiveRenderDistance() {
@@ -147,8 +147,6 @@ public final class FarViewController {
     }
 
     public static String getRendererStatus() {
-        return isNvidiumLoaded()
-                ? "Nvidium detected (optional; native integration pending)"
-                : "Vanilla renderer (Nvidium optional)";
+        return NvidiumCompatibility.getStatusLine();
     }
 }
