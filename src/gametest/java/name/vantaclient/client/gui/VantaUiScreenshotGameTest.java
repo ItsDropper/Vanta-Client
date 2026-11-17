@@ -16,6 +16,7 @@ import name.vantaclient.client.hud.PingHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.hudeditor.HudManager;
 import name.vantaclient.client.hudeditor.HudSettingsPanel;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
@@ -656,11 +657,24 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyAdaptiveEntityDistancePolicy(ClientGameTestContext context) {
         context.runOnClient(client -> {
+            DropperUtilsConfig defaults = new DropperUtilsConfig();
+            if (!defaults.performanceOptimizer || !defaults.adaptiveEntityDistance
+                    || !defaults.farViewWorkerAdaptive) {
+                throw new AssertionError("New Vanta configurations must enable adaptive performance features by default.");
+            }
+
             double reduced = AdaptiveEntityDistanceController.calculateNextScale(
                     1.0, 1.0, 0.65, 28.0, 42);
             if (Math.abs(reduced - 0.75) > 0.0001) {
                 throw new AssertionError("Over-budget rendering did not reduce entity distance gradually: "
                         + reduced);
+            }
+
+            double gpuBoundReduced = AdaptiveEntityDistanceController.calculateNextScale(
+                    1.0, 1.0, 0.65, 14.0, 42);
+            if (Math.abs(gpuBoundReduced - 0.75) > 0.0001) {
+                throw new AssertionError("Low-FPS scenes must trigger entity-distance relief even when CPU render submission is below budget: "
+                        + gpuBoundReduced);
             }
 
             double floor = AdaptiveEntityDistanceController.calculateNextScale(
