@@ -24,6 +24,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
         verifyPackedGpuVertexCoordinatesRoundTrip();
         verifyDirectionalBlockTextureColors();
+        verifyAmbientOcclusionPolicy();
         verifyGpuMeshletRadialCulling();
     }
 
@@ -212,6 +213,16 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         if (section.estimatedBytes() < 24_000L
                 || snapshot.estimatedBytes() < section.estimatedBytes()) {
             throw new AssertionError("Snapshot byte accounting omitted its dense voxel and tint payload.");
+        }
+    }
+
+    private static void verifyAmbientOcclusionPolicy() {
+        float open = FarTerrainVoxelMesh.ambientOcclusionFactor(0, 0);
+        float partiallyOccluded = FarTerrainVoxelMesh.ambientOcclusionFactor(2, 1);
+        float fullyOccluded = FarTerrainVoxelMesh.ambientOcclusionFactor(4, 4);
+        if (open != 1.0f || !(partiallyOccluded < open)
+                || fullyOccluded != 0.68f || partiallyOccluded < fullyOccluded) {
+            throw new AssertionError("Voxel ambient occlusion must darken nearby geometry with a bounded floor.");
         }
     }
 
