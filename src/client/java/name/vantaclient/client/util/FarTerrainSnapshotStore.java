@@ -41,7 +41,7 @@ final class FarTerrainSnapshotStore {
     private final Path directory;
 
     FarTerrainSnapshotStore(Path worldRoot, String dimensionKey) {
-        String safeDimension = dimensionKey.replace(':', '_').replace('/', '_').replace('\\\\', '_');
+        String safeDimension = dimensionKey.replace(':', '_').replace('/', '_').replace('\\', '_');
         this.directory = worldRoot.resolve("vanta").resolve("farview").resolve(safeDimension);
     }
 
