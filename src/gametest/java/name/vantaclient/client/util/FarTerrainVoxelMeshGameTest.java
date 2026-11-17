@@ -11,6 +11,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyUniformSectionCollapsesToOneOctreeLeaf();
         verifySingleBlockProducesSixFaces();
         verifyAdjacentBlocksGreedyMerge();
+        verifyVoxelPayloadRoundTrip();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -53,6 +54,34 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
         if (mesh == null || mesh.quadCount() != 6) {
             throw new AssertionError("Two adjacent equal-material voxels should merge into six cuboid faces.");
+        }
+    }
+
+    private static void verifyVoxelPayloadRoundTrip() {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        byte[] light = new byte[FarTerrainVoxelSection.VOXEL_COUNT];
+        indices[index(2, 6, 11)] = 1;
+        light[index(2, 6, 11)] = (byte) 0xC5;
+        FarTerrainVoxelSection source = createSection(indices, light);
+        try {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            try (java.io.DataOutputStream output = new java.io.DataOutputStream(bytes)) {
+                source.write(output);
+            }
+            FarTerrainVoxelSection restored;
+            try (java.io.DataInputStream input = new java.io.DataInputStream(
+                    new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
+                restored = FarTerrainVoxelSection.read(input, 3);
+            }
+            if (restored.blockStateId(2, 6, 11) != 1
+                    || !restored.isSolid(2, 6, 11)
+                    || restored.materialColor(2, 6, 11) != 0xFF777777
+                    || restored.skyLight(2, 6, 11) != 12
+                    || restored.blockLight(2, 6, 11) != 5) {
+                throw new AssertionError("Version 3 voxel payload lost palette, material, or packed light data.");
+            }
+        } catch (java.io.IOException error) {
+            throw new AssertionError("Voxel payload round-trip failed.", error);
         }
     }
 
