@@ -11,6 +11,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HalfTransparentBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
@@ -86,8 +87,9 @@ final class FarTerrainVoxelSection {
                         int textureColor = BLOCK_TEXTURE_COLORS.computeIfAbsent(stateId,
                                 ignored -> averageBlockTextureColor(state, stateId, mapColor));
                         colors.add(0xFF000000 | (textureColor & 0x00FFFFFF));
-                        solids.add(!state.isAir() && state.getFluidState().isEmpty());
-                        translucent.add(!state.isAir() && !state.getFluidState().isEmpty());
+                        boolean translucentState = isTranslucentState(state);
+                        solids.add(!state.isAir() && !translucentState);
+                        translucent.add(!state.isAir() && translucentState);
                     }
                     indices[index] = (short) (int) paletteIndex;
                     int baseColor = colors.get(paletteIndex) & 0x00FFFFFF;
@@ -321,6 +323,10 @@ final class FarTerrainVoxelSection {
                     java.util.Arrays.copyOf(sizes, count),
                     java.util.Arrays.copyOf(solidCounts, count));
         }
+    }
+
+    static boolean isTranslucentState(BlockState state) {
+        return !state.getFluidState().isEmpty() || state.getBlock() instanceof HalfTransparentBlock;
     }
 
     private static int averageBlockTextureColor(BlockState state, int stateId, int fallbackColor) {

@@ -2,6 +2,7 @@ package name.vantaclient.client.util;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.world.level.block.Blocks;
 
 /** CPU-only regression coverage for sparse octrees and 3D greedy meshing. */
 @SuppressWarnings("UnstableApiUsage")
@@ -16,6 +17,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyFacesAreHiddenAcrossVerticalSections();
         verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
+        verifyGlassAndIceAreClassifiedAsTranslucent();
         verifyFluidInterfaceAgainstOpaqueBlockIsHidden();
         verifyVoxelPayloadRoundTrip();
         verifyRegionStorageHandlesNegativeChunkCoordinates();
@@ -140,6 +142,15 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             if ((color >>> 24) != 0xA0) {
                 throw new AssertionError("Translucent voxel material lost its alpha channel.");
             }
+        }
+    }
+
+    private static void verifyGlassAndIceAreClassifiedAsTranslucent() {
+        if (!FarTerrainVoxelSection.isTranslucentState(Blocks.GLASS.defaultBlockState())
+                || !FarTerrainVoxelSection.isTranslucentState(Blocks.BLUE_STAINED_GLASS.defaultBlockState())
+                || !FarTerrainVoxelSection.isTranslucentState(Blocks.ICE.defaultBlockState())
+                || FarTerrainVoxelSection.isTranslucentState(Blocks.OAK_LEAVES.defaultBlockState())) {
+            throw new AssertionError("Glass and ice must use the translucent voxel pass without misclassifying leaves.");
         }
     }
 
