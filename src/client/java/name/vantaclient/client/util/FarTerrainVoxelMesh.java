@@ -43,64 +43,89 @@ final class FarTerrainVoxelMesh {
 
         GeometryBuilder geometry = new GeometryBuilder();
         int[] mask = new int[EDGE * EDGE];
-        for (int axis = 0; axis < 3 && geometry.quadCount() < MAX_QUADS; axis++) {
-            int uAxis = (axis + 1) % 3;
-            int vAxis = (axis + 2) % 3;
-            int firstSlice = axis == 1 ? minY : 0;
-            int lastSlice = axis == 1 ? maxY : EDGE - 1;
-            for (int direction : new int[]{-1, 1}) {
-                for (int slice = firstSlice; slice <= lastSlice && geometry.quadCount() < MAX_QUADS; slice++) {
-                    java.util.Arrays.fill(mask, 0);
-                    for (int v = 0; v < EDGE; v++) {
-                        for (int u = 0; u < EDGE; u++) {
-                            int x = axis == 0 ? slice : (uAxis == 0 ? u : v);
-                            int y = axis == 1 ? slice : (uAxis == 1 ? u : v);
-                            int z = axis == 2 ? slice : (uAxis == 2 ? u : v);
-                            FarTerrainVoxelSection section = bySectionY.get(Math.floorDiv(y, EDGE));
-                            if (section == null || !section.isSolid(x, y, z)) continue;
-
-                            int nx = x + (axis == 0 ? direction : 0);
-                            int ny = y + (axis == 1 ? direction : 0);
-                            int nz = z + (axis == 2 ? direction : 0);
-                            if (isSolid(bySectionY, nx, ny, nz)) continue;
-                            mask[v * EDGE + u] = litColor(section, x, y, z);
-                        }
-                    }
-
-                    for (int v = 0; v < EDGE && geometry.quadCount() < MAX_QUADS; v++) {
-                        for (int u = 0; u < EDGE && geometry.quadCount() < MAX_QUADS;) {
-                            int color = mask[v * EDGE + u];
-                            if (color == 0) {
-                                u++;
-                                continue;
-                            }
-                            int width = 1;
-                            while (u + width < EDGE && mask[v * EDGE + u + width] == color) width++;
-                            int height = 1;
-                            boolean extend = true;
-                            while (v + height < EDGE && extend) {
-                                for (int x = 0; x < width; x++) {
-                                    if (mask[(v + height) * EDGE + u + x] != color) {
-                                        extend = false;
-                                        break;
-                                    }
+        for (FarTerrainVoxelSection section : sections) {
+            int sectionBaseY = section.sectionY() * EDGE;
+            for (int axis = 0; axis < 3 && geometry.quadCount() < MAX_QUADS; axis++) {
+                int uAxis = (axis + 1) % 3;
+                int vAxis = (axis + 2) % 3;
+                for (int direction : new int[]{-1, 1}) {
+                    for (int slice = 0; slice < EDGE && geometry.quadCount() < MAX_QUADS; slice++) {
+                        java.util.Arrays.fill(mask, 0);
+                        for (int v = 0; v < EDGE; v++) {
+                            for (int u = 0; u < EDGE; u++) {
+                                int x;
+                                int y;
+                                int z;
+                                if (axis == 0) {
+                                    x = slice;
+                                    y = sectionBaseY + u;
+                                    z = v;
+                                } else if (axis == 1) {
+                                    x = v;
+                                    y = sectionBaseY + slice;
+                                    z = u;
+                                } else {
+                                    x = u;
+                                    y = sectionBaseY + v;
+                                    z = slice;
                                 }
-                                if (extend) height++;
-                            }
+                                if (!section.isSolid(x, y - sectionBaseY, z)) continue;
 
-                            geometry.addFace(axis, direction, slice, uAxis, u, u + width,
-                                    vAxis, v, v + height, color);
-                            for (int row = 0; row < height; row++) {
-                                java.util.Arrays.fill(mask, (v + row) * EDGE + u,
-                                        (v + row) * EDGE + u + width, 0);
+                                int nx = x + (axis == 0 ? direction : 0);
+                                int ny = y + (axis == 1 ? direction : 0);
+                                int nz = z + (axis == 2 ? direction : 0);
+                                if (isSolid(bySectionY, nx, ny, nz)) continue;
+                                mask[v * EDGE + u] = litColor(section, x, y - sectionBaseY, z);
                             }
-                            u += width;
+                        }
+
+                        for (int v = 0; v < EDGE && geometry.quadCount() < MAX_QUADS; v++) {
+                            for (int u = 0; u < EDGE && geometry.quadCount() < MAX_QUADS;) {
+                                int color = mask[v * EDGE + u];
+                                if (color == 0) {
+                                    u++;
+                                    continue;
+                                }
+                                int width = 1;
+                                while (u + width < EDGE && mask[v * EDGE + u + width] == color) width++;
+                                int height = 1;
+                                boolean extend = true;
+                                while (v + height < EDGE && extend) {
+                                    for (int x = 0; x < width; x++) {
+                                        if (mask[(v + height) * EDGE + u + x] != color) {
+                                            extend = false;
+                                            break;
+                                        }
+                                    }
+                                    if (extend) height++;
+                                }
+
+                                int u0 = u;
+                                int u1 = u + width;
+                                int v0 = v;
+                                int v1 = v + height;
+                                if (uAxis == 1) {
+                                    u0 += sectionBaseY;
+                                    u1 += sectionBaseY;
+                                }
+                                if (vAxis == 1) {
+                                    v0 += sectionBaseY;
+                                    v1 += sectionBaseY;
+                                }
+                                geometry.addFace(axis, direction,
+                                        axis == 1 ? sectionBaseY + slice : slice,
+                                        uAxis, u0, u1, vAxis, v0, v1, color);
+                                for (int row = 0; row < height; row++) {
+                                    java.util.Arrays.fill(mask, (v + row) * EDGE + u,
+                                            (v + row) * EDGE + u + width, 0);
+                                }
+                                u += width;
+                            }
                         }
                     }
                 }
             }
         }
-
         if (geometry.quadCount() == 0) return null;
         return new FarTerrainVoxelMesh(snapshot.chunkX(), snapshot.chunkZ(),
                 geometry.positions(), geometry.colors(), octrees);
