@@ -51,12 +51,16 @@ public final class VantaUiRuntime {
         viewportHeight = screenHeight;
         int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
         int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
-        // Minecraft's larger GUI scales produce short logical viewports. Keep
-        // the frame breathing room proportional instead of reserving 44 px on
-        // every screen, which needlessly compresses settings at GUI scales 3–4.
-        int margin = Math.max(8, Math.min(22,
-                Math.round(Math.min(layoutWidth, layoutHeight) * 0.06f)));
-        root.arrange(margin, margin, Math.max(0, layoutWidth - margin * 2),
+        // Keep a small physical frame at every Minecraft GUI scale. The
+        // logical viewport is centered inside the scaled coordinate system;
+        // omitting that origin shift clips and misaligns enlarged interfaces.
+        int physicalMargin = Math.max(8, Math.min(22,
+                Math.round(Math.min(screenWidth, screenHeight) * 0.06f)));
+        int margin = Math.max(1, Math.round(physicalMargin / uiScale));
+        int logicalLeft = Math.round((screenWidth - layoutWidth) * 0.5f);
+        int logicalTop = Math.round((screenHeight - layoutHeight) * 0.5f);
+        root.arrange(logicalLeft + margin, logicalTop + margin,
+                Math.max(0, layoutWidth - margin * 2),
                 Math.max(0, layoutHeight - margin * 2), font);
         clearFocusIfDetached();
     }
