@@ -705,13 +705,17 @@ public final class FarTerrainRenderer {
                         / (double) Math.max(1, (Math.min(key.resolution, z + 1)
                         - Math.max(0, z - 1)) * sampleSpacing);
 
-                // A fixed distant sun direction gives the coarse terrain enough shape
-                // to read clearly without depending on block-light or client chunk data.
-                double normalLength = Math.sqrt(dx * dx + dz * dz + 1.0);
-                double diffuse = Math.max(0.0,
-                        (-dx * -0.42 + 1.0 * 0.82 + -dz * -0.38) / normalLength);
-                double brightness = 0.48 + diffuse * 0.52;
-                colors[index] = shadeColor(colors[index], brightness);
+                if (FarViewFeature.isTerrainShadingEnabled()) {
+                    // A fixed distant sun direction gives the coarse terrain enough shape
+                    // to read clearly without depending on block-light or client chunk data.
+                    double normalLength = Math.sqrt(dx * dx + dz * dz + 1.0);
+                    double diffuse = Math.max(0.0,
+                            (-dx * -0.42 + 1.0 * 0.82 + -dz * -0.38) / normalLength);
+                    double shadow = FarTerrainLodMath.terrainShadowFactor(
+                            heights, key.resolution, x, z, sampleSpacing);
+                    double brightness = (0.48 + diffuse * 0.52) * shadow;
+                    colors[index] = shadeColor(colors[index], brightness);
+                }
             }
         }
 
