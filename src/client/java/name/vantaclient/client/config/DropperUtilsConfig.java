@@ -14,7 +14,7 @@ public class DropperUtilsConfig {
         return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
     }
 
-    public int configVersion = 20;
+    public int configVersion = 21;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -38,12 +38,14 @@ public class DropperUtilsConfig {
     public boolean sneakToggleEnabled = false;
     public boolean chatTimestamps = false;
     public String chatTimestampFormat = "HH:mm";
-    public boolean performanceOptimizer = false;
-    public boolean adaptiveEntityDistance = false;
+    public boolean performanceOptimizer = true;
+    public boolean adaptiveEntityDistance = true;
     /** Fraction of the user's configured entity draw distance retained under load. */
     public float minimumEntityDistanceRatio = 0.65f;
     public boolean farViewEnabled = false;
     public boolean farViewAdaptive = false;
+    /** Throttle FarView's background mesh generation when foreground frame time is under pressure. */
+    public boolean farViewWorkerAdaptive = true;
     public boolean vanillaHud = false;
     public boolean flyBoost = false;
     public boolean ogAnimations = false;
@@ -162,6 +164,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 18) migrateV18();
                 if (INSTANCE.configVersion < 19) migrateV19();
                 if (INSTANCE.configVersion < 20) migrateV20();
+                if (INSTANCE.configVersion < 21) migrateV21();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -310,6 +313,15 @@ public class DropperUtilsConfig {
         INSTANCE.farViewTrees = true;
         INSTANCE.farViewCacheMegabytes = 128;
         INSTANCE.configVersion = 20;
+        save();
+    }
+
+    private static void migrateV21() {
+        System.out.println("[DropperUtils] Migrating config v20 -> v21");
+        INSTANCE.performanceOptimizer = true;
+        INSTANCE.adaptiveEntityDistance = true;
+        INSTANCE.farViewWorkerAdaptive = true;
+        INSTANCE.configVersion = 21;
         save();
     }
 
