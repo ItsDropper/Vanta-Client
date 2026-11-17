@@ -77,7 +77,7 @@ final class FarTerrainSnapshotStore {
                     for (int regionZ = centerRegionZ - radius; regionZ <= centerRegionZ + radius; regionZ++) {
                         if (Math.max(Math.abs(regionX - centerRegionX),
                                 Math.abs(regionZ - centerRegionZ)) != radius) continue;
-                        Path region = regionDirectory(directory, regionX, regionZ);
+                        Path region = regionDirectoryForRegion(directory, regionX, regionZ);
                         if (!Files.isDirectory(region)) continue;
                         try (Stream<Path> files = Files.list(region)) {
                             files.filter(Files::isRegularFile)
@@ -141,7 +141,7 @@ final class FarTerrainSnapshotStore {
                 Math.floorDiv(chunkZ, REGION_SIZE_CHUNKS));
     }
 
-    private static Path regionDirectory(Path root, int regionX, int regionZ) {
+    private static Path regionDirectoryForRegion(Path root, int regionX, int regionZ) {
         return root.resolve("r_" + regionX + "_" + regionZ);
     }
 
