@@ -159,6 +159,15 @@ final class FarTerrainVoxelSection {
 
     int sectionY() { return sectionY; }
 
+    long estimatedBytes() {
+        return (long) palette.length * Integer.BYTES
+                + (long) paletteIndices.length * Short.BYTES
+                + packedLight.length
+                + (long) voxelColors.length * Integer.BYTES
+                + (long) paletteColors.length * Integer.BYTES
+                + solidPalette.length + translucentPalette.length;
+    }
+
     int blockStateId(int x, int y, int z) {
         return palette[Short.toUnsignedInt(paletteIndices[index(x, y, z)])];
     }

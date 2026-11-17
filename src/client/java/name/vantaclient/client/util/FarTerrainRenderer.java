@@ -67,6 +67,9 @@ public final class FarTerrainRenderer {
     private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
     private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
     private static final int MAX_CAPTURED_CHUNKS = 256;
+    private static final long MAX_CAPTURED_SNAPSHOT_BYTES = 64L * 1024L * 1024L;
+    private static final Object SNAPSHOT_CACHE_LOCK = new Object();
+    private static volatile long cachedSnapshotBytes;
     private static final int MAX_VOXEL_MESHES = 128;
     private static final long MAX_VOXEL_MESH_CACHE_BYTES = 64L * 1024L * 1024L;
     private static final Object VOXEL_MESH_LOCK = new Object();
@@ -173,8 +176,11 @@ public final class FarTerrainRenderer {
             // Preserve chunks captured during initial world attachment; only clear
             // when switching away from an already-established world/dimension.
             if (snapshotLevel != null) {
-                CHUNK_SNAPSHOTS.clear();
-                CHUNK_SNAPSHOT_ORDER.clear();
+                synchronized (SNAPSHOT_CACHE_LOCK) {
+                    CHUNK_SNAPSHOTS.clear();
+                    CHUNK_SNAPSHOT_ORDER.clear();
+                    cachedSnapshotBytes = 0L;
+                }
             }
             snapshotLevel = serverLevel;
             snapshotClientLevel = client.level;
@@ -308,17 +314,23 @@ public final class FarTerrainRenderer {
 
     private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot, boolean replace) {
         long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
-        if (replace) {
-            CHUNK_SNAPSHOTS.put(key, snapshot);
-        } else if (CHUNK_SNAPSHOTS.putIfAbsent(key, snapshot) != null) {
-            return;
-        }
-        CHUNK_SNAPSHOT_ORDER.remove(key);
-        CHUNK_SNAPSHOT_ORDER.addLast(key);
-        while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS) {
-            Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
-            if (oldest == null) break;
-            CHUNK_SNAPSHOTS.remove(oldest);
+        synchronized (SNAPSHOT_CACHE_LOCK) {
+            if (replace) {
+                FarTerrainChunkSnapshot previous = CHUNK_SNAPSHOTS.put(key, snapshot);
+                if (previous != null) cachedSnapshotBytes -= previous.estimatedBytes();
+            } else if (CHUNK_SNAPSHOTS.putIfAbsent(key, snapshot) != null) {
+                return;
+            }
+            cachedSnapshotBytes += snapshot.estimatedBytes();
+            CHUNK_SNAPSHOT_ORDER.remove(key);
+            CHUNK_SNAPSHOT_ORDER.addLast(key);
+            while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS
+                    || cachedSnapshotBytes > MAX_CAPTURED_SNAPSHOT_BYTES) {
+                Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
+                if (oldest == null) break;
+                FarTerrainChunkSnapshot removed = CHUNK_SNAPSHOTS.remove(oldest);
+                if (removed != null) cachedSnapshotBytes -= removed.estimatedBytes();
+            }
         }
     }
 
@@ -1335,7 +1347,8 @@ public final class FarTerrainRenderer {
                 + "/" + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
                 + " ms last/avg over " + tileGenerationSamples + " jobs | submit avg "
                 + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
-                + " ms | voxel meshes " + VOXEL_MESHES.size() + "/" + (cachedVoxelMeshBytes / (1024 * 1024))
+                + " ms | snapshots " + CHUNK_SNAPSHOTS.size() + "/" + (cachedSnapshotBytes / (1024 * 1024))
+                + " MiB | voxel meshes " + VOXEL_MESHES.size() + "/" + (cachedVoxelMeshBytes / (1024 * 1024))
                 + " MiB | " + FarTerrainVoxelGpuRenderer.getStatusLine()
                 + " | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
                 + " ms | stale queue jobs " + lastPrunedQueuedJobs + " last / "

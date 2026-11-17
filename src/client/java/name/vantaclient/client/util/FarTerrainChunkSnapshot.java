@@ -101,6 +101,12 @@ final class FarTerrainChunkSnapshot {
         for (FarTerrainVoxelSection section : voxelSections) section.write(output);
     }
 
+    long estimatedBytes() {
+        long bytes = (long) (heights.length + surfaceColors.length) * Integer.BYTES;
+        for (FarTerrainVoxelSection section : voxelSections) bytes += section.estimatedBytes();
+        return bytes;
+    }
+
     int chunkX() {
         return chunkX;
     }

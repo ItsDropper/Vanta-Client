@@ -14,6 +14,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
         verifyRegionStorageHandlesNegativeChunkCoordinates();
+        verifySnapshotMemoryEstimateIncludesVoxelPayload();
     }
 
     private static void verifyUniformSectionCollapsesToOneOctreeLeaf() {
@@ -85,6 +86,15 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
                 || !FarTerrainSnapshotStore.regionDirectory(root, 31, 31).endsWith("r_0_0")
                 || !FarTerrainSnapshotStore.regionDirectory(root, 32, 32).endsWith("r_1_1")) {
             throw new AssertionError("Spatial FarView cache sharding mishandled negative chunk coordinates.");
+        }
+    }
+
+    private static void verifySnapshotMemoryEstimateIncludesVoxelPayload() {
+        FarTerrainVoxelSection section = createFullSection();
+        FarTerrainChunkSnapshot snapshot = snapshot(section);
+        if (section.estimatedBytes() < 24_000L
+                || snapshot.estimatedBytes() < section.estimatedBytes()) {
+            throw new AssertionError("Snapshot byte accounting omitted its dense voxel and tint payload.");
         }
     }
 
