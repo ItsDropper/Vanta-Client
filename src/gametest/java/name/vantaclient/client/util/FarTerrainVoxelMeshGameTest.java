@@ -16,6 +16,7 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
         verifyFacesAreHiddenAcrossVerticalSections();
         verifyVoxelPayloadRoundTrip();
         verifyFluidVoxelUsesTranslucentMesh();
+        verifyFluidInterfaceAgainstOpaqueBlockIsHidden();
         verifyVoxelPayloadRoundTrip();
         verifyRegionStorageHandlesNegativeChunkCoordinates();
         verifySnapshotMemoryEstimateIncludesVoxelPayload();
@@ -139,6 +140,22 @@ public final class FarTerrainVoxelMeshGameTest implements FabricClientGameTest {
             if ((color >>> 24) != 0xA0) {
                 throw new AssertionError("Translucent voxel material lost its alpha channel.");
             }
+        }
+    }
+
+    private static void verifyFluidInterfaceAgainstOpaqueBlockIsHidden() {
+        short[] indices = new short[FarTerrainVoxelSection.VOXEL_COUNT];
+        indices[index(4, 7, 9)] = 1;
+        indices[index(5, 7, 9)] = 2;
+        FarTerrainVoxelSection section = new FarTerrainVoxelSection(0,
+                new int[]{0, 1, 2}, indices, new byte[FarTerrainVoxelSection.VOXEL_COUNT],
+                colorsForIndices(indices),
+                new int[]{0xFF000000, 0xFF5577AA, 0xFF777777},
+                new boolean[]{false, false, true},
+                new boolean[]{false, true, false});
+        FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot(section));
+        if (mesh == null || mesh.quadCount() != 6 || mesh.translucentQuadCount() != 5) {
+            throw new AssertionError("Translucent geometry must not draw an interface hidden by an opaque voxel.");
         }
     }
 
