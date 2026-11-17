@@ -89,6 +89,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyAdaptiveEntityDistancePolicy(context);
         verifyFarTerrainPlanningMath(context);
         verifyUiMotion(context);
+        verifyResponsiveUiViewport(context);
         verifyProgressComponent(context);
         verifyWorldShareStateWithoutWorld(context);
         verifyLoopbackTcpBridge(context);
@@ -264,6 +265,42 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
             } catch (IOException exception) {
                 throw new AssertionError("Loopback TCP bridge failed its local forwarding test.", exception);
+            }
+        });
+    }
+
+    private static void verifyResponsiveUiViewport(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            int[][] viewports = {{640, 360}, {480, 270}};
+            float[] scales = {0.8f, 1.0f, 1.2f};
+            for (int[] viewport : viewports) {
+                int screenWidth = viewport[0];
+                int screenHeight = viewport[1];
+                for (float scale : scales) {
+                    VantaUiNode root = VantaUiNode.column(0, 0);
+                    VantaUiRuntime runtime = new VantaUiRuntime(root);
+                    runtime.setScale(scale);
+                    runtime.layout(client.font, screenWidth, screenHeight);
+
+                    float offsetX = screenWidth * 0.5f * (1.0f - scale);
+                    float offsetY = screenHeight * 0.5f * (1.0f - scale);
+                    float left = offsetX + root.x() * scale;
+                    float top = offsetY + root.y() * scale;
+                    float right = offsetX + (root.x() + root.width()) * scale;
+                    float bottom = offsetY + (root.y() + root.height()) * scale;
+                    int expectedMargin = Math.max(8, Math.min(22,
+                            Math.round(Math.min(screenWidth, screenHeight) * 0.06f)));
+                    if (Math.abs(left - expectedMargin) > 1.5f
+                            || Math.abs(top - expectedMargin) > 1.5f
+                            || Math.abs((screenWidth - right) - expectedMargin) > 1.5f
+                            || Math.abs((screenHeight - bottom) - expectedMargin) > 1.5f) {
+                        throw new AssertionError("Scaled UI escaped its responsive viewport at "
+                                + screenWidth + "x" + screenHeight + " / " + scale + ": "
+                                + left + "," + top + " to " + right + "," + bottom
+                                + " expected " + expectedMargin + " px margins.");
+                    }
+                    runtime.dispose();
+                }
             }
         });
     }
