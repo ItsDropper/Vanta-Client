@@ -330,7 +330,7 @@ public final class FarTerrainRenderer {
     private static void prioritizeVoxelMeshCache(int centerChunkX, int centerChunkZ) {
         synchronized (VOXEL_MESH_LOCK) {
             List<FarTerrainVoxelMesh> ordered = new ArrayList<>(VOXEL_MESHES.values());
-            ordered.sort(Comparator.comparingLong(mesh -> voxelDistanceSquared(
+            ordered.sort(Comparator.<FarTerrainVoxelMesh>comparingLong(mesh -> voxelDistanceSquared(
                     mesh.chunkX(), mesh.chunkZ(), centerChunkX, centerChunkZ)).reversed());
             VOXEL_MESH_ORDER.clear();
             for (FarTerrainVoxelMesh mesh : ordered) {
