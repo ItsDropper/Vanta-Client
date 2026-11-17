@@ -780,26 +780,6 @@ public final class FarTerrainRenderer {
         return 0xFF000000 | (red << 16) | (green << 8) | blue;
     }
 
-    private static int terrainColor(String biomePath, int height, int seaLevel,
-                                     int grassColor, int waterColor, int worldX, int worldZ) {
-        return FarTerrainMaterial.colorFor(biomePath, height, seaLevel,
-                grassColor, waterColor, worldX, worldZ);
-    }
-
-    private static int opaqueRgb(int rgb) {
-        return 0xFF000000 | (rgb & 0x00FFFFFF);
-    }
-
-    private static int blendRgb(int first, int second, float amount) {
-        float t = Math.max(0.0f, Math.min(1.0f, amount));
-        int red = Math.round(((first >>> 16) & 0xFF) * (1.0f - t)
-                + ((second >>> 16) & 0xFF) * t);
-        int green = Math.round(((first >>> 8) & 0xFF) * (1.0f - t)
-                + ((second >>> 8) & 0xFF) * t);
-        int blue = Math.round((first & 0xFF) * (1.0f - t) + (second & 0xFF) * t);
-        return 0xFF000000 | (red << 16) | (green << 8) | blue;
-    }
-
     private static void drainCompletedMeshes() {
         for (int i = 0; i < 24; i++) {
             TileMesh mesh = COMPLETED.poll();
