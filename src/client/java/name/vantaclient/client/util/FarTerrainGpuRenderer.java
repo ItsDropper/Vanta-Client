@@ -186,7 +186,7 @@ final class FarTerrainGpuRenderer {
                       double cameraX, double cameraZ, double playerX, double playerZ,
                       double innerRadius, double outerRadius, int maxQuads) {
         if (meshes.isEmpty() || maxQuads <= 0) return -1;
-        if (unavailable || !GL.getCapabilities().GL_NV_mesh_shader) return -1;
+        if (unavailable || !isSupported()) return -1;
 
         try {
             ensureProgram();
@@ -209,6 +209,7 @@ final class FarTerrainGpuRenderer {
                     + (error.getMessage() == null ? "GPU renderer initialization failed" : error.getMessage());
             unavailable = true;
             release();
+            unavailable = true;
             return -1;
         }
     }
@@ -302,6 +303,7 @@ final class FarTerrainGpuRenderer {
         IntBuffer vertices = MemoryUtil.memAllocInt(vertexCount * 2);
         IntBuffer metadata = MemoryUtil.memAllocInt(nextMeshlets.size() * 4);
         IntBuffer sizes = MemoryUtil.memAllocInt(nextMeshlets.size() * 4);
+        int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
         try {
             for (FarTerrainRenderer.TileMesh mesh : meshes) {
                 if (vertices.position() / 2 >= vertexCount) break;
@@ -336,7 +338,7 @@ final class FarTerrainGpuRenderer {
             MemoryUtil.memFree(vertices);
             MemoryUtil.memFree(metadata);
             MemoryUtil.memFree(sizes);
-            GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+            GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, previousBuffer);
         }
         cachedMeshes = List.copyOf(meshes);
         meshlets = List.copyOf(nextMeshlets);
@@ -345,6 +347,7 @@ final class FarTerrainGpuRenderer {
     private static void uploadFrameTransforms(double cameraX, double cameraZ) {
         FloatBuffer transforms = MemoryUtil.memAllocFloat(meshlets.size() * 4);
         FloatBuffer bounds = MemoryUtil.memAllocFloat(meshlets.size() * 4);
+        int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
         try {
             for (Meshlet meshlet : meshlets) {
                 FarTerrainRenderer.TileMesh mesh = meshlet.mesh();
@@ -384,7 +387,7 @@ final class FarTerrainGpuRenderer {
         } finally {
             MemoryUtil.memFree(transforms);
             MemoryUtil.memFree(bounds);
-            GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+            GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, previousBuffer);
         }
     }
 
@@ -393,6 +396,10 @@ final class FarTerrainGpuRenderer {
         int previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int previousVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int previousBuffer = GL11.glGetInteger(GL43.GL_SHADER_STORAGE_BUFFER_BINDING);
+        int[] previousIndexedBuffers = new int[5];
+        for (int binding = 0; binding < previousIndexedBuffers.length; binding++) {
+            previousIndexedBuffers[binding] = GL30.glGetIntegeri(GL43.GL_SHADER_STORAGE_BUFFER_BINDING, binding);
+        }
         int previousDepthFunction = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         boolean depthEnabled = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         boolean blendEnabled = GL11.glIsEnabled(GL11.GL_BLEND);
@@ -422,11 +429,9 @@ final class FarTerrainGpuRenderer {
             GL11.glDisable(GL11.GL_CULL_FACE);
             NVMeshShader.glDrawMeshTasksNV(0, meshlets.size());
         } finally {
-            GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, 0, 0);
-            GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, 1, 0);
-            GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, 2, 0);
-            GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, 3, 0);
-            GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, 4, 0);
+            for (int binding = 0; binding < previousIndexedBuffers.length; binding++) {
+                GL43.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, binding, previousIndexedBuffers[binding]);
+            }
             GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, previousBuffer);
             GL30.glBindVertexArray(previousVao);
             GL20.glUseProgram(previousProgram);
@@ -448,7 +453,7 @@ final class FarTerrainGpuRenderer {
     }
 
     static String getStatusLine() {
-        if (!GL.getCapabilities().GL_NV_mesh_shader) return "NV mesh shaders unavailable; using Minecraft fallback";
+        if (!isSupported()) return "NV mesh shaders unavailable; using Minecraft fallback";
         if (unavailable) return "NV mesh shaders failed; using Minecraft fallback: " + failure;
         if (program == 0) return "NV mesh shaders available; backend initializes on first FarView draw";
         return "NV mesh-shader backend active | " + meshlets.size() + " meshlets | "
@@ -459,13 +464,11 @@ final class FarTerrainGpuRenderer {
         cachedMeshes = List.of();
         meshlets = List.of();
         lastDrawnQuads = 0;
-        if (GL.getCapabilities() != null) {
-            releaseBuffers();
-        }
+        if (hasCurrentContext()) releaseBuffers();
     }
 
     static void shutdown() {
-        if (GL.getCapabilities() != null) release();
+        if (hasCurrentContext()) release();
         unavailable = false;
         failure = "";
         cachedMeshes = List.of();
@@ -476,7 +479,23 @@ final class FarTerrainGpuRenderer {
         releaseBuffers();
         if (program != 0) GL20.glDeleteProgram(program);
         program = 0;
-        unavailable = false;
+    }
+
+    private static boolean isSupported() {
+        try {
+            return GL.getCapabilities().GL_NV_mesh_shader;
+        } catch (IllegalStateException noCurrentContext) {
+            return false;
+        }
+    }
+
+    private static boolean hasCurrentContext() {
+        try {
+            GL.getCapabilities();
+            return true;
+        } catch (IllegalStateException noCurrentContext) {
+            return false;
+        }
     }
 
     private static void releaseBuffers() {
