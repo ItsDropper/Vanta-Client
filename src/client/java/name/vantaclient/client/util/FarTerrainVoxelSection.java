@@ -151,83 +151,136 @@ final class FarTerrainVoxelSection {
     }
 
     Octree buildOctree() {
-        List<Integer> materials = new ArrayList<>();
-        List<Byte> lights = new ArrayList<>();
-        List<Integer> children = new ArrayList<>();
-        buildNode(0, 0, 0, EDGE, materials, lights, children);
-        int[] materialArray = new int[materials.size()];
-        byte[] lightArray = new byte[lights.size()];
-        int[] childArray = new int[children.size()];
-        for (int i = 0; i < materialArray.length; i++) {
-            materialArray[i] = materials.get(i);
-            lightArray[i] = lights.get(i);
-        }
-        for (int i = 0; i < childArray.length; i++) childArray[i] = children.get(i);
-        return new Octree(materialArray, lightArray, childArray);
+        OctreeBuilder builder = new OctreeBuilder();
+        int root = builder.build(0, 0, 0, EDGE);
+        return builder.finish(root);
     }
 
-    private int buildNode(int x, int y, int z, int size,
-                          List<Integer> materials, List<Byte> lights, List<Integer> children) {
-        int nodeIndex = materials.size();
-        materials.add(0);
-        lights.add((byte) 0);
-        for (int i = 0; i < 8; i++) children.add(-1);
-        if (size == 1) {
-            materials.set(nodeIndex, blockStateId(x, y, z));
-            lights.set(nodeIndex, packedLight[index(x, y, z)]);
-            return nodeIndex;
-        }
+    /** Sparse octree builder: omit empty branches and collapse uniform solid regions. */
+    private final class OctreeBuilder {
+        private int[] materials = new int[256];
+        private byte[] lights = new byte[256];
+        private byte[] sizes = new byte[256];
+        private int[] solidCounts = new int[256];
+        private int[] children = new int[256 * 8];
+        private int count;
 
-        int half = size / 2;
-        int[] childMaterials = new int[8];
-        int skySum = 0;
-        int blockSum = 0;
-        for (int child = 0; child < 8; child++) {
-            int childX = x + ((child & 1) == 0 ? 0 : half);
-            int childY = y + ((child & 2) == 0 ? 0 : half);
-            int childZ = z + ((child & 4) == 0 ? 0 : half);
-            int childIndex = buildNode(childX, childY, childZ, half, materials, lights, children);
-            children.set(nodeIndex * 8 + child, childIndex);
-            childMaterials[child] = materials.get(childIndex);
-            int childLight = Byte.toUnsignedInt(lights.get(childIndex));
-            skySum += (childLight >>> 4) & 15;
-            blockSum += childLight & 15;
-        }
-        materials.set(nodeIndex, dominantSolidMaterial(childMaterials));
-        lights.set(nodeIndex, (byte) (((skySum / 8) << 4) | (blockSum / 8)));
-        return nodeIndex;
-    }
-
-    private static int dominantSolidMaterial(int[] values) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        int best = 0;
-        int bestCount = 0;
-        for (int value : values) {
-            if (value == 0) continue;
-            int count = counts.merge(value, 1, Integer::sum);
-            if (count > bestCount || (count == bestCount && value < best)) {
-                best = value;
-                bestCount = count;
+        int build(int x, int y, int z, int size) {
+            int firstMaterial = -1;
+            int firstLight = -1;
+            int solids = 0;
+            boolean uniform = true;
+            for (int dy = 0; dy < size; dy++) {
+                for (int dz = 0; dz < size; dz++) {
+                    for (int dx = 0; dx < size; dx++) {
+                        int vx = x + dx;
+                        int vy = y + dy;
+                        int vz = z + dz;
+                        if (!isSolid(vx, vy, vz)) {
+                            uniform = false;
+                            continue;
+                        }
+                        solids++;
+                        int material = blockStateId(vx, vy, vz);
+                        int light = Byte.toUnsignedInt(packedLight[index(vx, vy, vz)]);
+                        if (firstMaterial < 0) {
+                            firstMaterial = material;
+                            firstLight = light;
+                        } else if (material != firstMaterial || light != firstLight) {
+                            uniform = false;
+                        }
+                    }
+                }
             }
+            if (solids == 0) return -1;
+            if (uniform) return addNode(firstMaterial, firstLight, size, solids, null);
+
+            int half = size / 2;
+            int[] childNodes = new int[8];
+            java.util.Arrays.fill(childNodes, -1);
+            Map<Integer, Integer> materialWeights = new HashMap<>();
+            long skyTotal = 0L;
+            long blockTotal = 0L;
+            int childSolidCount = 0;
+            for (int octant = 0; octant < 8; octant++) {
+                int childX = x + ((octant & 1) == 0 ? 0 : half);
+                int childY = y + ((octant & 2) == 0 ? 0 : half);
+                int childZ = z + ((octant & 4) == 0 ? 0 : half);
+                int child = build(childX, childY, childZ, half);
+                childNodes[octant] = child;
+                if (child < 0) continue;
+                int weight = solidCounts[child];
+                materialWeights.merge(materials[child], weight, Integer::sum);
+                int light = Byte.toUnsignedInt(lights[child]);
+                skyTotal += (long) ((light >>> 4) & 15) * weight;
+                blockTotal += (long) (light & 15) * weight;
+                childSolidCount += weight;
+            }
+
+            int dominantMaterial = 0;
+            int dominantWeight = 0;
+            for (Map.Entry<Integer, Integer> entry : materialWeights.entrySet()) {
+                if (entry.getValue() > dominantWeight
+                        || (entry.getValue() == dominantWeight && entry.getKey() < dominantMaterial)) {
+                    dominantMaterial = entry.getKey();
+                    dominantWeight = entry.getValue();
+                }
+            }
+            int packedAverageLight = childSolidCount == 0 ? 0
+                    : (int) (((skyTotal / childSolidCount) << 4)
+                    | (blockTotal / childSolidCount));
+            return addNode(dominantMaterial, packedAverageLight, size, solids, childNodes);
         }
-        if (bestCount > 0) return best;
-        int fallback = values[0];
-        for (int value : values) fallback = Math.min(fallback, value);
-        return fallback;
+
+        private int addNode(int material, int light, int size, int solids, int[] childNodes) {
+            ensureCapacity(count + 1);
+            int node = count++;
+            materials[node] = material;
+            lights[node] = (byte) light;
+            sizes[node] = (byte) size;
+            solidCounts[node] = solids;
+            int childOffset = node * 8;
+            java.util.Arrays.fill(children, childOffset, childOffset + 8, -1);
+            if (childNodes != null) System.arraycopy(childNodes, 0, children, childOffset, 8);
+            return node;
+        }
+
+        private void ensureCapacity(int required) {
+            if (required <= materials.length) return;
+            int capacity = Math.max(required, materials.length * 2);
+            materials = java.util.Arrays.copyOf(materials, capacity);
+            lights = java.util.Arrays.copyOf(lights, capacity);
+            sizes = java.util.Arrays.copyOf(sizes, capacity);
+            solidCounts = java.util.Arrays.copyOf(solidCounts, capacity);
+            children = java.util.Arrays.copyOf(children, capacity * 8);
+        }
+
+        Octree finish(int root) {
+            return new Octree(root,
+                    java.util.Arrays.copyOf(materials, count),
+                    java.util.Arrays.copyOf(lights, count),
+                    java.util.Arrays.copyOf(children, count * 8),
+                    java.util.Arrays.copyOf(sizes, count),
+                    java.util.Arrays.copyOf(solidCounts, count));
+        }
     }
 
     private static int index(int x, int y, int z) {
         return (y & 15) << 8 | (z & 15) << 4 | (x & 15);
     }
 
-    record Octree(int[] materialIds, byte[] packedLight, int[] childIndices) {
+    record Octree(int rootIndex, int[] materialIds, byte[] packedLight,
+                  int[] childIndices, byte[] nodeSizes, int[] solidCounts) {
         int nodeCount() { return materialIds.length; }
+        boolean isEmpty() { return rootIndex < 0; }
         boolean isLeaf(int nodeIndex) {
             int offset = nodeIndex * 8;
             for (int i = 0; i < 8; i++) if (childIndices[offset + i] >= 0) return false;
             return true;
         }
         int child(int nodeIndex, int octant) { return childIndices[nodeIndex * 8 + octant]; }
+        int size(int nodeIndex) { return Byte.toUnsignedInt(nodeSizes[nodeIndex]); }
+        int solidCount(int nodeIndex) { return solidCounts[nodeIndex]; }
         int skyLight(int nodeIndex) { return (packedLight[nodeIndex] >>> 4) & 15; }
         int blockLight(int nodeIndex) { return packedLight[nodeIndex] & 15; }
     }
