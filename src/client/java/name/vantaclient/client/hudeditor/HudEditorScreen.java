@@ -42,7 +42,8 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         if (toolbarRuntime != null) toolbarRuntime.dispose();
         // GUI scale 3 commonly yields a 640×360 viewport and scale 4
         // roughly 480×270; compact the toolbar by either dimension.
-        boolean compact = width < 700 || height < 400;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 700.0f
+                || VantaUiRuntime.designHeight(width, height) < 400.0f;
         boolean showGridControl = !compact;
         int toolbarHeight = compact ? 36 : 56;
 
