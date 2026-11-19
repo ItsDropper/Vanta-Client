@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui.framework;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import name.vantaclient.client.gui.compose.interaction.VantaInteractionController;
@@ -31,12 +32,7 @@ public final class VantaUiRuntime {
         this.interactions = new VantaInteractionController(root);
     }
 
-    /**
-     * Sets the user's preferred UI scale. The runtime additionally fits a
-     * 640×360 design viewport to the available Minecraft GUI coordinates so
-     * the same layout occupies the same screen-relative position at every
-     * resolution and GUI scale.
-     */
+    /** Sets the user's preferred physical UI scale, independent of Minecraft's GUI scale. */
     public void setScale(float scale) {
         float bounded = Float.isFinite(scale) ? Math.max(0.8f, Math.min(1.2f, scale)) : 1.0f;
         if (Float.compare(preferredScale, bounded) == 0) return;
@@ -50,14 +46,19 @@ public final class VantaUiRuntime {
         return Math.min(screenWidth / DESIGN_WIDTH, screenHeight / DESIGN_HEIGHT);
     }
 
-    /** Width expressed in the reference design coordinate system. */
+    /** Width in physical-pixel-equivalent design coordinates. */
     public static float designWidth(int screenWidth, int screenHeight) {
-        return screenWidth / viewportFitScale(screenWidth, screenHeight);
+        return screenWidth * minecraftGuiScale();
     }
 
-    /** Height expressed in the reference design coordinate system. */
+    /** Height in physical-pixel-equivalent design coordinates. */
     public static float designHeight(int screenWidth, int screenHeight) {
-        return screenHeight / viewportFitScale(screenWidth, screenHeight);
+        return screenHeight * minecraftGuiScale();
+    }
+
+    private static float minecraftGuiScale() {
+        double scale = Minecraft.getInstance().getWindow().getGuiScale();
+        return Double.isFinite(scale) && scale >= 1.0 ? (float) scale : 1.0f;
     }
 
     /** Marks measurements and placement dirty after content or size constraints change. */
@@ -66,8 +67,10 @@ public final class VantaUiRuntime {
     }
 
     public void layout(Font font, int screenWidth, int screenHeight) {
-        float fitScale = viewportFitScale(screenWidth, screenHeight);
-        float effectiveScale = preferredScale * fitScale;
+        // Screen dimensions are already divided by Minecraft's GUI scale.
+        // Compensate here so a 16px design control remains 16 physical pixels
+        // at GUI scales 1–4 instead of growing with the vanilla coordinate scale.
+        float effectiveScale = preferredScale / minecraftGuiScale();
         if (!Float.isFinite(effectiveScale) || effectiveScale <= 0.0f) effectiveScale = 1.0f;
         if (Float.compare(uiScale, effectiveScale) != 0) {
             uiScale = effectiveScale;
@@ -81,9 +84,8 @@ public final class VantaUiRuntime {
         int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
         int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
 
-        // Insets are percentages of the fitted design viewport, not fixed
-        // Minecraft GUI pixels. This keeps the frame anchored consistently
-        // across GUI scales, window sizes, and the user's scale preference.
+        // Insets are percentages of the physical-pixel-equivalent viewport.
+        // Layout dimensions expand as Minecraft's logical viewport shrinks.
         int marginX = Math.max(1, Math.round(layoutWidth * 0.025f));
         int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
         int logicalLeft = Math.round((screenWidth - layoutWidth) * 0.5f);
@@ -232,8 +234,8 @@ public final class VantaUiRuntime {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        double offsetX = lastWidth * 0.5 * (1.0 - uiScale);
-        double offsetY = lastHeight * 0.5 * (1.0 - uiScale);
+        double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
+        double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
         double logicalMouseX = (mouseX - offsetX) / uiScale;
         double logicalMouseY = (mouseY - offsetY) / uiScale;
         if (root.scrollDropdownAt(logicalMouseX, logicalMouseY, amount,
