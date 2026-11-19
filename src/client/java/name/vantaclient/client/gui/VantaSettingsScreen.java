@@ -490,7 +490,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
 
         int columns = featureGridColumns(availableWidth);
-        int cardHeight = compact ? 142 : 154;
+        int cardHeight = compact ? 142 : 166;
         VantaUiNode grid = VantaUiNode.column(compact ? 8 : 12, 0);
         for (int offset = 0; offset < features.size(); offset += columns) {
             VantaUiNode gridRow = VantaUiNode.row(compact ? 8 : 12, 0)
@@ -521,7 +521,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         boolean hasSettings = !SettingRegistry.getSettings(feature).isEmpty();
         VantaUiNode card = VantaCompose.surface(VantaCompose.Material.CARD,
                 compact ? 6 : 8, compact ? 10 : 12)
-                .height(compact ? 142 : 154);
+                .height(compact ? 142 : 166);
 
         VantaUiNode identity = VantaUiNode.row(8, 0)
                 .height(22).align(VantaUiNode.Alignment.CENTER);
@@ -530,7 +530,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         identity.add(VantaUiNode.spacer(1).flex(1));
         identity.add(VantaUiNode.dynamicText(
                 () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
-                feature.isEnabled() ? VantaUiTheme.STATUS_SUCCESS : VantaUiTheme.TEXT_MUTED));
+                VantaClientPreferences.get().accent.color()));
         card.add(identity);
 
         card.add(VantaUiNode.title(feature.getName()));
@@ -560,7 +560,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             if (feature.isEnabled() != enabled) feature.toggle();
             feature.saveConfig();
             DropperUtilsConfig.save();
-            rebuildUi();
         }).width(46).height(28)
                 .tooltip("Enable or disable " + feature.getName()));
         card.add(actions);
