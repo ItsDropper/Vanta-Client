@@ -149,8 +149,15 @@ public final class VantaUiRuntime {
 
     /** Returns the current floating dropdown bounds in logical GUI coordinates, if open. */
     public VantaUiNode.DropdownPopupBounds dropdownPopupBounds() {
-        return root.dropdownPopupBounds(
-                Math.max(1, lastWidth), Math.max(1, lastHeight));
+        return root.dropdownPopupBounds(logicalViewportWidth(), logicalViewportHeight());
+    }
+
+    private int logicalViewportWidth() {
+        return Math.max(1, Math.round(viewportWidth / uiScale));
+    }
+
+    private int logicalViewportHeight() {
+        return Math.max(1, Math.round(viewportHeight / uiScale));
     }
 
     public void tick() {
@@ -165,11 +172,11 @@ public final class VantaUiRuntime {
         mouseY = (mouseY - offsetY) / uiScale;
 
         VantaUiNode popupTarget = root.dropdownPopupAt(
-                mouseX, mouseY, Math.max(1, lastWidth), Math.max(1, lastHeight));
+                mouseX, mouseY, logicalViewportWidth(), logicalViewportHeight());
         if (popupTarget != null) {
             setFocused(popupTarget);
             int option = popupTarget.dropdownOptionAt(
-                    mouseY, Math.max(1, lastWidth), Math.max(1, lastHeight));
+                    mouseY, logicalViewportWidth(), logicalViewportHeight());
             popupTarget.selectDropdownOption(option);
             lastWidth = -1;
             return true;
@@ -225,7 +232,7 @@ public final class VantaUiRuntime {
         double logicalMouseX = (mouseX - offsetX) / uiScale;
         double logicalMouseY = (mouseY - offsetY) / uiScale;
         if (root.scrollDropdownAt(logicalMouseX, logicalMouseY, amount,
-                Math.max(1, lastWidth), Math.max(1, lastHeight))) return true;
+                logicalViewportWidth(), logicalViewportHeight())) return true;
         boolean popupClosed = root.closeDropdownsExcept(null);
         boolean handled = root.scrollAt(logicalMouseX, logicalMouseY, amount);
         if (handled || popupClosed) lastWidth = -1;
