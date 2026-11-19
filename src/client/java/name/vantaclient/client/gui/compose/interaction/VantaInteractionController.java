@@ -29,7 +29,12 @@ public final class VantaInteractionController {
     }
 
     public boolean validateFocus() {
-        return focus.clearIfDetached();
+        boolean changed = focus.clearIfDetached();
+        VantaUiNode captured = pointerCapture.target();
+        if (captured != null && (!captured.isVisible() || !captured.isEnabled())) {
+            pointerCapture.cancel();
+        }
+        return changed;
     }
 
     public boolean captureSlider(VantaUiNode node) {
