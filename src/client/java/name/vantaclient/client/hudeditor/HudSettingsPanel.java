@@ -63,8 +63,9 @@ public final class HudSettingsPanel {
         int viewportHeight = mc.getWindow().getGuiScaledHeight();
         float preferredScale = (float) Math.max(0.8, Math.min(1.2,
                 VantaClientPreferences.get().uiScale));
-        float effectiveScale = VantaUiRuntime.viewportFitScale(viewportWidth, viewportHeight)
-                * preferredScale;
+        float guiScale = (float) Math.max(1.0, mc.getWindow().getGuiScale());
+        float effectiveScale = preferredScale / guiScale;
+        // Match VantaUiRuntime's physical-pixel-equivalent coordinate space.
         int layoutWidth = Math.max(1, Math.round(viewportWidth / effectiveScale));
         int layoutHeight = Math.max(1, Math.round(viewportHeight / effectiveScale));
         int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
