@@ -79,7 +79,7 @@ public final class VantaUiNode {
     Alignment alignment = Alignment.STRETCH;
     Alignment childAlignment = Alignment.STRETCH;
     boolean alignmentExplicit;
-    private Justification justification = Justification.START;
+    Justification justification = Justification.START;
     boolean visible = true;
     private boolean enabled = true;
     private boolean selected;
