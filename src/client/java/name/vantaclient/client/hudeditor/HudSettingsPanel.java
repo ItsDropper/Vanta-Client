@@ -61,16 +61,17 @@ public final class HudSettingsPanel {
         Minecraft mc = Minecraft.getInstance();
         int viewportWidth = mc.getWindow().getGuiScaledWidth();
         int viewportHeight = mc.getWindow().getGuiScaledHeight();
-        float uiScale = (float) Math.max(0.8, Math.min(1.2,
+        float preferredScale = (float) Math.max(0.8, Math.min(1.2,
                 VantaClientPreferences.get().uiScale));
-        int layoutWidth = Math.max(1, Math.round(viewportWidth / uiScale));
-        int layoutHeight = Math.max(1, Math.round(viewportHeight / uiScale));
-        int physicalMargin = Math.max(8, Math.min(22,
-                Math.round(Math.min(viewportWidth, viewportHeight) * 0.06f)));
-        int layoutMargin = Math.max(1, Math.round(physicalMargin / uiScale));
-        int contentHeight = Math.max(0, layoutHeight - layoutMargin * 2);
-        int panelWidth = Math.max(160, Math.min(268, Math.round(layoutWidth * 0.48f)));
-        int panelHeight = Math.max(112, Math.min(430, layoutHeight - 104));
+        float effectiveScale = VantaUiRuntime.viewportFitScale(viewportWidth, viewportHeight)
+                * preferredScale;
+        int layoutWidth = Math.max(1, Math.round(viewportWidth / effectiveScale));
+        int layoutHeight = Math.max(1, Math.round(viewportHeight / effectiveScale));
+        int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
+        int contentHeight = Math.max(0, layoutHeight - marginY * 2);
+        int panelWidth = Math.max(160, Math.round(layoutWidth * 0.42f));
+        int panelHeight = Math.max(112, Math.round(layoutHeight * 0.72f));
+        int panelTop = Math.round(layoutHeight * 0.167f);
 
         VantaUiNode root = VantaUiNode.row(0, 0)
                 .height(contentHeight)
@@ -182,7 +183,7 @@ public final class HudSettingsPanel {
                 .width(panelWidth)
                 .height(contentHeight)
                 .align(VantaUiNode.Alignment.START);
-        inspectorSlot.add(VantaUiNode.spacer(1).height(60));
+        inspectorSlot.add(VantaUiNode.spacer(1).height(panelTop));
         inspectorSlot.add(panel);
         root.add(inspectorSlot);
         return root;
