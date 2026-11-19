@@ -202,6 +202,13 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Hidden nodes must not be accepted as focus targets.");
             }
             focus.setFocused(second);
+            second.enabled(false);
+            focus.setFocused(second);
+            if (focus.focused() != null) {
+                throw new AssertionError("A focus target becoming disabled must be rejected even when it is already focused.");
+            }
+            second.enabled(true);
+            focus.setFocused(second);
             second.visible(false);
             if (!focus.clearIfDetached() || focus.focused() != null) {
                 throw new AssertionError("Focus must be cleared when a target becomes hidden or detached.");
@@ -244,6 +251,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
             if (capture.captureSlider(VantaUiNode.button("Not a slider", () {}))) {
                 throw new AssertionError("Pointer capture must reject non-slider nodes.");
+            }
+            VantaUiNode disabledSlider = VantaUiNode.slider("Disabled", 0.0, 1.0, 0.1,
+                    () -> 0.0, next -> {}).enabled(false);
+            if (capture.captureSlider(disabledSlider)) {
+                throw new AssertionError("Pointer capture must reject disabled slider controls.");
             }
             if (capture.isCaptured()) {
                 throw new AssertionError("Rejected capture must leave no active target.");
