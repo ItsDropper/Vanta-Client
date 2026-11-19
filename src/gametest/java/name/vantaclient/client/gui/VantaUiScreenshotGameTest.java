@@ -24,6 +24,7 @@ import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.theme.VantaTheme;
 import name.vantaclient.client.integration.VantaLanHostingService;
 import name.vantaclient.client.integration.net.LoopbackTcpBridge;
 import name.vantaclient.client.integration.net.VantaRelayClient;
@@ -348,8 +349,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void verifyGlassSurfaceSystem() {
-        VantaCompose.Theme theme = VantaCompose.theme();
-        if (theme.blurStrategy() != VantaCompose.BackdropBlurStrategy.MINECRAFT_GUI_RENDER_GRAPH) {
+        VantaTheme theme = VantaCompose.theme();
+        if (theme.blurStrategy() != VantaTheme.BackdropBlurStrategy.MINECRAFT_GUI_RENDER_GRAPH) {
             throw new AssertionError("VantaCompose must use Minecraft's GUI render-graph blur.");
         }
         if (!VantaCompose.Screen.class.isAssignableFrom(VantaSettingsScreen.class)
@@ -368,6 +369,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         if (VantaCompose.resolveTintAlpha(VantaCompose.Material.POPOVER, 0.85f)
                 <= VantaCompose.resolveTintAlpha(VantaCompose.Material.CARD, 0.85f)) {
             throw new AssertionError("Popover glass must be denser than card glass for legibility.");
+        }
+        if (theme.spacing().xs() != 4 || theme.spacing().xxl() != 24
+                || theme.spacing().controlHeight() <= 0
+                || theme.motion().hoverRate() <= 0.0f
+                || theme.glass().popoverAlpha() <= theme.glass().cardAlpha()) {
+            throw new AssertionError("VantaCompose token groups must expose coherent layout, motion and glass values.");
+        }
+        try {
+            new VantaTheme(null, theme.spacing(), theme.glass(), theme.motion(), theme.blurStrategy());
+            throw new AssertionError("A theme with a missing token group must be rejected.");
+        } catch (IllegalArgumentException expected) {
+            // Invalid theme snapshots must fail at construction, not during rendering.
         }
     }
 
