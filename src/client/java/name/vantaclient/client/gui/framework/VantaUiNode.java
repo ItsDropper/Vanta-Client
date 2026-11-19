@@ -2,11 +2,10 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.typography.VantaTypography;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FontDescription;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
@@ -453,7 +452,7 @@ public final class VantaUiNode {
             if (!value.equals(cachedTextLayoutValue) || this.width != cachedTextLayoutWidth) {
                 cachedTextLayoutValue = value;
                 cachedTextLayoutWidth = this.width;
-                cachedTextLines = wrapText(value, font, Math.max(1, this.width), textMaximumLines, textFont);
+                cachedTextLines = VantaTypography.wrapText(value, font, Math.max(1, this.width), textMaximumLines, textFont);
             }
             return;
         }
@@ -1472,60 +1471,16 @@ public final class VantaUiNode {
     }
 
     static Component styledText(String value, Identifier fontId) {
-        return styledText(value, fontId, false);
+        return VantaTypography.styledText(value, fontId, false);
     }
     static Component styledText(String value, Identifier fontId, boolean bold) {
-        Style style = Style.EMPTY.withFont(new FontDescription.Resource(fontId == null ? UI_FONT : fontId));
-        if (bold) style = style.withBold(true);
-        return Component.literal(value == null ? "" : value).withStyle(style);
+        return VantaTypography.styledText(value, fontId, bold);
     }
-    static int textWidth(Font font, String value, Identifier fontId) { return font.width(styledText(value, fontId)); }
+    static int textWidth(Font font, String value, Identifier fontId) {
+        return VantaTypography.textWidth(font, value, fontId);
+    }
     static String fitText(Font font, String value, int maximumWidth, Identifier fontId) {
-        if (value == null || value.isEmpty() || maximumWidth <= 0) return "";
-        int end = value.length();
-        while (end > 0 && textWidth(font, value.substring(0, end), fontId) > maximumWidth)
-            end = value.offsetByCodePoints(end, -1);
-        return value.substring(0, end);
-    }
-    private static List<String> wrapText(String value, Font font, int maximumWidth, int maximumLines, Identifier fontId) {
-        if (value == null || value.isBlank()) return List.of("");
-        List<String> lines = new ArrayList<>();
-        StringBuilder line = new StringBuilder();
-        String[] words = value.trim().split("\\s+");
-        boolean truncated = false;
-
-        for (String word : words) {
-            String candidate = line.isEmpty() ? word : line + " " + word;
-            if (textWidth(font, candidate, fontId) > maximumWidth && !line.isEmpty()) {
-                lines.add(line.toString());
-                line.setLength(0);
-                if (lines.size() >= maximumLines) {
-                    truncated = true;
-                    break;
-                }
-            }
-
-            if (textWidth(font, word, fontId) > maximumWidth) {
-                word = fitText(font, word, maximumWidth, fontId);
-                truncated = true;
-            }
-            if (!line.isEmpty()) line.append(' ');
-            line.append(word);
-            if (truncated) break;
-        }
-
-        if (!line.isEmpty() && lines.size() < maximumLines) lines.add(line.toString());
-        if (truncated && !lines.isEmpty()) {
-            int lastIndex = lines.size() - 1;
-            String last = lines.get(lastIndex);
-            String ellipsis = "…";
-            while (!last.isEmpty() && textWidth(font, last + ellipsis, fontId) > maximumWidth) {
-                last = last.substring(0, last.length() - 1);
-            }
-            lines.set(lastIndex, last + ellipsis);
-        }
-        if (lines.isEmpty()) lines.add(fitText(font, value, maximumWidth, fontId));
-        return List.copyOf(lines);
+        return VantaTypography.fitText(font, value, maximumWidth, fontId);
     }
 
     private String currentText() {
