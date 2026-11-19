@@ -106,7 +106,7 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
     }
 
     private VantaUiNode buildRetainedRoot() {
-        boolean compact = width < 760;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f;
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
                 
                 .clipToBounds();
@@ -270,7 +270,7 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         boolean sessionLoaded = hotLoadedIds.contains(mod.id());
         VantaUiNode card = VantaUiNode.column(6, 9)
                 .flex(1)
-                .height(width < 760 ? 108 : 132)
+                .height(VantaUiRuntime.designWidth(width, height) < 760.0f ? 108 : 132)
                 .background(VantaUiTheme.PANEL_RAISED)
                 .padding(9);
         VantaUiNode top = VantaUiNode.row(8, 0)
