@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.framework;
 
 import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.gui.compose.VantaCompose;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -32,6 +33,17 @@ public final class VantaUiTheme {
     public static final int STATUS_SUCCESS = 0xFF65C99E;
     public static final int STATUS_WARNING = 0xFFE2B36C;
     public static final int STATUS_DANGER = 0xFFE27C83;
+
+    private VantaCompose.Theme composeTheme = VantaCompose.theme();
+
+    /** Refreshes Compose tokens once per frame, not once per component. */
+    public void refreshComposeTheme() {
+        composeTheme = VantaCompose.theme();
+    }
+
+    public VantaCompose.Theme composeTheme() {
+        return composeTheme;
+    }
 
     private static final int MAX_CACHED_SQUIRCLE_RADIUS = 32;
     private static final int[][] SQUIRCLE_INSETS = buildSquircleInsets();

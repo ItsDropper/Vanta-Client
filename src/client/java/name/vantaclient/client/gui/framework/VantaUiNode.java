@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
+import name.vantaclient.client.gui.compose.VantaCompose;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
@@ -603,13 +604,26 @@ public final class VantaUiNode {
         if (!visible || width <= 0 || height <= 0) return;
 
         if (background != 0) {
-            int radius = background == VantaUiTheme.PANEL ? 9
-                    : background == VantaUiTheme.PANEL_RAISED ? 6 : VantaUiTheme.RADIUS_MEDIUM;
-            VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
-                    VantaUiTheme.applyPanelOpacity(background));
-            if (background == VantaUiTheme.PANEL || background == VantaUiTheme.TOOLTIP_SURFACE) {
-                VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius,
-                        VantaUiTheme.BORDER_SUBTLE);
+            int radius = background == VantaUiTheme.PANEL ? 16
+                    : background == VantaUiTheme.PANEL_RAISED ? 10 : VantaUiTheme.RADIUS_MEDIUM;
+            if (background == VantaUiTheme.PANEL || background == VantaUiTheme.PANEL_RAISED) {
+                VantaCompose.State surfaceState = !enabled
+                        ? VantaCompose.State.DISABLED
+                        : selected ? VantaCompose.State.SELECTED
+                        : focused ? VantaCompose.State.FOCUSED
+                        : hovered ? VantaCompose.State.HOVERED
+                        : VantaCompose.State.NORMAL;
+                VantaCompose.drawSurface(graphics, theme.composeTheme(),
+                        background == VantaUiTheme.PANEL
+                                ? VantaCompose.Material.PANEL : VantaCompose.Material.ELEVATED,
+                        surfaceState, x, y, width, height, radius);
+            } else {
+                VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
+                        VantaUiTheme.applyPanelOpacity(background));
+                if (background == VantaUiTheme.TOOLTIP_SURFACE) {
+                    VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius,
+                            VantaUiTheme.BORDER_SUBTLE);
+                }
             }
         }
 

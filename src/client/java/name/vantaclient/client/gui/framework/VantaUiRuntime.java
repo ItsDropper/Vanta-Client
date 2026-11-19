@@ -94,6 +94,7 @@ public final class VantaUiRuntime {
                 VantaUiTheme.TOGGLE_RATE, deltaSeconds, animationsEnabled);
         root.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
 
+        theme.refreshComposeTheme();
         long renderStart = System.nanoTime();
         graphics.pose().pushMatrix();
         graphics.pose().translate(offsetX, offsetY);
