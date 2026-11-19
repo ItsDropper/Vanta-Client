@@ -26,8 +26,11 @@ public final class VantaFocusController {
 
     public void setFocused(VantaUiNode target) {
         if (focused == target) return;
+        List<VantaUiNode> candidates = new ArrayList<>();
+        root.collectFocusable(candidates);
+        if (target != null && !candidates.contains(target)) target = null;
         if (focused != null) focused.setFocused(false);
-        focused = target != null && target.isInteractive() ? target : null;
+        focused = target;
         if (focused != null) focused.setFocused(true);
     }
 
