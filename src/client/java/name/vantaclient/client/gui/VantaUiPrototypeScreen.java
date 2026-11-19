@@ -39,7 +39,7 @@ public final class VantaUiPrototypeScreen extends Screen {
     private double hudScale = 1.0;
     private String crosshairStyle = "Classic";
     private String keybindMode = "Hold";
-    private String searchQuery = "";
+    private final VantaState<String> searchQuery = new VantaState<>("");
 
     public VantaUiPrototypeScreen(Screen parent) {
         super(Component.literal("Vanta UI Prototype"));
@@ -292,8 +292,8 @@ public final class VantaUiPrototypeScreen extends Screen {
                 value -> searchQuery = value, 64).flex(1));
         content.add(search);
         content.add(VantaUiNode.dynamicText(
-                () -> searchQuery.isBlank() ? "BROWSE  /  ALL PREVIEW SETTINGS"
-                        : "FILTER QUERY  /  " + searchQuery,
+                () -> searchQuery.get().isBlank() ? "BROWSE  /  ALL PREVIEW SETTINGS"
+                        : "FILTER QUERY  /  " + searchQuery.get(),
                 VantaUiTheme.TEXT_MUTED));
 
         content.add(sectionHeading(VantaUiNode.Icon.KEYBOARD, "Keybind behavior",
@@ -303,8 +303,7 @@ public final class VantaUiPrototypeScreen extends Screen {
                 List.of("Hold", "Toggle", "Press once"),
                 () -> keybindMode, value -> keybindMode = value));
         input.add(divider());
-        input.add(VantaUiNode.toggle("Show FPS overlay preview", () -> showFps,
-                value -> showFps = value));
+        input.add(VantaComponents.toggle("Show FPS overlay preview", showFps));
         input.add(divider());
         input.add(VantaUiNode.slider("Input response", 0.0, 1.0, 0.05,
                 () -> crosshairSize / 2.0, value -> crosshairSize = value * 2.0));
@@ -357,7 +356,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         hudScale = 1.0;
         crosshairStyle = "Classic";
         keybindMode = "Hold";
-        searchQuery = "";
+        searchQuery.set("");
         rebuildUi();
     }
 
