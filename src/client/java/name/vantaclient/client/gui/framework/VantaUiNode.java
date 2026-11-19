@@ -1193,7 +1193,7 @@ public final class VantaUiNode {
     }
 
     void setHovered(boolean value) { hovered = value; }
-    void setFocused(boolean value) {
+    public void setFocused(boolean value) {
         focused = value;
         if (focused && kind == Kind.TEXT_FIELD) {
             inputCursor = currentInput().length();
@@ -1459,7 +1459,7 @@ public final class VantaUiNode {
         return changed;
     }
 
-    void collectFocusable(List<VantaUiNode> result) {
+    public void collectFocusable(List<VantaUiNode> result) {
         if (!visible || !enabled) return;
         if (isInteractive()) result.add(this);
         for (VantaUiNode child : children) child.collectFocusable(result);
