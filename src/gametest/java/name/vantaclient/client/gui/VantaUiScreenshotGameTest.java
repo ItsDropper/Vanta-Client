@@ -396,8 +396,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     runtime.setScale(preferredScale);
                     runtime.layout(client.font, screenWidth, screenHeight);
 
-                    float effectiveScale = preferredScale
-                            * VantaUiRuntime.viewportFitScale(screenWidth, screenHeight);
+                    float guiScale = (float) client.getWindow().getGuiScale();
+                    float effectiveScale = preferredScale / Math.max(1.0f, guiScale);
                     float offsetX = screenWidth * 0.5f * (1.0f - effectiveScale);
                     float offsetY = screenHeight * 0.5f * (1.0f - effectiveScale);
                     float left = offsetX + root.x() * effectiveScale;
@@ -415,9 +415,13 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                                 + preferredScale + ": " + left + "," + top + " to " + right + "," + bottom
                                 + " expected margins " + expectedMarginX + "x" + expectedMarginY + ".");
                     }
-                    if (Math.abs(VantaUiRuntime.designWidth(screenWidth, screenHeight) - 640.0f) > 0.1f) {
-                        throw new AssertionError("The fitted design width must remain stable at "
-                                + screenWidth + "x" + screenHeight + ".");
+                    float expectedDesignWidth = screenWidth * Math.max(1.0f, guiScale);
+                    if (Math.abs(VantaUiRuntime.designWidth(screenWidth, screenHeight)
+                            - expectedDesignWidth) > 0.1f) {
+                        throw new AssertionError("The design width must compensate for the active Minecraft GUI scale at "
+                                + screenWidth + "x" + screenHeight + ". Expected "
+                                + expectedDesignWidth + " but got "
+                                + VantaUiRuntime.designWidth(screenWidth, screenHeight) + ".");
                     }
                     runtime.dispose();
                 }
