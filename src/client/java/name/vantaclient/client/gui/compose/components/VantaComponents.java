@@ -2,6 +2,7 @@ package name.vantaclient.client.gui.compose.components;
 
 import name.vantaclient.client.gui.framework.VantaState;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 
 import java.util.Objects;
 import java.util.function.DoubleConsumer;
@@ -14,7 +15,58 @@ import java.util.function.DoubleConsumer;
  * supplier/setter pairs.
  */
 public final class VantaComponents {
+    public enum Surface { PANEL, ELEVATED, FIELD, POPOVER }
+
     private VantaComponents() {}
+
+    public static VantaUiNode surface(Surface surface, int gap, int padding) {
+        Objects.requireNonNull(surface, "surface");
+        int background = switch (surface) {
+            case PANEL -> VantaUiTheme.PANEL;
+            case ELEVATED -> VantaUiTheme.PANEL_RAISED;
+            case FIELD -> VantaUiTheme.INPUT_SURFACE;
+            case POPOVER -> VantaUiTheme.TOOLTIP_SURFACE;
+        };
+        return VantaUiNode.column(gap, padding).background(background);
+    }
+
+    public static VantaUiNode sectionHeader(String eyebrow, String title, String detail) {
+        VantaUiNode header = VantaUiNode.column(4, 0);
+        if (eyebrow != null && !eyebrow.isBlank()) {
+            header.add(VantaUiNode.eyebrow(eyebrow));
+        }
+        header.add(VantaUiNode.title(Objects.requireNonNull(title, "title")));
+        if (detail != null && !detail.isBlank()) {
+            header.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_SECONDARY));
+        }
+        return header;
+    }
+
+    public static VantaUiNode navigationItem(String label, VantaUiNode.Icon icon,
+                                              boolean selected, Runnable action) {
+        return VantaUiNode.button(label, icon, Objects.requireNonNull(action, "action"))
+                .height(36).selected(selected);
+    }
+
+    public static VantaUiNode workspaceRow(String title, String detail, VantaUiNode.Icon icon,
+                                            Runnable action) {
+        VantaUiNode row = VantaUiNode.row(12, 10).height(54)
+                .align(VantaUiNode.Alignment.CENTER);
+        row.add(VantaUiNode.icon(Objects.requireNonNull(icon, "icon")).size(18, 18)
+                .iconColor(VantaClientAccent.current()));
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(Objects.requireNonNull(title, "title")));
+        labels.add(VantaUiNode.text(detail == null ? "" : detail, VantaUiTheme.TEXT_MUTED));
+        row.add(labels);
+        row.add(VantaUiNode.button("Open", Objects.requireNonNull(action, "action")).height(28));
+        return row;
+    }
+
+    private static final class VantaClientAccent {
+        private static int current() {
+            return name.vantaclient.client.config.VantaClientPreferences.get().accent.color();
+        }
+    }
 
     public static VantaUiNode button(String label, Runnable action) {
         return VantaUiNode.button(label, Objects.requireNonNull(action, "action"));
