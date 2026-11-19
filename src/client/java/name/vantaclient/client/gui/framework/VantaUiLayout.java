@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
+import name.vantaclient.client.gui.compose.typography.VantaTypography;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,10 +66,10 @@ final class VantaUiLayout {
     }
 
     static void arrange(VantaUiNode node, int x, int y, int width, int height, Font font) {
-        node.x = node.x;
-        node.y = node.y;
-        node.width = node.constraints.constrainWidth(node.width);
-        node.height = node.constraints.constrainHeight(node.height);
+        node.x = x;
+        node.y = y;
+        node.width = node.constraints.constrainWidth(width);
+        node.height = node.constraints.constrainHeight(height);
 
         if (node.kind == VantaUiNode.Kind.TEXT && node.textMaximumLines > 1) {
             String value = node.currentText();
