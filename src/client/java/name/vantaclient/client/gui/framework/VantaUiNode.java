@@ -70,10 +70,7 @@ public final class VantaUiNode {
     private int background;
     private int preferredWidth = -1;
     private int preferredHeight = -1;
-    private int minWidth;
-    private int minHeight;
-    private int maxWidth = Integer.MAX_VALUE;
-    private int maxHeight = Integer.MAX_VALUE;
+    private VantaLayoutConstraints constraints = VantaLayoutConstraints.UNBOUNDED;
     private int padding;
     private int gap;
     private float flex;
@@ -336,13 +333,11 @@ public final class VantaUiNode {
         return this;
     }
     public VantaUiNode minSize(int width, int height) {
-        minWidth = Math.max(0, width);
-        minHeight = Math.max(0, height);
+        constraints = constraints.withMinimum(width, height);
         return this;
     }
     public VantaUiNode maxSize(int width, int height) {
-        maxWidth = Math.max(0, width);
-        maxHeight = Math.max(0, height);
+        constraints = constraints.withMaximum(width, height);
         return this;
     }
     public VantaUiNode flex(float value) { flex = Math.max(0.0f, value); return this; }
@@ -386,7 +381,7 @@ public final class VantaUiNode {
     boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
     int intrinsicWidth(Font font) {
-        if (preferredWidth >= 0) return clamp(preferredWidth, minWidth, maxWidth);
+        if (preferredWidth >= 0) return constraints.constrainWidth(preferredWidth);
         int measured = switch (kind) {
             case TEXT -> textWidth(font, currentText(), textFont);
             case ICON, IMAGE -> 16;
@@ -409,11 +404,11 @@ public final class VantaUiNode {
                 yield size + padding * 2;
             }
         };
-        return clamp(measured, minWidth, maxWidth);
+        return constraints.constrainWidth(measured);
     }
 
     int intrinsicHeight(Font font) {
-        if (preferredHeight >= 0) return clamp(preferredHeight, minHeight, maxHeight);
+        if (preferredHeight >= 0) return constraints.constrainHeight(preferredHeight);
         int measured = switch (kind) {
             case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
             case ICON, IMAGE -> 16;
@@ -438,14 +433,14 @@ public final class VantaUiNode {
                 yield size + padding * 2;
             }
         };
-        return clamp(measured, minHeight, maxHeight);
+        return constraints.constrainHeight(measured);
     }
 
     void arrange(int x, int y, int width, int height, Font font) {
         this.x = x;
         this.y = y;
-        this.width = Math.max(0, Math.min(width, maxWidth));
-        this.height = Math.max(0, Math.min(height, maxHeight));
+        this.width = constraints.constrainWidth(width);
+        this.height = constraints.constrainHeight(height);
 
         if (kind == Kind.TEXT && textMaximumLines > 1) {
             String value = currentText();
@@ -480,13 +475,11 @@ public final class VantaUiNode {
                         ? child.preferredWidth
                         : effectiveAlignment == Alignment.STRETCH ? innerWidth
                         : child.intrinsicWidth(font);
-                int childWidth = constrain(requestedWidth, innerWidth,
-                        child.minWidth, child.maxWidth);
+                int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
                 int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
                         : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
-                int childHeight = constrain(requestedHeight, innerHeight,
-                        child.minHeight, child.maxHeight);
+                int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
                 child.arrange(childX, childY, childWidth, childHeight, font);
@@ -552,8 +545,7 @@ public final class VantaUiNode {
                         ? child.preferredWidth
                         : effectiveAlignment == Alignment.STRETCH ? innerWidth
                         : child.intrinsicWidth(font);
-                int childWidth = constrain(requestedWidth, innerWidth,
-                        child.minWidth, child.maxWidth);
+                int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
                 child.arrange(childX, cursor, childWidth, primary, font);
                 cursor += primary + gap + distributedGap;
@@ -562,8 +554,7 @@ public final class VantaUiNode {
                 int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
                         : effectiveAlignment == Alignment.STRETCH ? innerHeight
                         : child.intrinsicHeight(font);
-                int childHeight = constrain(requestedHeight, innerHeight,
-                        child.minHeight, child.maxHeight);
+                int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
                 child.arrange(cursor, childY, primary, childHeight, font);
                 cursor += primary + gap + distributedGap;
