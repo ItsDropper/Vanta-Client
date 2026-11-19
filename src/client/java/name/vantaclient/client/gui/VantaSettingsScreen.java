@@ -1,7 +1,6 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
-import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.Category;
@@ -142,9 +141,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
-            navigation = VantaUiNode.column(5, 12)
-                    .width(190)
-                    .background(VantaUiTheme.PANEL);
+            navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 5, 12)
+                    .width(190);
             navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
             navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
@@ -163,10 +161,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(VantaUiNode.text("Stored on this device", VantaUiTheme.TEXT_MUTED));
         }
 
-        VantaUiNode content = VantaUiNode.column(compact ? 10 : 16, compact ? 12 : 22)
-                .flex(1)
-                .background(VantaUiTheme.PANEL)
-                .scrollable();
+        VantaUiNode content = VantaCompose.surface(VantaCompose.Material.PANEL,
+                        compact ? 10 : 16, compact ? 12 : 22)
+                .flex(1).scrollable();
         addPageContent(content);
         body.add(navigation);
         body.add(content);
@@ -226,10 +223,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         VantaUiNode overview = VantaUiNode.row(compact ? 0 : 14, 0);
         if (compact) overview = VantaUiNode.column(10, 0);
 
-        VantaUiNode lead = VantaUiNode.column(10, 16)
-                .flex(compact ? 1 : 2)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 12 : 20);
+        VantaUiNode lead = VantaCompose.surface(VantaCompose.Material.ELEVATED, 10,
+                        compact ? 12 : 20)
+                .flex(compact ? 1 : 2);
         lead.add(VantaUiNode.eyebrow("YOUR CONFIGURATION"));
         lead.add(VantaUiNode.title("Built around the way you play."));
         lead.add(VantaUiNode.paragraph(
@@ -250,10 +246,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         lead.add(actions);
         overview.add(lead);
 
-        VantaUiNode health = VantaUiNode.column(10, 16)
-                .flex(1)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(16);
+        VantaUiNode health = VantaCompose.surface(VantaCompose.Material.ELEVATED, 10, 16)
+                .flex(1);
         health.add(VantaUiNode.eyebrow("CLIENT SNAPSHOT"));
         VantaUiNode metric = VantaUiNode.row(8, 0)
                 .align(VantaUiNode.Alignment.END);
@@ -288,8 +282,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         content.add(overview);
 
         content.add(VantaCompose.sectionHeader("WORKSPACES", "Choose a system", null));
-        VantaUiNode workspaceList = VantaUiNode.column(1, 0)
-                .background(VantaUiTheme.PANEL_RAISED);
+        VantaUiNode workspaceList = VantaCompose.surface(VantaCompose.Material.ELEVATED, 1, 0);
         addWorkspaceRow(workspaceList, "HUD editor",
                 "Position overlays, counters and the vanilla HUD",
                 Page.HUD, VantaUiNode.Icon.HUD);
@@ -305,8 +298,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         content.add(workspaceList);
 
         content.add(VantaCompose.sectionHeader("QUICK ACCESS", "Enabled modules", null));
-        VantaUiNode activePanel = VantaUiNode.column(1, 8)
-                .background(VantaUiTheme.PANEL_RAISED);
+        VantaUiNode activePanel = VantaCompose.surface(VantaCompose.Material.ELEVATED, 1, 8);
         List<Feature> activeFeatures = FeatureRegistry.FEATURES.stream()
                 .filter(Feature::isEnabled).limit(compact ? 3 : 5).toList();
         if (activeFeatures.isEmpty()) {
