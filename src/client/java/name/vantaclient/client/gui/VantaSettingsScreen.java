@@ -510,7 +510,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 VantaUiTheme.TEXT_MUTED));
     }
 
-    private int featureGridColumns(float availableWidth) {
+    static int featureGridColumns(float availableWidth) {
         if (availableWidth >= 1480.0f) return 3;
         if (availableWidth >= 900.0f) return 2;
         return 1;
