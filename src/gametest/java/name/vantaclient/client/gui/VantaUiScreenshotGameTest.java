@@ -22,6 +22,7 @@ import name.vantaclient.client.hudeditor.HudSettingsPanel;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.gui.compose.theme.VantaTheme;
@@ -76,6 +77,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
         verifyRelayEndpointValidation(context);
+        verifyFocusController(context);
         verifyScrollbarThumbDragging(context);
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
@@ -166,6 +168,48 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+
+    private static void verifyFocusController(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            VantaUiNode first = VantaUiNode.button("First", () {});
+            VantaUiNode second = VantaUiNode.button("Second", () {});
+            VantaUiNode disabled = VantaUiNode.button("Disabled", () {}).enabled(false);
+            VantaUiNode hidden = VantaUiNode.button("Hidden", () {}).visible(false);
+            VantaUiNode root = VantaUiNode.column(4, 4)
+                    .add(first).add(second).add(disabled).add(hidden);
+            VantaFocusController focus = new VantaFocusController(root);
+
+            if (focus.cycle(1) != first || focus.focused() != first) {
+                throw new AssertionError("Forward focus traversal must start at the first visible enabled control.");
+            }
+            if (focus.cycle(1) != second || focus.focused() != second) {
+                throw new AssertionError("Forward focus traversal must skip disabled and hidden controls.");
+            }
+            if (focus.cycle(1) != first) {
+                throw new AssertionError("Forward focus traversal must wrap.");
+            }
+            if (focus.cycle(-1) != second) {
+                throw new AssertionError("Reverse focus traversal must wrap in the opposite direction.");
+            }
+            focus.setFocused(disabled);
+            if (focus.focused() != null) {
+                throw new AssertionError("Disabled nodes must not be accepted as focus targets.");
+            }
+            focus.setFocused(hidden);
+            if (focus.focused() != null) {
+                throw new AssertionError("Hidden nodes must not be accepted as focus targets.");
+            }
+            focus.setFocused(second);
+            second.visible(false);
+            if (!focus.clearIfDetached() || focus.focused() != null) {
+                throw new AssertionError("Focus must be cleared when a target becomes hidden or detached.");
+            }
+            if (focus.clearIfDetached()) {
+                throw new AssertionError("Detached focus cleanup should be idempotent.");
+            }
+            focus.clear();
+        });
+    }
 
     private static void verifyRelayEndpointValidation(ClientGameTestContext context) {
         context.runOnClient(client -> {
