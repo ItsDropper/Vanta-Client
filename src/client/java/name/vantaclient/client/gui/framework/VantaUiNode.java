@@ -604,26 +604,35 @@ public final class VantaUiNode {
         if (!visible || width <= 0 || height <= 0) return;
 
         if (background != 0) {
+            VantaCompose.Material material = switch (background) {
+                case VantaUiTheme.PANEL -> VantaCompose.Material.PANEL;
+                case VantaUiTheme.PANEL_RAISED -> VantaCompose.Material.ELEVATED;
+                case VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER,
+                        VantaUiTheme.SURFACE_SELECTED -> VantaCompose.Material.CARD;
+                case VantaUiTheme.INPUT_SURFACE, VantaUiTheme.INPUT_FOCUS_SURFACE ->
+                        VantaCompose.Material.FIELD;
+                case VantaUiTheme.TOOLTIP_SURFACE -> VantaCompose.Material.POPOVER;
+                default -> null;
+            };
             int radius = background == VantaUiTheme.PANEL ? 16
-                    : background == VantaUiTheme.PANEL_RAISED ? 10 : VantaUiTheme.RADIUS_MEDIUM;
-            if (background == VantaUiTheme.PANEL || background == VantaUiTheme.PANEL_RAISED) {
+                    : background == VantaUiTheme.PANEL_RAISED ? 10
+                    : background == VantaUiTheme.TOOLTIP_SURFACE ? 8
+                    : VantaUiTheme.RADIUS_MEDIUM;
+            if (material != null) {
                 VantaCompose.State surfaceState = !enabled
                         ? VantaCompose.State.DISABLED
-                        : selected ? VantaCompose.State.SELECTED
-                        : focused ? VantaCompose.State.FOCUSED
-                        : hovered ? VantaCompose.State.HOVERED
+                        : selected || background == VantaUiTheme.SURFACE_SELECTED
+                        ? VantaCompose.State.SELECTED
+                        : focused || background == VantaUiTheme.INPUT_FOCUS_SURFACE
+                        ? VantaCompose.State.FOCUSED
+                        : hovered || background == VantaUiTheme.SURFACE_HOVER
+                        ? VantaCompose.State.HOVERED
                         : VantaCompose.State.NORMAL;
-                VantaCompose.drawSurface(graphics, theme.composeTheme(),
-                        background == VantaUiTheme.PANEL
-                                ? VantaCompose.Material.PANEL : VantaCompose.Material.ELEVATED,
+                VantaCompose.drawSurface(graphics, theme.composeTheme(), material,
                         surfaceState, x, y, width, height, radius);
             } else {
                 VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
                         VantaUiTheme.applyPanelOpacity(background));
-                if (background == VantaUiTheme.TOOLTIP_SURFACE) {
-                    VantaUiTheme.outlineSquircle(graphics, x, y, width, height, radius,
-                            VantaUiTheme.BORDER_SUBTLE);
-                }
             }
         }
 
