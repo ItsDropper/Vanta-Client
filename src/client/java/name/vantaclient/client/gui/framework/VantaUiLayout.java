@@ -64,7 +64,7 @@ final class VantaUiLayout {
         return node.constraints.constrainHeight(measured);
     }
 
-    void arrange(int node.x, int node.y, int node.width, int node.height, Font font) {
+    static void arrange(VantaUiNode node, int x, int y, int width, int height, Font font) {
         this.node.x = node.x;
         this.node.y = node.y;
         this.node.width = node.constraints.constrainWidth(node.width);
