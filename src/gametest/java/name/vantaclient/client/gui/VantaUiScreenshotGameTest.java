@@ -619,7 +619,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     .width(220).height(120).scrollable();
             VantaUiNode firstRow = VantaUiNode.text("First scroll row");
             scroll.add(firstRow);
-            for (int index = 1; index < 16; index++) {
+            for (int index = 1; index < 36; index++) {
                 scroll.add(VantaUiNode.text("Scrollable row " + index));
             }
 
@@ -627,7 +627,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             runtime.layout(client.font, 320, 220);
             int initialY = firstRow.y();
             int viewportHeight = scroll.height() - 8;
-            int contentHeight = 16 * 14 + 15 * 2;
+            int contentHeight = 36 * 14 + 35 * 2;
             int thumbHeight = Math.min(viewportHeight,
                     Math.max(12, viewportHeight * viewportHeight / contentHeight));
             int trackX = scroll.x() + scroll.width() - 2;
