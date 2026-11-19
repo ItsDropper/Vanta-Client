@@ -27,7 +27,7 @@ public final class VantaPointerCapture {
 
     public boolean captureSlider(VantaUiNode slider) {
         if (slider == null || slider.kind() != VantaUiNode.Kind.SLIDER
-                || !slider.isInteractive() || !slider.isVisible()) {
+                || !slider.isInteractive() || !slider.isVisible() || !slider.isEnabled()) {
             cancel();
             return false;
         }
