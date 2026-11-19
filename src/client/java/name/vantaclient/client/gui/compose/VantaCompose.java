@@ -48,10 +48,10 @@ public final class VantaCompose {
     }
 
     public static VantaUiNode moduleCard(String title, String description, VantaUiNode.Icon icon,
-                                          Supplier<String> status, int accent, int cardHeight, boolean configurable,
+                                          Supplier<String> status, int accent, int cardHeight, boolean compact, boolean configurable,
                                           Runnable configure, BooleanSupplier enabled,
                                           Consumer<Boolean> toggle) {
-        return VantaComponents.moduleCard(title, description, icon, status, accent, cardHeight,
+        return VantaComponents.moduleCard(title, description, icon, status, accent, cardHeight, compact,
                 configurable, configure, enabled, toggle);
     }
 
