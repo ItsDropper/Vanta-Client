@@ -353,7 +353,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 identity.add(VantaUiNode.text(feature.getName()));
                 if (VantaClientPreferences.get().showDescriptions
                         && feature.getDescription() != null && !feature.getDescription().isBlank()) {
-                    identity.add(VantaUiNode.text(feature.getDescription(), VantaUiTheme.TEXT_MUTED));
+                    identity.add(VantaUiNode.paragraph(feature.getDescription(), VantaUiTheme.TEXT_MUTED, 1));
                 }
                 activeRow.add(identity);
                 if (!SettingRegistry.getSettings(feature).isEmpty()) {
@@ -410,7 +410,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == toCategory(target)).toList();
         VantaUiNode card = VantaUiNode.column(7, 10)
-                .flex(1).height(94).background(VantaUiTheme.PANEL_RAISED).padding(10);
+                .flex(1).height(112).background(VantaUiTheme.PANEL_RAISED).padding(10);
         VantaUiNode identity = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
         identity.add(VantaUiNode.icon(icon).size(18, 18)
                 .iconColor(VantaClientPreferences.get().accent.color()));
