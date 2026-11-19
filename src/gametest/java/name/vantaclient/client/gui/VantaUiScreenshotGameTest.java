@@ -733,7 +733,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
 
             runtime.layout(client.font, 320, 220);
-            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+            if (!runtime.mouseClicked(controlPoint[0], controlPoint[1], 0, client.font)) {
                 throw new AssertionError("Dropdown did not reopen for parent-scroll dismissal.");
             }
             runtime.layout(client.font, 320, 220);
