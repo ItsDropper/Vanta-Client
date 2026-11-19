@@ -395,7 +395,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private void addFeatureCategory(VantaUiNode content) {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
+        float availableWidth = VantaUiRuntime.designWidth(width, height);
+        boolean compact = availableWidth < 760.0f || VantaClientPreferences.get().compactMode;
         Category category = toCategory(page);
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
@@ -410,103 +411,160 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             case COMBAT -> VantaUiNode.Icon.CROSSHAIR;
             case MISC -> VantaUiNode.Icon.SPARK;
         };
+        long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
 
-        VantaUiNode hero = VantaUiNode.row(compact ? 8 : 12, compact ? 8 : 14)
+        VantaUiNode heading = VantaUiNode.row(12, compact ? 9 : 14)
                 .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 8 : 14)
                 .align(VantaUiNode.Alignment.CENTER);
-        hero.add(VantaUiNode.icon(categoryIcon).size(compact ? 22 : 28, compact ? 22 : 28)
+        heading.add(VantaUiNode.icon(categoryIcon).size(28, 28)
                 .iconColor(VantaClientPreferences.get().accent.color()));
-        VantaUiNode identity = VantaUiNode.column(compact ? 1 : 3, 0).flex(1);
+        VantaUiNode identity = VantaUiNode.column(3, 0).flex(1);
+        identity.add(VantaUiNode.eyebrow("FEATURE WORKSPACE"));
         identity.add(VantaUiNode.title(categoryTitle(category)));
         identity.add(VantaUiNode.paragraph(categoryDescription(category),
                 VantaUiTheme.TEXT_SECONDARY, compact ? 1 : 2));
-        hero.add(identity);
-        if (compact) {
-            hero.add(VantaUiNode.dynamicText(
-                    () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " active",
-                    VantaUiTheme.TEXT_SECONDARY));
-        } else {
-            VantaUiNode summary = VantaUiNode.column(2, 0)
-                    .align(VantaUiNode.Alignment.END);
-            summary.add(VantaUiNode.dynamicText(
-                    () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " active",
-                    VantaUiTheme.TEXT_SECONDARY));
-            summary.add(VantaUiNode.text(categoryFeatures.size() + " available",
-                    VantaUiTheme.TEXT_MUTED));
-            hero.add(summary);
-        }
+        heading.add(identity);
+        VantaUiNode count = VantaUiNode.column(2, 0)
+                .align(VantaUiNode.Alignment.END);
+        count.add(VantaUiNode.dynamicText(
+                () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " enabled",
+                VantaUiTheme.TEXT_PRIMARY));
+        count.add(VantaUiNode.text(categoryFeatures.size() + " modules",
+                VantaUiTheme.TEXT_MUTED));
+        heading.add(count);
         if (page == Page.HUD) {
-            hero.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
+            heading.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
                     () -> Minecraft.getInstance().setScreen(
                             new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .height(compact ? 28 : 32).background(VantaUiTheme.SURFACE_SELECTED));
+                    .height(32).background(VantaUiTheme.SURFACE_SELECTED));
         }
-        content.add(hero);
+        content.add(heading);
 
-        VantaUiNode search = VantaUiNode.row(compact ? 6 : 8, compact ? 6 : 8)
-                .height(compact ? 32 : 40)
-                .background(VantaUiTheme.PANEL_RAISED).align(VantaUiNode.Alignment.CENTER);
-        search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-        search.add(VantaUiNode.textField("Find a feature...", () -> pendingSearch,
+        VantaUiNode toolbar = VantaUiNode.row(8, 8)
+                .height(compact ? 36 : 40)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .align(VantaUiNode.Alignment.CENTER);
+        toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
+        toolbar.add(VantaUiNode.textField("Search modules and settings…", () -> pendingSearch,
                 value -> pendingSearch = value, 64).flex(1));
         if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
-            search.add(VantaUiNode.button("Clear", () -> {
+            toolbar.add(VantaUiNode.button("Clear", () -> {
                 pendingSearch = "";
                 searchQuery = "";
                 rebuildUi();
-            }).height(compact ? 26 : 28).tooltip("Clear the feature filter"));
+            }).height(28).tooltip("Clear the feature filter"));
         }
-        search.add(VantaUiNode.button("Filter", VantaUiNode.Icon.SEARCH, () -> {
+        toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH, () -> {
             searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
             rebuildUi();
-        }).height(compact ? 26 : 28));
-        content.add(search);
-        if (!compact) {
-            content.add(VantaUiNode.text("Search feature names, descriptions and setting labels.",
+        }).height(28));
+        content.add(toolbar);
+
+        VantaUiNode resultsHeader = VantaUiNode.row(8, 0)
+                .align(VantaUiNode.Alignment.CENTER);
+        resultsHeader.add(VantaUiNode.title(searchQuery.isBlank()
+                ? "All modules" : "Search results"));
+        resultsHeader.add(VantaUiNode.spacer(1).flex(1));
+        resultsHeader.add(VantaUiNode.text(
+                features.size() + " of " + categoryFeatures.size() + " modules",
+                VantaUiTheme.TEXT_MUTED));
+        content.add(resultsHeader);
+
+        if (features.isEmpty()) {
+            VantaUiNode empty = VantaCompose.surface(VantaCompose.Material.ELEVATED, 8, 18);
+            empty.add(VantaUiNode.title(searchQuery.isBlank()
+                    ? "Nothing here yet" : "No matching modules"));
+            empty.add(VantaUiNode.paragraph(searchQuery.isBlank()
+                    ? "This workspace has no registered features."
+                    : "Try another name or setting keyword.",
+                    VantaUiTheme.TEXT_SECONDARY, 2));
+            if (!searchQuery.isBlank()) {
+                empty.add(VantaUiNode.button("Clear search", () -> {
+                    pendingSearch = "";
+                    searchQuery = "";
+                    rebuildUi();
+                }).height(30));
+            }
+            content.add(empty);
+            return;
+        }
+
+        int columns = featureGridColumns(availableWidth);
+        int cardHeight = compact ? 142 : 154;
+        VantaUiNode grid = VantaUiNode.column(compact ? 8 : 12, 0);
+        for (int offset = 0; offset < features.size(); offset += columns) {
+            VantaUiNode gridRow = VantaUiNode.row(compact ? 8 : 12, 0)
+                    .height(cardHeight);
+            int rowEnd = Math.min(features.size(), offset + columns);
+            for (int index = offset; index < rowEnd; index++) {
+                gridRow.add(featureCard(features.get(index), categoryIcon, compact).flex(1));
+            }
+            if (rowEnd - offset < columns) {
+                gridRow.add(VantaUiNode.spacer(1).flex(columns - (rowEnd - offset)));
+            }
+            grid.add(gridRow);
+        }
+        content.add(grid);
+        content.add(VantaUiNode.text(
+                enabledCount + " enabled · " + (categoryFeatures.size() - enabledCount) + " disabled",
+                VantaUiTheme.TEXT_MUTED));
+    }
+
+    private int featureGridColumns(float availableWidth) {
+        if (availableWidth >= 1480.0f) return 3;
+        if (availableWidth >= 900.0f) return 2;
+        return 1;
+    }
+
+    private VantaUiNode featureCard(Feature feature, VantaUiNode.Icon categoryIcon,
+                                    boolean compact) {
+        boolean hasSettings = !SettingRegistry.getSettings(feature).isEmpty();
+        VantaUiNode card = VantaCompose.surface(VantaCompose.Material.CARD,
+                compact ? 6 : 8, compact ? 10 : 12)
+                .height(compact ? 142 : 154);
+
+        VantaUiNode identity = VantaUiNode.row(8, 0)
+                .height(22).align(VantaUiNode.Alignment.CENTER);
+        identity.add(VantaUiNode.icon(categoryIcon).size(18, 18)
+                .iconColor(VantaClientPreferences.get().accent.color()));
+        identity.add(VantaUiNode.spacer(1).flex(1));
+        identity.add(VantaUiNode.dynamicText(
+                () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
+                feature.isEnabled() ? VantaUiTheme.STATUS_SUCCESS : VantaUiTheme.TEXT_MUTED));
+        card.add(identity);
+
+        card.add(VantaUiNode.title(feature.getName()));
+        String description = feature.getDescription();
+        if (VantaClientPreferences.get().showDescriptions
+                && description != null && !description.isBlank()) {
+            card.add(VantaUiNode.paragraph(description,
+                    VantaUiTheme.TEXT_MUTED, compact ? 1 : 2));
+        } else {
+            card.add(VantaUiNode.text(hasSettings ? "Configurable module" : "No additional options",
                     VantaUiTheme.TEXT_MUTED));
         }
 
-        if (features.isEmpty()) {
-            String emptyMessage = searchQuery.isBlank()
-                    ? "There are no features in this category yet."
-                    : "No features match that search.";
-            content.add(VantaUiNode.paragraph(emptyMessage, VantaUiTheme.TEXT_MUTED, 1));
-            return;
+        card.add(VantaUiNode.spacer(1).flex(1));
+        VantaUiNode actions = VantaUiNode.row(7, 0)
+                .height(30).align(VantaUiNode.Alignment.CENTER);
+        if (hasSettings) {
+            actions.add(VantaUiNode.button("Configure", () -> {
+                selectedFeature = feature;
+                rebuildUi();
+            }).height(28).tooltip("Open " + feature.getName() + " settings"));
+        } else {
+            actions.add(VantaUiNode.text("Module", VantaUiTheme.TEXT_MUTED));
         }
-        VantaUiNode list = VantaUiNode.column(1, compact ? 4 : 8)
-                .background(VantaUiTheme.PANEL_RAISED);
-        for (Feature feature : features) {
-            VantaUiNode row = VantaUiNode.row(compact ? 8 : 10, compact ? 5 : 7)
-                    .align(VantaUiNode.Alignment.CENTER);
-            VantaUiNode labels = VantaUiNode.column(compact ? 2 : 3, 0).flex(1);
-            labels.add(VantaUiNode.text(feature.getName()));
-            if (VantaClientPreferences.get().showDescriptions
-                    && feature.getDescription() != null && !feature.getDescription().isBlank()) {
-                labels.add(VantaUiNode.paragraph(feature.getDescription(),
-                        VantaUiTheme.TEXT_MUTED, compact ? 1 : 2));
-            }
-            row.add(labels);
-            if (!SettingRegistry.getSettings(feature).isEmpty()) {
-                row.add(VantaUiNode.button("Configure", () -> {
-                    selectedFeature = feature;
-                    rebuildUi();
-                }).height(compact ? 26 : 28).tooltip("Configure " + feature.getName()));
-            }
-            row.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
-                if (feature.isEnabled() != enabled) feature.toggle();
-                feature.saveConfig();
-                DropperUtilsConfig.save();
-            }).width(compact ? 42 : 48).tooltip("Enable or disable " + feature.getName()));
-            list.add(row);
-            list.add(divider());
-        }
-        content.add(list);
-        long totalInCategory = categoryFeatures.size();
-        String resultSummary = searchQuery.isBlank()
-                ? totalInCategory + " features in this category"
-                : "Showing " + features.size() + " of " + totalInCategory + " features";
-        if (!compact) content.add(VantaUiNode.text(resultSummary, VantaUiTheme.TEXT_MUTED));
+        actions.add(VantaUiNode.spacer(1).flex(1));
+        actions.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
+            if (feature.isEnabled() != enabled) feature.toggle();
+            feature.saveConfig();
+            DropperUtilsConfig.save();
+            rebuildUi();
+        }).width(46).height(28)
+                .tooltip("Enable or disable " + feature.getName()));
+        card.add(actions);
+        return card;
     }
 
     private boolean matchesSearch(Feature feature) {
