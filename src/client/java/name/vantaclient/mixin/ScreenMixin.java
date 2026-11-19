@@ -17,11 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(Screen.class)
 public abstract class ScreenMixin {
-    @Inject(method = "renderBackground", at = @At("TAIL"))
-    private void vanta$markGlassBackdrop(GuiGraphics graphics, int mouseX, int mouseY,
-                                         float partialTick, CallbackInfo ci) {
+    @Inject(method = "renderBlurredBackground", at = @At("HEAD"), cancellable = true)
+    private void vanta$markGlassBackdrop(GuiGraphics graphics, CallbackInfo ci) {
         if ((Object) this instanceof VantaCompose.Screen) {
+            // Queue exactly one native blur boundary. Cancelling vanilla's
+            // option-gated body prevents its second marker from throwing.
             graphics.blurBeforeThisStratum();
+            ci.cancel();
         }
     }
 
