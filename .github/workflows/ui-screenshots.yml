@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - "build.gradle"
+      - "settings.gradle"
       - "gradle.properties"
       - "src/client/java/name/vantaclient/client/gui/**"
       - "src/client/java/name/vantaclient/client/config/VantaClientPreferences.java"
