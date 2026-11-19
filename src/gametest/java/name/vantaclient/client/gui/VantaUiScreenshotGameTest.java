@@ -384,6 +384,13 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void verifyResponsiveUiViewport(ClientGameTestContext context) {
+        if (VantaSettingsScreen.featureGridColumns(899.0f) != 1
+                || VantaSettingsScreen.featureGridColumns(900.0f) != 2
+                || VantaSettingsScreen.featureGridColumns(1479.0f) != 2
+                || VantaSettingsScreen.featureGridColumns(1480.0f) != 3
+                || VantaSettingsScreen.featureGridColumns(Float.NaN) != 1) {
+            throw new AssertionError("Feature grid breakpoints must select one, two or three columns deterministically.");
+        }
         context.runOnClient(client -> {
             int[][] viewports = {{1280, 720}, {960, 540}, {640, 360}, {480, 270}};
             float[] scales = {0.8f, 1.0f, 1.2f};
