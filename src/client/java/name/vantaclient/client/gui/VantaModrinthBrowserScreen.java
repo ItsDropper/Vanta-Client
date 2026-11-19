@@ -94,7 +94,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
 
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
-        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
 
         VantaUiNode root = VantaUiNode.column(compact ? 4 : 14, compact ? 5 : 16)
                 .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
@@ -108,7 +108,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
         identity.add(VantaUiNode.title("Modrinth"));
         header.add(identity);
-        if (width >= WIDE_LAYOUT_THRESHOLD) {
+        if (VantaUiRuntime.designWidth(width, height) >= WIDE_LAYOUT_THRESHOLD) {
             header.add(VantaUiNode.text("Minecraft "
                     + ClientPlatform.minecraftVersion(),
                     VantaUiTheme.TEXT_MUTED));
@@ -181,7 +181,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
         heading.add(VantaUiNode.spacer(1).flex(1));
         heading.add(VantaUiNode.dynamicText(
-                () -> busy ? "Working…" : trim(status, width < WIDE_LAYOUT_THRESHOLD ? 18 : 24),
+                () -> busy ? "Working…" : trim(status, VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD ? 18 : 24),
                 VantaUiTheme.TEXT_MUTED).flex(1).align(VantaUiNode.Alignment.END));
         main.add(heading);
         if (busy) {
@@ -217,7 +217,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         }
         main.add(cards);
 
-        boolean compactViewport = width < WIDE_LAYOUT_THRESHOLD;
+        boolean compactViewport = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
         boolean showSessionAction = enableModId != null;
         VantaUiNode footer = VantaUiNode.column(4, 0)
                 .height(showSessionAction && compactViewport ? 54 : compact ? 22 : 32);
@@ -261,11 +261,11 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         int count = visibleCount();
         int start = Math.min(page * PAGE_SIZE, Math.max(0, count - 1));
         int end = Math.min(count, start + PAGE_SIZE);
-        int columns = width >= WIDE_LAYOUT_THRESHOLD ? 2 : 1;
+        int columns = VantaUiRuntime.designWidth(width, height) >= WIDE_LAYOUT_THRESHOLD ? 2 : 1;
 
         for (int index = start; index < end; index += columns) {
             VantaUiNode row = VantaUiNode.row(8, 0)
-                    .height(width < WIDE_LAYOUT_THRESHOLD ? 88 : 132)
+                    .height(VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD ? 88 : 132)
                     .align(VantaUiNode.Alignment.STRETCH);
             row.add(installedView
                     ? buildInstalledCard(installedMods.get(index))
@@ -282,7 +282,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
     }
 
     private VantaUiNode buildProjectCard(ModrinthBrowserService.Project project) {
-        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
         VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
                 .flex(1)
                 .height(compact ? 88 : 132)
@@ -321,7 +321,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
     }
 
     private VantaUiNode buildInstalledCard(ExperimentalModHotLoader.AvailableMod mod) {
-        boolean compact = width < WIDE_LAYOUT_THRESHOLD;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
         VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
                 .flex(1)
                 .height(compact ? 88 : 132)
