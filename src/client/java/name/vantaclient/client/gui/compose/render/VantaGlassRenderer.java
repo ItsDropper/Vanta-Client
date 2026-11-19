@@ -25,9 +25,9 @@ public final class VantaGlassRenderer {
 
     public static void renderScrim(GuiGraphics graphics, int width, int height, VantaTheme theme) {
         if (graphics == null || theme == null || width <= 0 || height <= 0) return;
-        // Minecraft 1.21.11 resolves this request in its GUI render graph. Unlike
-        // a translucent tint, it blurs the already-rendered world behind this UI.
-        graphics.blurBeforeThisStratum();
+        // Screen background rendering owns Minecraft's once-per-frame blur pass.
+        // Requesting it again here throws when a screen has already added its blur stratum.
+        // Keep this layer to the scrim; surfaces remain translucent and composited by GuiGraphics.
         VantaTheme.Glass glass = theme.glass();
         graphics.fillGradient(0, 0, width, height, glass.scrimTop(), glass.scrimBottom());
     }
