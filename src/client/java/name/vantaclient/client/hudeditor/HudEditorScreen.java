@@ -1,5 +1,6 @@
 package name.vantaclient.client.hudeditor;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -16,7 +17,7 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 
-public class HudEditorScreen extends Screen {
+public class HudEditorScreen extends Screen implements VantaCompose.Screen {
     private float entrance = 0.0f;
     private float selectionPulse = 0.0f;
     private long lastAnimationFrameNanos;
@@ -101,7 +102,7 @@ public class HudEditorScreen extends Screen {
         entrance = VantaUiMotion.approach(
                 entrance, 1.0f, 12.0f, animationDeltaSeconds, animations);
 
-        graphics.fill(0, 0, width, height, VantaUiTheme.withAlpha(VantaUiTheme.CANVAS, 164));
+        VantaCompose.renderScrim(graphics, width, height);
         if (preferences.hudShowGrid) drawGrid(graphics, preferences.hudGridSize, entrance);
 
         HudMouseHandler.updateHover(mouseX, mouseY);

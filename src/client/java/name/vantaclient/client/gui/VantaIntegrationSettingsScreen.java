@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.setting.SettingDefinition;
 import name.vantaclient.client.gui.framework.VantaUiNode;
@@ -16,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /** Retained-mode settings surface for settings contributed through the Vanta API. */
-public final class VantaIntegrationSettingsScreen extends Screen {
+public final class VantaIntegrationSettingsScreen extends Screen implements VantaCompose.Screen {
     private final Screen parent;
     private final ModDescriptor descriptor;
     private VantaUiRuntime runtime;
@@ -41,7 +42,7 @@ public final class VantaIntegrationSettingsScreen extends Screen {
 
     private VantaUiNode buildRoot() {
         boolean compact = width < 700;
-        VantaUiNode root = VantaUiNode.column(10, 12).background(VantaUiTheme.CANVAS);
+        VantaUiNode root = VantaUiNode.column(10, 12);
         VantaUiNode header = VantaUiNode.row(10, 12).height(46)
                 .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.CENTER);
         header.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW));
@@ -163,7 +164,7 @@ public final class VantaIntegrationSettingsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
+        VantaCompose.renderScrim(graphics, width, height);
         if (runtime != null) {
             runtime.setScale((float) name.vantaclient.client.config.VantaClientPreferences.get().uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);

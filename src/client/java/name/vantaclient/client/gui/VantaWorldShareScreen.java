@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
@@ -20,7 +21,7 @@ import net.minecraft.world.level.GameType;
 import java.util.List;
 
 /** Retained-mode host and guest entry point for Vanta's self-hosted remote relay. */
-public final class VantaWorldShareScreen extends Screen {
+public final class VantaWorldShareScreen extends Screen implements VantaCompose.Screen {
     private static final List<String> GAME_MODES =
             List.of("Survival", "Creative", "Adventure", "Spectator");
 
@@ -70,7 +71,7 @@ public final class VantaWorldShareScreen extends Screen {
         lanStatus = VantaLanHostingService.status();
 
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
-                .background(VantaUiTheme.CANVAS);
+                ;
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, compact ? 10 : 16)
                 .height(compact ? 52 : 54)
                 .background(VantaUiTheme.PANEL)
@@ -388,7 +389,7 @@ public final class VantaWorldShareScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
+        VantaCompose.renderScrim(graphics, width, height);
         if (runtime != null) {
             runtime.setScale((float) preferences.uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);
