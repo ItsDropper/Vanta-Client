@@ -3,6 +3,8 @@ package name.vantaclient.client.gui.compose;
 import name.vantaclient.client.gui.compose.render.VantaGlassRenderer;
 import name.vantaclient.client.gui.compose.theme.VantaTheme;
 import name.vantaclient.client.gui.compose.theme.VantaThemeFactory;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
+import name.vantaclient.client.gui.framework.VantaUiNode;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -28,6 +30,31 @@ public final class VantaCompose {
     /** Immutable token snapshot, refreshed once per retained UI frame. */
     public static VantaTheme theme() {
         return VantaThemeFactory.create();
+    }
+
+    /** Material-backed container factory used by screen composition. */
+    public static VantaUiNode surface(Material material, int gap, int padding) {
+        VantaComponents.Surface surface = switch (material) {
+            case PANEL -> VantaComponents.Surface.PANEL;
+            case ELEVATED, CARD -> VantaComponents.Surface.ELEVATED;
+            case FIELD -> VantaComponents.Surface.FIELD;
+            case POPOVER -> VantaComponents.Surface.POPOVER;
+        };
+        return VantaComponents.surface(surface, gap, padding);
+    }
+
+    public static VantaUiNode sectionHeader(String eyebrow, String title, String detail) {
+        return VantaComponents.sectionHeader(eyebrow, title, detail);
+    }
+
+    public static VantaUiNode navigationItem(String label, VantaUiNode.Icon icon,
+                                              boolean selected, Runnable action) {
+        return VantaComponents.navigationItem(label, icon, selected, action);
+    }
+
+    public static VantaUiNode workspaceRow(String title, String detail,
+                                            VantaUiNode.Icon icon, Runnable action) {
+        return VantaComponents.workspaceRow(title, detail, icon, action);
     }
 
     public static int resolveTintAlpha(Material material, float panelOpacity) {
