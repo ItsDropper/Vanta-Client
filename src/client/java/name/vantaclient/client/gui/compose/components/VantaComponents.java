@@ -76,7 +76,7 @@ public final class VantaComponents {
      * by the caller; this component only composes the visual identity and controls.
      */
     public static VantaUiNode moduleCard(String title, String description, VantaUiNode.Icon icon,
-                                         Supplier<String> status, int accent, boolean configurable,
+                                         Supplier<String> status, int accent, int cardHeight, boolean configurable,
                                          Runnable configure, BooleanSupplier enabled,
                                          Consumer<Boolean> toggle) {
         Objects.requireNonNull(title, "title");
@@ -85,7 +85,7 @@ public final class VantaComponents {
         Objects.requireNonNull(enabled, "enabled");
         Objects.requireNonNull(toggle, "toggle");
 
-        VantaUiNode card = surface(Surface.ELEVATED, 8, 12).height(166);
+        VantaUiNode card = surface(Surface.ELEVATED, 8, 12).height(cardHeight);
         VantaUiNode identity = VantaUiNode.row(8, 0)
                 .height(22).align(VantaUiNode.Alignment.CENTER);
         identity.add(VantaUiNode.icon(icon).size(18, 18).iconColor(accent));
