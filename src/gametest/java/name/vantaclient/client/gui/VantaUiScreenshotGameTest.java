@@ -23,6 +23,7 @@ import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
+import name.vantaclient.client.gui.compose.interaction.VantaPointerCapture;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
 import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.gui.compose.theme.VantaTheme;
@@ -78,6 +79,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.restoreDefaultGameOptions();
         verifyRelayEndpointValidation(context);
         verifyFocusController(context);
+        verifyPointerCapture(context);
         verifyScrollbarThumbDragging(context);
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
@@ -208,6 +210,45 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Detached focus cleanup should be idempotent.");
             }
             focus.clear();
+        });
+    }
+
+    private static void verifyPointerCapture(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            double[] value = {0.0};
+            VantaUiNode slider = VantaUiNode.slider("Test value", 0.0, 100.0, 10.0,
+                    () -> value[0], next -> value[0] = next);
+            VantaUiRuntime runtime = new VantaUiRuntime(
+                    VantaUiNode.column(0, 0).add(slider));
+            runtime.setScale(1.2f);
+            runtime.layout(client.font, 320, 200);
+
+            VantaPointerCapture capture = new VantaPointerCapture();
+            if (!capture.captureSlider(slider) || capture.type() != VantaPointerCapture.Type.SLIDER) {
+                throw new AssertionError("Slider pointer capture must accept a visible slider node.");
+            }
+            double offsetX = 320 * 0.5 * (1.0 - 1.2f);
+            double offsetY = 200 * 0.5 * (1.0 - 1.2f);
+            double scaledRight = offsetX + (slider.x() + slider.width()) * 1.2f;
+            double scaledCenterY = offsetY + (slider.y() + slider.height() * 0.5) * 1.2f;
+            if (!capture.drag(scaledRight, scaledCenterY, offsetX, offsetY, 1.2f)
+                    || Math.abs(value[0] - 100.0) > 0.0001) {
+                throw new AssertionError("Captured slider drag must correctly map scaled pointer coordinates to its maximum.");
+            }
+            if (capture.release(1) || !capture.isCaptured()) {
+                throw new AssertionError("Non-primary release must not terminate primary pointer capture.");
+            }
+            if (!capture.release(0) || capture.isCaptured()
+                    || capture.type() != VantaPointerCapture.Type.NONE) {
+                throw new AssertionError("Primary release must terminate pointer capture.");
+            }
+            if (capture.captureSlider(VantaUiNode.button("Not a slider", () {}))) {
+                throw new AssertionError("Pointer capture must reject non-slider nodes.");
+            }
+            if (capture.isCaptured()) {
+                throw new AssertionError("Rejected capture must leave no active target.");
+            }
+            runtime.dispose();
         });
     }
 
