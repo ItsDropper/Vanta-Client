@@ -3,6 +3,7 @@ package name.vantaclient.client.gui.framework;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
  * Small observable value for UI state. Writes are equality-checked and listeners
@@ -36,14 +37,10 @@ public final class VantaState<T> {
         return true;
     }
 
-    public boolean update(Consumer<T> updater) {
+    public boolean update(UnaryOperator<T> updater) {
         Objects.requireNonNull(updater, "updater");
-        T current;
-        synchronized (this) {
-            current = value;
-        }
-        updater.accept(current);
-        return set(current);
+        T current = get();
+        return set(updater.apply(current));
     }
 
     public AutoCloseable subscribe(Consumer<T> listener) {
