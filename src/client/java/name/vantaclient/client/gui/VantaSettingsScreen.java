@@ -505,9 +505,10 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             grid.add(gridRow);
         }
         content.add(grid);
-        content.add(VantaUiNode.text(
-                enabledCount + " enabled · " + (categoryFeatures.size() - enabledCount) + " disabled",
-                VantaUiTheme.TEXT_MUTED));
+        content.add(VantaUiNode.dynamicText(() -> {
+            long active = categoryFeatures.stream().filter(Feature::isEnabled).count();
+            return active + " enabled · " + (categoryFeatures.size() - active) + " disabled";
+        }, VantaUiTheme.TEXT_MUTED));
     }
 
     static int featureGridColumns(float availableWidth) {
