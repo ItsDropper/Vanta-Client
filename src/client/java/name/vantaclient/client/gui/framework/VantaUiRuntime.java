@@ -2,16 +2,14 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-
-import java.util.ArrayList;
-import java.util.List;
+import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
 
 /** Owns one screen's retained node tree, focus, pointer capture and layout bounds. */
 public final class VantaUiRuntime {
     private final VantaUiNode root;
     private final VantaUiTheme theme = new VantaUiTheme();
 
-    private VantaUiNode focused;
+    private final VantaFocusController focusController;
     private VantaUiNode activeSlider;
     private VantaUiNode activeScrollbar;
     private VantaUiNode hovered;
@@ -28,6 +26,7 @@ public final class VantaUiRuntime {
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
         this.root = root;
+        this.focusController = new VantaFocusController(root);
     }
 
     /** Applies the user's shared interface scale and invalidates placement when it changes. */
@@ -227,6 +226,7 @@ public final class VantaUiRuntime {
             cycleFocus(shiftDown ? -1 : 1);
             return true;
         }
+        VantaUiNode focused = focusController.focused();
         if (focused == null) return false;
         if (keyCode == 256 && focused.closeDropdown()) {
             lastWidth = -1;
@@ -248,6 +248,7 @@ public final class VantaUiRuntime {
     }
 
     public boolean charTyped(int codepoint) {
+        VantaUiNode focused = focusController.focused();
         return focused != null && focused.charTyped(codepoint);
     }
 
@@ -255,8 +256,7 @@ public final class VantaUiRuntime {
         activeSlider = null;
         if (activeScrollbar != null) activeScrollbar.endScrollbarDrag();
         activeScrollbar = null;
-        if (focused != null) focused.setFocused(false);
-        focused = null;
+        focusController.clear();
         hovered = null;
         pendingFocusReveal = null;
         root.closeDropdownsExcept(null);
@@ -269,38 +269,16 @@ public final class VantaUiRuntime {
     private void setFocused(VantaUiNode node) {
         pendingFocusReveal = null;
         if (focused == node) return;
-        if (focused != null) focused.setFocused(false);
-        focused = node != null && node.isInteractive() ? node : null;
-        if (focused != null) focused.setFocused(true);
+        focusController.setFocused(node);
     }
 
     private void cycleFocus(int direction) {
-        List<VantaUiNode> focusable = new ArrayList<>();
-        root.collectFocusable(focusable);
-        if (focusable.isEmpty()) {
-            setFocused(null);
-            return;
-        }
-
-        if (focused == null) {
-            setFocused(focusable.get(direction > 0 ? 0 : focusable.size() - 1));
-            return;
-        }
-        int index = focusable.indexOf(focused);
-        if (index < 0) {
-            setFocused(focusable.get(direction > 0 ? 0 : focusable.size() - 1));
-            return;
-        }
-        int next = Math.floorMod(index + direction, focusable.size());
-        setFocused(focusable.get(next));
-        pendingFocusReveal = focused;
+        VantaUiNode next = focusController.cycle(direction);
+        pendingFocusReveal = next;
     }
 
     private void clearFocusIfDetached() {
-        if (focused == null) return;
-        List<VantaUiNode> focusable = new ArrayList<>();
-        root.collectFocusable(focusable);
-        if (!focusable.contains(focused)) setFocused(null);
+        if (focusController.clearIfDetached()) pendingFocusReveal = null;
     }
 
     private void renderTooltip(GuiGraphics graphics, Font font, int screenWidth, int screenHeight) {
