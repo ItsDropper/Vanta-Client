@@ -2,6 +2,8 @@ package name.vantaclient.client.gui;
 
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaState;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import net.minecraft.client.Minecraft;
@@ -27,12 +29,12 @@ public final class VantaUiPrototypeScreen extends Screen {
     private VantaUiRuntime runtime;
     private int page = PAGE_OVERVIEW;
 
-    private boolean showFps = true;
-    private boolean showPerformanceHints = true;
+    private final VantaState<Boolean> showFps = new VantaState<>(true);
+    private final VantaState<Boolean> showPerformanceHints = new VantaState<>(true);
     private boolean customCrosshair;
     private boolean hudGrid = true;
     private String updateStrategy = "Balanced";
-    private double renderDistancePreview = 12.0;
+    private final VantaState<Double> renderDistancePreview = new VantaState<>(12.0);
     private double crosshairSize = 1.0;
     private double hudScale = 1.0;
     private String crosshairStyle = "Classic";
@@ -180,7 +182,7 @@ public final class VantaUiPrototypeScreen extends Screen {
 
         VantaUiNode metrics = VantaUiNode.row(9, 0).height(64);
         metrics.add(metricCard(VantaUiNode.Icon.DISPLAY, "LIVE PERFORMANCE",
-                () -> Integer.toString(Minecraft.getInstance().getFps()), "frames per second", accent).flex(1));
+                () -> Boolean.TRUE.equals(showFps.get()) ? Integer.toString(Minecraft.getInstance().getFps()) : "Hidden", "frames per second", accent).flex(1));
         metrics.add(metricCard(VantaUiNode.Icon.CONTROLS, "UI RENDER COST",
                 () -> runtime == null ? "—" : (runtime.averageUiRenderNanos() / 1_000) + " μs",
                 "CPU command submission", VantaUiTheme.TEXT_PRIMARY).flex(1));
@@ -189,10 +191,9 @@ public final class VantaUiPrototypeScreen extends Screen {
         content.add(sectionHeading(VantaUiNode.Icon.CONTROLS, "Quick settings",
                 "A few useful preferences"));
         VantaUiNode quick = VantaUiNode.column(2, 10).background(VantaUiTheme.PANEL_RAISED);
-        quick.add(VantaUiNode.toggle("Show FPS counter preview", () -> showFps, value -> showFps = value));
+        quick.add(VantaComponents.toggle("Show FPS counter preview", showFps));
         quick.add(divider());
-        quick.add(VantaUiNode.toggle("Performance hints", () -> showPerformanceHints,
-                value -> showPerformanceHints = value));
+        quick.add(VantaComponents.toggle("Performance hints", showPerformanceHints));
         quick.add(divider());
         quick.add(VantaUiNode.toggle("Reduce interface animations",
                 () -> !VantaClientPreferences.get().animations, reduced -> {
@@ -204,15 +205,14 @@ public final class VantaUiPrototypeScreen extends Screen {
         content.add(sectionHeading(VantaUiNode.Icon.DISPLAY, "Gameplay preview",
                 "Prototype values do not alter Minecraft settings"));
         VantaUiNode preview = VantaUiNode.column(5, 12).background(VantaUiTheme.PANEL_RAISED);
-        preview.add(VantaUiNode.slider("Render distance preview", 2, 32, 1,
-                () -> renderDistancePreview, value -> renderDistancePreview = value));
+        preview.add(VantaComponents.slider("Render distance preview", 2, 32, 1, renderDistancePreview));
         preview.add(divider());
         preview.add(VantaUiNode.dropdown("Update strategy",
                 List.of("Balanced", "Low latency", "Power saver"),
                 () -> updateStrategy, value -> updateStrategy = value));
         content.add(preview);
 
-        if (showPerformanceHints) {
+        if (Boolean.TRUE.equals(showPerformanceHints.get())) {
             content.add(VantaUiNode.paragraph(
                     "PREVIEW MODE  ·  Only the animation preference is connected to Appearance settings. Other controls use isolated demo state.",
                     VantaUiTheme.TEXT_MUTED, 2));
@@ -347,12 +347,12 @@ public final class VantaUiPrototypeScreen extends Screen {
     }
 
     private void resetPrototypeState() {
-        showFps = true;
-        showPerformanceHints = true;
+        showFps.set(true);
+        showPerformanceHints.set(true);
         customCrosshair = false;
         hudGrid = true;
         updateStrategy = "Balanced";
-        renderDistancePreview = 12.0;
+        renderDistancePreview.set(12.0);
         crosshairSize = 1.0;
         hudScale = 1.0;
         crosshairStyle = "Classic";
