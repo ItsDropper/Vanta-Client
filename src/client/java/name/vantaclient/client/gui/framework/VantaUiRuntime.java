@@ -233,7 +233,7 @@ public final class VantaUiRuntime {
     }
 
     public boolean charTyped(int codepoint) {
-        VantaUiNode focused = focusController.focused();
+        VantaUiNode focused = interactions.focused();
         return focused != null && focused.charTyped(codepoint);
     }
 
