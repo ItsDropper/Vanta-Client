@@ -71,7 +71,7 @@ final class VantaUiLayout {
         this.node.height = node.constraints.constrainHeight(node.height);
 
         if (node.kind == Kind.TEXT && node.textMaximumLines > 1) {
-            String value = currentText();
+            String value = node.currentText();
             if (!value.equals(node.cachedTextLayoutValue) || this.node.width != node.cachedTextLayoutWidth) {
                 node.cachedTextLayoutValue = value;
                 node.cachedTextLayoutWidth = this.node.width;
