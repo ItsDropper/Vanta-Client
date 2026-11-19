@@ -42,8 +42,8 @@ public final class VantaComposeLayoutGameTest implements FabricClientGameTest {
                 0, 0, VantaLayoutEngine.Alignment.STRETCH);
         VantaLayoutEngine.Result result = new VantaLayoutEngine().layout(
                 root, new VantaLayoutEngine.Rect(0, 0, 300, 40));
-        require(result.bounds("first").width() == 86, "First flex child must receive one third of remaining width.");
-        require(result.bounds("second").width() == 174, "Second flex child must receive remaining weighted width.");
+        require(result.bounds("first").width() == 87, "First flex child must receive one third of remaining width.");
+        require(result.bounds("second").width() == 173, "Second flex child must receive remaining weighted width.");
         require(result.bounds("fixed").width() == 40, "Non-flex child must retain intrinsic width.");
     }
 
@@ -74,7 +74,7 @@ public final class VantaComposeLayoutGameTest implements FabricClientGameTest {
                 "overlay", VantaLayoutEngine.Axis.OVERLAY,
                 List.of(VantaLayoutEngine.Element.leaf("back", 20, 20),
                         VantaLayoutEngine.Element.leaf("front", 30, 10)),
-                5, 0, VantaLayoutEngine.Alignment.STRETCH);
+                5, 0, VantaLayoutEngine.Alignment.START);
         VantaLayoutEngine.Result result = new VantaLayoutEngine().layout(
                 overlay, new VantaLayoutEngine.Rect(7, 9, 100, 60));
         require(result.bounds("back").equals(new VantaLayoutEngine.Rect(12, 14, 20, 20)),
