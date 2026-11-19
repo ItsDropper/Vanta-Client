@@ -528,6 +528,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
                 VantaClientPreferences.get().accent.color(),
                 compact ? 142 : 166,
+                compact,
                 hasSettings,
                 () -> {
                     selectedFeature = feature;
