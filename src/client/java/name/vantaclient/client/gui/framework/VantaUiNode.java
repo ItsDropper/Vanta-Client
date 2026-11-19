@@ -380,10 +380,7 @@ public final class VantaUiNode {
     public boolean isEnabled() { return enabled; }
     boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
-    int intrinsicWidth(Font font) {
-        if (preferredWidth >= 0) return constraints.constrainWidth(preferredWidth);
-        int measured = switch (kind) {
-            case TEXT -> textWidth(font, currentT    int intrinsicWidth(Font font) { return VantaUiLayout.intrinsicWidth(this, font); }
+    int intrinsicWidth(Font font) { return VantaUiLayout.intrinsicWidth(this, font); }
 
     int intrinsicHeight(Font font) { return VantaUiLayout.intrinsicHeight(this, font); }
 
@@ -391,7 +388,10 @@ public final class VantaUiNode {
         VantaUiLayout.arrange(this, x, y, width, height, font);
     }
 
-? padding : 0);
+    private boolean containsClip(double mouseX, double mouseY) {
+        if (!clipChildren && !scrollable) return true;
+        int clipX = x + (scrollable ? padding : 0);
+        int clipY = y + (scrollable ? padding : 0);
         int clipWidth = width - (scrollable ? padding * 2 : 0);
         int clipHeight = height - (scrollable ? padding * 2 : 0);
         return mouseX >= clipX && mouseX < clipX + clipWidth
