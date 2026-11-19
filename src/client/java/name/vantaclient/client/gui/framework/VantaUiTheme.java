@@ -1,7 +1,8 @@
 package name.vantaclient.client.gui.framework;
 
 import name.vantaclient.client.config.VantaClientPreferences;
-import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.theme.VantaTheme;
+import name.vantaclient.client.gui.compose.theme.VantaThemeFactory;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -34,14 +35,14 @@ public final class VantaUiTheme {
     public static final int STATUS_WARNING = 0xFFE2B36C;
     public static final int STATUS_DANGER = 0xFFE27C83;
 
-    private VantaCompose.Theme composeTheme = VantaCompose.theme();
+    private VantaTheme composeTheme = VantaThemeFactory.create();
 
     /** Refreshes Compose tokens once per frame, not once per component. */
     public void refreshComposeTheme() {
-        composeTheme = VantaCompose.theme();
+        composeTheme = VantaThemeFactory.create();
     }
 
-    public VantaCompose.Theme composeTheme() {
+    public VantaTheme composeTheme() {
         return composeTheme;
     }
 
