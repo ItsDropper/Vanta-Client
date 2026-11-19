@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.Category;
@@ -34,7 +35,7 @@ import java.util.List;
 import java.util.Locale;
 
 /** The live, retained-mode settings workspace for Vanta Client. */
-public final class VantaSettingsScreen extends Screen {
+public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen {
     private enum Page { OVERVIEW, HUD, VISUAL, COMBAT, MISC, APPEARANCE, CONTROLS }
 
     private final Screen parent;
@@ -93,7 +94,7 @@ public final class VantaSettingsScreen extends Screen {
     private VantaUiNode buildRoot() {
         boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
-                .background(VantaUiTheme.CANVAS);
+                ;
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 14, compact ? 10 : 16)
                 .height(compact ? 36 : 54)
@@ -818,7 +819,7 @@ public final class VantaSettingsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, VantaUiTheme.CANVAS);
+        VantaCompose.renderScrim(graphics, width, height);
         if (runtime != null) {
             runtime.setScale((float) VantaClientPreferences.get().uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);

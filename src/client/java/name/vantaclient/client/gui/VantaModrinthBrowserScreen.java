@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import com.mojang.blaze3d.platform.NativeImage;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
@@ -30,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  * Modrinth library rendered entirely through Vanta's retained UI framework.
  * Network and disk work remain off the render thread; texture ownership is scoped to this screen.
  */
-public final class VantaModrinthBrowserScreen extends Screen {
+public final class VantaModrinthBrowserScreen extends Screen implements VantaCompose.Screen {
     private static final int PAGE_SIZE = 6;
     private static final int WIDE_LAYOUT_THRESHOLD = 760;
     private static final int ICON_MAX_BYTES = 512 * 1024;
@@ -661,7 +662,7 @@ public final class VantaModrinthBrowserScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0x90070D16);
+        VantaCompose.renderScrim(graphics, width, height);
         if (runtime != null) {
             runtime.setScale((float) VantaClientPreferences.get().uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);

@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui;
 
+import name.vantaclient.client.gui.compose.VantaCompose;
 import com.mojang.blaze3d.platform.NativeImage;
 import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.VantaClientApi;
@@ -32,7 +33,7 @@ import java.util.jar.JarFile;
 import java.util.concurrent.CompletableFuture;
 
 /** Installed-mod library and details view, backed exclusively by the retained Vanta UI runtime. */
-public final class VantaIntegrationsScreen extends Screen {
+public final class VantaIntegrationsScreen extends Screen implements VantaCompose.Screen {
     private enum Selection { NONE, INSTALLED_MOD }
 
     private final Screen parent;
@@ -107,7 +108,7 @@ public final class VantaIntegrationsScreen extends Screen {
     private VantaUiNode buildRetainedRoot() {
         boolean compact = width < 760;
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
-                .background(VantaUiTheme.CANVAS)
+                
                 .clipToBounds();
 
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 10, 0)
@@ -557,7 +558,7 @@ public final class VantaIntegrationsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0x90070D16);
+        VantaCompose.renderScrim(graphics, width, height);
         if (runtime != null) {
             runtime.setScale((float) VantaClientPreferences.get().uiScale);
             runtime.render(graphics, font, width, height, mouseX, mouseY);
