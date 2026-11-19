@@ -25,6 +25,9 @@ public final class VantaGlassRenderer {
 
     public static void renderScrim(GuiGraphics graphics, int width, int height, VantaTheme theme) {
         if (graphics == null || theme == null || width <= 0 || height <= 0) return;
+        // Minecraft 1.21.11 resolves this request in its GUI render graph. Unlike
+        // a translucent tint, it blurs the already-rendered world behind this UI.
+        graphics.blurBeforeThisStratum();
         VantaTheme.Glass glass = theme.glass();
         graphics.fillGradient(0, 0, width, height, glass.scrimTop(), glass.scrimBottom());
     }
@@ -63,21 +66,14 @@ public final class VantaGlassRenderer {
         VantaUiTheme.fillSquircle(graphics, x, y, width, height, safeRadius,
                 VantaUiTheme.withAlpha(tint, alpha));
 
-        int inset = Math.min(safeRadius, Math.max(2, width / 4));
-        int left = x + inset;
-        int right = x + width - inset;
-        if (right > left && height > 4) {
-            graphics.fill(left, y + 1, right, y + 2,
-                    VantaUiTheme.withAlpha(glass.highlight(), 0x30));
-            int washBottom = y + Math.min(height - 2, Math.max(5, height / 4));
-            if (washBottom > y + 2) {
-                graphics.fillGradient(left + 1, y + 2, right - 1, washBottom,
-                        VantaUiTheme.withAlpha(glass.highlight(), 0x0D),
-                        VantaUiTheme.withAlpha(glass.highlight(), 0x00));
-            }
+        // A single restrained top-edge reflection gives the material depth without
+        // layering multiple decorative gradients over every surface.
+        if (height > 3 && width > safeRadius * 2) {
+            graphics.fill(x + safeRadius, y + 1, x + width - safeRadius, y + 2,
+                    VantaUiTheme.withAlpha(glass.highlight(), 0x22));
         }
 
-        int edgeAlpha = state == VantaCompose.State.DISABLED ? 0x28 : 0x58;
+        int edgeAlpha = state == VantaCompose.State.DISABLED ? 0x24 : 0x42;
         VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
                 VantaUiTheme.withAlpha(glass.edge(), edgeAlpha));
 
