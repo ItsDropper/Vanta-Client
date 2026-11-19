@@ -65,22 +65,22 @@ final class VantaUiLayout {
     }
 
     static void arrange(VantaUiNode node, int x, int y, int width, int height, Font font) {
-        this.node.x = node.x;
-        this.node.y = node.y;
-        this.node.width = node.constraints.constrainWidth(node.width);
-        this.node.height = node.constraints.constrainHeight(node.height);
+        node.x = node.x;
+        node.y = node.y;
+        node.width = node.constraints.constrainWidth(node.width);
+        node.height = node.constraints.constrainHeight(node.height);
 
-        if (node.kind == Kind.TEXT && node.textMaximumLines > 1) {
+        if (node.kind == VantaUiNode.Kind.TEXT && node.textMaximumLines > 1) {
             String value = node.currentText();
-            if (!value.equals(node.cachedTextLayoutValue) || this.node.width != node.cachedTextLayoutWidth) {
+            if (!value.equals(node.cachedTextLayoutValue) || node.width != node.cachedTextLayoutWidth) {
                 node.cachedTextLayoutValue = value;
-                node.cachedTextLayoutWidth = this.node.width;
-                node.cachedTextLines = VantaTypography.wrapText(value, font, Math.max(1, this.node.width), node.textMaximumLines, node.textFont);
+                node.cachedTextLayoutWidth = node.width;
+                node.cachedTextLines = VantaTypography.wrapText(value, font, Math.max(1, node.width), node.textMaximumLines, node.textFont);
             }
             return;
         }
 
-        if (node.kind != Kind.CONTAINER) return;
+        if (node.kind != VantaUiNode.Kind.CONTAINER) return;
         List<VantaUiNode> layoutChildren = new ArrayList<>();
         for (VantaUiNode child : node.children) {
             if (child.visible) layoutChildren.add(child);
@@ -91,10 +91,10 @@ final class VantaUiLayout {
             return;
         }
 
-        int innerX = this.node.x + node.padding;
-        int innerY = this.node.y + node.padding;
-        int innerWidth = Math.max(0, this.node.width - node.padding * 2);
-        int innerHeight = Math.max(0, this.node.height - node.padding * 2);
+        int innerX = node.x + node.padding;
+        int innerY = node.y + node.padding;
+        int innerWidth = Math.max(0, node.width - node.padding * 2);
+        int innerHeight = Math.max(0, node.height - node.padding * 2);
 
         if (node.direction == VantaUiNode.Direction.STACK) {
             for (VantaUiNode child : layoutChildren) {
