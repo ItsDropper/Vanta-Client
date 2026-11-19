@@ -55,6 +55,11 @@ public final class VantaUiRuntime {
         return screenWidth / viewportFitScale(screenWidth, screenHeight);
     }
 
+    /** Height expressed in the reference design coordinate system. */
+    public static float designHeight(int screenWidth, int screenHeight) {
+        return screenHeight / viewportFitScale(screenWidth, screenHeight);
+    }
+
     /** Marks measurements and placement dirty after content or size constraints change. */
     public void invalidateLayout() {
         lastWidth = -1;
