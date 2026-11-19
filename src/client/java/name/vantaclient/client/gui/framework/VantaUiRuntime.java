@@ -2,16 +2,14 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
-import name.vantaclient.client.gui.compose.interaction.VantaPointerCapture;
+import name.vantaclient.client.gui.compose.interaction.VantaInteractionController;
 
 /** Owns one screen's retained node tree, focus, pointer capture and layout bounds. */
 public final class VantaUiRuntime {
     private final VantaUiNode root;
     private final VantaUiTheme theme = new VantaUiTheme();
 
-    private final VantaFocusController focusController;
-    private final VantaPointerCapture pointerCapture = new VantaPointerCapture();
+    private final VantaInteractionController interactions;
     private VantaUiNode hovered;
     private VantaUiNode pendingFocusReveal;
     private int lastWidth = -1;
@@ -26,7 +24,7 @@ public final class VantaUiRuntime {
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
         this.root = root;
-        this.focusController = new VantaFocusController(root);
+        this.interactions = new VantaInteractionController(root);
     }
 
     /** Applies the user's shared interface scale and invalidates placement when it changes. */
@@ -154,7 +152,7 @@ public final class VantaUiRuntime {
         if (scrollTarget != null) {
             if (root.closeDropdownsExcept(null)) lastWidth = -1;
             setFocused(null);
-            pointerCapture.captureScrollbar(scrollTarget);
+            interactions.captureScrollbar(scrollTarget);
             return true;
         }
 
@@ -166,7 +164,7 @@ public final class VantaUiRuntime {
             return dropdownClosed;
         }
         target.click(mouseX, mouseY, button, font);
-        if (target.kind() == VantaUiNode.Kind.SLIDER) pointerCapture.captureSlider(target);
+        if (target.kind() == VantaUiNode.Kind.SLIDER) interactions.captureSlider(target);
 
         int layoutWidth = lastWidth;
         int layoutHeight = lastHeight;
@@ -184,14 +182,14 @@ public final class VantaUiRuntime {
         if (button != 0) return false;
         double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
         double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
-        if (!pointerCapture.drag(mouseX, mouseY, offsetX, offsetY, uiScale)) return false;
+        if (!interactions.dragPointer(mouseX, mouseY, offsetX, offsetY, uiScale)) return false;
         lastWidth = -1;
         return true;
     }
 
     public boolean mouseReleased(int button) {
         if (button != 0) return false;
-        return pointerCapture.release(button);
+        return interactions.releasePointer(button);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
@@ -213,7 +211,7 @@ public final class VantaUiRuntime {
             cycleFocus(shiftDown ? -1 : 1);
             return true;
         }
-        VantaUiNode focused = focusController.focused();
+        VantaUiNode focused = interactions.focused();
         if (focused == null) return false;
         if (keyCode == 256 && focused.closeDropdown()) {
             lastWidth = -1;
@@ -240,8 +238,7 @@ public final class VantaUiRuntime {
     }
 
     public void dispose() {
-        pointerCapture.cancel();
-        focusController.clear();
+        interactions.clear();
         hovered = null;
         pendingFocusReveal = null;
         root.closeDropdownsExcept(null);
@@ -253,16 +250,16 @@ public final class VantaUiRuntime {
 
     private void setFocused(VantaUiNode node) {
         pendingFocusReveal = null;
-        focusController.setFocused(node);
+        interactions.focus(node);
     }
 
     private void cycleFocus(int direction) {
-        VantaUiNode next = focusController.cycle(direction);
+        VantaUiNode next = interactions.cycleFocus(direction);
         pendingFocusReveal = next;
     }
 
     private void clearFocusIfDetached() {
-        if (focusController.clearIfDetached()) pendingFocusReveal = null;
+        if (interactions.validateFocus()) pendingFocusReveal = null;
     }
 
     private void renderTooltip(GuiGraphics graphics, Font font, int screenWidth, int screenHeight) {
