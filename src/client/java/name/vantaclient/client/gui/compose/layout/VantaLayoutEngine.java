@@ -190,8 +190,8 @@ public final class VantaLayoutEngine {
         int fixed = gaps;
         for (Element child : children) {
             Size size = measurements.get(child);
-            fixed = saturatingAdd(fixed, row ? size.width() : size.height());
-            totalFlex += child.flex();
+            if (child.flex() == 0) fixed = saturatingAdd(fixed, row ? size.width() : size.height());
+            else totalFlex += child.flex();
         }
         int remaining = Math.max(0, mainAvailable - fixed);
         int cursor = row ? left : top;
