@@ -34,26 +34,26 @@ public final class VantaUiNode {
     public record DropdownPopupBounds(int x, int y, int width, int height,
                                       int firstOption, int visibleOptions) {}
 
-    private final Kind kind;
-    private final Direction direction;
-    private final List<VantaUiNode> children = new ArrayList<>();
+    final Kind kind;
+    final Direction direction;
+    final List<VantaUiNode> children = new ArrayList<>();
     static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
     private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
     private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
 
-    private String label = "";
+    String label = "";
     private Icon icon;
     private Identifier texture;
     private Supplier<Identifier> textureSupplier;
-    private Identifier textFont = UI_FONT;
+    Identifier textFont = UI_FONT;
     private Supplier<String> textSupplier;
     private String tooltip = "";
     private String placeholder = "";
     private String cachedDynamicText;
-    private String cachedTextLayoutValue;
-    private List<String> cachedTextLines = List.of();
-    private int textMaximumLines = 1;
-    private int cachedTextLayoutWidth = -1;
+    String cachedTextLayoutValue;
+    List<String> cachedTextLines = List.of();
+    int textMaximumLines = 1;
+    int cachedTextLayoutWidth = -1;
     private String cachedInputValue;
     private String cachedInputVisibleText = "";
     private int cachedInputAvailableWidth = -1;
@@ -68,31 +68,31 @@ public final class VantaUiNode {
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
     private boolean boldText;
     private int background;
-    private int preferredWidth = -1;
-    private int preferredHeight = -1;
-    private VantaLayoutConstraints constraints = VantaLayoutConstraints.UNBOUNDED;
-    private int padding;
-    private int gap;
-    private float flex;
-    private boolean scrollable;
+    int preferredWidth = -1;
+    int preferredHeight = -1;
+    VantaLayoutConstraints constraints = VantaLayoutConstraints.UNBOUNDED;
+    int padding;
+    int gap;
+    float flex;
+    boolean scrollable;
     private boolean clipChildren;
-    private Alignment alignment = Alignment.STRETCH;
-    private Alignment childAlignment = Alignment.STRETCH;
-    private boolean alignmentExplicit;
+    Alignment alignment = Alignment.STRETCH;
+    Alignment childAlignment = Alignment.STRETCH;
+    boolean alignmentExplicit;
     private Justification justification = Justification.START;
-    private boolean visible = true;
+    boolean visible = true;
     private boolean enabled = true;
     private boolean selected;
     private boolean hovered;
     private boolean focused;
-    private int scrollOffset;
-    private int contentHeight;
+    int scrollOffset;
+    int contentHeight;
     private int scrollDragPointerOffset;
 
-    private int x;
-    private int y;
-    private int width;
-    private int height;
+    int x;
+    int y;
+    int width;
+    int height;
     private float hoverAmount;
     private float animatedToggle;
     private float progressPhase;
@@ -383,201 +383,15 @@ public final class VantaUiNode {
     int intrinsicWidth(Font font) {
         if (preferredWidth >= 0) return constraints.constrainWidth(preferredWidth);
         int measured = switch (kind) {
-            case TEXT -> textWidth(font, currentText(), textFont);
-            case ICON, IMAGE -> 16;
-            case SPACER -> 1;
-            case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS -> 160;
-            case CONTAINER -> {
-                int size = 0;
-                int visibleChildren = 0;
-                for (VantaUiNode child : children) {
-                    if (!child.visible) continue;
-                    int childWidth = child.intrinsicWidth(font);
-                    size = direction == Direction.ROW
-                            ? size + childWidth
-                            : Math.max(size, childWidth);
-                    visibleChildren++;
-                }
-                if (direction == Direction.ROW && visibleChildren > 1) {
-                    size += gap * (visibleChildren - 1);
-                }
-                yield size + padding * 2;
-            }
-        };
-        return constraints.constrainWidth(measured);
-    }
+            case TEXT -> textWidth(font, currentT    int intrinsicWidth(Font font) { return VantaUiLayout.intrinsicWidth(this, font); }
 
-    int intrinsicHeight(Font font) {
-        if (preferredHeight >= 0) return constraints.constrainHeight(preferredHeight);
-        int measured = switch (kind) {
-            case TEXT -> textMaximumLines > 1 ? textMaximumLines * 14 : 14;
-            case ICON, IMAGE -> 16;
-            case SPACER -> 0;
-            case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
-            case PROGRESS -> 30;
-            case SLIDER -> VantaUiTheme.SLIDER_HEIGHT;
-            case CONTAINER -> {
-                int size = 0;
-                int visibleChildren = 0;
-                for (VantaUiNode child : children) {
-                    if (!child.visible) continue;
-                    int childHeight = child.intrinsicHeight(font);
-                    size = direction == Direction.COLUMN
-                            ? size + childHeight
-                            : Math.max(size, childHeight);
-                    visibleChildren++;
-                }
-                if (direction == Direction.COLUMN && visibleChildren > 1) {
-                    size += gap * (visibleChildren - 1);
-                }
-                yield size + padding * 2;
-            }
-        };
-        return constraints.constrainHeight(measured);
-    }
+    int intrinsicHeight(Font font) { return VantaUiLayout.intrinsicHeight(this, font); }
 
     void arrange(int x, int y, int width, int height, Font font) {
-        this.x = x;
-        this.y = y;
-        this.width = constraints.constrainWidth(width);
-        this.height = constraints.constrainHeight(height);
-
-        if (kind == Kind.TEXT && textMaximumLines > 1) {
-            String value = currentText();
-            if (!value.equals(cachedTextLayoutValue) || this.width != cachedTextLayoutWidth) {
-                cachedTextLayoutValue = value;
-                cachedTextLayoutWidth = this.width;
-                cachedTextLines = VantaTypography.wrapText(value, font, Math.max(1, this.width), textMaximumLines, textFont);
-            }
-            return;
-        }
-
-        if (kind != Kind.CONTAINER) return;
-        List<VantaUiNode> layoutChildren = new ArrayList<>();
-        for (VantaUiNode child : children) {
-            if (child.visible) layoutChildren.add(child);
-        }
-        if (layoutChildren.isEmpty()) {
-            contentHeight = 0;
-            scrollOffset = 0;
-            return;
-        }
-
-        int innerX = this.x + padding;
-        int innerY = this.y + padding;
-        int innerWidth = Math.max(0, this.width - padding * 2);
-        int innerHeight = Math.max(0, this.height - padding * 2);
-
-        if (direction == Direction.STACK) {
-            for (VantaUiNode child : layoutChildren) {
-                Alignment effectiveAlignment = effectiveAlignment(child);
-                int requestedWidth = child.preferredWidth >= 0
-                        ? child.preferredWidth
-                        : effectiveAlignment == Alignment.STRETCH ? innerWidth
-                        : child.intrinsicWidth(font);
-                int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
-                int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
-                        : effectiveAlignment == Alignment.STRETCH ? innerHeight
-                        : child.intrinsicHeight(font);
-                int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
-                int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
-                int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
-                child.arrange(childX, childY, childWidth, childHeight, font);
-            }
-            return;
-        }
-
-        int childGap = gap * Math.max(0, layoutChildren.size() - 1);
-        float totalFlex = 0.0f;
-        int fixedPrimary = 0;
-        for (VantaUiNode child : layoutChildren) {
-            if (child.flex > 0.0f) totalFlex += child.flex;
-            else fixedPrimary += direction == Direction.COLUMN
-                    ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
-        }
-
-        int availablePrimary = Math.max(0,
-                (direction == Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
-        int[] primarySizes = new int[layoutChildren.size()];
-        int measuredContent = childGap;
-        for (int i = 0; i < layoutChildren.size(); i++) {
-            VantaUiNode child = layoutChildren.get(i);
-            int primary = child.flex > 0.0f && totalFlex > 0.0f
-                    ? Math.round(availablePrimary * child.flex / totalFlex)
-                    : direction == Direction.COLUMN ? child.intrinsicHeight(font) : child.intrinsicWidth(font);
-            primarySizes[i] = primary;
-            measuredContent += primary;
-        }
-
-        int availableSize = direction == Direction.COLUMN ? innerHeight : innerWidth;
-        int freeSpace = Math.max(0, availableSize - measuredContent);
-        int leadingSpace = 0;
-        int distributedGap = 0;
-        if (totalFlex == 0.0f && !(direction == Direction.COLUMN && scrollable)) {
-            switch (justification) {
-                case CENTER -> leadingSpace = freeSpace / 2;
-                case END -> leadingSpace = freeSpace;
-                case SPACE_BETWEEN -> {
-                    if (layoutChildren.size() > 1) distributedGap = freeSpace / (layoutChildren.size() - 1);
-                }
-                case START -> { }
-            }
-        }
-
-        if (direction == Direction.COLUMN) {
-            contentHeight = measuredContent;
-            int maxScroll = Math.max(0, contentHeight - innerHeight);
-            scrollOffset = scrollable ? clamp(scrollOffset, 0, maxScroll) : 0;
-        } else {
-            contentHeight = 0;
-        }
-
-        int cursor = direction == Direction.COLUMN
-                ? innerY + leadingSpace - (scrollable ? scrollOffset : 0)
-                : innerX + leadingSpace;
-        for (int i = 0; i < layoutChildren.size(); i++) {
-            VantaUiNode child = layoutChildren.get(i);
-            int primary = primarySizes[i];
-
-            if (direction == Direction.COLUMN) {
-                Alignment effectiveAlignment = effectiveAlignment(child);
-                int requestedWidth = child.preferredWidth >= 0
-                        ? child.preferredWidth
-                        : effectiveAlignment == Alignment.STRETCH ? innerWidth
-                        : child.intrinsicWidth(font);
-                int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
-                int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
-                child.arrange(childX, cursor, childWidth, primary, font);
-                cursor += primary + gap + distributedGap;
-            } else {
-                Alignment effectiveAlignment = effectiveAlignment(child);
-                int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
-                        : effectiveAlignment == Alignment.STRETCH ? innerHeight
-                        : child.intrinsicHeight(font);
-                int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
-                int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
-                child.arrange(cursor, childY, primary, childHeight, font);
-                cursor += primary + gap + distributedGap;
-            }
-        }
+        VantaUiLayout.arrange(this, x, y, width, height, font);
     }
 
-    private Alignment effectiveAlignment(VantaUiNode child) {
-        return child.alignmentExplicit ? child.alignment : childAlignment;
-    }
-
-    private static int alignedOffset(int start, int available, int size, Alignment alignment) {
-        return switch (alignment) {
-            case CENTER -> start + (available - size) / 2;
-            case END -> start + available - size;
-            case START, STRETCH -> start;
-        };
-    }
-
-    private boolean containsClip(double mouseX, double mouseY) {
-        if (!clipChildren && !scrollable) return true;
-        int clipX = x + (scrollable ? padding : 0);
-        int clipY = y + (scrollable ? padding : 0);
+? padding : 0);
         int clipWidth = width - (scrollable ? padding * 2 : 0);
         int clipHeight = height - (scrollable ? padding * 2 : 0);
         return mouseX >= clipX && mouseX < clipX + clipWidth
@@ -1468,7 +1282,7 @@ public final class VantaUiNode {
         return VantaTypography.fitText(font, value, maximumWidth, fontId);
     }
 
-    private String currentText() {
+    String currentText() {
         if (textSupplier == null) return label;
         String value = textSupplier.get();
         if (value == null) value = "";
@@ -1489,11 +1303,11 @@ public final class VantaUiNode {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    private static int clamp(int value, int minimum, int maximum) {
+    static int clamp(int value, int minimum, int maximum) {
         return Math.max(minimum, Math.min(maximum, value));
     }
 
-    private static double clamp(double value, double minimum, double maximum) {
+    static double clamp(double value, double minimum, double maximum) {
         return Math.max(minimum, Math.min(maximum, value));
     }
 
