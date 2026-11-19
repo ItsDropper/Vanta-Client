@@ -3,6 +3,7 @@ package name.vantaclient.client.gui.framework;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
+import name.vantaclient.client.gui.compose.interaction.VantaPointerCapture;
 
 /** Owns one screen's retained node tree, focus, pointer capture and layout bounds. */
 public final class VantaUiRuntime {
@@ -10,8 +11,7 @@ public final class VantaUiRuntime {
     private final VantaUiTheme theme = new VantaUiTheme();
 
     private final VantaFocusController focusController;
-    private VantaUiNode activeSlider;
-    private VantaUiNode activeScrollbar;
+    private final VantaPointerCapture pointerCapture = new VantaPointerCapture();
     private VantaUiNode hovered;
     private VantaUiNode pendingFocusReveal;
     private int lastWidth = -1;
@@ -154,8 +154,7 @@ public final class VantaUiRuntime {
         if (scrollTarget != null) {
             if (root.closeDropdownsExcept(null)) lastWidth = -1;
             setFocused(null);
-            activeSlider = null;
-            activeScrollbar = scrollTarget;
+            pointerCapture.captureScrollbar(scrollTarget);
             return true;
         }
 
@@ -167,7 +166,7 @@ public final class VantaUiRuntime {
             return dropdownClosed;
         }
         target.click(mouseX, mouseY, button, font);
-        if (target.kind() == VantaUiNode.Kind.SLIDER) activeSlider = target;
+        if (target.kind() == VantaUiNode.Kind.SLIDER) pointerCapture.captureSlider(target);
 
         int layoutWidth = lastWidth;
         int layoutHeight = lastHeight;
@@ -183,28 +182,16 @@ public final class VantaUiRuntime {
 
     public boolean mouseDragged(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
-        if (activeScrollbar != null) {
-            double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
-            activeScrollbar.dragScrollbar((mouseY - offsetY) / uiScale);
-            lastWidth = -1;
-            return true;
-        }
-        if (activeSlider == null) return false;
         double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
-        activeSlider.drag((mouseX - offsetX) / uiScale);
+        double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
+        if (!pointerCapture.drag(mouseX, mouseY, offsetX, offsetY, uiScale)) return false;
+        lastWidth = -1;
         return true;
     }
 
     public boolean mouseReleased(int button) {
         if (button != 0) return false;
-        if (activeScrollbar != null) {
-            activeScrollbar.endScrollbarDrag();
-            activeScrollbar = null;
-            return true;
-        }
-        if (activeSlider == null) return false;
-        activeSlider = null;
-        return true;
+        return pointerCapture.release(button);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
@@ -253,9 +240,7 @@ public final class VantaUiRuntime {
     }
 
     public void dispose() {
-        activeSlider = null;
-        if (activeScrollbar != null) activeScrollbar.endScrollbarDrag();
-        activeScrollbar = null;
+        pointerCapture.cancel();
         focusController.clear();
         hovered = null;
         pendingFocusReveal = null;
