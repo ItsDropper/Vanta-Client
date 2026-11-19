@@ -288,8 +288,7 @@ public final class VantaUiPrototypeScreen extends Screen {
         VantaUiNode search = VantaUiNode.row(9, 10).height(48).background(VantaUiTheme.PANEL_RAISED)
                 .align(VantaUiNode.Alignment.CENTER);
         search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-        search.add(VantaUiNode.textField("Search features...", () -> searchQuery,
-                value -> searchQuery = value, 64).flex(1));
+        search.add(VantaComponents.textField("Search features...", searchQuery, 64).flex(1));
         content.add(search);
         content.add(VantaUiNode.dynamicText(
                 () -> searchQuery.get().isBlank() ? "BROWSE  /  ALL PREVIEW SETTINGS"
