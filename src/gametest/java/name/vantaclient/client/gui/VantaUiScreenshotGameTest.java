@@ -503,7 +503,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         } catch (Exception exception) {
             throw new AssertionError("State subscription lifecycle failed.", exception);
         }
-        if (state.subscriberCount() != 0 || state.set(8) || state.revision() != 2) {
+        if (state.subscriberCount() != 0 || !state.set(8) || state.revision() != 2) {
             throw new AssertionError("Closed subscriptions must detach and unchanged values remain no-ops.");
         }
 
