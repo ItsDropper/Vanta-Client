@@ -545,6 +545,15 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         if (!interactions.releasePointer(0) || interactions.hasPointerCapture()) {
             throw new AssertionError("Primary release must terminate pointer capture.");
         }
+        if (!interactions.captureSlider(slider)) {
+            throw new AssertionError("Slider capture should be reacquirable after release.");
+        }
+        slider.enabled(false);
+        interactions.validateFocus();
+        if (interactions.hasPointerCapture()) {
+            throw new AssertionError("Disabled controls must lose stale pointer capture during validation.");
+        }
+        slider.enabled(true);
         interactions.focus(second);
         interactions.clear();
         if (interactions.focused() != null || interactions.hasPointerCapture()) {
