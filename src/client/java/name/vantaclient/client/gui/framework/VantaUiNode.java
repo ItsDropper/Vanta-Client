@@ -383,6 +383,7 @@ public final class VantaUiNode {
                 || kind == Kind.SLIDER || kind == Kind.DROPDOWN || kind == Kind.TEXT_FIELD;
     }
     public boolean isVisible() { return visible; }
+    public boolean isEnabled() { return enabled; }
     boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
     int intrinsicWidth(Font font) {
