@@ -375,6 +375,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         });
     }
 
+    private static double[] screenPoint(int viewportWidth, int viewportHeight,
+                                         double layoutX, double layoutY) {
+        double scale = VantaUiRuntime.viewportFitScale(viewportWidth, viewportHeight);
+        double offsetX = viewportWidth * 0.5 * (1.0 - scale);
+        double offsetY = viewportHeight * 0.5 * (1.0 - scale);
+        return new double[] {offsetX + layoutX * scale, offsetY + layoutY * scale};
+    }
+
     private static void verifyResponsiveUiViewport(ClientGameTestContext context) {
         context.runOnClient(client -> {
             int[][] viewports = {{1280, 720}, {960, 540}, {640, 360}, {480, 270}};
@@ -627,10 +635,12 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             double thumbCenter = trackTop + thumbHeight / 2.0;
             double bottomThumbCenter = trackTop + viewportHeight - thumbHeight / 2.0;
 
-            if (!runtime.mouseClicked(trackX, thumbCenter, 0, client.font)) {
+            double[] thumbStart = screenPoint(320, 220, trackX, thumbCenter);
+            double[] thumbEnd = screenPoint(320, 220, trackX, bottomThumbCenter);
+            if (!runtime.mouseClicked(thumbStart[0], thumbStart[1], 0, client.font)) {
                 throw new AssertionError("Scrollable UI did not capture the scrollbar thumb.");
             }
-            if (!runtime.mouseDragged(trackX, bottomThumbCenter, 0)) {
+            if (!runtime.mouseDragged(thumbEnd[0], thumbEnd[1], 0)) {
                 throw new AssertionError("Scrollbar thumb did not retain pointer capture.");
             }
             runtime.mouseReleased(0);
@@ -664,18 +674,20 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             int originalHeight = dropdown.height();
             int scrollX = scroll.x() + 12;
             int scrollY = scroll.y() + scroll.height() - 10;
-            runtime.mouseScrolled(scrollX, scrollY, -30.0);
+            double[] parentScrollPoint = screenPoint(320, 220, scrollX, scrollY);
+            runtime.mouseScrolled(parentScrollPoint[0], parentScrollPoint[1], -30.0);
             runtime.layout(client.font, 320, 220);
 
             double controlX = dropdown.x() + dropdown.width() - 12;
             double controlY = dropdown.y() + 12;
-            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+            double[] controlPoint = screenPoint(320, 220, controlX, controlY);
+            if (!runtime.mouseClicked(controlPoint[0], controlPoint[1], 0, client.font)) {
                 throw new AssertionError("Dropdown control did not open.");
             }
             runtime.layout(client.font, 320, 220);
             VantaUiNode.DropdownPopupBounds popup = runtime.dropdownPopupBounds();
             if (popup == null || popup.visibleOptions() <= 0 || popup.width() <= 0
-                    || popup.y() < 0 || popup.y() + popup.height() > 220) {
+                    || popup.y() < 0 || popup.y() + popup.height() > Math.round(220 / VantaUiRuntime.viewportFitScale(320, 220))) {
                 throw new AssertionError("Dropdown popup was not positioned inside the viewport: " + popup);
             }
             if (dropdown.height() != originalHeight) {
@@ -688,8 +700,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Dropdown popup did not escape its scrollable parent's scissor.");
             }
 
-            if (!runtime.mouseScrolled(popup.x() + popup.width() - 10,
-                    popup.y() + 10, -2.0)) {
+            double[] popupScrollPoint = screenPoint(320, 220,
+                    popup.x() + popup.width() - 10, popup.y() + 10);
+            if (!runtime.mouseScrolled(popupScrollPoint[0], popupScrollPoint[1], -2.0)) {
                 throw new AssertionError("Dropdown popup did not capture its own mouse-wheel input.");
             }
             VantaUiNode.DropdownPopupBounds scrolledPopup = runtime.dropdownPopupBounds();
@@ -698,8 +711,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                         + scrolledPopup);
             }
 
-            if (!runtime.mouseClicked(scrolledPopup.x() + 12, scrolledPopup.y() + 11,
-                    0, client.font)) {
+            double[] optionPoint = screenPoint(320, 220,
+                    scrolledPopup.x() + 12, scrolledPopup.y() + 11);
+            if (!runtime.mouseClicked(optionPoint[0], optionPoint[1], 0, client.font)) {
                 throw new AssertionError("Scrolled dropdown option did not receive the click.");
             }
             if (!"Option 2".equals(selected[0]) || runtime.dropdownPopupBounds() != null) {
@@ -707,7 +721,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
 
             runtime.layout(client.font, 320, 220);
-            if (!runtime.mouseClicked(controlX, controlY, 0, client.font)) {
+            if (!runtime.mouseClicked(controlPoint[0], controlPoint[1], 0, client.font)) {
                 throw new AssertionError("Dropdown did not reopen for keyboard interaction.");
             }
             runtime.layout(client.font, 320, 220);
@@ -723,7 +737,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Dropdown did not reopen for parent-scroll dismissal.");
             }
             runtime.layout(client.font, 320, 220);
-            if (!runtime.mouseScrolled(scroll.x() + 12, scroll.y() + 12, -1.0)
+            double[] dismissPoint = screenPoint(320, 220,
+                    scroll.x() + 12, scroll.y() + 12);
+            if (!runtime.mouseScrolled(dismissPoint[0], dismissPoint[1], -1.0)
                     || runtime.dropdownPopupBounds() != null) {
                 throw new AssertionError("Scrolling the parent viewport did not dismiss its dropdown.");
             }
