@@ -22,6 +22,9 @@ import name.vantaclient.client.hudeditor.HudSettingsPanel;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.framework.VantaState;
+import name.vantaclient.client.gui.framework.VantaLayoutConstraints;
+import name.vantaclient.client.gui.compose.interaction.VantaInteractionController;
 import name.vantaclient.client.gui.compose.interaction.VantaFocusController;
 import name.vantaclient.client.gui.compose.interaction.VantaPointerCapture;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
@@ -80,6 +83,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyRelayEndpointValidation(context);
         verifyFocusController(context);
         verifyPointerCapture(context);
+        verifyComposeStateAndConstraints();
+        verifyInteractionCoordinator();
         verifyScrollbarThumbDragging(context);
         verifyDropdownPopupOverlay(context);
         verifyConnectedHudBackgrounds(context);
@@ -478,6 +483,72 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             throw new AssertionError("A theme with a missing token group must be rejected.");
         } catch (IllegalArgumentException expected) {
             // Invalid theme snapshots must fail at construction, not during rendering.
+        }
+    }
+
+    private static void verifyComposeStateAndConstraints() {
+        VantaState<Integer> state = new VantaState<>(2);
+        int[] notifications = {0};
+        try (AutoCloseable subscription = state.subscribe(value -> notifications[0] += value, true)) {
+            if (state.revision() != 0 || notifications[0] != 2) {
+                throw new AssertionError("State subscriptions must optionally emit the initial value without changing revision.");
+            }
+            if (!state.update(value -> value + 3) || state.get() != 5 || state.revision() != 1
+                    || notifications[0] != 7) {
+                throw new AssertionError("State update must atomically change value, revision and notify listeners.");
+            }
+            if (state.set(5) || state.revision() != 1) {
+                throw new AssertionError("Equal state writes must not emit or advance revision.");
+            }
+        } catch (Exception exception) {
+            throw new AssertionError("State subscription lifecycle failed.", exception);
+        }
+        if (state.subscriberCount() != 0 || state.set(8) || state.revision() != 2) {
+            throw new AssertionError("Closed subscriptions must detach and unchanged values remain no-ops.");
+        }
+
+        VantaLayoutConstraints constraints = new VantaLayoutConstraints(40, 20, 200, 100);
+        if (constraints.constrainWidth(10) != 40 || constraints.constrainHeight(500) != 100
+                || constraints.constrainWidth(150, 80) != 80
+                || constraints.constrainHeight(10, 12) != 12) {
+            throw new AssertionError("Layout constraints must honor min/max bounds and available space.");
+        }
+        VantaLayoutConstraints resized = constraints.withMinimum(60, 30).withMaximum(120, 80);
+        if (resized.constrainWidth(20) != 60 || resized.constrainHeight(90) != 80
+                || constraints.minWidth() != 40) {
+            throw new AssertionError("Constraint updates must be immutable and preserve independent snapshots.");
+        }
+    }
+
+    private static void verifyInteractionCoordinator() {
+        VantaUiNode root = VantaUiNode.column(4, 2);
+        VantaUiNode first = VantaUiNode.button("First", () -> {});
+        VantaUiNode slider = VantaUiNode.slider("Test slider", 0.0, 1.0, 0.1,
+                () -> 0.5, value -> {});
+        VantaUiNode second = VantaUiNode.button("Second", () -> {});
+        root.add(first).add(slider).add(second);
+
+        VantaInteractionController interactions = new VantaInteractionController(root);
+        if (interactions.cycleFocus(1) != first || interactions.cycleFocus(1) != slider
+                || interactions.cycleFocus(1) != second || interactions.cycleFocus(1) != first) {
+            throw new AssertionError("Unified interaction coordinator must preserve wrapped focus traversal.");
+        }
+        if (!interactions.captureSlider(slider)
+                || interactions.pointerCaptureType() != VantaPointerCapture.Type.SLIDER
+                || interactions.pointerCaptureTarget() != slider
+                || !interactions.hasPointerCapture()) {
+            throw new AssertionError("Interaction coordinator failed to acquire slider pointer capture.");
+        }
+        if (interactions.releasePointer(1) || !interactions.hasPointerCapture()) {
+            throw new AssertionError("Non-primary pointer release must not cancel primary capture.");
+        }
+        if (!interactions.releasePointer(0) || interactions.hasPointerCapture()) {
+            throw new AssertionError("Primary release must terminate pointer capture.");
+        }
+        interactions.focus(second);
+        interactions.clear();
+        if (interactions.focused() != null || interactions.hasPointerCapture()) {
+            throw new AssertionError("Interaction disposal must clear focus and pointer capture together.");
         }
     }
 
