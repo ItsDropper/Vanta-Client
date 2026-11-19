@@ -13,9 +13,10 @@ public final class VantaThemeFactory {
 
     public static VantaTheme create() {
         VantaClientPreferences preferences = VantaClientPreferences.get();
-        float opacity = preferences.panelOpacity;
-        if (!Float.isFinite(opacity)) opacity = DEFAULT_PANEL_OPACITY;
-        opacity = Math.max(MIN_PANEL_OPACITY, Math.min(MAX_PANEL_OPACITY, opacity));
+        double configuredOpacity = preferences.panelOpacity;
+        if (!Double.isFinite(configuredOpacity)) configuredOpacity = DEFAULT_PANEL_OPACITY;
+        float opacity = (float) Math.max(MIN_PANEL_OPACITY,
+                Math.min(MAX_PANEL_OPACITY, configuredOpacity));
 
         VantaTheme.Palette palette = new VantaTheme.Palette(
                 VantaUiTheme.CANVAS, VantaUiTheme.TEXT_PRIMARY,
