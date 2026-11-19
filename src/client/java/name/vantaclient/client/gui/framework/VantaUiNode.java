@@ -1118,7 +1118,7 @@ public final class VantaUiNode {
         return this;
     }
 
-    void dragScrollbar(double mouseY) {
+    public void dragScrollbar(double mouseY) {
         int maxScroll = scrollMaxOffset();
         int trackTravel = scrollViewportHeight() - scrollThumbHeight();
         if (!scrollable || maxScroll <= 0 || trackTravel <= 0) return;
@@ -1126,7 +1126,7 @@ public final class VantaUiNode {
         scrollOffset = clamp((int) Math.round(normalized * maxScroll), 0, maxScroll);
     }
 
-    void endScrollbarDrag() {
+    public void endScrollbarDrag() {
         scrollDragPointerOffset = 0;
     }
 
@@ -1319,7 +1319,7 @@ public final class VantaUiNode {
         return true;
     }
 
-    void drag(double mouseX) {
+    public void drag(double mouseX) {
         if (kind == Kind.SLIDER && enabled) updateSlider(mouseX);
     }
 
