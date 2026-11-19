@@ -253,7 +253,6 @@ public final class VantaUiRuntime {
 
     private void setFocused(VantaUiNode node) {
         pendingFocusReveal = null;
-        if (focused == node) return;
         focusController.setFocused(node);
     }
 
