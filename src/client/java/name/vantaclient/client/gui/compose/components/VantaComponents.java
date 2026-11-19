@@ -31,9 +31,9 @@ public final class VantaComponents {
         if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || maximum < minimum) {
             throw new IllegalArgumentException("Slider range must be finite and ordered.");
         }
+        state.update(current -> current == null ? minimum : Math.max(minimum, Math.min(maximum, current)));
         DoubleConsumer setter = value -> state.set(Math.max(minimum, Math.min(maximum, value)));
-        return VantaUiNode.slider(label, minimum, maximum, step,
-                () -> state.get() == null ? minimum : state.get(), setter);
+        return VantaUiNode.slider(label, minimum, maximum, step, state::get, setter);
     }
 
     public static VantaUiNode textField(String placeholder, VantaState<String> state,
