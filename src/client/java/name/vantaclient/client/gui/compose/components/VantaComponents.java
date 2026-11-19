@@ -33,7 +33,8 @@ public final class VantaComponents {
         }
         state.update(current -> current == null ? minimum : Math.max(minimum, Math.min(maximum, current)));
         DoubleConsumer setter = value -> state.set(Math.max(minimum, Math.min(maximum, value)));
-        return VantaUiNode.slider(label, minimum, maximum, step, state::get, setter);
+        return VantaUiNode.slider(label, minimum, maximum, step,
+                () -> { Double current = state.get(); return current == null ? minimum : current; }, setter);
     }
 
     public static VantaUiNode textField(String placeholder, VantaState<String> state,
