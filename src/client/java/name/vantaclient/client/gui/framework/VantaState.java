@@ -33,14 +33,26 @@ public final class VantaState<T> {
             value = next;
             revision++;
         }
-        for (Consumer<T> listener : listeners) listener.accept(next);
+        notifyListeners(next);
         return true;
     }
 
+    /** Applies the update atomically against the current value. */
     public boolean update(UnaryOperator<T> updater) {
         Objects.requireNonNull(updater, "updater");
-        T current = get();
-        return set(updater.apply(current));
+        T next;
+        synchronized (this) {
+            next = updater.apply(value);
+            if (Objects.equals(value, next)) return false;
+            value = next;
+            revision++;
+        }
+        notifyListeners(next);
+        return true;
+    }
+
+    private void notifyListeners(T next) {
+        for (Consumer<T> listener : listeners) listener.accept(next);
     }
 
     public AutoCloseable subscribe(Consumer<T> listener) {
