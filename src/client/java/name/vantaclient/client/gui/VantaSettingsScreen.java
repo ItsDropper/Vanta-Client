@@ -92,7 +92,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
         VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
                 ;
 
@@ -215,7 +215,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private void addOverview(VantaUiNode content) {
-        boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
         long enabledCount = FeatureRegistry.FEATURES.stream()
                 .filter(Feature::isEnabled).count();
         int totalCount = FeatureRegistry.FEATURES.size();
@@ -446,7 +446,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private void addFeatureCategory(VantaUiNode content) {
-        boolean compact = width < 760 || VantaClientPreferences.get().compactMode;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
         Category category = toCategory(page);
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
