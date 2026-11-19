@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.feature.Category;
@@ -192,12 +193,11 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private VantaUiNode nav(String label, Page target, VantaUiNode.Icon icon) {
-        return VantaUiNode.button(label, icon, () -> {
+        return VantaCompose.navigationItem(label, icon, page == target, () -> {
             page = target;
             selectedFeature = null;
             rebuildUi();
-        }).height(34).selected(page == target)
-                .tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
+        }).tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
     }
 
     private void addPageContent(VantaUiNode content) {
@@ -220,11 +220,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 .filter(Feature::isEnabled).count();
         int totalCount = FeatureRegistry.FEATURES.size();
 
-        content.add(VantaUiNode.eyebrow("VANTA  /  OVERVIEW"));
-        content.add(VantaUiNode.title("Control center"));
-        content.add(VantaUiNode.text(
-                "Your client, your layout. Jump straight to the systems you use.",
-                VantaUiTheme.TEXT_SECONDARY));
+        content.add(VantaCompose.sectionHeader("VANTA  /  OVERVIEW", "Control center",
+                "Your client, your layout. Jump straight to the systems you use."));
 
         VantaUiNode overview = VantaUiNode.row(compact ? 0 : 14, 0);
         if (compact) overview = VantaUiNode.column(10, 0);
@@ -290,8 +287,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         overview.add(health);
         content.add(overview);
 
-        content.add(VantaUiNode.eyebrow("WORKSPACES"));
-        content.add(VantaUiNode.title("Choose a system"));
+        content.add(VantaCompose.sectionHeader("WORKSPACES", "Choose a system", null));
         VantaUiNode workspaceList = VantaUiNode.column(1, 0)
                 .background(VantaUiTheme.PANEL_RAISED);
         addWorkspaceRow(workspaceList, "HUD editor",
@@ -308,8 +304,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 Page.MISC, VantaUiNode.Icon.SPARK);
         content.add(workspaceList);
 
-        content.add(VantaUiNode.eyebrow("QUICK ACCESS"));
-        content.add(VantaUiNode.title("Enabled modules"));
+        content.add(VantaCompose.sectionHeader("QUICK ACCESS", "Enabled modules", null));
         VantaUiNode activePanel = VantaUiNode.column(1, 8)
                 .background(VantaUiTheme.PANEL_RAISED);
         List<Feature> activeFeatures = FeatureRegistry.FEATURES.stream()
@@ -359,21 +354,11 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     private void addWorkspaceRow(VantaUiNode list, String title, String detail,
                                  Page target, VantaUiNode.Icon icon) {
-        VantaUiNode row = VantaUiNode.row(12, 10)
-                .height(54)
-                .align(VantaUiNode.Alignment.CENTER);
-        row.add(VantaUiNode.icon(icon).size(18, 18)
-                .iconColor(VantaClientPreferences.get().accent.color()));
-        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(title));
-        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
-        row.add(labels);
-        row.add(VantaUiNode.button("Open", () -> {
+        list.add(VantaCompose.workspaceRow(title, detail, icon, () -> {
             page = target;
             selectedFeature = null;
             rebuildUi();
-        }).height(28));
-        list.add(row);
+        }));
         list.add(divider());
     }
 
