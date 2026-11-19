@@ -143,7 +143,7 @@ final class VantaUiLayout {
         int leadingSpace = 0;
         int distributedGap = 0;
         if (totalFlex == 0.0f && !(node.direction == VantaUiNode.Direction.COLUMN && node.scrollable)) {
-            switch (justification) {
+            switch (node.justification) {
                 case CENTER -> leadingSpace = freeSpace / 2;
                 case END -> leadingSpace = freeSpace;
                 case SPACE_BETWEEN -> {
