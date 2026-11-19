@@ -66,7 +66,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = width < 680;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 680.0f;
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         lanStatus = VantaLanHostingService.status();
 
