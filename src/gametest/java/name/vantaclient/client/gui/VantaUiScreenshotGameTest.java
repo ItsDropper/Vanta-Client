@@ -23,6 +23,7 @@ import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiMotion;
+import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.integration.VantaLanHostingService;
 import name.vantaclient.client.integration.net.LoopbackTcpBridge;
 import name.vantaclient.client.integration.net.VantaRelayClient;
@@ -89,6 +90,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         verifyChatTimestampDecoration(context);
         verifyAdaptiveEntityDistancePolicy(context);
         verifyFarTerrainPlanningMath(context);
+        verifyGlassSurfaceSystem();
         verifyUiMotion(context);
         verifyResponsiveUiViewport(context);
         verifyProgressComponent(context);
@@ -343,6 +345,30 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Progress motion must recover from a non-finite phase.");
             }
         });
+    }
+
+    private static void verifyGlassSurfaceSystem() {
+        VantaCompose.Theme theme = VantaCompose.theme();
+        if (theme.blurStrategy() != VantaCompose.BackdropBlurStrategy.MINECRAFT_GUI_RENDER_GRAPH) {
+            throw new AssertionError("VantaCompose must use Minecraft's GUI render-graph blur.");
+        }
+        if (!VantaCompose.Screen.class.isAssignableFrom(VantaSettingsScreen.class)
+                || !VantaCompose.Screen.class.isAssignableFrom(VantaIntegrationsScreen.class)
+                || !VantaCompose.Screen.class.isAssignableFrom(VantaModrinthBrowserScreen.class)
+                || !VantaCompose.Screen.class.isAssignableFrom(VantaIntegrationSettingsScreen.class)
+                || !VantaCompose.Screen.class.isAssignableFrom(VantaWorldShareScreen.class)
+                || !VantaCompose.Screen.class.isAssignableFrom(HudEditorScreen.class)) {
+            throw new AssertionError("Every primary Vanta surface must opt into the glass backdrop.");
+        }
+        int minimumAlpha = VantaCompose.resolveTintAlpha(VantaCompose.Material.PANEL, 0.72f);
+        int maximumAlpha = VantaCompose.resolveTintAlpha(VantaCompose.Material.PANEL, 0.98f);
+        if (minimumAlpha <= 0 || maximumAlpha <= minimumAlpha || maximumAlpha > 255) {
+            throw new AssertionError("Glass opacity must remain bounded and preference-controlled.");
+        }
+        if (VantaCompose.resolveTintAlpha(VantaCompose.Material.POPOVER, 0.85f)
+                <= VantaCompose.resolveTintAlpha(VantaCompose.Material.CARD, 0.85f)) {
+            throw new AssertionError("Popover glass must be denser than card glass for legibility.");
+        }
     }
 
     private static void verifyUiMotion(ClientGameTestContext context) {
