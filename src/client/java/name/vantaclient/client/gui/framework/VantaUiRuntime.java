@@ -19,7 +19,11 @@ public final class VantaUiRuntime {
     private long lastFrameNanos;
     private long lastUiRenderNanos;
     private long averageUiRenderNanos;
+    private float preferredScale = 1.0f;
     private float uiScale = 1.0f;
+
+    private static final float DESIGN_WIDTH = 640.0f;
+    private static final float DESIGN_HEIGHT = 360.0f;
 
     public VantaUiRuntime(VantaUiNode root) {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
@@ -27,12 +31,28 @@ public final class VantaUiRuntime {
         this.interactions = new VantaInteractionController(root);
     }
 
-    /** Applies the user's shared interface scale and invalidates placement when it changes. */
+    /**
+     * Sets the user's preferred UI scale. The runtime additionally fits a
+     * 640×360 design viewport to the available Minecraft GUI coordinates so
+     * the same layout occupies the same screen-relative position at every
+     * resolution and GUI scale.
+     */
     public void setScale(float scale) {
         float bounded = Float.isFinite(scale) ? Math.max(0.8f, Math.min(1.2f, scale)) : 1.0f;
-        if (Float.compare(uiScale, bounded) == 0) return;
-        uiScale = bounded;
+        if (Float.compare(preferredScale, bounded) == 0) return;
+        preferredScale = bounded;
         invalidateLayout();
+    }
+
+    /** Uniform scale needed to fit the reference design viewport in a screen. */
+    public static float viewportFitScale(int screenWidth, int screenHeight) {
+        if (screenWidth <= 0 || screenHeight <= 0) return 1.0f;
+        return Math.min(screenWidth / DESIGN_WIDTH, screenHeight / DESIGN_HEIGHT);
+    }
+
+    /** Width expressed in the reference design coordinate system. */
+    public static float designWidth(int screenWidth, int screenHeight) {
+        return screenWidth / viewportFitScale(screenWidth, screenHeight);
     }
 
     /** Marks measurements and placement dirty after content or size constraints change. */
@@ -41,6 +61,13 @@ public final class VantaUiRuntime {
     }
 
     public void layout(Font font, int screenWidth, int screenHeight) {
+        float fitScale = viewportFitScale(screenWidth, screenHeight);
+        float effectiveScale = preferredScale * fitScale;
+        if (!Float.isFinite(effectiveScale) || effectiveScale <= 0.0f) effectiveScale = 1.0f;
+        if (Float.compare(uiScale, effectiveScale) != 0) {
+            uiScale = effectiveScale;
+            lastWidth = -1;
+        }
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
         lastWidth = screenWidth;
         lastHeight = screenHeight;
@@ -48,17 +75,17 @@ public final class VantaUiRuntime {
         viewportHeight = screenHeight;
         int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
         int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
-        // Keep a small physical frame at every Minecraft GUI scale. The
-        // logical viewport is centered inside the scaled coordinate system;
-        // omitting that origin shift clips and misaligns enlarged interfaces.
-        int physicalMargin = Math.max(8, Math.min(22,
-                Math.round(Math.min(screenWidth, screenHeight) * 0.06f)));
-        int margin = Math.max(1, Math.round(physicalMargin / uiScale));
+
+        // Insets are percentages of the fitted design viewport, not fixed
+        // Minecraft GUI pixels. This keeps the frame anchored consistently
+        // across GUI scales, window sizes, and the user's scale preference.
+        int marginX = Math.max(1, Math.round(layoutWidth * 0.025f));
+        int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
         int logicalLeft = Math.round((screenWidth - layoutWidth) * 0.5f);
         int logicalTop = Math.round((screenHeight - layoutHeight) * 0.5f);
-        root.arrange(logicalLeft + margin, logicalTop + margin,
-                Math.max(0, layoutWidth - margin * 2),
-                Math.max(0, layoutHeight - margin * 2), font);
+        root.arrange(logicalLeft + marginX, logicalTop + marginY,
+                Math.max(0, layoutWidth - marginX * 2),
+                Math.max(0, layoutHeight - marginY * 2), font);
         clearFocusIfDetached();
     }
 
