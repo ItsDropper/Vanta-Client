@@ -566,12 +566,6 @@ public final class VantaUiNode {
         return child.alignmentExplicit ? child.alignment : childAlignment;
     }
 
-    private static int constrain(int desired, int available, int minimum, int maximum) {
-        int upper = Math.max(0, Math.min(available, maximum));
-        int lower = Math.min(upper, Math.max(0, minimum));
-        return Math.max(lower, Math.min(upper, desired));
-    }
-
     private static int alignedOffset(int start, int available, int size, Alignment alignment) {
         return switch (alignment) {
             case CENTER -> start + (available - size) / 2;
