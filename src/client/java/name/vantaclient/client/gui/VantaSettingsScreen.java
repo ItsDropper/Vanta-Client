@@ -519,51 +519,26 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     private VantaUiNode featureCard(Feature feature, VantaUiNode.Icon categoryIcon,
                                     boolean compact) {
         boolean hasSettings = !SettingRegistry.getSettings(feature).isEmpty();
-        VantaUiNode card = VantaCompose.surface(VantaCompose.Material.CARD,
-                compact ? 6 : 8, compact ? 10 : 12)
-                .height(compact ? 142 : 166);
-
-        VantaUiNode identity = VantaUiNode.row(8, 0)
-                .height(22).align(VantaUiNode.Alignment.CENTER);
-        identity.add(VantaUiNode.icon(categoryIcon).size(18, 18)
-                .iconColor(VantaClientPreferences.get().accent.color()));
-        identity.add(VantaUiNode.spacer(1).flex(1));
-        identity.add(VantaUiNode.dynamicText(
+        String description = VantaClientPreferences.get().showDescriptions
+                ? feature.getDescription() : null;
+        return VantaCompose.moduleCard(
+                feature.getName(),
+                description,
+                categoryIcon,
                 () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
-                VantaClientPreferences.get().accent.color()));
-        card.add(identity);
-
-        card.add(VantaUiNode.title(feature.getName()));
-        String description = feature.getDescription();
-        if (VantaClientPreferences.get().showDescriptions
-                && description != null && !description.isBlank()) {
-            card.add(VantaUiNode.paragraph(description,
-                    VantaUiTheme.TEXT_MUTED, compact ? 1 : 2));
-        } else {
-            card.add(VantaUiNode.text(hasSettings ? "Configurable module" : "No additional options",
-                    VantaUiTheme.TEXT_MUTED));
-        }
-
-        card.add(VantaUiNode.spacer(1).flex(1));
-        VantaUiNode actions = VantaUiNode.row(7, 0)
-                .height(30).align(VantaUiNode.Alignment.CENTER);
-        if (hasSettings) {
-            actions.add(VantaUiNode.button("Configure", () -> {
-                selectedFeature = feature;
-                rebuildUi();
-            }).height(28).tooltip("Open " + feature.getName() + " settings"));
-        } else {
-            actions.add(VantaUiNode.text("Module", VantaUiTheme.TEXT_MUTED));
-        }
-        actions.add(VantaUiNode.spacer(1).flex(1));
-        actions.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
-            if (feature.isEnabled() != enabled) feature.toggle();
-            feature.saveConfig();
-            DropperUtilsConfig.save();
-        }).width(46).height(28)
-                .tooltip("Enable or disable " + feature.getName()));
-        card.add(actions);
-        return card;
+                VantaClientPreferences.get().accent.color(),
+                compact ? 142 : 166,
+                hasSettings,
+                () -> {
+                    selectedFeature = feature;
+                    rebuildUi();
+                },
+                feature::isEnabled,
+                enabled -> {
+                    if (feature.isEnabled() != enabled) feature.toggle();
+                    feature.saveConfig();
+                    DropperUtilsConfig.save();
+                });
     }
 
     private boolean matchesSearch(Feature feature) {
