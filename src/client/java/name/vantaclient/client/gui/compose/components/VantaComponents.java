@@ -5,7 +5,10 @@ import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.function.Supplier;
 
 /**
  * State-bound component factories for the retained UI.
@@ -66,6 +69,50 @@ public final class VantaComponents {
         private static int current() {
             return name.vantaclient.client.config.VantaClientPreferences.get().accent.color();
         }
+    }
+
+    /**
+     * Reusable module tile used by the feature browser. Domain state remains owned
+     * by the caller; this component only composes the visual identity and controls.
+     */
+    public static VantaUiNode moduleCard(String title, String description, VantaUiNode.Icon icon,
+                                         Supplier<String> status, int accent, boolean configurable,
+                                         Runnable configure, BooleanSupplier enabled,
+                                         Consumer<Boolean> toggle) {
+        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(icon, "icon");
+        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(enabled, "enabled");
+        Objects.requireNonNull(toggle, "toggle");
+
+        VantaUiNode card = surface(Surface.ELEVATED, 8, 12).height(166);
+        VantaUiNode identity = VantaUiNode.row(8, 0)
+                .height(22).align(VantaUiNode.Alignment.CENTER);
+        identity.add(VantaUiNode.icon(icon).size(18, 18).iconColor(accent));
+        identity.add(VantaUiNode.spacer(1).flex(1));
+        identity.add(VantaUiNode.dynamicText(status, accent));
+        card.add(identity);
+        card.add(VantaUiNode.title(title));
+        card.add(VantaUiNode.paragraph(
+                description == null || description.isBlank()
+                        ? (configurable ? "Configurable module" : "No additional options")
+                        : description,
+                VantaUiTheme.TEXT_MUTED, 2));
+        card.add(VantaUiNode.spacer(1).flex(1));
+
+        VantaUiNode actions = VantaUiNode.row(7, 0)
+                .height(30).align(VantaUiNode.Alignment.CENTER);
+        if (configurable) {
+            actions.add(VantaUiNode.button("Configure", Objects.requireNonNull(configure, "configure"))
+                    .height(28).tooltip("Open " + title + " settings"));
+        } else {
+            actions.add(VantaUiNode.text("Module", VantaUiTheme.TEXT_MUTED));
+        }
+        actions.add(VantaUiNode.spacer(1).flex(1));
+        actions.add(VantaUiNode.toggle("", enabled, toggle).width(46).height(28)
+                .tooltip("Enable or disable " + title));
+        card.add(actions);
+        return card;
     }
 
     public static VantaUiNode button(String label, Runnable action) {
