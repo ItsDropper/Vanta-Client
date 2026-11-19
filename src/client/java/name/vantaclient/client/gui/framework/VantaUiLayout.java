@@ -155,7 +155,7 @@ final class VantaUiLayout {
         if (node.direction == VantaUiNode.Direction.COLUMN) {
             node.contentHeight = measuredContent;
             int maxScroll = Math.max(0, node.contentHeight - innerHeight);
-            node.scrollOffset = node.scrollable ? clamp(node.scrollOffset, 0, maxScroll) : 0;
+            node.scrollOffset = node.scrollable ? VantaUiNode.clamp(node.scrollOffset, 0, maxScroll) : 0;
         } else {
             node.contentHeight = 0;
         }
