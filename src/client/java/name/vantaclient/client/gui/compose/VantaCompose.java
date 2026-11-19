@@ -5,6 +5,10 @@ import name.vantaclient.client.gui.compose.theme.VantaTheme;
 import name.vantaclient.client.gui.compose.theme.VantaThemeFactory;
 import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -41,6 +45,14 @@ public final class VantaCompose {
             case POPOVER -> VantaComponents.Surface.POPOVER;
         };
         return VantaComponents.surface(surface, gap, padding);
+    }
+
+    public static VantaUiNode moduleCard(String title, String description, VantaUiNode.Icon icon,
+                                          Supplier<String> status, int accent, boolean configurable,
+                                          Runnable configure, BooleanSupplier enabled,
+                                          Consumer<Boolean> toggle) {
+        return VantaComponents.moduleCard(title, description, icon, status, accent,
+                configurable, configure, enabled, toggle);
     }
 
     public static VantaUiNode sectionHeader(String eyebrow, String title, String detail) {
