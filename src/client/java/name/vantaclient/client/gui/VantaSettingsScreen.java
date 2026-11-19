@@ -319,28 +319,66 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         top.add(status);
         content.add(top);
 
-        content.add(sectionTitle(VantaUiNode.Icon.SPARK, "Your feature spaces",
-                "Choose a part of the client to configure"));
-        VantaUiNode categories = compact
-                ? VantaUiNode.column(8, 0)
-                : VantaUiNode.row(10, 0);
-        VantaUiNode firstColumn = VantaUiNode.column(1, 8)
-                .flex(1).background(VantaUiTheme.PANEL_RAISED).padding(10);
-        firstColumn.add(categoryShortcut("HUD", "Overlays, counters and vanilla HUD positioning",
+        content.add(sectionTitle(VantaUiNode.Icon.SPARK, "Explore modules",
+                "Purpose-built spaces for the parts of your client"));
+        VantaUiNode categories = VantaUiNode.column(8, 0);
+        VantaUiNode categoryRowOne = VantaUiNode.row(10, 0);
+        categoryRowOne.add(categoryCard("HUD", "Overlays, counters and vanilla HUD positioning",
                 Page.HUD, VantaUiNode.Icon.HUD));
-        firstColumn.add(divider());
-        firstColumn.add(categoryShortcut("Visual", "Rendering, lighting and visual effects",
+        categoryRowOne.add(categoryCard("Visual", "Rendering, lighting and visual effects",
                 Page.VISUAL, VantaUiNode.Icon.VISUALS));
-        VantaUiNode secondColumn = VantaUiNode.column(1, 8)
-                .flex(1).background(VantaUiTheme.PANEL_RAISED).padding(10);
-        secondColumn.add(categoryShortcut("Combat", "Combat utilities and related settings",
+        VantaUiNode categoryRowTwo = VantaUiNode.row(10, 0);
+        categoryRowTwo.add(categoryCard("Combat", "Combat utilities and related settings",
                 Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
-        secondColumn.add(divider());
-        secondColumn.add(categoryShortcut("Miscellaneous", "Additional tools and quality-of-life features",
+        categoryRowTwo.add(categoryCard("Miscellaneous", "Additional tools and quality-of-life features",
                 Page.MISC, VantaUiNode.Icon.SPARK));
-        categories.add(firstColumn);
-        categories.add(secondColumn);
+        categories.add(categoryRowOne);
+        categories.add(categoryRowTwo);
         content.add(categories);
+
+        content.add(sectionTitle(VantaUiNode.Icon.DISPLAY, "Enabled right now",
+                "Your active modules, ready to configure"));
+        List<Feature> activeFeatures = FeatureRegistry.FEATURES.stream()
+                .filter(Feature::isEnabled).limit(compact ? 2 : 3).toList();
+        VantaUiNode activePanel = VantaUiNode.column(1, 8)
+                .background(VantaUiTheme.PANEL_RAISED);
+        if (activeFeatures.isEmpty()) {
+            activePanel.add(VantaUiNode.text("No modules are enabled yet. Open a feature space to get started.",
+                    VantaUiTheme.TEXT_MUTED));
+        } else {
+            for (Feature feature : activeFeatures) {
+                VantaUiNode activeRow = VantaUiNode.row(10, 6)
+                        .align(VantaUiNode.Alignment.CENTER);
+                VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
+                identity.add(VantaUiNode.text(feature.getName()));
+                if (VantaClientPreferences.get().showDescriptions
+                        && feature.getDescription() != null && !feature.getDescription().isBlank()) {
+                    identity.add(VantaUiNode.text(feature.getDescription(), VantaUiTheme.TEXT_MUTED));
+                }
+                activeRow.add(identity);
+                if (!SettingRegistry.getSettings(feature).isEmpty()) {
+                    activeRow.add(VantaUiNode.button("Configure", () -> {
+                        selectedFeature = feature;
+                        page = switch (feature.getCategory()) {
+                            case HUD -> Page.HUD;
+                            case VISUAL -> Page.VISUAL;
+                            case COMBAT -> Page.COMBAT;
+                            case MISC -> Page.MISC;
+                        };
+                        rebuildUi();
+                    }).height(27));
+                }
+                activeRow.add(VantaUiNode.toggle("", feature::isEnabled, enabled -> {
+                    if (feature.isEnabled() != enabled) feature.toggle();
+                    feature.saveConfig();
+                    DropperUtilsConfig.save();
+                    rebuildUi();
+                }).width(44).tooltip("Enable or disable " + feature.getName()));
+                activePanel.add(activeRow);
+                activePanel.add(divider());
+            }
+        }
+        content.add(activePanel);
 
         VantaUiNode footer = VantaUiNode.row(10, 12)
                 .background(VantaUiTheme.PANEL)
@@ -365,6 +403,31 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         item.add(VantaUiNode.eyebrow(label));
         item.add(VantaUiNode.dynamicText(value, VantaUiTheme.TEXT_PRIMARY));
         return item;
+    }
+
+    private VantaUiNode categoryCard(String label, String detail, Page target,
+                                      VantaUiNode.Icon icon) {
+        List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
+                .filter(feature -> feature.getCategory() == toCategory(target)).toList();
+        VantaUiNode card = VantaUiNode.column(7, 10)
+                .flex(1).height(94).background(VantaUiTheme.PANEL_RAISED).padding(10);
+        VantaUiNode identity = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+        identity.add(VantaUiNode.icon(icon).size(18, 18)
+                .iconColor(VantaClientPreferences.get().accent.color()));
+        identity.add(VantaUiNode.text(label));
+        identity.add(VantaUiNode.spacer(1).flex(1));
+        identity.add(VantaUiNode.dynamicText(
+                () -> categoryFeatures.stream().filter(Feature::isEnabled).count()
+                        + " / " + categoryFeatures.size(),
+                VantaUiTheme.TEXT_SECONDARY));
+        card.add(identity);
+        card.add(VantaUiNode.paragraph(detail, VantaUiTheme.TEXT_MUTED, 2));
+        card.add(VantaUiNode.button("Open " + label, () -> {
+            page = target;
+            selectedFeature = null;
+            rebuildUi();
+        }).height(27));
+        return card;
     }
 
     private VantaUiNode categoryShortcut(String label, String detail, Page target,
