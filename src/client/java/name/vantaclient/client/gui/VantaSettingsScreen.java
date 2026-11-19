@@ -92,50 +92,46 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private VantaUiNode buildRoot() {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
-        VantaUiNode root = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
-                ;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 1040.0f
+                || VantaUiRuntime.designHeight(width, height) < 620.0f
+                || VantaClientPreferences.get().compactMode;
 
-        VantaUiNode header = VantaUiNode.row(compact ? 8 : 14, compact ? 10 : 16)
-                .height(compact ? 36 : 54)
+        VantaUiNode root = VantaUiNode.column(12, 12);
+
+        VantaUiNode header = VantaUiNode.row(12, 14)
+                .height(compact ? 42 : 50)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode brand = VantaUiNode.row(10, 0).align(VantaUiNode.Alignment.CENTER);
-        brand.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
+        header.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(compact ? 28 : 34, compact ? 21 : 25));
-        VantaUiNode brandLabels = VantaUiNode.column(1, 0);
-        brandLabels.add(VantaUiNode.title("Vanta"));
-        if (!compact) {
-            brandLabels.add(VantaUiNode.text("Minecraft client", VantaUiTheme.TEXT_MUTED));
-        }
-        brand.add(brandLabels);
+                .size(30, 22));
+        VantaUiNode brand = VantaUiNode.column(1, 0);
+        brand.add(VantaUiNode.title("VANTA"));
+        brand.add(VantaUiNode.eyebrow("CLIENT CONTROL"));
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
         if (!compact) {
-            VantaUiNode performance = VantaUiNode.row(7, 9).height(30)
+            header.add(VantaUiNode.row(6, 9).height(28)
                     .background(VantaUiTheme.SURFACE)
-                    .align(VantaUiNode.Alignment.CENTER);
-            performance.add(VantaUiNode.icon(VantaUiNode.Icon.DISPLAY)
-                    .size(14, 14).iconColor(VantaUiTheme.STATUS_SUCCESS));
-            performance.add(VantaUiNode.dynamicText(
-                    () -> Minecraft.getInstance().getFps() + " FPS",
-                    VantaUiTheme.TEXT_SECONDARY));
-            header.add(performance);
-        } else {
-            header.add(VantaUiNode.button("Mods", () -> Minecraft.getInstance().setScreen(
-                    new VantaIntegrationsScreen(this))).size(48, 28));
+                    .align(VantaUiNode.Alignment.CENTER)
+                    .add(VantaUiNode.spacer(1).size(6, 6)
+                            .background(VantaUiTheme.STATUS_SUCCESS))
+                    .add(VantaUiNode.dynamicText(
+                            () -> Minecraft.getInstance().getFps() + " FPS",
+                            VantaUiTheme.TEXT_SECONDARY)));
+            header.add(VantaUiNode.text("LOCAL PROFILE", VantaUiTheme.TEXT_MUTED));
         }
-        header.add(VantaUiNode.button(compact ? "×" : "Close", this::onClose)
-                .size(compact ? 28 : 62, 30).tooltip("Close settings"));
+        header.add(VantaUiNode.button("×", this::onClose)
+                .size(30, 28).tooltip("Close Vanta settings"));
         root.add(header);
 
         VantaUiNode body = compact
                 ? VantaUiNode.column(8, 0).flex(1)
-                : VantaUiNode.row(14, 0).flex(1);
+                : VantaUiNode.row(12, 0).flex(1);
         VantaUiNode navigation;
         if (compact) {
-            navigation = VantaUiNode.row(3, 3).height(32).background(VantaUiTheme.PANEL)
+            navigation = VantaUiNode.row(3, 3).height(34)
+                    .background(VantaUiTheme.PANEL)
                     .justify(VantaUiNode.Justification.CENTER);
             navigation.add(compactNav(Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
@@ -145,28 +141,31 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
-            navigation = VantaUiNode.column(6, 12).width(178).background(VantaUiTheme.PANEL);
-            navigation.add(VantaUiNode.text("Workspace", VantaUiTheme.TEXT_MUTED));
+            navigation = VantaUiNode.column(5, 12)
+                    .width(190)
+                    .background(VantaUiTheme.PANEL);
+            navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
             navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
-            navigation.add(nav("HUD", Page.HUD, VantaUiNode.Icon.HUD));
-            navigation.add(nav("Visual", Page.VISUAL, VantaUiNode.Icon.VISUALS));
+            navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
+            navigation.add(nav("Visuals", Page.VISUAL, VantaUiNode.Icon.VISUALS));
             navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
-            navigation.add(nav("Miscellaneous", Page.MISC, VantaUiNode.Icon.SPARK));
+            navigation.add(nav("Utilities", Page.MISC, VantaUiNode.Icon.SPARK));
             navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
-            navigation.add(VantaUiNode.text("Preferences", VantaUiTheme.TEXT_MUTED));
+            navigation.add(divider());
+            navigation.add(VantaUiNode.eyebrow("PREFERENCES"));
             navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
-            navigation.add(nav("Controls", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
+            navigation.add(nav("Keybinds", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
             navigation.add(VantaUiNode.spacer(1).flex(1));
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
                     () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
-                    .height(36).tooltip("Open installed mods and integrations"));
-            navigation.add(VantaUiNode.text("Configuration stays on this device",
-                    VantaUiTheme.TEXT_MUTED));
+                    .height(36).tooltip("Installed mods and integrations"));
+            navigation.add(VantaUiNode.text("Stored on this device", VantaUiTheme.TEXT_MUTED));
         }
 
-        VantaUiNode content = VantaUiNode.column(compact ? 8 : 16, compact ? 8 : 22)
-                .flex(1).background(VantaUiTheme.PANEL).scrollable();
+        VantaUiNode content = VantaUiNode.column(compact ? 10 : 16, compact ? 12 : 22)
+                .flex(1)
+                .background(VantaUiTheme.PANEL)
+                .scrollable();
         addPageContent(content);
         body.add(navigation);
         body.add(content);
@@ -215,147 +214,124 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private void addOverview(VantaUiNode content) {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f || VantaClientPreferences.get().compactMode;
+        boolean compact = VantaUiRuntime.designWidth(width, height) < 1040.0f
+                || VantaUiRuntime.designHeight(width, height) < 620.0f;
         long enabledCount = FeatureRegistry.FEATURES.stream()
                 .filter(Feature::isEnabled).count();
         int totalCount = FeatureRegistry.FEATURES.size();
 
-        VantaUiNode top = VantaUiNode.row(compact ? 0 : 14, 0);
-        if (compact) top = VantaUiNode.column(10, 0);
-        VantaUiNode hero = VantaUiNode.column(compact ? 7 : 14, compact ? 9 : 18)
+        content.add(VantaUiNode.eyebrow("VANTA  /  OVERVIEW"));
+        content.add(VantaUiNode.title("Control center"));
+        content.add(VantaUiNode.text(
+                "Your client, your layout. Jump straight to the systems you use.",
+                VantaUiTheme.TEXT_SECONDARY));
+
+        VantaUiNode overview = VantaUiNode.row(compact ? 0 : 14, 0);
+        if (compact) overview = VantaUiNode.column(10, 0);
+
+        VantaUiNode lead = VantaUiNode.column(10, 16)
                 .flex(compact ? 1 : 2)
                 .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 9 : 18);
-        VantaUiNode heroBrand = VantaUiNode.row(9, 0)
-                .align(VantaUiNode.Alignment.CENTER);
-        if (!compact) {
-            heroBrand.add(VantaUiNode.icon(VantaUiNode.Icon.BRAND)
-                    .size(18, 18).iconColor(VantaClientPreferences.get().accent.color()));
-            heroBrand.add(VantaUiNode.text("Vanta workspace", VantaUiTheme.TEXT_SECONDARY));
-            heroBrand.add(VantaUiNode.spacer(1).flex(1));
-            heroBrand.add(VantaUiNode.text("Local configuration",
-                    VantaUiTheme.STATUS_SUCCESS));
-            hero.add(heroBrand);
-        }
-        hero.add(VantaUiNode.title(compact
-                ? "Your client, in control."
-                : "A better view of your game."));
-        hero.add(VantaUiNode.paragraph(
-                "Shape the HUD, tune the visuals and keep useful tools close. Your settings stay on this device.",
-                VantaUiTheme.TEXT_SECONDARY, compact ? 2 : 3));
+                .padding(compact ? 12 : 20);
+        lead.add(VantaUiNode.eyebrow("YOUR CONFIGURATION"));
+        lead.add(VantaUiNode.title("Built around the way you play."));
+        lead.add(VantaUiNode.paragraph(
+                "Shape your HUD, tune rendering and keep the tools you need within reach. "
+                        + "Changes are applied locally.",
+                VantaUiTheme.TEXT_SECONDARY, 2));
         VantaUiNode actions = VantaUiNode.row(8, 0)
                 .align(VantaUiNode.Alignment.CENTER);
-        actions.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD, () ->
+        actions.add(VantaUiNode.button("Open HUD editor", VantaUiNode.Icon.HUD, () ->
                 Minecraft.getInstance().setScreen(
                         new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                .height(compact ? 30 : 36).background(VantaUiTheme.SURFACE_SELECTED));
+                .height(34).background(VantaUiTheme.SURFACE_SELECTED));
         actions.add(VantaUiNode.button("Browse modules", VantaUiNode.Icon.OVERVIEW, () -> {
             page = Page.HUD;
             selectedFeature = null;
             rebuildUi();
-        }).height(compact ? 30 : 36));
-        hero.add(actions);
-        top.add(hero);
+        }).height(34));
+        lead.add(actions);
+        overview.add(lead);
 
-        VantaUiNode status;
-        if (compact) {
-            status = VantaUiNode.row(8, 10)
-                    .height(38)
-                    .background(VantaUiTheme.PANEL)
-                    .padding(8)
-                    .align(VantaUiNode.Alignment.CENTER);
-            status.add(VantaUiNode.dynamicText(
-                    () -> FeatureRegistry.FEATURES.stream()
-                            .filter(Feature::isEnabled).count() + " active",
-                    VantaUiTheme.TEXT_PRIMARY));
-            status.add(VantaUiNode.spacer(1).flex(1));
-            status.add(VantaUiNode.spacer(1).size(8, 8)
-                    .background(VantaClientPreferences.get().accent.color()));
-            status.add(VantaUiNode.dynamicText(
-                    () -> VantaClientPreferences.get().accent.name(),
-                    VantaUiTheme.TEXT_SECONDARY));
-            status.add(VantaUiNode.button("Appearance", VantaUiNode.Icon.DISPLAY, () -> {
-                page = Page.APPEARANCE;
-                selectedFeature = null;
-                rebuildUi();
-            }).height(28));
-        } else {
-            status = VantaUiNode.column(10, 14)
-                    .flex(1)
-                    .background(VantaUiTheme.PANEL)
-                    .padding(16);
-            status.add(VantaUiNode.eyebrow("Client status"));
-            VantaUiNode active = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-            active.add(VantaUiNode.column(2, 0)
-                    .add(VantaUiNode.title(Long.toString(enabledCount)))
-                    .add(VantaUiNode.text("Active features", VantaUiTheme.TEXT_MUTED)));
-            active.add(VantaUiNode.spacer(1).flex(1));
-            active.add(VantaUiNode.text("of " + totalCount, VantaUiTheme.TEXT_SECONDARY));
-            status.add(active);
-            VantaUiNode track = VantaUiNode.row(0, 0).height(5)
-                    .background(VantaUiTheme.TRACK);
-            int activeWidth = totalCount == 0 ? 0
-                    : (int) Math.round(100.0 * enabledCount / totalCount);
-            track.add(VantaUiNode.spacer(1).flex(Math.max(1, activeWidth))
-                    .background(VantaClientPreferences.get().accent.color()));
-            track.add(VantaUiNode.spacer(1).flex(Math.max(1, 100 - activeWidth))
-                    .background(VantaUiTheme.TRACK));
-            status.add(track);
-            status.add(divider());
-            status.add(VantaUiNode.text("Interface accent", VantaUiTheme.TEXT_MUTED));
-            status.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
-                    .add(VantaUiNode.spacer(1).size(10, 10)
-                            .background(VantaClientPreferences.get().accent.color()))
-                    .add(VantaUiNode.dynamicText(
-                            () -> VantaClientPreferences.get().accent.name(),
-                            VantaUiTheme.TEXT_PRIMARY)));
-            status.add(VantaUiNode.button("Personalize appearance",
-                    VantaUiNode.Icon.DISPLAY, () -> {
-                        page = Page.APPEARANCE;
-                        selectedFeature = null;
-                        rebuildUi();
-                    }).height(32));
-        }
-        top.add(status);
-        content.add(top);
+        VantaUiNode health = VantaUiNode.column(10, 16)
+                .flex(1)
+                .background(VantaUiTheme.PANEL_RAISED)
+                .padding(16);
+        health.add(VantaUiNode.eyebrow("CLIENT SNAPSHOT"));
+        VantaUiNode metric = VantaUiNode.row(8, 0)
+                .align(VantaUiNode.Alignment.END);
+        metric.add(VantaUiNode.title(Long.toString(enabledCount)));
+        metric.add(VantaUiNode.text(" / " + totalCount + " active modules",
+                VantaUiTheme.TEXT_SECONDARY));
+        health.add(metric);
+        int activeWidth = totalCount == 0 ? 0
+                : (int) Math.round(100.0 * enabledCount / totalCount);
+        VantaUiNode track = VantaUiNode.row(0, 0).height(5)
+                .background(VantaUiTheme.TRACK);
+        track.add(VantaUiNode.spacer(1).flex(Math.max(1, activeWidth))
+                .background(VantaClientPreferences.get().accent.color()));
+        track.add(VantaUiNode.spacer(1).flex(Math.max(1, 100 - activeWidth))
+                .background(VantaUiTheme.TRACK));
+        health.add(track);
+        health.add(divider());
+        health.add(VantaUiNode.eyebrow("INTERFACE ACCENT"));
+        health.add(VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER)
+                .add(VantaUiNode.spacer(1).size(10, 10)
+                        .background(VantaClientPreferences.get().accent.color()))
+                .add(VantaUiNode.dynamicText(
+                        () -> VantaClientPreferences.get().accent.name(),
+                        VantaUiTheme.TEXT_PRIMARY))
+                .add(VantaUiNode.spacer(1).flex(1))
+                .add(VantaUiNode.button("Change", () -> {
+                    page = Page.APPEARANCE;
+                    selectedFeature = null;
+                    rebuildUi();
+                }).height(27)));
+        overview.add(health);
+        content.add(overview);
 
-        content.add(sectionTitle(VantaUiNode.Icon.SPARK, "Explore modules",
-                "Purpose-built spaces for the parts of your client"));
-        VantaUiNode categories = VantaUiNode.column(8, 0);
-        VantaUiNode categoryRowOne = VantaUiNode.row(10, 0);
-        categoryRowOne.add(categoryCard("HUD", "Overlays, counters and vanilla HUD positioning",
-                Page.HUD, VantaUiNode.Icon.HUD));
-        categoryRowOne.add(categoryCard("Visual", "Rendering, lighting and visual effects",
-                Page.VISUAL, VantaUiNode.Icon.VISUALS));
-        VantaUiNode categoryRowTwo = VantaUiNode.row(10, 0);
-        categoryRowTwo.add(categoryCard("Combat", "Combat utilities and related settings",
-                Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
-        categoryRowTwo.add(categoryCard("Miscellaneous", "Additional tools and quality-of-life features",
-                Page.MISC, VantaUiNode.Icon.SPARK));
-        categories.add(categoryRowOne);
-        categories.add(categoryRowTwo);
-        content.add(categories);
+        content.add(VantaUiNode.eyebrow("WORKSPACES"));
+        content.add(VantaUiNode.title("Choose a system"));
+        VantaUiNode workspaceList = VantaUiNode.column(1, 0)
+                .background(VantaUiTheme.PANEL_RAISED);
+        addWorkspaceRow(workspaceList, "HUD editor",
+                "Position overlays, counters and the vanilla HUD",
+                Page.HUD, VantaUiNode.Icon.HUD);
+        addWorkspaceRow(workspaceList, "Visual engine",
+                "Rendering, lighting and on-screen effects",
+                Page.VISUAL, VantaUiNode.Icon.VISUALS);
+        addWorkspaceRow(workspaceList, "Combat tools",
+                "Combat utilities and their configuration",
+                Page.COMBAT, VantaUiNode.Icon.CROSSHAIR);
+        addWorkspaceRow(workspaceList, "Utilities",
+                "Quality-of-life features and client tools",
+                Page.MISC, VantaUiNode.Icon.SPARK);
+        content.add(workspaceList);
 
-        content.add(sectionTitle(VantaUiNode.Icon.DISPLAY, "Enabled right now",
-                "Your active modules, ready to configure"));
-        List<Feature> activeFeatures = FeatureRegistry.FEATURES.stream()
-                .filter(Feature::isEnabled).limit(compact ? 2 : 3).toList();
+        content.add(VantaUiNode.eyebrow("QUICK ACCESS"));
+        content.add(VantaUiNode.title("Enabled modules"));
         VantaUiNode activePanel = VantaUiNode.column(1, 8)
                 .background(VantaUiTheme.PANEL_RAISED);
+        List<Feature> activeFeatures = FeatureRegistry.FEATURES.stream()
+                .filter(Feature::isEnabled).limit(compact ? 3 : 5).toList();
         if (activeFeatures.isEmpty()) {
-            activePanel.add(VantaUiNode.text("No modules are enabled yet. Open a feature space to get started.",
+            activePanel.add(VantaUiNode.text(
+                    "Nothing is enabled yet. Open a workspace to configure your first module.",
                     VantaUiTheme.TEXT_MUTED));
         } else {
             for (Feature feature : activeFeatures) {
-                VantaUiNode activeRow = VantaUiNode.row(10, 6)
+                VantaUiNode activeRow = VantaUiNode.row(10, 7)
                         .align(VantaUiNode.Alignment.CENTER);
                 VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
                 identity.add(VantaUiNode.text(feature.getName()));
                 if (VantaClientPreferences.get().showDescriptions
                         && feature.getDescription() != null && !feature.getDescription().isBlank()) {
-                    identity.add(VantaUiNode.paragraph(feature.getDescription(), VantaUiTheme.TEXT_MUTED, 1));
+                    identity.add(VantaUiNode.paragraph(feature.getDescription(),
+                            VantaUiTheme.TEXT_MUTED, 1));
                 }
                 activeRow.add(identity);
+                activeRow.add(VantaUiNode.spacer(1).size(6, 6)
+                        .background(VantaUiTheme.STATUS_SUCCESS));
                 if (!SettingRegistry.getSettings(feature).isEmpty()) {
                     activeRow.add(VantaUiNode.button("Configure", () -> {
                         selectedFeature = feature;
@@ -379,30 +355,26 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             }
         }
         content.add(activePanel);
-
-        VantaUiNode footer = VantaUiNode.row(10, 12)
-                .background(VantaUiTheme.PANEL)
-                .padding(12)
-                .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode footerText = VantaUiNode.column(3, 0).flex(1);
-        footerText.add(VantaUiNode.text("Built around your setup"));
-        footerText.add(VantaUiNode.text(
-                "No account, cloud sync or telemetry required.",
-                VantaUiTheme.TEXT_MUTED));
-        footer.add(footerText);
-        footer.add(VantaUiNode.button("Input shortcuts", VantaUiNode.Icon.KEYBOARD, () -> {
-            page = Page.CONTROLS;
-            selectedFeature = null;
-            rebuildUi();
-        }).height(32));
-        content.add(footer);
     }
 
-    private VantaUiNode metric(String label, java.util.function.Supplier<String> value) {
-        VantaUiNode item = VantaUiNode.column(4, 0).flex(1);
-        item.add(VantaUiNode.eyebrow(label));
-        item.add(VantaUiNode.dynamicText(value, VantaUiTheme.TEXT_PRIMARY));
-        return item;
+    private void addWorkspaceRow(VantaUiNode list, String title, String detail,
+                                 Page target, VantaUiNode.Icon icon) {
+        VantaUiNode row = VantaUiNode.row(12, 10)
+                .height(54)
+                .align(VantaUiNode.Alignment.CENTER);
+        row.add(VantaUiNode.icon(icon).size(18, 18)
+                .iconColor(VantaClientPreferences.get().accent.color()));
+        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
+        labels.add(VantaUiNode.text(title));
+        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
+        row.add(labels);
+        row.add(VantaUiNode.button("Open", () -> {
+            page = target;
+            selectedFeature = null;
+            rebuildUi();
+        }).height(28));
+        list.add(row);
+        list.add(divider());
     }
 
     private VantaUiNode categoryCard(String label, String detail, Page target,
