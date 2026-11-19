@@ -377,33 +377,39 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyResponsiveUiViewport(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            int[][] viewports = {{640, 360}, {480, 270}};
+            int[][] viewports = {{1280, 720}, {960, 540}, {640, 360}, {480, 270}};
             float[] scales = {0.8f, 1.0f, 1.2f};
             for (int[] viewport : viewports) {
                 int screenWidth = viewport[0];
                 int screenHeight = viewport[1];
-                for (float scale : scales) {
+                for (float preferredScale : scales) {
                     VantaUiNode root = VantaUiNode.column(0, 0);
                     VantaUiRuntime runtime = new VantaUiRuntime(root);
-                    runtime.setScale(scale);
+                    runtime.setScale(preferredScale);
                     runtime.layout(client.font, screenWidth, screenHeight);
 
-                    float offsetX = screenWidth * 0.5f * (1.0f - scale);
-                    float offsetY = screenHeight * 0.5f * (1.0f - scale);
-                    float left = offsetX + root.x() * scale;
-                    float top = offsetY + root.y() * scale;
-                    float right = offsetX + (root.x() + root.width()) * scale;
-                    float bottom = offsetY + (root.y() + root.height()) * scale;
-                    int expectedMargin = Math.max(8, Math.min(22,
-                            Math.round(Math.min(screenWidth, screenHeight) * 0.06f)));
-                    if (Math.abs(left - expectedMargin) > 1.5f
-                            || Math.abs(top - expectedMargin) > 1.5f
-                            || Math.abs((screenWidth - right) - expectedMargin) > 1.5f
-                            || Math.abs((screenHeight - bottom) - expectedMargin) > 1.5f) {
-                        throw new AssertionError("Scaled UI escaped its responsive viewport at "
-                                + screenWidth + "x" + screenHeight + " / " + scale + ": "
-                                + left + "," + top + " to " + right + "," + bottom
-                                + " expected " + expectedMargin + " px margins.");
+                    float effectiveScale = preferredScale
+                            * VantaUiRuntime.viewportFitScale(screenWidth, screenHeight);
+                    float offsetX = screenWidth * 0.5f * (1.0f - effectiveScale);
+                    float offsetY = screenHeight * 0.5f * (1.0f - effectiveScale);
+                    float left = offsetX + root.x() * effectiveScale;
+                    float top = offsetY + root.y() * effectiveScale;
+                    float right = offsetX + (root.x() + root.width()) * effectiveScale;
+                    float bottom = offsetY + (root.y() + root.height()) * effectiveScale;
+                    float expectedMarginX = screenWidth * 0.025f;
+                    float expectedMarginY = screenHeight * 0.035f;
+                    if (Math.abs(left - expectedMarginX) > 1.5f
+                            || Math.abs(top - expectedMarginY) > 1.5f
+                            || Math.abs((screenWidth - right) - expectedMarginX) > 1.5f
+                            || Math.abs((screenHeight - bottom) - expectedMarginY) > 1.5f) {
+                        throw new AssertionError("Percentage-anchored UI escaped its viewport at "
+                                + screenWidth + "x" + screenHeight + " / preferred scale "
+                                + preferredScale + ": " + left + "," + top + " to " + right + "," + bottom
+                                + " expected margins " + expectedMarginX + "x" + expectedMarginY + ".");
+                    }
+                    if (Math.abs(VantaUiRuntime.designWidth(screenWidth, screenHeight) - 640.0f) > 0.1f) {
+                        throw new AssertionError("The fitted design width must remain stable at "
+                                + screenWidth + "x" + screenHeight + ".");
                     }
                     runtime.dispose();
                 }
