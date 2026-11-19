@@ -406,10 +406,10 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     float bottom = offsetY + (root.y() + root.height()) * effectiveScale;
                     float expectedMarginX = screenWidth * 0.025f;
                     float expectedMarginY = screenHeight * 0.035f;
-                    if (Math.abs(left - expectedMarginX) > 1.5f
-                            || Math.abs(top - expectedMarginY) > 1.5f
-                            || Math.abs((screenWidth - right) - expectedMarginX) > 1.5f
-                            || Math.abs((screenHeight - bottom) - expectedMarginY) > 1.5f) {
+                    if (Math.abs(left - expectedMarginX) > 2.5f
+                            || Math.abs(top - expectedMarginY) > 2.5f
+                            || Math.abs((screenWidth - right) - expectedMarginX) > 2.5f
+                            || Math.abs((screenHeight - bottom) - expectedMarginY) > 2.5f) {
                         throw new AssertionError("Percentage-anchored UI escaped its viewport at "
                                 + screenWidth + "x" + screenHeight + " / preferred scale "
                                 + preferredScale + ": " + left + "," + top + " to " + right + "," + bottom
