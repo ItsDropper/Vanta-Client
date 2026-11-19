@@ -1,10 +1,13 @@
 pluginManagement {
 	repositories {
+		// Prefer Maven Central for shared third-party libraries. Fabric's mirror
+		// can contain upstream POMs without their parent POMs, which breaks
+		// Gradle metadata parsing before it can fall back to Central.
+		mavenCentral()
 		maven {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
 		}
-		mavenCentral()
 		gradlePluginPortal()
 	}
 }
