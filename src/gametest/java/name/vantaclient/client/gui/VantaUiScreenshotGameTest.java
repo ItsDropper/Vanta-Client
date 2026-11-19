@@ -178,10 +178,10 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
     private static void verifyFocusController(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            VantaUiNode first = VantaUiNode.button("First", () {});
-            VantaUiNode second = VantaUiNode.button("Second", () {});
-            VantaUiNode disabled = VantaUiNode.button("Disabled", () {}).enabled(false);
-            VantaUiNode hidden = VantaUiNode.button("Hidden", () {}).visible(false);
+            VantaUiNode first = VantaUiNode.button("First", () -> {});
+            VantaUiNode second = VantaUiNode.button("Second", () -> {});
+            VantaUiNode disabled = VantaUiNode.button("Disabled", () -> {}).enabled(false);
+            VantaUiNode hidden = VantaUiNode.button("Hidden", () -> {}).visible(false);
             VantaUiNode root = VantaUiNode.column(4, 4)
                     .add(first).add(second).add(disabled).add(hidden);
             VantaFocusController focus = new VantaFocusController(root);
@@ -254,7 +254,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     || capture.type() != VantaPointerCapture.Type.NONE) {
                 throw new AssertionError("Primary release must terminate pointer capture.");
             }
-            if (capture.captureSlider(VantaUiNode.button("Not a slider", () {}))) {
+            if (capture.captureSlider(VantaUiNode.button("Not a slider", () -> {}))) {
                 throw new AssertionError("Pointer capture must reject non-slider nodes.");
             }
             VantaUiNode disabledSlider = VantaUiNode.slider("Disabled", 0.0, 1.0, 0.1,
