@@ -189,11 +189,22 @@ public abstract class TitleScreenMixin {
         if (compactUtilities) {
             // At high GUI scales the logical viewport can be only a few hundred
             // units wide. Keep utility actions as icon-sized targets on one row.
-            if (vanta$languageShortcut != null) vanta$setBounds(vanta$languageShortcut, 8, utilityY, 28, 22);
-            if (vanta$accessibilityShortcut != null) vanta$setBounds(vanta$accessibilityShortcut, 42, utilityY, 28, 22);
-            if (vanta$shareShortcut != null) vanta$setBounds(vanta$shareShortcut, 76, utilityY, 28, 22);
-            if (vanta$creditsShortcut != null) vanta$setBounds(vanta$creditsShortcut,
-                    Math.max(8, screenWidth - 36), utilityY, 28, 22);
+            if (vanta$languageShortcut != null) {
+                vanta$setBounds(vanta$languageShortcut, 8, utilityY, 28, 22);
+                vanta$languageShortcut.setMessage(Component.literal(""));
+            }
+            if (vanta$accessibilityShortcut != null) {
+                vanta$setBounds(vanta$accessibilityShortcut, 42, utilityY, 28, 22);
+                vanta$accessibilityShortcut.setMessage(Component.literal(""));
+            }
+            if (vanta$shareShortcut != null) {
+                vanta$setBounds(vanta$shareShortcut, 76, utilityY, 28, 22);
+                vanta$shareShortcut.setMessage(Component.literal(""));
+            }
+            if (vanta$creditsShortcut != null) {
+                vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 36), utilityY, 28, 22);
+                vanta$creditsShortcut.setMessage(Component.literal(""));
+            }
         } else {
             if (vanta$languageShortcut != null) vanta$setBounds(vanta$languageShortcut, 8, utilityY, 104, 24);
             if (vanta$accessibilityShortcut != null) vanta$setBounds(vanta$accessibilityShortcut, 120, utilityY, 132, 24);
@@ -246,6 +257,7 @@ public abstract class TitleScreenMixin {
         VantaMenuStyle.renderFooter(graphics, width, height);
         VantaMenuStyle.renderUtilityIcon(graphics, vanta$languageShortcut, 0);
         VantaMenuStyle.renderUtilityIcon(graphics, vanta$accessibilityShortcut, 1);
+        VantaMenuStyle.renderUtilityIcon(graphics, vanta$shareShortcut, 3);
         VantaMenuStyle.renderUtilityIcon(graphics, vanta$creditsShortcut, 2);
     }
 }
