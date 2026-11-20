@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "ttf",
-      "file": "vanta:ibm_plex_sans_medium.ttf",
+      "file": "vanta:poppins_regular.ttf",
       "shift": [0, 0],
       "size": 12,
       "oversample": 4
