@@ -79,18 +79,17 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void addSetting(VantaUiNode panel, SettingDefinition setting) {
         String description = setting.description();
+        VantaUiNode control = null;
         switch (setting.type()) {
-            case BOOLEAN -> {
-                panel.add(VantaUiNode.toggle(setting.name(),
-                        () -> Boolean.TRUE.equals(readValue(setting)),
-                        value -> writeValue(setting, value)));
-            }
+            case BOOLEAN -> control = VantaUiNode.toggle(setting.name(),
+                    () -> Boolean.TRUE.equals(readValue(setting)),
+                    value -> writeValue(setting, value));
             case INTEGER, DECIMAL -> {
                 double minimum = setting.minimum() == null ? 0.0 : setting.minimum();
                 double maximum = setting.maximum() == null ? minimum : setting.maximum();
                 double step = setting.type() == SettingDefinition.Type.INTEGER
                         ? 1.0 : Math.max(0.01, (maximum - minimum) / 100.0);
-                panel.add(VantaUiNode.slider(setting.name(), minimum, maximum, step,
+                control = VantaUiNode.slider(setting.name(), minimum, maximum, step,
                         () -> {
                             Object value = readValue(setting);
                             return value instanceof Number number ? number.doubleValue() : minimum;
@@ -100,15 +99,15 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
                             } else {
                                 writeValue(setting, Double.valueOf(value));
                             }
-                        }));
+                        });
             }
             case ENUM -> {
                 List<String> options = setting.options();
                 if (options.isEmpty()) {
-                    panel.add(VantaUiNode.text(setting.name() + " — no available options",
-                            VantaUiTheme.TEXT_MUTED));
+                    control = VantaUiNode.text(setting.name() + " — no available options",
+                            VantaUiTheme.TEXT_MUTED);
                 } else {
-                    panel.add(VantaUiNode.dropdown(setting.name(), options,
+                    control = VantaUiNode.dropdown(setting.name(), options,
                             () -> {
                                 Object value = readValue(setting);
                                 return value instanceof Enum<?> enumeration
@@ -119,18 +118,30 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
                                 Arrays.stream(constants)
                                         .filter(option -> ((Enum<?>) option).name().equals(value))
                                         .findFirst().ifPresent(option -> writeValue(setting, option));
-                            }));
+                            });
                 }
             }
             case STRING -> {
                 int maximumLength = setting.maximum() == null ? 128
                         : Math.max(1, (int) Math.floor(setting.maximum()));
-                panel.add(VantaUiNode.textField(setting.name(), 
+                control = VantaUiNode.textField(setting.name(),
                         () -> {
                             Object value = readValue(setting);
                             return value instanceof String string ? string : "";
-                        }, value -> writeValue(setting, value), maximumLength));
+                        }, value -> writeValue(setting, value), maximumLength);
             }
+        }
+
+        if (control != null) {
+            VantaUiNode row = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+            row.add(control.flex(1));
+            if (setting.type() != SettingDefinition.Type.ENUM
+                    || !setting.options().isEmpty()) {
+                row.add(VantaUiNode.button("Reset", VantaUiNode.Icon.RESET,
+                        () -> writeValue(setting, setting.defaultValue())).size(76, 28)
+                        .tooltip("Restore the default value"));
+            }
+            panel.add(row);
         }
         if (description != null && !description.isBlank()) {
             panel.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED, 2));
