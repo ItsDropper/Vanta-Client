@@ -231,20 +231,16 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         content.add(summary);
 
         content.add(VantaUiNode.title("Workspaces"));
-        VantaUiNode workspaceGrid = VantaUiNode.column(8, 0);
-        VantaUiNode workspaceRow = VantaUiNode.row(8, 0);
-        addWorkspaceRow(workspaceRow, "HUD", "Layout and overlays",
+        VantaUiNode workspaceList = VantaCompose.surface(VantaCompose.Material.ELEVATED, 1, 0);
+        addWorkspaceRow(workspaceList, "HUD", "Layout and overlays",
                 Page.HUD, VantaUiNode.Icon.HUD);
-        addWorkspaceRow(workspaceRow, "Visuals", "Rendering options",
+        addWorkspaceRow(workspaceList, "Visuals", "Rendering options",
                 Page.VISUAL, VantaUiNode.Icon.VISUALS);
-        workspaceGrid.add(workspaceRow);
-        VantaUiNode secondRow = VantaUiNode.row(8, 0);
-        addWorkspaceRow(secondRow, "Combat", "Combat tools",
+        addWorkspaceRow(workspaceList, "Combat", "Combat tools",
                 Page.COMBAT, VantaUiNode.Icon.CROSSHAIR);
-        addWorkspaceRow(secondRow, "Utilities", "Client features",
+        addWorkspaceRow(workspaceList, "Utilities", "Client features",
                 Page.MISC, VantaUiNode.Icon.SPARK);
-        workspaceGrid.add(secondRow);
-        content.add(workspaceGrid);
+        content.add(workspaceList);
     }
 
     private void addWorkspaceRow(VantaUiNode list, String title, String detail,
