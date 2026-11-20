@@ -136,6 +136,7 @@ public final class VantaMenuStyle {
     /** Draws Vanta's standalone V mark above the complete wordmark. */
     public static void renderTitleBranding(GuiGraphics graphics, int screenWidth,
                                            int screenHeight, long elapsedMillis) {
+        if (screenHeight < 220 || screenWidth < 220) return;
         float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
         int alpha = Math.round(progress * 255.0f);
         boolean compact = screenHeight < 420 || screenWidth < 420;
@@ -180,6 +181,12 @@ public final class VantaMenuStyle {
             graphics.fill(x + 5, y + 8, x + 7, y + 12, color);
             graphics.fill(x + 3, y + 10, x + 5, y + 12, color);
             graphics.fill(x + 7, y + 10, x + 9, y + 12, color);
+        } else if (kind == 3) {
+            graphics.fill(x + 2, y + 5, x + 5, y + 8, color);
+            graphics.fill(x + 9, y + 1, x + 12, y + 4, color);
+            graphics.fill(x + 9, y + 9, x + 12, y + 12, color);
+            graphics.fill(x + 4, y + 6, x + 10, y + 7, color);
+            graphics.fill(x + 9, y + 3, x + 10, y + 10, color);
         } else {
             graphics.fill(x + 1, y, x + 11, y + 1, color);
             graphics.fill(x, y + 1, x + 1, y + 11, color);
