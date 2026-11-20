@@ -384,6 +384,24 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void verifyResponsiveUiViewport(ClientGameTestContext context) {
+        int[][] titleViewports = {{640, 360}, {480, 270}, {320, 180}, {1280, 720}};
+        for (int[] viewport : titleViewports) {
+            int screenWidth = viewport[0];
+            int screenHeight = viewport[1];
+            int buttonWidth = VantaMenuStyle.menuButtonWidth(screenWidth);
+            int buttonHeight = VantaMenuStyle.menuButtonHeight(screenHeight);
+            int gap = VantaMenuStyle.menuButtonGap(screenHeight);
+            int top = VantaMenuStyle.menuTop(screenHeight);
+            int[] settings = VantaMenuStyle.titleBrandBounds(screenWidth, screenHeight);
+            int utilityTop = screenHeight - ((screenHeight < 520 || screenWidth < 420) ? 48 : 88);
+            if (buttonWidth > screenWidth || VantaMenuStyle.menuLeft(screenWidth) < 0
+                    || top < 0 || top + 3 * (buttonHeight + gap)
+                    > settings[1] || settings[0] < 0 || settings[0] + settings[2] > screenWidth
+                    || settings[1] + settings[3] > utilityTop - 4) {
+                throw new AssertionError("Title menu controls overlap or escape the GUI viewport at "
+                        + screenWidth + "x" + screenHeight + ".");
+            }
+        }
         if (VantaSettingsScreen.featureGridColumns(899.0f) != 1
                 || VantaSettingsScreen.featureGridColumns(900.0f) != 2
                 || VantaSettingsScreen.featureGridColumns(1479.0f) != 2
