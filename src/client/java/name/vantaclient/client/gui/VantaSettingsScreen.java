@@ -318,7 +318,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             heading.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
                     () -> Minecraft.getInstance().setScreen(
                             new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .height(30);
+                    .height(30));
         }
         content.add(heading);
 
@@ -328,7 +328,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
         toolbar.add(VantaUiNode.textField("Search features…", () -> pendingSearch,
-                value -> pendingSearch = value, 64).flex(1);
+                value -> pendingSearch = value, 64).flex(1));
         if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
             toolbar.add(VantaUiNode.button("×", () -> {
                 pendingSearch = "";
