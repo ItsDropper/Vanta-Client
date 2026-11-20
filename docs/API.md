@@ -158,6 +158,9 @@ Vanta includes a native integration for Skyboxify when it is installed. It is di
 
 This adapter is optional at runtime: without Skyboxify installed, the provider is simply absent from Fabric's entrypoint discovery. The adapter intentionally fails closed if Skyboxify's expected config API changes, rather than showing controls that do not actually update the mod.
 
+Vanta also includes a native adapter for **uku's Armor HUD** on Minecraft 1.21.11. It binds to the mod's `ArmorHudMod.getManager()` and ukulib's `ConfigManager` API at runtime, without adding either mod as a compile-time dependency. The native page exposes its enable toggle, anchor/side/layout enums, slot visibility and style, durability display and warning thresholds, offsets, and HUD overlap behavior. Each change updates the live config object and calls `saveConfig()`. The adapter is registered as an optional `vanta` entrypoint and is not loaded when uku's Armor HUD is absent.
+
+
 Adapters for other mods must be based on their actual public configuration APIs. A mod that ships only a proprietary settings screen or does not publish a configuration API cannot be converted into native Vanta controls safely by guessing at its internal fields. InventoryHUD+ does not publish source code or a documented integration API, so it remains accessible through its own settings entrypoint until its author exposes a stable config interface.
 
 ## Optional Mod Menu integration
