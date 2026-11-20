@@ -152,6 +152,14 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 - Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu. Every supported setting has a Reset action that writes its declared default through the integration's setter.
 - Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
 
+## Built-in third-party adapters
+
+Vanta includes a native integration for Skyboxify when it is installed. It is discovered through the same Fabric `vanta` entrypoint as external integrations and does not add Skyboxify or YACL as compile-time dependencies. The adapter binds directly to Skyboxify's public `SkyboxifyImpl` configuration API and exposes its boolean rendering options plus the texture-filtering enum in Vanta's native settings screen. Changes are persisted through Skyboxify's config handler.
+
+This adapter is optional at runtime: without Skyboxify installed, the provider is simply absent from Fabric's entrypoint discovery. The adapter intentionally fails closed if Skyboxify's expected config API changes, rather than showing controls that do not actually update the mod.
+
+Adapters for other mods must be based on their actual public configuration APIs. A mod that ships only a proprietary settings screen or does not publish a configuration API cannot be converted into native Vanta controls safely by guessing at its internal fields. InventoryHUD+ does not publish source code or a documented integration API, so it remains accessible through its own settings entrypoint until its author exposes a stable config interface.
+
 ## Optional Mod Menu integration
 
 Mod Menu is an optional compile-time API dependency and runtime suggestion, not a required dependency. Vanta Client implements `ModMenuApi` to expose its own settings screen. The panel uses Mod Menu's public helper to open its standard mods screen; it does not reflect into Mod Menu internals or attempt to call private config factories belonging to other mods.
