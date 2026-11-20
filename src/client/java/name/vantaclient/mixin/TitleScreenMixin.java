@@ -184,9 +184,9 @@ public abstract class TitleScreenMixin {
                     bounds[0], bounds[1], bounds[2], bounds[3]);
         }
 
-        boolean compact = screenHeight < 520 || screenWidth < 420;
-        int utilityY = Math.max(4, screenHeight - (compact ? 48 : 88));
-        if (compact) {
+        boolean compactUtilities = screenHeight < 520 || screenWidth < 420;
+        int utilityY = Math.max(4, screenHeight - (compactUtilities ? 48 : 88));
+        if (compactUtilities) {
             // At high GUI scales the logical viewport can be only a few hundred
             // units wide. Keep utility actions as icon-sized targets on one row.
             if (vanta$languageShortcut != null) vanta$setBounds(vanta$languageShortcut, 8, utilityY, 28, 22);
