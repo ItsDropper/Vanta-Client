@@ -13,13 +13,13 @@ import net.minecraft.client.gui.GuiGraphics;
  */
 public final class VantaUiTheme {
     public static final int CANVAS = 0xF00A0D12;
-    public static final int PANEL = 0xE810151D;
-    public static final int PANEL_RAISED = 0xED171E28;
-    public static final int SURFACE = 0xFF202936;
-    public static final int SURFACE_HOVER = 0xFF2B3543;
+    public static final int PANEL = 0xE80E1218;
+    public static final int PANEL_RAISED = 0xED141A22;
+    public static final int SURFACE = 0xFF1D242D;
+    public static final int SURFACE_HOVER = 0xFF262F3A;
     public static final int SURFACE_SELECTED = 0xFF1D3552;
-    public static final int BORDER = 0xFF303A49;
-    public static final int BORDER_SUBTLE = 0xFF252E3A;
+    public static final int BORDER = 0xFF28313D;
+    public static final int BORDER_SUBTLE = 0xFF202832;
     public static final int BUTTON_OUTLINE = 0xFF354253;
     public static final int BUTTON_OUTLINE_HOVER = 0xFF628CC5;
     public static final int TEXT_PRIMARY = 0xFFF1F3F7;
@@ -78,13 +78,13 @@ public final class VantaUiTheme {
     public static final int SPACE_5 = 20;
     public static final int SPACE_6 = 24;
 
-    public static final int CONTROL_HEIGHT = 34;
-    public static final int ROW_HEIGHT = 46;
+    public static final int CONTROL_HEIGHT = 32;
+    public static final int ROW_HEIGHT = 42;
     public static final int SLIDER_HEIGHT = 48;
 
-    public static final int RADIUS_SMALL = 3;
-    public static final int RADIUS_MEDIUM = 6;
-    public static final int RADIUS_LARGE = 8;
+    public static final int RADIUS_SMALL = 5;
+    public static final int RADIUS_MEDIUM = 9;
+    public static final int RADIUS_LARGE = 12;
 
     public static final int TEXT_LINE_HEIGHT = 11;
     public static final int CARET_BLINK_TICKS = 10;
