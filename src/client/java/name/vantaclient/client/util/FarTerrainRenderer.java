@@ -256,6 +256,11 @@ public final class FarTerrainRenderer {
     }
 
     private static void captureChunk(ClientLevel world, net.minecraft.world.level.chunk.LevelChunk chunk) {
+        // Chunk lifecycle events fire regardless of feature state. Do not snapshot,
+        // compress, cache, or queue voxel meshes when FarView is disabled: ordinary
+        // player movement would otherwise run the entire ingestion pipeline.
+        if (!FarViewFeature.INSTANCE.isEnabled()) return;
+
         FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
         addChunkSnapshot(snapshot);
         FarTerrainSnapshotStore store = snapshotStore;
