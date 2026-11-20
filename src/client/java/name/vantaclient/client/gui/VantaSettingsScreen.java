@@ -199,38 +199,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private void addOverview(VantaUiNode content) {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 1040.0f
-                || VantaUiRuntime.designHeight(width, height) < 620.0f;
-        long enabledCount = FeatureRegistry.FEATURES.stream()
-                .filter(Feature::isEnabled).count();
-        int totalCount = FeatureRegistry.FEATURES.size();
-
         content.add(VantaCompose.sectionHeader(null, "Overview", null));
 
-        VantaUiNode summary = VantaCompose.surface(VantaCompose.Material.ELEVATED, 8, 12);
-        VantaUiNode stats = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-        stats.add(VantaUiNode.title(Long.toString(enabledCount)));
-        stats.add(VantaUiNode.text("of " + totalCount + " modules enabled",
-                VantaUiTheme.TEXT_SECONDARY));
-        stats.add(VantaUiNode.spacer(1).flex(1));
-        stats.add(VantaUiNode.button("Accent", () -> {
-            page = Page.APPEARANCE;
-            selectedFeature = null;
-            rebuildUi();
-        }).height(28));
-        summary.add(stats);
-        int activeWidth = totalCount == 0 ? 0
-                : (int) Math.round(100.0 * enabledCount / totalCount);
-        VantaUiNode track = VantaUiNode.row(0, 0).height(4)
-                .background(VantaUiTheme.TRACK);
-        track.add(VantaUiNode.spacer(1).flex(Math.max(1, activeWidth))
-                .background(VantaClientPreferences.get().accent.color()));
-        track.add(VantaUiNode.spacer(1).flex(Math.max(1, 100 - activeWidth))
-                .background(VantaUiTheme.TRACK));
-        summary.add(track);
-        content.add(summary);
-
-        content.add(VantaUiNode.title("Workspaces"));
         VantaUiNode workspaceList = VantaCompose.surface(VantaCompose.Material.ELEVATED, 1, 0);
         addWorkspaceRow(workspaceList, "HUD", "Layout and overlays",
                 Page.HUD, VantaUiNode.Icon.HUD);
