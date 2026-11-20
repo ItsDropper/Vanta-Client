@@ -85,34 +85,26 @@ public final class VantaComponents {
         Objects.requireNonNull(enabled, "enabled");
         Objects.requireNonNull(toggle, "toggle");
 
-        VantaUiNode card = surface(Surface.ELEVATED, compact ? 6 : 8, compact ? 10 : 12)
+        VantaUiNode card = surface(Surface.ELEVATED, compact ? 4 : 6, compact ? 9 : 11)
                 .height(cardHeight);
         VantaUiNode identity = VantaUiNode.row(8, 0)
                 .height(22).align(VantaUiNode.Alignment.CENTER);
         identity.add(VantaUiNode.icon(icon).size(18, 18).iconColor(accent));
         identity.add(VantaUiNode.spacer(1).flex(1));
-        identity.add(VantaUiNode.dynamicText(status, accent));
+        identity.add(VantaUiNode.toggle("", enabled, toggle).width(40).height(24)
+                .tooltip("Enable or disable " + title));
         card.add(identity);
         card.add(VantaUiNode.title(title));
-        card.add(VantaUiNode.paragraph(
-                description == null || description.isBlank()
-                        ? (configurable ? "Configurable module" : "No additional options")
-                        : description,
-                VantaUiTheme.TEXT_MUTED, compact ? 1 : 2));
+        if (description != null && !description.isBlank()) {
+            card.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED,
+                    compact ? 1 : 2));
+        }
         card.add(VantaUiNode.spacer(1).flex(1));
 
-        VantaUiNode actions = VantaUiNode.row(7, 0)
-                .height(30).align(VantaUiNode.Alignment.CENTER);
         if (configurable) {
-            actions.add(VantaUiNode.button("Configure", Objects.requireNonNull(configure, "configure"))
-                    .height(28).tooltip("Open " + title + " settings"));
-        } else {
-            actions.add(VantaUiNode.text("Module", VantaUiTheme.TEXT_MUTED));
+            card.add(VantaUiNode.button("Settings", Objects.requireNonNull(configure, "configure"))
+                    .height(27).tooltip("Configure " + title));
         }
-        actions.add(VantaUiNode.spacer(1).flex(1));
-        actions.add(VantaUiNode.toggle("", enabled, toggle).width(46).height(28)
-                .tooltip("Enable or disable " + title));
-        card.add(actions);
         return card;
     }
 
