@@ -22,6 +22,8 @@ public final class VantaUiRuntime {
     private long averageUiRenderNanos;
     private float preferredScale = 1.0f;
     private float uiScale = 1.0f;
+    private int maxViewportWidth = Integer.MAX_VALUE;
+    private int maxViewportHeight = Integer.MAX_VALUE;
 
     private static final float DESIGN_WIDTH = 640.0f;
     private static final float DESIGN_HEIGHT = 360.0f;
@@ -46,14 +48,29 @@ public final class VantaUiRuntime {
         return Math.min(screenWidth / DESIGN_WIDTH, screenHeight / DESIGN_HEIGHT);
     }
 
-    /** Width in physical-pixel-equivalent design coordinates. */
+    /** Width of Minecraft's actual GUI coordinate viewport (not framebuffer pixels). */
     public static float designWidth(int screenWidth, int screenHeight) {
-        return screenWidth * minecraftGuiScale();
+        return Math.max(0, screenWidth);
     }
 
-    /** Height in physical-pixel-equivalent design coordinates. */
+    /** Height of Minecraft's actual GUI coordinate viewport (not framebuffer pixels). */
     public static float designHeight(int screenWidth, int screenHeight) {
-        return screenHeight * minecraftGuiScale();
+        return Math.max(0, screenHeight);
+    }
+
+    /**
+     * Bounds this runtime's centered layout in physical-pixel-equivalent design units.
+     * The content remains responsive to the actual Minecraft GUI coordinate viewport,
+     * while this limit prevents large framebuffer resolutions from stretching a menu
+     * across the entire display.
+     */
+    public void setMaxViewportSize(int maximumWidth, int maximumHeight) {
+        int boundedWidth = maximumWidth > 0 ? maximumWidth : Integer.MAX_VALUE;
+        int boundedHeight = maximumHeight > 0 ? maximumHeight : Integer.MAX_VALUE;
+        if (maxViewportWidth == boundedWidth && maxViewportHeight == boundedHeight) return;
+        maxViewportWidth = boundedWidth;
+        maxViewportHeight = boundedHeight;
+        invalidateLayout();
     }
 
     private static float minecraftGuiScale() {
@@ -84,15 +101,16 @@ public final class VantaUiRuntime {
         int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
         int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
 
-        // Insets are percentages of the physical-pixel-equivalent viewport.
-        // Layout dimensions expand as Minecraft's logical viewport shrinks.
+        // Preserve a small edge inset on constrained screens, then center the
+        // resulting coordinate-space window. A maximum viewport is expressed in
+        // design units so it remains the same physical size at every GUI scale.
         int marginX = Math.max(1, Math.round(layoutWidth * 0.025f));
         int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
-        int logicalLeft = Math.round((screenWidth - layoutWidth) * 0.5f);
-        int logicalTop = Math.round((screenHeight - layoutHeight) * 0.5f);
-        root.arrange(logicalLeft + marginX, logicalTop + marginY,
-                Math.max(0, layoutWidth - marginX * 2),
-                Math.max(0, layoutHeight - marginY * 2), font);
+        int arrangedWidth = Math.min(Math.max(0, layoutWidth - marginX * 2), maxViewportWidth);
+        int arrangedHeight = Math.min(Math.max(0, layoutHeight - marginY * 2), maxViewportHeight);
+        int logicalLeft = Math.round((screenWidth - arrangedWidth) * 0.5f);
+        int logicalTop = Math.round((screenHeight - arrangedHeight) * 0.5f);
+        root.arrange(logicalLeft, logicalTop, arrangedWidth, arrangedHeight, font);
         clearFocusIfDetached();
     }
 

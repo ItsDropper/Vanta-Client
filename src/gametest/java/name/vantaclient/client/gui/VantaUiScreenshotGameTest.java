@@ -422,15 +422,34 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                                 + preferredScale + ": " + left + "," + top + " to " + right + "," + bottom
                                 + " expected margins " + expectedMarginX + "x" + expectedMarginY + ".");
                     }
-                    float expectedDesignWidth = screenWidth * Math.max(1.0f, guiScale);
                     if (Math.abs(VantaUiRuntime.designWidth(screenWidth, screenHeight)
-                            - expectedDesignWidth) > 0.1f) {
-                        throw new AssertionError("The design width must compensate for the active Minecraft GUI scale at "
-                                + screenWidth + "x" + screenHeight + ". Expected "
-                                + expectedDesignWidth + " but got "
-                                + VantaUiRuntime.designWidth(screenWidth, screenHeight) + ".");
+                            - screenWidth) > 0.1f
+                            || Math.abs(VantaUiRuntime.designHeight(screenWidth, screenHeight)
+                            - screenHeight) > 0.1f) {
+                        throw new AssertionError("Responsive breakpoints must use Minecraft GUI coordinates, not framebuffer-scaled dimensions.");
                     }
                     runtime.dispose();
+
+                    VantaUiNode boundedRoot = VantaUiNode.column(0, 0);
+                    VantaUiRuntime boundedRuntime = new VantaUiRuntime(boundedRoot);
+                    boundedRuntime.setScale(preferredScale);
+                    boundedRuntime.setMaxViewportSize(1200, 760);
+                    boundedRuntime.layout(client.font, screenWidth, screenHeight);
+                    float boundedOffsetX = screenWidth * 0.5f * (1.0f - effectiveScale);
+                    float boundedOffsetY = screenHeight * 0.5f * (1.0f - effectiveScale);
+                    float boundedLeft = boundedOffsetX + boundedRoot.x() * effectiveScale;
+                    float boundedTop = boundedOffsetY + boundedRoot.y() * effectiveScale;
+                    float boundedRight = boundedOffsetX
+                            + (boundedRoot.x() + boundedRoot.width()) * effectiveScale;
+                    float boundedBottom = boundedOffsetY
+                            + (boundedRoot.y() + boundedRoot.height()) * effectiveScale;
+                    if (boundedRoot.width() > 1200 || boundedRoot.height() > 760
+                            || Math.abs((boundedLeft + boundedRight) * 0.5f - screenWidth * 0.5f) > 2.5f
+                            || Math.abs((boundedTop + boundedBottom) * 0.5f - screenHeight * 0.5f) > 2.5f) {
+                        throw new AssertionError("Bounded UI viewport must remain centered and respect its coordinate-space maximum at "
+                                + screenWidth + "x" + screenHeight + ".");
+                    }
+                    boundedRuntime.dispose();
                 }
             }
         });

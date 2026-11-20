@@ -62,6 +62,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
         runtime.setScale((float) VantaClientPreferences.get().uiScale);
+        runtime.setMaxViewportSize(1200, 760);
         runtime.layout(font, width, height);
     }
 
