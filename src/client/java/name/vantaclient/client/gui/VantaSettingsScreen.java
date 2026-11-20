@@ -110,17 +110,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
-        if (!compact) {
-            header.add(VantaUiNode.row(6, 9).height(28)
-                    .background(VantaUiTheme.SURFACE)
-                    .align(VantaUiNode.Alignment.CENTER)
-                    .add(VantaUiNode.spacer(1).size(6, 6)
-                            .background(VantaUiTheme.STATUS_SUCCESS))
-                    .add(VantaUiNode.dynamicText(
-                            () -> Minecraft.getInstance().getFps() + " FPS",
-                            VantaUiTheme.TEXT_SECONDARY)));
-            header.add(VantaUiNode.text("LOCAL PROFILE", VantaUiTheme.TEXT_MUTED));
-        }
         header.add(VantaUiNode.button("×", this::onClose)
                 .size(30, 28).tooltip("Close Vanta settings"));
         root.add(header);
@@ -158,7 +147,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
                     () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
                     .height(36).tooltip("Installed mods and integrations"));
-            navigation.add(VantaUiNode.text("Stored on this device", VantaUiTheme.TEXT_MUTED));
         }
 
         VantaUiNode content = VantaCompose.surface(VantaCompose.Material.PANEL,
