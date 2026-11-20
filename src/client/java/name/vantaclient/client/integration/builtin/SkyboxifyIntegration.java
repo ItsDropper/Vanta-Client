@@ -26,7 +26,7 @@ public final class SkyboxifyIntegration implements VantaClientIntegration {
         try {
             var mod = FabricLoader.getInstance().getModContainer(MOD_ID)
                     .orElseThrow(() -> new IllegalStateException("Skyboxify is not loaded"));
-            modClassLoader = mod.getClass().getClassLoader();
+            modClassLoader = Thread.currentThread().getContextClassLoader();
             Class<?> implementationClass = Class.forName(IMPLEMENTATION, true, modClassLoader);
             Object instance = implementationClass.getMethod("getInstance").invoke(null);
             config = implementationClass.getMethod("getConfig").invoke(instance);
