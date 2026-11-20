@@ -671,13 +671,35 @@ public final class VantaUiNode {
                 line(g, x + 8 * sx, y + 12 * sy, x + 12 * sx, y + 5 * sy, color, 1.5f * sx, 1.5f * sy);
             }
             case OVERVIEW->{rect(g,x+2*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+2*sy,5*sx,5*sy,color,sx,sy);rect(g,x+2*sx,y+9*sy,5*sx,5*sy,color,sx,sy);rect(g,x+9*sx,y+9*sy,5*sx,5*sy,color,sx,sy);}
-            case VISUALS->{line(g,x+1*sx,y+8*sy,x+4*sx,y+4*sy,color,sx,sy);line(g,x+4*sx,y+4*sy,x+8*sx,y+2*sy,color,sx,sy);line(g,x+8*sx,y+2*sy,x+12*sx,y+4*sy,color,sx,sy);line(g,x+12*sx,y+4*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+12*sx,y+12*sy,color,sx,sy);line(g,x+12*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+4*sx,y+12*sy,color,sx,sy);line(g,x+4*sx,y+12*sy,x+1*sx,y+8*sy,color,sx,sy);ring(g,x+8*sx,y+8*sy,2*sx,color);}
+            case VISUALS->{
+                // Eye silhouette and pupil: a clear visual-category metaphor.
+                boldLine(g,x+1*sx,y+8*sy,x+4*sx,y+4*sy,color,2*sx,2*sy);
+                boldLine(g,x+4*sx,y+4*sy,x+8*sx,y+2*sy,color,2*sx,2*sy);
+                boldLine(g,x+8*sx,y+2*sy,x+12*sx,y+4*sy,color,2*sx,2*sy);
+                boldLine(g,x+12*sx,y+4*sy,x+15*sx,y+8*sy,color,2*sx,2*sy);
+                boldLine(g,x+15*sx,y+8*sy,x+12*sx,y+12*sy,color,2*sx,2*sy);
+                boldLine(g,x+12*sx,y+12*sy,x+8*sx,y+14*sy,color,2*sx,2*sy);
+                boldLine(g,x+8*sx,y+14*sy,x+4*sx,y+12*sy,color,2*sx,2*sy);
+                boldLine(g,x+4*sx,y+12*sy,x+1*sx,y+8*sy,color,2*sx,2*sy);
+                boldRing(g,x+8*sx,y+8*sy,2.7f*sx,color,1.8f*sx);
+                g.fill(Math.round(x+7*sx),Math.round(y+7*sy),Math.round(x+9*sx),Math.round(y+9*sy),color);
+            }
             case CONTROLS->{for(int i=0;i<3;i++)line(g,x+2*sx,y+(4+i*4)*sy,x+14*sx,y+(4+i*4)*sy,color,sx,sy);ring(g,x+6*sx,y+4*sy,1.8f*sx,color);ring(g,x+11*sx,y+8*sy,1.8f*sx,color);ring(g,x+5*sx,y+12*sy,1.8f*sx,color);}
             case DISPLAY->{rect(g,x+1.5f*sx,y+2*sy,13*sx,9*sy,color,sx,sy);line(g,x+8*sx,y+11*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+4*sx,y+14*sy,x+12*sx,y+14*sy,color,sx,sy);}
             case KEYBOARD->{rect(g,x+1*sx,y+3*sy,14*sx,10*sy,color,sx,sy);for(int row=0;row<2;row++)for(int col=0;col<5;col++){float px=x+(3+col*2.5f)*sx,py=y+(5+row*3)*sy;g.fill(Math.round(px),Math.round(py),Math.round(px+sx),Math.round(py+sy),color);}}
             case SEARCH->{ring(g,x+6.5f*sx,y+6.5f*sy,4.3f*sx,color);line(g,x+9.7f*sx,y+9.7f*sy,x+14*sx,y+14*sy,color,sx,sy);}
             case CROSSHAIR->{line(g,x+8*sx,y+1*sy,x+8*sx,y+5*sy,color,sx,sy);line(g,x+8*sx,y+11*sy,x+8*sx,y+15*sy,color,sx,sy);line(g,x+1*sx,y+8*sy,x+5*sx,y+8*sy,color,sx,sy);line(g,x+11*sx,y+8*sy,x+15*sx,y+8*sy,color,sx,sy);ring(g,x+8*sx,y+8*sy,2*sx,color);}
-            case HUD->{line(g,x+2*sx,y+6*sy,x+2*sx,y+2*sy,color,sx,sy);line(g,x+2*sx,y+2*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+10*sx,y+2*sy,x+14*sx,y+2*sy,color,sx,sy);line(g,x+14*sx,y+2*sy,x+14*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+10*sy,x+2*sx,y+14*sy,color,sx,sy);line(g,x+2*sx,y+14*sy,x+6*sx,y+14*sy,color,sx,sy);line(g,x+10*sx,y+14*sy,x+14*sx,y+14*sy,color,sx,sy);line(g,x+14*sx,y+10*sy,x+14*sx,y+14*sy,color,sx,sy);}
+            case HUD->{
+                // Four heavier screen-corner brackets with a clean central opening.
+                boldLine(g,x+2*sx,y+6*sy,x+2*sx,y+2*sy,color,2*sx,2*sy);
+                boldLine(g,x+2*sx,y+2*sy,x+6*sx,y+2*sy,color,2*sx,2*sy);
+                boldLine(g,x+10*sx,y+2*sy,x+14*sx,y+2*sy,color,2*sx,2*sy);
+                boldLine(g,x+14*sx,y+2*sy,x+14*sx,y+6*sy,color,2*sx,2*sy);
+                boldLine(g,x+2*sx,y+10*sy,x+2*sx,y+14*sy,color,2*sx,2*sy);
+                boldLine(g,x+2*sx,y+14*sy,x+6*sx,y+14*sy,color,2*sx,2*sy);
+                boldLine(g,x+10*sx,y+14*sy,x+14*sx,y+14*sy,color,2*sx,2*sy);
+                boldLine(g,x+14*sx,y+10*sy,x+14*sx,y+14*sy,color,2*sx,2*sy);
+            }
             case SPARK->{line(g,x+8*sx,y+1*sy,x+9.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+6.5f*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+9.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+9.5f*sy,x+8*sx,y+15*sy,color,sx,sy);line(g,x+8*sx,y+15*sy,x+6.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+9.5f*sy,x+1*sx,y+8*sy,color,sx,sy);line(g,x+1*sx,y+8*sy,x+6.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+6.5f*sy,x+8*sx,y+1*sy,color,sx,sy);}
             case RESET->{line(g,x+13*sx,y+2*sy,x+10*sx,y+4*sy,color,sx,sy);line(g,x+13*sx,y+2*sy,x+15*sx,y+5*sy,color,sx,sy);line(g,x+12*sx,y+3*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+6*sx,y+2*sy,x+2*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+6*sy,x+3*sx,y+12*sy,color,sx,sy);line(g,x+3*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+12*sx,y+11*sy,color,sx,sy);}
             case COMBAT -> {
