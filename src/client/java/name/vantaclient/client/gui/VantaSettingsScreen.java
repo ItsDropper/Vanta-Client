@@ -98,9 +98,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
         VantaUiNode root = VantaUiNode.column(8, 8);
 
-        VantaUiNode header = VantaUiNode.row(12, 14)
-                 .height(compact ? 38 : 42)
-                .background(VantaUiTheme.PANEL)
+        VantaUiNode header = VantaUiNode.row(8, 10)
+                .height(compact ? 36 : 38)
                 .align(VantaUiNode.Alignment.CENTER);
         header.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
@@ -130,14 +129,12 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
             navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 4, 9)
-                    .width(164);
+                    .width(148);
             navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
             navigation.add(nav("Visuals", Page.VISUAL, VantaUiNode.Icon.VISUALS));
             navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
             navigation.add(nav("Utilities", Page.MISC, VantaUiNode.Icon.SPARK));
             navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(divider());
-            navigation.add(VantaUiNode.eyebrow("PREFERENCES"));
             navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(nav("Keybinds", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
             navigation.add(VantaUiNode.spacer(1).flex(1));
@@ -263,8 +260,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
         content.add(heading);
 
-        VantaUiNode toolbar = VantaUiNode.row(8, 6)
-                .height(36)
+        VantaUiNode toolbar = VantaUiNode.row(6, 6)
+                .height(34)
                 .background(VantaUiTheme.INPUT_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
@@ -303,7 +300,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
 
         int columns = featureGridColumns(availableWidth);
-        int cardHeight = compact ? 128 : 140;
+        int cardHeight = compact ? 116 : 124;
         VantaUiNode grid = VantaUiNode.column(compact ? 8 : 12, 0);
         for (int offset = 0; offset < features.size(); offset += columns) {
             VantaUiNode gridRow = VantaUiNode.row(compact ? 8 : 12, 0)
@@ -318,11 +315,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             grid.add(gridRow);
         }
         content.add(grid);
-        if (category == Category.VISUAL) content.add(VantaUiNode.text("FarView is temporarily unavailable", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.dynamicText(() -> {
-            long active = categoryFeatures.stream().filter(Feature::isEnabled).count();
-            return active + " enabled · " + (categoryFeatures.size() - active) + " disabled";
-        }, VantaUiTheme.TEXT_MUTED));
+        if (category == Category.VISUAL) {
+            content.add(VantaUiNode.text("FarView · temporarily unavailable", VantaUiTheme.TEXT_MUTED));
+        }
     }
 
     static int featureGridColumns(float availableWidth) {
