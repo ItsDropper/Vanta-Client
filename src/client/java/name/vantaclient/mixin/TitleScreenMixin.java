@@ -170,11 +170,13 @@ public abstract class TitleScreenMixin {
             y += buttonHeight + gap;
         }
 
-        int secondaryY = top + 3 * (buttonHeight + gap) + 8;
-        int halfWidth = Math.max(72, (width - 8) / 2);
-        if (options != null) vanta$setBounds(options, left, secondaryY, halfWidth, 27);
-        if (quit != null) vanta$setBounds(quit, left + halfWidth + 8, secondaryY,
-                width - halfWidth - 8, 27);
+        boolean compact = screenHeight < 420 || screenWidth < 420;
+        int secondaryY = top + 3 * (buttonHeight + gap) + (compact ? 4 : 8);
+        int secondaryHeight = compact ? 20 : 27;
+        int halfWidth = Math.max(56, (width - 6) / 2);
+        if (options != null) vanta$setBounds(options, left, secondaryY, halfWidth, secondaryHeight);
+        if (quit != null) vanta$setBounds(quit, left + halfWidth + 6, secondaryY,
+                width - halfWidth - 6, secondaryHeight);
 
         if (vanta$settingsShortcut != null) {
             int[] bounds = VantaMenuStyle.titleBrandBounds(screenWidth, screenHeight);
@@ -182,20 +184,22 @@ public abstract class TitleScreenMixin {
                     bounds[0], bounds[1], bounds[2], bounds[3]);
         }
 
-        int utilityY = Math.max(8, screenHeight - 88);
-        int utilityStart = 8;
-        if (vanta$languageShortcut != null) {
-            vanta$setBounds(vanta$languageShortcut, utilityStart, utilityY, 104, 24);
-        }
-        if (vanta$accessibilityShortcut != null) {
-            vanta$setBounds(vanta$accessibilityShortcut, utilityStart + 112, utilityY, 132, 24);
-        }
-        if (vanta$shareShortcut != null) {
-            vanta$setBounds(vanta$shareShortcut, utilityStart + 260, utilityY, 108, 24);
-        }
-        if (vanta$creditsShortcut != null) {
-            vanta$setBounds(vanta$creditsShortcut, Math.max(8, screenWidth - 100),
-                    Math.max(8, screenHeight - 58), 92, 22);
+        boolean compact = screenHeight < 520 || screenWidth < 420;
+        int utilityY = Math.max(4, screenHeight - (compact ? 48 : 88));
+        if (compact) {
+            // At high GUI scales the logical viewport can be only a few hundred
+            // units wide. Keep utility actions as icon-sized targets on one row.
+            if (vanta$languageShortcut != null) vanta$setBounds(vanta$languageShortcut, 8, utilityY, 28, 22);
+            if (vanta$accessibilityShortcut != null) vanta$setBounds(vanta$accessibilityShortcut, 42, utilityY, 28, 22);
+            if (vanta$shareShortcut != null) vanta$setBounds(vanta$shareShortcut, 76, utilityY, 28, 22);
+            if (vanta$creditsShortcut != null) vanta$setBounds(vanta$creditsShortcut,
+                    Math.max(8, screenWidth - 36), utilityY, 28, 22);
+        } else {
+            if (vanta$languageShortcut != null) vanta$setBounds(vanta$languageShortcut, 8, utilityY, 104, 24);
+            if (vanta$accessibilityShortcut != null) vanta$setBounds(vanta$accessibilityShortcut, 120, utilityY, 132, 24);
+            if (vanta$shareShortcut != null) vanta$setBounds(vanta$shareShortcut, 268, utilityY, 108, 24);
+            if (vanta$creditsShortcut != null) vanta$setBounds(vanta$creditsShortcut,
+                    Math.max(8, screenWidth - 100), Math.max(8, screenHeight - 58), 92, 22);
         }
 
         for (AbstractButton button : secondary) {

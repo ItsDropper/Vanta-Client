@@ -25,7 +25,7 @@ import java.util.function.Supplier;
  */
 public final class VantaUiNode {
     public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS }
-    public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET }
+    public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET, COMBAT, MISC }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
     public enum Justification { START, CENTER, END, SPACE_BETWEEN }
@@ -680,7 +680,33 @@ public final class VantaUiNode {
             case HUD->{line(g,x+2*sx,y+6*sy,x+2*sx,y+2*sy,color,sx,sy);line(g,x+2*sx,y+2*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+10*sx,y+2*sy,x+14*sx,y+2*sy,color,sx,sy);line(g,x+14*sx,y+2*sy,x+14*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+10*sy,x+2*sx,y+14*sy,color,sx,sy);line(g,x+2*sx,y+14*sy,x+6*sx,y+14*sy,color,sx,sy);line(g,x+10*sx,y+14*sy,x+14*sx,y+14*sy,color,sx,sy);line(g,x+14*sx,y+10*sy,x+14*sx,y+14*sy,color,sx,sy);}
             case SPARK->{line(g,x+8*sx,y+1*sy,x+9.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+6.5f*sy,x+15*sx,y+8*sy,color,sx,sy);line(g,x+15*sx,y+8*sy,x+9.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+9.5f*sx,y+9.5f*sy,x+8*sx,y+15*sy,color,sx,sy);line(g,x+8*sx,y+15*sy,x+6.5f*sx,y+9.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+9.5f*sy,x+1*sx,y+8*sy,color,sx,sy);line(g,x+1*sx,y+8*sy,x+6.5f*sx,y+6.5f*sy,color,sx,sy);line(g,x+6.5f*sx,y+6.5f*sy,x+8*sx,y+1*sy,color,sx,sy);}
             case RESET->{line(g,x+13*sx,y+2*sy,x+10*sx,y+4*sy,color,sx,sy);line(g,x+13*sx,y+2*sy,x+15*sx,y+5*sy,color,sx,sy);line(g,x+12*sx,y+3*sy,x+6*sx,y+2*sy,color,sx,sy);line(g,x+6*sx,y+2*sy,x+2*sx,y+6*sy,color,sx,sy);line(g,x+2*sx,y+6*sy,x+3*sx,y+12*sy,color,sx,sy);line(g,x+3*sx,y+12*sy,x+8*sx,y+14*sy,color,sx,sy);line(g,x+8*sx,y+14*sy,x+12*sx,y+11*sy,color,sx,sy);}
+            case COMBAT -> {
+                // Bold target reticle with a solid center: unmistakable at small sizes.
+                boldLine(g,x+8*sx,y+1*sy,x+8*sx,y+4*sy,color,2*sx,2*sy);
+                boldLine(g,x+8*sx,y+12*sy,x+8*sx,y+15*sy,color,2*sx,2*sy);
+                boldLine(g,x+1*sx,y+8*sy,x+4*sx,y+8*sy,color,2*sx,2*sy);
+                boldLine(g,x+12*sx,y+8*sy,x+15*sx,y+8*sy,color,2*sx,2*sy);
+                boldRing(g,x+8*sx,y+8*sy,4.1f*sx,color,1.8f*sx);
+                g.fill(Math.round(x+6*sx),Math.round(y+6*sy),Math.round(x+10*sx),Math.round(y+10*sy),color);
+            }
+            case MISC -> {
+                // Three weighted adjustment tracks with offset circular handles.
+                boldLine(g,x+2*sx,y+4*sy,x+14*sx,y+4*sy,color,1.8f*sx,1.8f*sy);
+                boldLine(g,x+2*sx,y+8*sy,x+14*sx,y+8*sy,color,1.8f*sx,1.8f*sy);
+                boldLine(g,x+2*sx,y+12*sy,x+14*sx,y+12*sy,color,1.8f*sx,1.8f*sy);
+                g.fill(Math.round(x+5*sx),Math.round(y+2*sy),Math.round(x+9*sx),Math.round(y+6*sy),color);
+                g.fill(Math.round(x+10*sx),Math.round(y+6*sy),Math.round(x+14*sx),Math.round(y+10*sy),color);
+                g.fill(Math.round(x+3*sx),Math.round(y+10*sy),Math.round(x+7*sx),Math.round(y+14*sy),color);
+            }
         }
+    }
+    private static void boldLine(GuiGraphics g,float x1,float y1,float x2,float y2,int color,float thicknessX,float thicknessY) {
+        int steps=Math.max(1,Math.round(Math.max(Math.abs(x2-x1),Math.abs(y2-y1))*3));
+        int halfX=Math.max(1,Math.round(thicknessX*0.5f)),halfY=Math.max(1,Math.round(thicknessY*0.5f));
+        for(int i=0;i<=steps;i++){float t=i/(float)steps;int px=Math.round(x1+(x2-x1)*t),py=Math.round(y1+(y2-y1)*t);g.fill(px-halfX,py-halfY,px+halfX+1,py+halfY+1,color);}
+    }
+    private static void boldRing(GuiGraphics g,float cx,float cy,float radius,int color,float thickness) {
+        float px=cx+radius,py=cy;for(int a=10;a<=360;a+=10){double rad=Math.toRadians(a);float nx=cx+(float)Math.cos(rad)*radius,ny=cy+(float)Math.sin(rad)*radius;boldLine(g,px,py,nx,ny,color,thickness,thickness);px=nx;py=ny;}
     }
     private static void line(GuiGraphics g,float x1,float y1,float x2,float y2,int color,float sx,float sy){
         int steps=Math.max(1,Math.round(Math.max(Math.abs(x2-x1),Math.abs(y2-y1))*2));

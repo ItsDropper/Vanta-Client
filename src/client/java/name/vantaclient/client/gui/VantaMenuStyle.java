@@ -90,8 +90,11 @@ public final class VantaMenuStyle {
         int buttonHeight = menuButtonHeight(screenHeight);
         int gap = menuButtonGap(screenHeight);
         int top = menuTop(screenHeight);
-        int y = top + 3 * (buttonHeight + gap) + 8 + 27 + 6;
-        return new int[]{left, Math.min(screenHeight - 48, y), width, 24};
+        boolean compact = screenHeight < 420 || screenWidth < 420;
+        int secondaryHeight = compact ? 20 : 27;
+        int y = top + 3 * (buttonHeight + gap) + (compact ? 4 : 8) + secondaryHeight + (compact ? 3 : 6);
+        return new int[]{left, Math.max(0, Math.min(screenHeight - (compact ? 22 : 48), y)),
+                width, compact ? 18 : 24};
     }
 
     public static int menuLeft(int screenWidth) {
@@ -99,19 +102,31 @@ public final class VantaMenuStyle {
     }
 
     public static int menuButtonWidth(int screenWidth) {
-        return Math.max(176, Math.min(244, Math.round(screenWidth * 0.34f)));
+        if (screenWidth <= 0) return 0;
+        return Math.max(1, Math.min(Math.max(1, screenWidth - 24),
+                Math.max(120, Math.min(244, Math.round(screenWidth * 0.34f)))));
     }
 
     public static int menuButtonHeight(int screenHeight) {
-        return screenHeight < 320 ? 24 : 30;
+        return screenHeight < 240 ? 18 : screenHeight < 420 ? 22 : 30;
     }
 
     public static int menuButtonGap(int screenHeight) {
-        return screenHeight < 320 ? 4 : 8;
+        return screenHeight < 240 ? 1 : screenHeight < 420 ? 3 : 8;
     }
 
     public static int menuTop(int screenHeight) {
-        return Math.max(64, screenHeight / 2 - (screenHeight < 320 ? 28 : 24));
+        boolean compact = screenHeight < 420;
+        int height = menuButtonHeight(screenHeight);
+        int gap = menuButtonGap(screenHeight);
+        int settingsHeight = compact ? 18 : 24;
+        int secondaryHeight = compact ? 20 : 27;
+        int menuStackHeight = 3 * (height + gap) + (compact ? 4 : 8)
+                + secondaryHeight + (compact ? 3 : 6) + settingsHeight;
+        int utilityTop = screenHeight - ((screenHeight < 520) ? 48 : 88);
+        int maximumTop = Math.max(0, utilityTop - menuStackHeight - 4);
+        int preferredTop = screenHeight / 2 - (compact ? 40 : 24);
+        return Math.max(0, Math.min(preferredTop, maximumTop));
     }
 
     private static int brandLeft(int screenWidth) {
@@ -123,10 +138,11 @@ public final class VantaMenuStyle {
                                            int screenHeight, long elapsedMillis) {
         float progress = easeOut(Math.min(1.0f, Math.max(0.0f, elapsedMillis / 420.0f)));
         int alpha = Math.round(progress * 255.0f);
-        int markWidth = screenWidth < 700 ? 42 : 56;
-        int markHeight = screenWidth < 700 ? 31 : 41;
+        boolean compact = screenHeight < 420 || screenWidth < 420;
+        int markWidth = compact ? 28 : screenWidth < 700 ? 42 : 56;
+        int markHeight = compact ? 21 : screenWidth < 700 ? 31 : 41;
         int x = (screenWidth - markWidth) / 2;
-        int y = Math.max(8, menuTop(screenHeight) - 104);
+        int y = compact ? 3 : Math.max(8, menuTop(screenHeight) - 104);
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
@@ -134,10 +150,12 @@ public final class VantaMenuStyle {
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
-        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + 49,
+        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + (compact ? 25 : 49),
                 withAlpha(0xFFFFFFFF, alpha));
-        graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 83,
-                withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)));
+        if (!compact) {
+            graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 83,
+                    withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)));
+        }
 
     }
 
@@ -183,7 +201,8 @@ public final class VantaMenuStyle {
         String playerName = client.getUser().getName();
         if (playerName == null || playerName.isBlank()) playerName = "Offline profile";
 
-        boolean compact = screenHeight < 320;
+        boolean compact = screenHeight < 420 || screenWidth < 420;
+        if (screenWidth < 400) return;
         int width = compact
                 ? Math.min(168, Math.max(150, Math.round(screenWidth * 0.34f)))
                 : Math.min(236, Math.max(190, Math.round(screenWidth * 0.43f)));

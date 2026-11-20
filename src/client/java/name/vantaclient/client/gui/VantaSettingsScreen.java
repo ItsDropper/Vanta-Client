@@ -246,8 +246,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         VantaUiNode.Icon categoryIcon = switch (category) {
             case HUD -> VantaUiNode.Icon.HUD;
             case VISUAL -> VantaUiNode.Icon.VISUALS;
-            case COMBAT -> VantaUiNode.Icon.CROSSHAIR;
-            case MISC -> VantaUiNode.Icon.SPARK;
+            case COMBAT -> VantaUiNode.Icon.COMBAT;
+            case MISC -> VantaUiNode.Icon.MISC;
         };
         long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
 
