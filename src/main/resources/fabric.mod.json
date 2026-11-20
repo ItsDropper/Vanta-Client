@@ -20,6 +20,9 @@
     ],
     "modmenu": [
       "name.vantaclient.client.integration.VantaModMenuIntegration"
+    ],
+    "vanta": [
+      "name.vantaclient.client.integration.builtin.SkyboxifyIntegration"
     ]
   },
   "mixins": [
