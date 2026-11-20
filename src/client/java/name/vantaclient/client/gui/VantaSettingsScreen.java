@@ -96,18 +96,18 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 || VantaUiRuntime.designHeight(width, height) < 620.0f
                 || VantaClientPreferences.get().compactMode;
 
-        VantaUiNode root = VantaUiNode.column(12, 12);
+        VantaUiNode root = VantaUiNode.column(8, 8);
 
         VantaUiNode header = VantaUiNode.row(12, 14)
-                .height(compact ? 42 : 50)
+                 .height(compact ? 38 : 42)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
         header.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(30, 22));
+                .size(26, 20));
         VantaUiNode brand = VantaUiNode.column(1, 0);
         brand.add(VantaUiNode.title("VANTA"));
-        brand.add(VantaUiNode.eyebrow("CLIENT CONTROL"));
+        
         header.add(brand);
         header.add(VantaUiNode.spacer(1).flex(1));
         if (!compact) {
@@ -141,8 +141,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
             navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
         } else {
-            navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 5, 12)
-                    .width(190);
+            navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 4, 9)
+                    .width(164);
             navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
             navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
@@ -162,7 +162,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
 
         VantaUiNode content = VantaCompose.surface(VantaCompose.Material.PANEL,
-                        compact ? 10 : 16, compact ? 12 : 22)
+                        compact ? 8 : 10, compact ? 10 : 14)
                 .flex(1).scrollable();
         addPageContent(content);
         body.add(navigation);
@@ -463,7 +463,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
 
         int columns = featureGridColumns(availableWidth);
-        int cardHeight = compact ? 142 : 166;
+        int cardHeight = compact ? 128 : 140;
         VantaUiNode grid = VantaUiNode.column(compact ? 8 : 12, 0);
         for (int offset = 0; offset < features.size(); offset += columns) {
             VantaUiNode gridRow = VantaUiNode.row(compact ? 8 : 12, 0)
@@ -501,7 +501,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 categoryIcon,
                 () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
                 VantaClientPreferences.get().accent.color(),
-                compact ? 142 : 166,
+                compact ? 128 : 140,
                 compact,
                 hasSettings,
                 () -> {
