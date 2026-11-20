@@ -85,13 +85,13 @@ public final class VantaComponents {
         Objects.requireNonNull(enabled, "enabled");
         Objects.requireNonNull(toggle, "toggle");
 
-        VantaUiNode card = surface(Surface.ELEVATED, compact ? 4 : 6, compact ? 9 : 11)
+        VantaUiNode card = surface(Surface.ELEVATED, compact ? 3 : 4, compact ? 7 : 8)
                 .height(cardHeight);
         VantaUiNode identity = VantaUiNode.row(8, 0)
-                .height(22).align(VantaUiNode.Alignment.CENTER);
-        identity.add(VantaUiNode.icon(icon).size(18, 18).iconColor(accent));
+                .height(20).align(VantaUiNode.Alignment.CENTER);
+        identity.add(VantaUiNode.icon(icon).size(16, 16).iconColor(accent));
         identity.add(VantaUiNode.spacer(1).flex(1));
-        identity.add(VantaUiNode.toggle("", enabled, toggle).width(40).height(24)
+        identity.add(VantaUiNode.toggle("", enabled, toggle).width(36).height(22)
                 .tooltip("Enable or disable " + title));
         card.add(identity);
         card.add(VantaUiNode.title(title));
@@ -103,7 +103,7 @@ public final class VantaComponents {
 
         if (configurable) {
             card.add(VantaUiNode.button("Settings", Objects.requireNonNull(configure, "configure"))
-                    .height(27).tooltip("Configure " + title));
+                    .height(25).tooltip("Configure " + title));
         }
         return card;
     }
