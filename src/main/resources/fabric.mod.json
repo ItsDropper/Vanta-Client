@@ -22,7 +22,8 @@
       "name.vantaclient.client.integration.VantaModMenuIntegration"
     ],
     "vanta": [
-      "name.vantaclient.client.integration.builtin.SkyboxifyIntegration"
+      "name.vantaclient.client.integration.builtin.SkyboxifyIntegration",
+      "name.vantaclient.client.integration.builtin.UkusArmorHudIntegration"
     ]
   },
   "mixins": [
