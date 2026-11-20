@@ -36,11 +36,11 @@ import java.util.Locale;
 
 /** The live, retained-mode settings workspace for Vanta Client. */
 public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen {
-    private enum Page { OVERVIEW, HUD, VISUAL, COMBAT, MISC, APPEARANCE, CONTROLS }
+    private enum Page { HUD, VISUAL, COMBAT, MISC, APPEARANCE, CONTROLS }
 
     private final Screen parent;
     private VantaUiRuntime runtime;
-    private Page page = Page.OVERVIEW;
+    private Page page = Page.VISUAL;
     private Feature selectedFeature;
     private String searchQuery = "";
     private String pendingSearch = "";
@@ -67,7 +67,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     void setPageForScreenshot(int targetPage) {
         page = switch (targetPage) {
-            case 0 -> Page.OVERVIEW;
+            case 0 -> Page.VISUAL;
             case 1 -> Page.HUD;
             case 2 -> Page.VISUAL;
             case 3 -> Page.COMBAT;
@@ -122,7 +122,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             navigation = VantaUiNode.row(3, 3).height(34)
                     .background(VantaUiTheme.PANEL)
                     .justify(VantaUiNode.Justification.CENTER);
-            navigation.add(compactNav(Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
             navigation.add(compactNav(Page.VISUAL, VantaUiNode.Icon.VISUALS));
             navigation.add(compactNav(Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
@@ -132,8 +131,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         } else {
             navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 4, 9)
                     .width(164);
-            navigation.add(VantaUiNode.eyebrow("WORKSPACE"));
-            navigation.add(nav("Overview", Page.OVERVIEW, VantaUiNode.Icon.OVERVIEW));
             navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
             navigation.add(nav("Visuals", Page.VISUAL, VantaUiNode.Icon.VISUALS));
             navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
@@ -161,7 +158,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     private VantaUiNode compactNav(Page target, VantaUiNode.Icon icon) {
         String label = switch (target) {
-            case OVERVIEW -> "Overview";
             case HUD -> "HUD";
             case VISUAL -> "Visual";
             case COMBAT -> "Combat";
@@ -191,36 +187,10 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             return;
         }
         switch (page) {
-            case OVERVIEW -> addOverview(content);
             case APPEARANCE -> addAppearance(content);
             case CONTROLS -> addControls(content);
             case HUD, VISUAL, COMBAT, MISC -> addFeatureCategory(content);
         }
-    }
-
-    private void addOverview(VantaUiNode content) {
-        content.add(VantaCompose.sectionHeader(null, "Overview", null));
-
-        VantaUiNode workspaceList = VantaCompose.surface(VantaCompose.Material.ELEVATED, 1, 0);
-        addWorkspaceRow(workspaceList, "HUD", "Layout and overlays",
-                Page.HUD, VantaUiNode.Icon.HUD);
-        addWorkspaceRow(workspaceList, "Visuals", "Rendering options",
-                Page.VISUAL, VantaUiNode.Icon.VISUALS);
-        addWorkspaceRow(workspaceList, "Combat", "Combat tools",
-                Page.COMBAT, VantaUiNode.Icon.CROSSHAIR);
-        addWorkspaceRow(workspaceList, "Utilities", "Client features",
-                Page.MISC, VantaUiNode.Icon.SPARK);
-        content.add(workspaceList);
-    }
-
-    private void addWorkspaceRow(VantaUiNode list, String title, String detail,
-                                 Page target, VantaUiNode.Icon icon) {
-        list.add(VantaCompose.workspaceRow(title, detail, icon, () -> {
-            page = target;
-            selectedFeature = null;
-            rebuildUi();
-        }));
-        list.add(divider());
     }
 
     private VantaUiNode categoryCard(String label, String detail, Page target,
@@ -269,6 +239,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         Category category = toCategory(page);
         List<Feature> features = FeatureRegistry.FEATURES.stream()
                 .filter(feature -> feature.getCategory() == category)
+                .filter(feature -> feature != FarViewFeature.INSTANCE)
                 .filter(this::matchesSearch)
                 .toList();
         List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
@@ -347,6 +318,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             grid.add(gridRow);
         }
         content.add(grid);
+        if (category == Category.VISUAL) content.add(VantaUiNode.text("FarView is temporarily unavailable", VantaUiTheme.TEXT_MUTED));
         content.add(VantaUiNode.dynamicText(() -> {
             long active = categoryFeatures.stream().filter(Feature::isEnabled).count();
             return active + " enabled · " + (categoryFeatures.size() - active) + " disabled";
@@ -411,16 +383,6 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (VantaClientPreferences.get().showDescriptions) {
             content.add(VantaUiNode.paragraph(feature.getDescription(),
                     VantaUiTheme.TEXT_SECONDARY, 2));
-        }
-        if (feature == FarViewFeature.INSTANCE) {
-            content.add(VantaUiNode.dynamicText(FarViewController::getRendererStatus,
-                    VantaUiTheme.TEXT_MUTED));
-            content.add(VantaUiNode.dynamicText(
-                    () -> "Vanilla detail distance: " + FarViewController.getEffectiveRenderDistance()
-                            + " chunks",
-                    VantaUiTheme.TEXT_SECONDARY));
-            content.add(VantaUiNode.dynamicText(FarTerrainRenderer::getStatusLine,
-                    VantaUiTheme.TEXT_SECONDARY));
         }
         content.add(VantaUiNode.toggle("Enable feature", feature::isEnabled, enabled -> {
             if (feature.isEnabled() != enabled) feature.toggle();
