@@ -149,7 +149,7 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 - **Settings** contains Vanta Client appearance preferences: accent colour, interface animations, compact layout, description visibility, and UI scale/spacing. Preferences are stored separately in `config/vanta-client.json`.
 - **Mods** contains the built-in HUD, Visual, Combat, and Misc categories.
 - The installed-mod library scans the active instance's `mods` directory and reads each JAR's Fabric metadata and optional icon. It distinguishes Fabric-loaded mods from session-hot-loaded candidates; listing a JAR does not execute it.
-- Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu.
+- Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu. Every supported setting has a Reset action that writes its declared default through the integration's setter.
 - Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
 
 ## Optional Mod Menu integration
@@ -179,4 +179,4 @@ The runtime keeps a session-only list of successfully invoked hot-loaded client 
 
 ## Current scope
 
-The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Existing Mod Menu configuration screens remain third-party screens and are opened as such; Vanta cannot safely introspect arbitrary screen widgets and turn them into native controls. Mods need a Vanta integration provider (or a future dedicated adapter) for native rendering. Custom control renderers and shared third-party persistence are not implemented.
+The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Each control includes a Reset action that invokes the same setter with the definition's declared default value. Integration setters remain responsible for persisting their own values. Existing Mod Menu configuration screens remain third-party screens and are opened as such; Vanta cannot safely introspect arbitrary screen widgets and turn them into native controls. Mods need a Vanta integration provider (or a future dedicated adapter) for native rendering. Custom control renderers and shared third-party persistence are not implemented.
