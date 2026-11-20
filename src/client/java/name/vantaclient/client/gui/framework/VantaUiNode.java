@@ -413,9 +413,9 @@ public final class VantaUiNode {
                 case VantaUiTheme.TOOLTIP_SURFACE -> VantaCompose.Material.POPOVER;
                 default -> null;
             };
-            int radius = background == VantaUiTheme.PANEL ? 16
-                    : background == VantaUiTheme.PANEL_RAISED ? 10
-                    : background == VantaUiTheme.TOOLTIP_SURFACE ? 8
+            int radius = background == VantaUiTheme.PANEL ? 18
+                    : background == VantaUiTheme.PANEL_RAISED ? 13
+                    : background == VantaUiTheme.TOOLTIP_SURFACE ? 10
                     : VantaUiTheme.RADIUS_MEDIUM;
             if (material != null) {
                 VantaCompose.State surfaceState = !enabled
