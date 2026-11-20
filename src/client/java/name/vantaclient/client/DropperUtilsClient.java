@@ -1,12 +1,14 @@
 package name.vantaclient.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import name.vantaclient.client.platform.ClientPlatform;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
 import name.vantaclient.client.feature.FeatureRegistry;
 import name.vantaclient.client.integration.BuiltInIntegration;
+import name.vantaclient.client.integration.VantaIntegrationDiscovery;
 import name.vantaclient.client.init.Events;
 import name.vantaclient.client.init.HudRegistration;
 import name.vantaclient.client.init.Keybinds;
@@ -23,6 +25,8 @@ public class DropperUtilsClient implements ClientModInitializer {
 		DropperUtilsConfig.load();
 		FeatureRegistry.loadConfigs();
 		BuiltInIntegration.register();
+		// Run after every mod's client initializer has had a chance to initialize its config.
+		ClientTickEvents.START_CLIENT_TICK.register(client -> VantaIntegrationDiscovery.discover());
 
 		Keybinds.register();
 		FeatureKeybinds.register();

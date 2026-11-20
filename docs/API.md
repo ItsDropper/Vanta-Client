@@ -63,6 +63,58 @@ public final class ExampleClient implements ClientModInitializer {
 
 The example fields are illustrative. A real integration should bind getters and setters to its own configuration model. The setter is responsible for persisting the changed value until Vanta Client's shared persistence contract is introduced.
 
+## Automatic native integration discovery
+
+Mods can register a provider using Fabric's `vanta` entrypoint. Vanta discovers
+providers on the first client tick, after normal client initializers have run.
+The descriptor ID must match the declaring Fabric mod ID.
+
+Add the entrypoint to the integrating mod's `fabric.mod.json`:
+
+```json
+{
+  "entrypoints": {
+    "vanta": [
+      "com.examplemod.client.ExampleVantaIntegration"
+    ]
+  }
+}
+```
+
+Implement the provider:
+
+```java
+import name.vantaclient.api.ModDescriptor;
+import name.vantaclient.api.VantaClientIntegration;
+import name.vantaclient.api.setting.SettingDefinition;
+
+public final class ExampleVantaIntegration implements VantaClientIntegration {
+    private final ExampleConfig config = ExampleConfig.get();
+
+    @Override
+    public ModDescriptor createDescriptor() {
+        return ModDescriptor.builder("examplemod", "Example Mod")
+            .description("Configure Example Mod without leaving Vanta")
+            .version("1.0.0")
+            .setting(SettingDefinition.bool(
+                "enabled", "Enabled", "Enable the mod",
+                config.enabled(), config::enabled, config::setEnabled
+            ))
+            .build();
+    }
+}
+```
+
+The example assumes the mod has an initialized `ExampleConfig` API; adapt the
+getter and setter names to its actual configuration model. Keep the provider
+lightweight and do not perform I/O or start threads from `createDescriptor`.
+The setting callbacks are invoked by the Vanta UI when the user reads or changes
+a value. Persist changes in the mod's setter/configuration layer.
+
+This entrypoint is additive to the manual `VantaClientApi.registerMod` route.
+Use the entrypoint for normal startup integration. A mod that is successfully
+session-hot-loaded can also register directly from its client initializer.
+
 ## Supported setting definitions
 
 - Boolean
@@ -97,7 +149,7 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 - **Settings** contains Vanta Client appearance preferences: accent colour, interface animations, compact layout, description visibility, and UI scale/spacing. Preferences are stored separately in `config/vanta-client.json`.
 - **Mods** contains the built-in HUD, Visual, Combat, and Misc categories.
 - The installed-mod sidebar is populated from Fabric Loader's loaded mod containers, using each mod's declared metadata. It does not scan or load arbitrary JAR files itself.
-- Mods that register a `ModDescriptor` through Vanta Client API v1 expose their typed settings directly in the panel.
+- Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu.
 - Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
 
 ## Optional Mod Menu integration
@@ -110,7 +162,7 @@ The Mods landing page includes **Try hot-load new mods**. It scans the active in
 
 This is an opt-in experiment, not a second Fabric Loader. It does not register discovered JARs as Fabric mod containers and cannot provide normal Fabric initialization semantics. The current preflight rejects JARs that declare Mixins, access wideners, custom language adapters, nested JARs, non-client environments, or common/server entrypoints. It requires Java client entrypoints with public no-argument constructors, declared either as strings or as objects using the default language adapter. Required dependencies must already be loaded or be included in the same candidate batch; candidates are ordered by their declared required dependencies, and Fabric version predicates (including alternative predicates) are checked against the actual loaded or candidate dependency version; the Java dependency is checked against the running JVM feature version. Candidates whose dependency version cannot be verified are skipped. Duplicate mod IDs and duplicate fully-qualified class names across candidate JARs are rejected.
 
-Candidate JARs in one scan share a classloader so they can resolve classes from one another. This is still not equivalent to Fabric's Knot classloading or mod resolution. The classloader uses Vanta Client's classloader as its parent, and parent-loaded classes take precedence.
+Candidate JARs in one scan share a classloader so they can resolve classes from one another. During entrypoint invocation it is also installed as the thread context classloader, allowing common resource and ServiceLoader lookups to see candidate JARs. This is still not equivalent to Fabric's Knot classloading or mod resolution. The classloader uses Vanta Client's classloader as its parent, and parent-loaded classes take precedence.
 
 Important limitations:
 
@@ -127,4 +179,4 @@ The runtime keeps a session-only list of successfully invoked hot-loaded client 
 
 ## Current scope
 
-The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Shared persistence for third-party integrations, custom control renderers, and public release artifacts are not implemented yet.
+The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Integration setters remain responsible for persisting their own values. Existing Mod Menu configuration screens remain third-party screens and are opened as such; Vanta cannot safely introspect arbitrary screen widgets and turn them into native controls. Mods need a Vanta integration provider (or a future dedicated adapter) for native rendering. Custom control renderers and shared third-party persistence are not implemented.

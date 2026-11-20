@@ -300,6 +300,7 @@ public final class ExperimentalModHotLoader {
         if (ordered.isEmpty()) return result(0, skipped, failed, details);
 
         URLClassLoader classLoader = null;
+        ClassLoader previousContextClassLoader = Thread.currentThread().getContextClassLoader();
         boolean initializerInvoked = false;
         int loaded = 0;
         try {
@@ -312,6 +313,9 @@ public final class ExperimentalModHotLoader {
                     ? ExperimentalModHotLoader.class.getClassLoader()
                     : RETAINED_LOADERS.get(RETAINED_LOADERS.size() - 1);
             classLoader = new URLClassLoader(urls, parent);
+            // Many client libraries and ServiceLoader-based mods resolve resources through
+            // the thread context loader rather than the defining class loader.
+            Thread.currentThread().setContextClassLoader(classLoader);
 
             Set<String> successfullyInitialized = new HashSet<>();
             for (Candidate candidate : ordered) {
@@ -375,6 +379,7 @@ public final class ExperimentalModHotLoader {
             failed++;
             details.add("Hot-load batch failed: " + safeMessage(exception));
         } finally {
+            Thread.currentThread().setContextClassLoader(previousContextClassLoader);
             if (classLoader != null) {
                 if (initializerInvoked) {
                     // Closing a loader after arbitrary initializer code ran can break
