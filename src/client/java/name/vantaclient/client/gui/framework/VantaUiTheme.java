@@ -78,13 +78,13 @@ public final class VantaUiTheme {
     public static final int SPACE_5 = 20;
     public static final int SPACE_6 = 24;
 
-    public static final int CONTROL_HEIGHT = 32;
-    public static final int ROW_HEIGHT = 42;
+    public static final int CONTROL_HEIGHT = 30;
+    public static final int ROW_HEIGHT = 38;
     public static final int SLIDER_HEIGHT = 48;
 
-    public static final int RADIUS_SMALL = 5;
-    public static final int RADIUS_MEDIUM = 9;
-    public static final int RADIUS_LARGE = 12;
+    public static final int RADIUS_SMALL = 4;
+    public static final int RADIUS_MEDIUM = 7;
+    public static final int RADIUS_LARGE = 10;
 
     public static final int TEXT_LINE_HEIGHT = 11;
     public static final int CARET_BLINK_TICKS = 10;
