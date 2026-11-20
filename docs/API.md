@@ -148,7 +148,7 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 
 - **Settings** contains Vanta Client appearance preferences: accent colour, interface animations, compact layout, description visibility, and UI scale/spacing. Preferences are stored separately in `config/vanta-client.json`.
 - **Mods** contains the built-in HUD, Visual, Combat, and Misc categories.
-- The installed-mod sidebar is populated from Fabric Loader's loaded mod containers, using each mod's declared metadata. It does not scan or load arbitrary JAR files itself.
+- The installed-mod library scans the active instance's `mods` directory and reads each JAR's Fabric metadata and optional icon. It distinguishes Fabric-loaded mods from session-hot-loaded candidates; listing a JAR does not execute it.
 - Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu.
 - Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
 
