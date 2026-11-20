@@ -413,62 +413,35 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         };
         long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
 
-        VantaUiNode heading = VantaUiNode.row(12, compact ? 9 : 14)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .align(VantaUiNode.Alignment.CENTER);
-        heading.add(VantaUiNode.icon(categoryIcon).size(28, 28)
-                .iconColor(VantaClientPreferences.get().accent.color()));
-        VantaUiNode identity = VantaUiNode.column(3, 0).flex(1);
-        identity.add(VantaUiNode.eyebrow("FEATURE WORKSPACE"));
-        identity.add(VantaUiNode.title(categoryTitle(category)));
-        identity.add(VantaUiNode.paragraph(categoryDescription(category),
-                VantaUiTheme.TEXT_SECONDARY, compact ? 1 : 2));
-        heading.add(identity);
-        VantaUiNode count = VantaUiNode.column(2, 0)
-                .align(VantaUiNode.Alignment.END);
-        count.add(VantaUiNode.dynamicText(
-                () -> categoryFeatures.stream().filter(Feature::isEnabled).count() + " enabled",
-                VantaUiTheme.TEXT_PRIMARY));
-        count.add(VantaUiNode.text(categoryFeatures.size() + " modules",
-                VantaUiTheme.TEXT_MUTED));
-        heading.add(count);
+        VantaUiNode heading = VantaUiNode.column(2, 0);
+        heading.add(VantaUiNode.title(categoryTitle(category)));
         if (page == Page.HUD) {
             heading.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
                     () -> Minecraft.getInstance().setScreen(
                             new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .height(32).background(VantaUiTheme.SURFACE_SELECTED));
+                    .height(30);
         }
         content.add(heading);
 
-        VantaUiNode toolbar = VantaUiNode.row(8, 8)
-                .height(compact ? 36 : 40)
-                .background(VantaUiTheme.PANEL_RAISED)
+        VantaUiNode toolbar = VantaUiNode.row(8, 6)
+                .height(36)
+                .background(VantaUiTheme.INPUT_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-        toolbar.add(VantaUiNode.textField("Search modules and settings…", () -> pendingSearch,
-                value -> pendingSearch = value, 64).flex(1));
+        toolbar.add(VantaUiNode.textField("Search features…", () -> pendingSearch,
+                value -> pendingSearch = value, 64).flex(1);
         if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
-            toolbar.add(VantaUiNode.button("Clear", () -> {
+            toolbar.add(VantaUiNode.button("×", () -> {
                 pendingSearch = "";
                 searchQuery = "";
                 rebuildUi();
-            }).height(28).tooltip("Clear the feature filter"));
+            }).size(26, 26).tooltip("Clear search"));
         }
         toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH, () -> {
             searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
             rebuildUi();
         }).height(28));
         content.add(toolbar);
-
-        VantaUiNode resultsHeader = VantaUiNode.row(8, 0)
-                .align(VantaUiNode.Alignment.CENTER);
-        resultsHeader.add(VantaUiNode.title(searchQuery.isBlank()
-                ? "All modules" : "Search results"));
-        resultsHeader.add(VantaUiNode.spacer(1).flex(1));
-        resultsHeader.add(VantaUiNode.text(
-                features.size() + " of " + categoryFeatures.size() + " modules",
-                VantaUiTheme.TEXT_MUTED));
-        content.add(resultsHeader);
 
         if (features.isEmpty()) {
             VantaUiNode empty = VantaCompose.surface(VantaCompose.Material.ELEVATED, 8, 18);
