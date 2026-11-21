@@ -12,6 +12,7 @@
     "NotificationScreenMixin",
     "ParticleEngineMixin",
     "ScreenEffectRendererMixin",
+    "GroundFireHeightMixin",
     "AnchorInteractionMixin",
     "AnchorBlockUpdateMixin",
     "LightTextureMixin",
