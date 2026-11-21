@@ -11,6 +11,7 @@ import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
@@ -204,6 +205,7 @@ public final class VantaLobbyWorld {
                 PackType.SERVER_DATA, List.<PackResources>of(ServerPacksSource.createVanillaPackSource()))) {
             var layers = RegistryLayer.createRegistryAccess();
             var staticTags = TagLoader.loadTagsForExistingRegistries(resources, layers.getLayer(RegistryLayer.STATIC));
+            staticTags.forEach(tags -> tags.apply());
             var worldLayer = RegistryLayer.WORLDGEN;
             var worldContext = layers.getAccessForLoading(worldLayer);
             List<HolderLookup.RegistryLookup<?>> lookups = TagLoader.buildUpdatedLookups(worldContext, staticTags);
