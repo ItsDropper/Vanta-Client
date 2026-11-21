@@ -129,6 +129,12 @@ public final class SettingRegistry {
                     LowFireFeature::isOverlayHidden, LowFireFeature::setOverlayHidden));
         }
 
+        if (feature == GroundFireHeightFeature.INSTANCE) {
+            settings.add(new SliderSetting("Flame Height", 25, 200, "%",
+                    () -> (double) Math.round(GroundFireHeightFeature.getHeightScale() * 100.0f),
+                    value -> GroundFireHeightFeature.setHeightScale(value.floatValue() / 100.0f)));
+        }
+
         if (feature == FullbrightFeature.INSTANCE) {
             settings.add(new SliderSetting("Brightness", 0, 100, "%",
                     () -> (double) FullbrightFeature.getBrightness(),
