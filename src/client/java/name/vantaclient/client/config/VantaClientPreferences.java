@@ -15,6 +15,19 @@ import java.util.Set;
 
 /** Persistent presentation preferences for the Vanta Client interface. */
 public final class VantaClientPreferences {
+    public enum TitleStyle {
+        LOBBY("Vanta"), CLASSIC("Vanta v1"), VANILLA("Vanilla");
+
+        private final String label;
+        TitleStyle(String label) { this.label = label; }
+        public String label() { return label; }
+
+        public static TitleStyle fromLabel(String label) {
+            for (TitleStyle style : values()) if (style.label.equals(label)) return style;
+            return LOBBY;
+        }
+    }
+
     public enum Accent {
         BLUE(0xFF3B82FF),
         VIOLET(0xFF9A7BFF),
@@ -67,6 +80,8 @@ public final class VantaClientPreferences {
     public String activeProfile = "";
     /** Mods page layout: true shows rows instead of the card grid. */
     public boolean modsListView = false;
+    /** Which title screen to show; LOBBY is the default Vanta menu. */
+    public TitleStyle titleStyle = TitleStyle.LOBBY;
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
     public Map<String, Boolean> hudBackgrounds = new HashMap<>();
@@ -95,6 +110,7 @@ public final class VantaClientPreferences {
 
         if (instance == null) instance = new VantaClientPreferences();
         if (instance.accent == null) instance.accent = Accent.BLUE;
+        if (instance.titleStyle == null) instance.titleStyle = TitleStyle.LOBBY;
         if (instance.remoteRelayEndpoint == null || instance.remoteRelayEndpoint.length() > 256) {
             instance.remoteRelayEndpoint = "";
         } else {

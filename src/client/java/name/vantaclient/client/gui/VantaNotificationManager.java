@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -30,6 +31,12 @@ public final class VantaNotificationManager {
     private static final long RECENT_WINDOW = 6_000_000_000L;
     private static final long GLOBAL_INTERVAL = 450_000_000L;
     private static long lastNonErrorQueuedAt;
+    private static final int MAX_HISTORY = 40;
+    private static final ArrayList<HistoryItem> HISTORY = new ArrayList<>();
+    private static int unread;
+
+    /** One delivered notification, kept so the title screen can show what happened earlier. */
+    public record HistoryItem(Type type, String title, String message, long wallClockMillis) {}
 
     private VantaNotificationManager() {}
 
@@ -78,6 +85,9 @@ public final class VantaNotificationManager {
             if (last != null && now - last < RECENT_WINDOW) return;
             if (type != Type.ERROR && now - lastNonErrorQueuedAt < GLOBAL_INTERVAL) return;
             RECENT.put(key, now);
+            HISTORY.add(0, new HistoryItem(type, safeTitle, safeMessage, System.currentTimeMillis()));
+            while (HISTORY.size() > MAX_HISTORY) HISTORY.remove(HISTORY.size() - 1);
+            unread = Math.min(unread + 1, MAX_HISTORY);
             if (type != Type.ERROR) lastNonErrorQueuedAt = now;
 
             if (PENDING.size() >= MAX_PENDING) {
@@ -102,6 +112,32 @@ public final class VantaNotificationManager {
                     iterator.remove();
                 }
             }
+        }
+    }
+
+    /** Newest-first copy of the recent notification history. */
+    public static List<HistoryItem> history() {
+        synchronized (LOCK) {
+            return List.copyOf(HISTORY);
+        }
+    }
+
+    public static int unreadCount() {
+        synchronized (LOCK) {
+            return unread;
+        }
+    }
+
+    public static void markAllRead() {
+        synchronized (LOCK) {
+            unread = 0;
+        }
+    }
+
+    public static void clearHistory() {
+        synchronized (LOCK) {
+            HISTORY.clear();
+            unread = 0;
         }
     }
 

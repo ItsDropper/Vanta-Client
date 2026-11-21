@@ -162,6 +162,8 @@ public final class VantaLobbyWorld {
     public static void start() {
         Minecraft mc = Minecraft.getInstance();
         if (active || mc.level != null || !(mc.screen instanceof TitleScreen)) return;
+        if (name.vantaclient.client.config.VantaClientPreferences.get().titleStyle
+                == name.vantaclient.client.config.VantaClientPreferences.TitleStyle.VANILLA) return;
         long now = System.nanoTime();
         if (now < nextStartAttemptNanos) return;
         // TitleScreen.init can run while Minecraft is still transitioning out of

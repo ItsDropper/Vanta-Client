@@ -33,6 +33,13 @@ public final class PreferencesPage {
                     VantaClientPreferences.save();
                     host.rebuild();
                 }), ModSettingsPage.TOGGLE_WIDTH, toggleDesc));
+        scroll.add(MenuComponents.settingRow(font, "Title screen",
+                "Choose the main menu. Takes effect the next time the title screen opens.",
+                VantaUiNode.dropdown("", List.of("Vanta", "Vanta v1", "Vanilla"),
+                        () -> preferences.titleStyle.label(), value -> {
+                            preferences.titleStyle = VantaClientPreferences.TitleStyle.fromLabel(value);
+                            VantaClientPreferences.save();
+                        }).menuStyle().height(30), ModSettingsPage.DROPDOWN_WIDTH, dropdownDesc));
         scroll.add(MenuComponents.settingRow(font, "Mod library",
                 "Installed mods, with experimental loading for the current session.",
                 MenuComponents.button(font, "Open", Icon.ARROW_RIGHT, false, () ->

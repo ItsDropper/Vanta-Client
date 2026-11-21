@@ -46,6 +46,9 @@ public final class VantaMenuStyle {
     /** Transparent title-screen controls with restrained hover and keyboard-focus feedback. */
     public static void renderButtonSurface(GuiGraphics graphics, AbstractButton button) {
         if (!(Minecraft.getInstance().screen instanceof TitleScreen)) return;
+        // The Vanta lobby style paints its own controls; only the v1 menu uses this surface.
+        if (name.vantaclient.client.config.VantaClientPreferences.get().titleStyle
+                != name.vantaclient.client.config.VantaClientPreferences.TitleStyle.CLASSIC) return;
 
         int x = button.getX();
         int y = button.getY();

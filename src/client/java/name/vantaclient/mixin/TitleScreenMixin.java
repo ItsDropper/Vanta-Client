@@ -1,6 +1,9 @@
 package name.vantaclient.mixin;
 
+import name.vantaclient.client.config.VantaClientPreferences;
+import name.vantaclient.client.config.VantaClientPreferences.TitleStyle;
 import name.vantaclient.client.gui.VantaMenuStyle;
+import name.vantaclient.client.gui.title.VantaTitleUi;
 import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.gui.VantaSettingsScreen;
@@ -38,6 +41,9 @@ public abstract class TitleScreenMixin {
     private SplashRenderer splash;
 
     @Unique
+    private VantaTitleUi vanta$ui;
+
+    @Unique
     private AbstractButton vanta$settingsShortcut;
 
     @Unique
@@ -56,8 +62,15 @@ public abstract class TitleScreenMixin {
     private void vanta$composeMenu(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
+        TitleStyle style = VantaClientPreferences.get().titleStyle;
+        if (style == TitleStyle.VANILLA) return;
         VantaLobbyScene.begin();
         splash = null;
+        if (style == TitleStyle.LOBBY) {
+            vanta$ui = new VantaTitleUi(screen);
+            vanta$ui.init((ScreenAccessor) (Object) this);
+            return;
+        }
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
                 client.getWindow().getGuiScaledWidth(),
@@ -244,7 +257,10 @@ public abstract class TitleScreenMixin {
             target = "Lnet/minecraft/client/gui/components/LogoRenderer;renderLogo(Lnet/minecraft/client/gui/GuiGraphics;IF)V"))
     private void vanta$removeVanillaLogo(LogoRenderer renderer, GuiGraphics graphics,
                                          int width, float alpha) {
-        // Intentionally suppress the Minecraft logo; Vanta owns the title-screen identity.
+        // Vanta styles own the title-screen identity; the vanilla style keeps Mojang's logo.
+        if (VantaClientPreferences.get().titleStyle == TitleStyle.VANILLA) {
+            renderer.renderLogo(graphics, width, alpha);
+        }
     }
 
 
@@ -252,6 +268,7 @@ public abstract class TitleScreenMixin {
     private void vanta$updateLobbyCamera(GuiGraphics graphics, int mouseX, int mouseY,
                                          float partialTick, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
+        if (VantaClientPreferences.get().titleStyle == TitleStyle.VANILLA) return;
         // Tick callbacks are not a reliable first-frame boundary across every
         // loader/bootstrap path. The title screen render is guaranteed to run once
         // the client has resources and its renderer are ready; start here as well.
@@ -264,6 +281,11 @@ public abstract class TitleScreenMixin {
     @Inject(method = "render", at = @At("TAIL"))
     private void vanta$renderVantaMenu(GuiGraphics graphics, int mouseX, int mouseY,
                                        float partialTick, CallbackInfo ci) {
+        if (vanta$ui != null) {
+            vanta$ui.render(graphics, mouseX, mouseY);
+            return;
+        }
+        if (VantaClientPreferences.get().titleStyle != TitleStyle.CLASSIC) return;
         Minecraft client = Minecraft.getInstance();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();

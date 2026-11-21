@@ -1,5 +1,6 @@
 package name.vantaclient.mixin;
 
+import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.VantaMenuStyle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -16,6 +17,7 @@ public abstract class AbstractButtonMixin {
     @Inject(method = "renderDefaultSprite", at = @At("HEAD"), cancellable = true)
     private void vanta$renderTitleSurface(GuiGraphics graphics, CallbackInfo ci) {
         if (!(Minecraft.getInstance().screen instanceof TitleScreen)) return;
+        if (VantaClientPreferences.get().titleStyle == VantaClientPreferences.TitleStyle.VANILLA) return;
         VantaMenuStyle.renderButtonSurface(graphics, (AbstractButton) (Object) this);
         ci.cancel();
     }
