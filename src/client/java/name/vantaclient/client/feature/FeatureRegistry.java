@@ -18,6 +18,7 @@ public class FeatureRegistry {
             DebugHudFeature.INSTANCE,
             NoExplosionEffectsFeature.INSTANCE,
             LowFireFeature.INSTANCE,
+            GroundFireHeightFeature.INSTANCE,
             PotionEffectsFeature.INSTANCE,
             FpsHudFeature.INSTANCE,
             PingHudFeature.INSTANCE,
