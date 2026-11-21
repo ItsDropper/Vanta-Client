@@ -14,7 +14,7 @@ public class DropperUtilsConfig {
         return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
     }
 
-    public int configVersion = 21;
+    public int configVersion = 22;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -27,6 +27,7 @@ public class DropperUtilsConfig {
     public boolean debugHud = false;
     public boolean noExplosionEffects = false;
     public boolean lowFire = false;
+    public boolean groundFireHeightEnabled = false;
     public boolean potionEffects = false;
     public boolean hudEditor = false;
     public boolean armorHudHorizontal = true;
@@ -79,6 +80,8 @@ public class DropperUtilsConfig {
     public int motionBlurSamples = 6;
     public float motionBlurSensitivity = 1.0f;
     public float lowFireHeight = 0.5f;
+    /** Vertical scale applied to ground-fire model vertices when Ground Fire Height is enabled. */
+    public float groundFireHeight = 1.0f;
     public float fullbrightBrightness = 100.0f;
     public float fullbrightMinimum = 0.0f;
     public int anchorScanInterval = 40;
@@ -187,6 +190,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 19) migrateV19();
                 if (INSTANCE.configVersion < 20) migrateV20();
                 if (INSTANCE.configVersion < 21) migrateV21();
+                if (INSTANCE.configVersion < 22) migrateV22();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -344,6 +348,14 @@ public class DropperUtilsConfig {
         INSTANCE.adaptiveEntityDistance = true;
         INSTANCE.farViewWorkerAdaptive = true;
         INSTANCE.configVersion = 21;
+        save();
+    }
+
+    private static void migrateV22() {
+        System.out.println("[DropperUtils] Migrating config v21 -> v22");
+        INSTANCE.groundFireHeightEnabled = false;
+        INSTANCE.groundFireHeight = 1.0f;
+        INSTANCE.configVersion = 22;
         save();
     }
 
