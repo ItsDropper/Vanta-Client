@@ -252,6 +252,10 @@ public abstract class TitleScreenMixin {
     private void vanta$updateLobbyCamera(GuiGraphics graphics, int mouseX, int mouseY,
                                          float partialTick, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
+        // Tick callbacks are not a reliable first-frame boundary across every
+        // loader/bootstrap path. The title screen render is guaranteed to run once
+        // the client has resources and its renderer are ready; start here as well.
+        VantaLobbyWorld.start();
         VantaLobbyScene.update(mouseX, mouseY,
                 client.getWindow().getGuiScaledWidth(),
                 client.getWindow().getGuiScaledHeight());
