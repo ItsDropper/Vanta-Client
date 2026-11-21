@@ -18,7 +18,8 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 @Mixin(PanoramaRenderer.class)
 public abstract class PanoramaRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void vanta$hidePanoramaWhenWorldIsReady(net.minecraft.client.Minecraft client, float alpha, float tickDelta, CallbackInfo ci) {
+    private void vanta$hidePanoramaWhenWorldIsReady(CallbackInfo ci) {
+        Minecraft client = Minecraft.getInstance();
         if (client.screen instanceof TitleScreen && VantaLobbyWorld.isActive()) ci.cancel();
     }
     @ModifyArg(
