@@ -14,9 +14,10 @@ public final class Events {
     private Events() {}
 
     public static void register() {
-        // Own title-scene creation from the client lifecycle, not from Screen.render.
-        // This runs on the first client tick after startup and on every return to title.
-        ClientTickEvents.START_CLIENT_TICK.register(client -> {
+        // PolyPlus drives lobby lifecycle at Minecraft.tick RETURN. END_CLIENT_TICK
+        // gives the title screen, renderers, registries and resource managers a complete
+        // client tick to settle before the synthetic ClientLevel is constructed.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.screen instanceof TitleScreen && client.level == null) {
                 VantaLobbyWorld.start();
             }
