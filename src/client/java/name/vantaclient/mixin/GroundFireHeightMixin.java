@@ -4,7 +4,7 @@ import name.vantaclient.client.feature.GroundFireHeightFeature;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,7 +39,7 @@ public abstract class GroundFireHeightMixin {
     }
 
     private static boolean isFireSprite(TextureAtlasSprite sprite) {
-        ResourceLocation id = sprite.contents().name();
+        Identifier id = sprite.contents().name();
         if (!"minecraft".equals(id.getNamespace())) return false;
 
         String path = id.getPath();
