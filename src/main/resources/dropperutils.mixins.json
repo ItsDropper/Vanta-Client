@@ -13,7 +13,6 @@
     "ParticleEngineMixin",
     "ScreenEffectRendererMixin",
     "GroundFireHeightMixin",
-    "QuadParticleRenderStateMixin",
     "AnchorInteractionMixin",
     "AnchorBlockUpdateMixin",
     "LightTextureMixin",
