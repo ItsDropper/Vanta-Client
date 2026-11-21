@@ -2,12 +2,12 @@ package name.vantaclient.client.feature;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
 
-/** Scales the geometry of vanilla ground-fire models without affecting the first-person overlay. */
+/** Adjusts the vertical geometry of vanilla world flame particles, not the first-person overlay. */
 public final class GroundFireHeightFeature extends Feature {
     public static final GroundFireHeightFeature INSTANCE = new GroundFireHeightFeature();
 
     private GroundFireHeightFeature() {
-        super("Ground Fire Height", "Adjusts the height of fire rendered on blocks.", Category.VISUAL);
+        super("Ground Fire Height", "Adjusts the height of fire flames rendered in the world.", Category.VISUAL);
     }
 
     public static float getHeightScale() {
