@@ -92,7 +92,11 @@ public final class VantaLobbyWorld {
     /** Called at GameRenderer.render HEAD; restores the real client state at RETURN. */
     public static void beginFrame() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null && mc.level != level) {\n            destroy();\n            return;\n        }\n        if (!isActive() || !(mc.screen instanceof TitleScreen) || mc.level != null || swapped) return;
+        if (mc.level != null && mc.level != level) {
+            destroy();
+            return;
+        }
+        if (!isActive() || !(mc.screen instanceof TitleScreen) || mc.level != null || swapped) return;
         previousLevel = mc.level;
         previousPlayer = mc.player;
         previousGameMode = mc.gameMode;
@@ -241,7 +245,9 @@ public final class VantaLobbyWorld {
                 world.chunkSource.replaceWithPacketData(cx, cz, packet);
             }
         }
-        for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {\n            world.getLightEngine().runLightUpdates();\n        }
+        for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
+            world.getLightEngine().runLightUpdates();
+        }
     }
 
     private static int terrainHeight(int x, int z) {
@@ -280,8 +286,8 @@ public final class VantaLobbyWorld {
         active = false;
         if (level != null) {
             try {
-                mc.levelRenderer.setLevel(null);
-                mc.gameRenderer.setLevel(null);
+                mc.levelRenderer.setLevel(mc.level);
+                mc.gameRenderer.setLevel(mc.level);
                 level.close();
             } catch (Throwable error) {
                 java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.WARNING, "Failed to release the Vanta title world cleanly", error);
