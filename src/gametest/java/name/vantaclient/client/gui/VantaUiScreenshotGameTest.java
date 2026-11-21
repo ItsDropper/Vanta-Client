@@ -1577,6 +1577,33 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         });
     }
 
+    /** Logs coarse colour statistics so CI output shows whether the lobby world is actually visible. */
+    private static void logTitlePixels(Path screenshot, String label) {
+        try {
+            java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(screenshot.toFile());
+            if (image == null) return;
+            StringBuilder out = new StringBuilder("VANTA_PIXELS " + label + " " + image.getWidth() + "x" + image.getHeight());
+            for (int gy = 0; gy < 3; gy++) {
+                for (int gx = 0; gx < 3; gx++) {
+                    int x0 = image.getWidth() * gx / 3, x1 = image.getWidth() * (gx + 1) / 3;
+                    int y0 = image.getHeight() * gy / 3, y1 = image.getHeight() * (gy + 1) / 3;
+                    long r = 0, g = 0, b = 0, n = 0;
+                    for (int y = y0; y < y1; y += 4) {
+                        for (int x = x0; x < x1; x += 4) {
+                            int rgb = image.getRGB(x, y);
+                            r += (rgb >> 16) & 255; g += (rgb >> 8) & 255; b += rgb & 255; n++;
+                        }
+                    }
+                    out.append(" [").append(gx).append(gy).append(":").append(r / n).append(",")
+                            .append(g / n).append(",").append(b / n).append("]");
+                }
+            }
+            System.out.println(out);
+        } catch (java.io.IOException exception) {
+            System.out.println("VANTA_PIXELS failed " + exception);
+        }
+    }
+
     private static void captureTitleScreen(ClientGameTestContext context,
                                             VantaSettingsScreen settingsScreen,
                                             String viewportLabel) {
@@ -1605,6 +1632,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         if (!Files.isRegularFile(screenshot)) {
             throw new AssertionError("Minecraft did not produce title menu screenshot: " + screenshot);
         }
+        logTitlePixels(screenshot, viewportLabel);
         try {
             if (Files.size(screenshot) < 1_024L) {
                 throw new AssertionError("Title menu screenshot is unexpectedly small: " + screenshot);

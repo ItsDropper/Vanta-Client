@@ -123,7 +123,23 @@ public final class VantaLobbyWorld {
     }
 
     /** Called after LevelRenderer.renderLevel has completed for the lobby level. */
+    private static long lastDiagnosticNanos;
+
+    private static void diagnose(String where, Minecraft mc) {
+        long now = System.nanoTime();
+        if (now - lastDiagnosticNanos < 2_000_000_000L) return;
+        lastDiagnosticNanos = now;
+        int sections = -1;
+        try { sections = mc.levelRenderer.countRenderedSections(); } catch (Throwable ignored) { }
+        java.util.logging.Logger.getLogger("VantaClient").info("[lobby-diag] " + where
+                + " active=" + active + " swapped=" + swapped + " mcLevelIsLobby=" + (mc.level == level)
+                + " sections=" + sections + " rendered=" + terrainRendered
+                + " avatarInLevel=" + (avatar != null && level != null && level.getEntity(avatar.getId()) != null)
+                + " screen=" + (mc.screen == null ? "null" : mc.screen.getClass().getSimpleName()));
+    }
+
     public static void markWorldRendered() {
+        diagnose("renderLevel-tail", Minecraft.getInstance());
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
         int renderedSections = getVisibleTerrainSectionCount();
         // renderLevel's tail is reached only after the actual terrain pass. Requiring
@@ -190,6 +206,7 @@ public final class VantaLobbyWorld {
     /** Called at GameRenderer.render HEAD; restores the real client state at RETURN. */
     public static void beginFrame() {
         Minecraft mc = Minecraft.getInstance();
+        if (active) diagnose("beginFrame", mc);
         if (mc.level != null && mc.level != level) {
             destroy();
             return;
@@ -390,7 +407,12 @@ public final class VantaLobbyWorld {
         // a LocalPlayer is the wrong entity to use as the lobby's visible model.
         GameProfile profile = mc.getGameProfile();
         Supplier<PlayerSkin> skinLookup = () -> VantaLobbySkin.get(mc, profile);
-        avatar = new VantaLobbyAvatar(level, profile, skinLookup);
+        // The camera rig already uses the account UUID; the level rejects a second entity with
+        // the same UUID, which silently dropped the visible avatar. Skin lookup keeps the real profile.
+        GameProfile avatarProfile = new GameProfile(
+                UUID.nameUUIDFromBytes(("vanta-lobby-avatar:" + profile.id()).getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                profile.name());
+        avatar = new VantaLobbyAvatar(level, avatarProfile, skinLookup);
         avatar.noPhysics = true;
         avatar.setNoGravity(true);
         avatar.snapTo(0.5, 64.0, -5.5, 180.0f, 4.0f);
