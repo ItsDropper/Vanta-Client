@@ -1,6 +1,9 @@
 package name.vantaclient.client.gui.lobby;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
+import name.vantaclient.mixin.CameraAccessor;
+import name.vantaclient.mixin.ConnectionAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.CommonListenerCookie;
@@ -48,6 +51,8 @@ import net.minecraft.stats.StatsCounter;
 
 import java.util.List;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 /**
  * Owns an isolated, generated ClientLevel for the title screen.
@@ -58,6 +63,10 @@ import java.lang.reflect.Method;
  */
 public final class VantaLobbyWorld {
     private static final int VIEW_DISTANCE = 5;
+    // Keep a one-chunk safety ring outside the rendered view and two extra
+    // cache slots so edge sections can compile with their neighbors available.
+    private static final int CHUNK_RADIUS = VIEW_DISTANCE + 1;
+    private static final int CHUNK_CACHE_DISTANCE = VIEW_DISTANCE + 2;
     private static final int CENTER_X = 0;
     private static final int CENTER_Z = 0;
 
@@ -66,6 +75,7 @@ public final class VantaLobbyWorld {
     private static MultiPlayerGameMode gameMode;
     private static LocalPlayer cameraRig;
     private static boolean active;
+    private static boolean terrainRendered;
     private static boolean swapped;
     private static ClientLevel previousLevel;
     private static LocalPlayer previousPlayer;
@@ -73,9 +83,15 @@ public final class VantaLobbyWorld {
     private static Entity previousCamera;
     private static net.minecraft.client.CameraType previousCameraType;
     private static int previousServerRenderDistance;
+    private static float previousCameraEyeHeight;
+    private static float previousCameraEyeHeightOld;
+    private static boolean previousCameraEyeHeightSaved;
     private static boolean sodiumLookupDone;
     private static Method sodiumTrackerLookup;
     private static Method sodiumChunkStatus;
+    private static boolean vulkanLookupDone;
+    private static Object vulkanChunkStatusMap;
+    private static Method vulkanChunkStatus;
 
     private VantaLobbyWorld() {}
 
@@ -83,10 +99,27 @@ public final class VantaLobbyWorld {
         return active && level != null;
     }
 
+    /** The panorama may only be removed after the world renderer has produced terrain meshes. */
+    public static boolean isWorldReadyForDisplay() {
+        return active && level != null && terrainRendered;
+    }
+
+    /** Called after LevelRenderer.renderLevel has completed for the lobby level. */
+    public static void markWorldRendered() {
+        if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
+        int renderedSections = Minecraft.getInstance().levelRenderer.countRenderedSections();
+        if (renderedSections > 0) {
+            terrainRendered = true;
+            java.util.logging.Logger.getLogger("VantaClient").info(
+                    "Vanta title world is visible (" + renderedSections + " rendered sections)");
+        }
+    }
+
     public static void start() {
         if (active || Minecraft.getInstance().level != null) return;
         try {
             build();
+            terrainRendered = false;
             active = true;
         } catch (Throwable error) {
             destroy();
@@ -113,6 +146,11 @@ public final class VantaLobbyWorld {
         previousCamera = mc.getCameraEntity();
         previousCameraType = mc.options.getCameraType();
         previousServerRenderDistance = mc.options.getEffectiveRenderDistance();
+        Camera renderCamera = mc.gameRenderer.getMainCamera();
+        CameraAccessor cameraAccessor = (CameraAccessor) renderCamera;
+        previousCameraEyeHeight = cameraAccessor.vanta$getEyeHeight();
+        previousCameraEyeHeightOld = cameraAccessor.vanta$getEyeHeightOld();
+        previousCameraEyeHeightSaved = true;
         try {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
             float yaw = 180.0f + camera.subjectYaw();
@@ -125,6 +163,8 @@ public final class VantaLobbyWorld {
             mc.player = cameraRig;
             mc.gameMode = gameMode;
             mc.setCameraEntity(cameraRig);
+            cameraAccessor.vanta$setEyeHeight(cameraRig.getEyeHeight());
+            cameraAccessor.vanta$setEyeHeightOld(cameraRig.getEyeHeight());
             mc.options.setServerRenderDistance(VIEW_DISTANCE);
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             swapped = true;
@@ -148,6 +188,11 @@ public final class VantaLobbyWorld {
             mc.options.setServerRenderDistance(previousServerRenderDistance);
             mc.options.setCameraType(previousCameraType);
             mc.setCameraEntity(previousCamera);
+            if (previousCameraEyeHeightSaved) {
+                CameraAccessor cameraAccessor = (CameraAccessor) mc.gameRenderer.getMainCamera();
+                cameraAccessor.vanta$setEyeHeight(previousCameraEyeHeight);
+                cameraAccessor.vanta$setEyeHeightOld(previousCameraEyeHeightOld);
+            }
         } finally {
             previousLevel = null;
             previousPlayer = null;
@@ -155,6 +200,9 @@ public final class VantaLobbyWorld {
             previousCamera = null;
             previousCameraType = null;
             previousServerRenderDistance = 0;
+            previousCameraEyeHeight = 0.0f;
+            previousCameraEyeHeightOld = 0.0f;
+            previousCameraEyeHeightSaved = false;
             swapped = false;
         }
     }
@@ -179,6 +227,8 @@ public final class VantaLobbyWorld {
                 false
         );
         Connection connection = new Connection(PacketFlow.CLIENTBOUND);
+        ((ConnectionAccessor) connection).vanta$setAddress(
+                new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
         listener = new ClientPacketListener(mc, connection, cookie);
         Holder<?> dimension = registries.lookupOrThrow(Registries.DIMENSION_TYPE)
                 .getOrThrow(BuiltinDimensionTypes.OVERWORLD);
@@ -187,7 +237,7 @@ public final class VantaLobbyWorld {
                 new ClientLevel.ClientLevelData(Difficulty.PEACEFUL, false, false),
                 Level.OVERWORLD,
                 (Holder) dimension,
-                VIEW_DISTANCE,
+                CHUNK_CACHE_DISTANCE,
                 2,
                 mc.levelRenderer,
                 false,
@@ -199,11 +249,23 @@ public final class VantaLobbyWorld {
         try {
             mc.levelRenderer.setLevel(level);
             mc.gameRenderer.setLevel(level);
+            mc.particleEngine.setLevel(level);
         } finally {
             mc.options.setServerRenderDistance(configuredRenderDistance);
         }
         level.getChunkSource().updateViewCenter(CENTER_X, CENTER_Z);
         generateTerrain(level);
+        // Chunk packet injection bypasses the normal network chunk-ready path. Recreate
+        // the section view only after the generated chunks exist so every render section
+        // starts dirty against real chunk data instead of an empty cache snapshot.
+        int configuredRenderDistance = mc.options.getEffectiveRenderDistance();
+        mc.options.setServerRenderDistance(VIEW_DISTANCE);
+        try {
+            mc.levelRenderer.setLevel(level);
+            mc.gameRenderer.setLevel(level);
+        } finally {
+            mc.options.setServerRenderDistance(configuredRenderDistance);
+        }
         level.setTimeFromServer(0L, 6000L, false);
         gameMode = new MultiPlayerGameMode(mc, listener);
         cameraRig = gameMode.createPlayer(level, new StatsCounter(), new ClientRecipeBook());
@@ -240,8 +302,8 @@ public final class VantaLobbyWorld {
         PalettedContainerFactory factory = world.palettedContainerFactory();
         int sectionCount = world.getSectionsCount();
         int minSection = world.getMinSectionY();
-        for (int cx = -VIEW_DISTANCE; cx <= VIEW_DISTANCE; cx++) {
-            for (int cz = -VIEW_DISTANCE; cz <= VIEW_DISTANCE; cz++) {
+        for (int cx = -CHUNK_RADIUS; cx <= CHUNK_RADIUS; cx++) {
+            for (int cz = -CHUNK_RADIUS; cz <= CHUNK_RADIUS; cz++) {
                 LevelChunkSection[] sections = new LevelChunkSection[sectionCount];
                 for (int i = 0; i < sectionCount; i++) sections[i] = new LevelChunkSection(factory);
                 int chunkMinY = world.getMinY();
@@ -281,7 +343,10 @@ public final class VantaLobbyWorld {
                 ClientboundLevelChunkPacketData packet = new ClientboundLevelChunkPacketData(chunk);
                 LevelChunk loaded = world.getChunkSource().replaceWithPacketData(cx, cz, packet.getReadBuffer(), packet.getHeightmaps(),
                         packet.getBlockEntitiesTagsConsumer(cx, cz));
-                if (loaded != null) {
+                if (loaded == null) {
+                    throw new IllegalStateException("Client chunk cache rejected generated lobby chunk " + cx + "," + cz);
+                }
+                {
                     ChunkPos loadedPos = new ChunkPos(cx, cz);
                     world.getLightEngine().setLightEnabled(loadedPos, true);
                     for (int skySection = 5; skySection < world.getLightEngine().getMaxLightSection(); skySection++) {
@@ -303,12 +368,13 @@ public final class VantaLobbyWorld {
         // Match PolyPlus's post-population requeue: the LevelRenderer's view area
         // exists before chunks are inserted, so notify its occlusion graph only
         // after every chunk and its lighting data are ready.
-        for (int cx = -VIEW_DISTANCE; cx <= VIEW_DISTANCE; cx++) {
-            for (int cz = -VIEW_DISTANCE; cz <= VIEW_DISTANCE; cz++) {
+        for (int cx = -CHUNK_RADIUS; cx <= CHUNK_RADIUS; cx++) {
+            for (int cz = -CHUNK_RADIUS; cz <= CHUNK_RADIUS; cz++) {
                 LevelChunk chunk = world.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
-                if (chunk == null) continue;
-                Minecraft.getInstance().levelRenderer.onChunkReadyToRender(chunk.getPos());
-                notifySodiumChunkReady(world, cx, cz);
+                if (chunk == null) {
+                    throw new IllegalStateException("Generated lobby chunk disappeared from cache at " + cx + "," + cz);
+                }
+                notifyChunkLightingReady(world, cx, cz);
             }
         }
     }
@@ -370,7 +436,7 @@ public final class VantaLobbyWorld {
         put(sections, minSection, minY, Math.floorMod(x, 16), y, Math.floorMod(z, 16), state);
     }
 
-    private static void notifySodiumChunkReady(ClientLevel world, int chunkX, int chunkZ) {
+    private static void notifyChunkLightingReady(ClientLevel world, int chunkX, int chunkZ) {
         try {
             if (!sodiumLookupDone) {
                 sodiumLookupDone = true;
@@ -387,6 +453,20 @@ public final class VantaLobbyWorld {
             // Sodium is optional; vanilla chunk readiness remains authoritative.
             sodiumTrackerLookup = null;
             sodiumChunkStatus = null;
+        }
+        try {
+            if (!vulkanLookupDone) {
+                vulkanLookupDone = true;
+                Class<?> map = Class.forName("net.vulkanmod.render.chunk.ChunkStatusMap");
+                vulkanChunkStatusMap = map.getField("INSTANCE").get(null);
+                vulkanChunkStatus = map.getMethod("setChunkStatus", int.class, int.class, byte.class);
+            }
+            if (vulkanChunkStatusMap != null && vulkanChunkStatus != null) {
+                vulkanChunkStatus.invoke(vulkanChunkStatusMap, chunkX, chunkZ, (byte) 2);
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            vulkanChunkStatusMap = null;
+            vulkanChunkStatus = null;
         }
     }
 
@@ -433,6 +513,8 @@ public final class VantaLobbyWorld {
                 java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.WARNING, "Failed to release the Vanta title world cleanly", error);
             }
         }
+        mc.particleEngine.setLevel(mc.level);
+        terrainRendered = false;
         level = null;
         listener = null;
         gameMode = null;
