@@ -22,6 +22,7 @@ public final class VantaUiRuntime {
     private long averageUiRenderNanos;
     private float preferredScale = 1.0f;
     private float uiScale = 1.0f;
+    private float zoom = 1.0f;
     private int maxViewportWidth = Integer.MAX_VALUE;
     private int maxViewportHeight = Integer.MAX_VALUE;
 
@@ -39,6 +40,17 @@ public final class VantaUiRuntime {
         float bounded = Float.isFinite(scale) ? Math.max(0.8f, Math.min(1.2f, scale)) : 1.0f;
         if (Float.compare(preferredScale, bounded) == 0) return;
         preferredScale = bounded;
+        invalidateLayout();
+    }
+
+    /**
+     * Extra multiplier on top of the preferred scale, used by full-window menus that size
+     * themselves to the window instead of staying a fixed number of physical pixels.
+     */
+    public void setZoom(float value) {
+        float bounded = Float.isFinite(value) ? Math.max(0.5f, Math.min(3.0f, value)) : 1.0f;
+        if (Float.compare(zoom, bounded) == 0) return;
+        zoom = bounded;
         invalidateLayout();
     }
 
@@ -87,7 +99,7 @@ public final class VantaUiRuntime {
         // Screen dimensions are already divided by Minecraft's GUI scale.
         // Compensate here so a 16px design control remains 16 physical pixels
         // at GUI scales 1–4 instead of growing with the vanilla coordinate scale.
-        float effectiveScale = preferredScale / minecraftGuiScale();
+        float effectiveScale = preferredScale * zoom / minecraftGuiScale();
         if (!Float.isFinite(effectiveScale) || effectiveScale <= 0.0f) effectiveScale = 1.0f;
         if (Float.compare(uiScale, effectiveScale) != 0) {
             uiScale = effectiveScale;

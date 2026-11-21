@@ -8,6 +8,7 @@ import name.vantaclient.client.gui.components.settings.SettingRegistry;
 import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.gui.menu.KeybindsPage;
 import name.vantaclient.client.gui.menu.MenuComponents;
 import name.vantaclient.client.gui.menu.MenuHost;
@@ -41,7 +42,8 @@ import java.util.List;
  * Preferences), a history-aware top bar with search, and one page body at a time.
  */
 public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen, MenuHost {
-    private static final int MAX_WIDTH = 1240;
+    /** Design size of the shell in layout units; the zoom maps it onto the window. */
+    private static final int MAX_WIDTH = 1400;
     private static final int MAX_HEIGHT = 780;
 
     private final Screen parent;
@@ -55,6 +57,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     private final Deque<Route> forwardStack = new ArrayDeque<>();
     private boolean modsGroupOpen = true;
     private boolean personalGroupOpen = true;
+
+    private long transitionStart;
 
     private String searchText = "";
     private VantaUiNode searchNode;
@@ -88,6 +92,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
         runtime.setScale((float) VantaClientPreferences.get().uiScale);
+        runtime.setZoom(zoom());
         runtime.setMaxViewportSize(MAX_WIDTH, MAX_HEIGHT);
         runtime.layout(font, width, height);
         if (focusTarget != null) {
@@ -131,9 +136,26 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     // ---- layout ------------------------------------------------------------------------------
 
+    /**
+     * Grows or shrinks the whole shell so it fills roughly nine tenths of the window, in steps
+     * of an eighth so lines keep landing on whole pixels at common resolutions.
+     */
+    private float zoom() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale <= 0) guiScale = 1.0f;
+        float userScale = (float) VantaClientPreferences.get().uiScale;
+        if (!Float.isFinite(userScale) || userScale <= 0) userScale = 1.0f;
+        float windowWidth = width * guiScale;
+        float windowHeight = height * guiScale;
+        float fit = Math.min(windowWidth * 0.94f / MAX_WIDTH, windowHeight * 0.90f / MAX_HEIGHT) / userScale;
+        float stepped = Math.round(fit * 8.0f) / 8.0f;
+        return Math.max(0.5f, Math.min(3.0f, stepped));
+    }
+
     private int shellWidth() {
         float guiScale = (float) minecraft.getWindow().getGuiScale();
-        float effective = (float) VantaClientPreferences.get().uiScale / (guiScale > 0 ? guiScale : 1.0f);
+        float effective = (float) VantaClientPreferences.get().uiScale * zoom()
+                / (guiScale > 0 ? guiScale : 1.0f);
         if (!Float.isFinite(effective) || effective <= 0) effective = 1.0f;
         int layoutWidth = Math.round(width / effective);
         int margin = Math.max(1, Math.round(layoutWidth * 0.025f));
@@ -150,12 +172,41 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private VantaUiNode buildRoot() {
-        VantaUiNode shell = VantaUiNode.row(0, 0)
-                .background(MenuTheme.panel()).radius(18).border(0x30FFFFFF);
-        shell.add(buildSidebar());
-        shell.add(VantaUiNode.spacer(1).width(1).background(MenuTheme.LINE_SOFT).radius(0));
-        shell.add(buildContent());
+        int sidebar = sidebarWidth();
+        VantaUiNode shell = VantaUiNode.stack(0);
+        shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            // Soft drop shadow, glass body lit from above, a darker sidebar half and a hairline edge.
+            MenuTheme.fill(g, x - 3, y + 4, w + 6, h + 4, 22, 0x1E000000);
+            MenuTheme.gradient(g, x, y, w, h, 18, MenuTheme.panel(), MenuTheme.panelBottom());
+            VantaUiTheme.fillSquircleSides(g, x, y, sidebar, h, 18, MenuTheme.SIDEBAR,
+                    MenuTheme.SIDEBAR, true, false);
+            MenuTheme.outline(g, x, y, w, h, 18, 0x38FFFFFF);
+        }));
+        VantaUiNode body = VantaUiNode.row(0, 0);
+        body.add(buildSidebar());
+        body.add(VantaUiNode.spacer(1).width(1).background(MenuTheme.LINE_SOFT).radius(0));
+        body.add(buildContent());
+        shell.add(body);
+        // Brief veil over the page area after navigating, easing the new page in.
+        shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            int veil = veilAlpha();
+            if (veil <= 0) return;
+            int color = MenuTheme.alpha(0xFF0A0D14, veil);
+            VantaUiTheme.fillSquircleSides(g, x + sidebar + 1, y + 84, w - sidebar - 1, h - 84, 18,
+                    color, color, false, true);
+        }));
         return shell;
+    }
+
+    private int veilAlpha() {
+        if (transitionStart == 0L || !VantaClientPreferences.get().animations) return 0;
+        float t = (System.nanoTime() - transitionStart) / 200_000_000.0f;
+        if (t >= 1.0f) {
+            transitionStart = 0L;
+            return 0;
+        }
+        float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+        return Math.round(150.0f * (1.0f - eased));
     }
 
     private VantaUiNode buildSidebar() {
@@ -243,18 +294,18 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     }
 
     private VantaUiNode buildSearch() {
-        VantaUiNode box = VantaUiNode.row(0, 0).width(292).height(40)
-                .background(MenuTheme.FIELD).radius(12).border(MenuTheme.alpha(MenuTheme.accent(), 215));
+        VantaUiNode box = VantaUiNode.row(0, 0).width(320).height(44)
+                .background(MenuTheme.FIELD).radius(13).border(MenuTheme.alpha(MenuTheme.accent(), 230));
+        box.add(VantaUiNode.canvas((g, f, x, y, w, h, st) ->
+                name.vantaclient.client.gui.menu.MenuIcons.draw(g, Icon.SEARCH, x + 12, y + (h - 18) / 2, 18,
+                        MenuTheme.TEXT_DIM)).width(42));
         searchNode = VantaUiNode.textField("Search mods", () -> searchText, value -> {
             searchText = value;
             refocusSearch = true;
             if (route.page() != Page.MODS) navigate(Route.of(Page.MODS));
             else rebuildUi();
-        }, 40).menuStyle().height(40).flex(1);
+        }, 40).menuStyle().height(44).flex(1);
         box.add(searchNode);
-        box.add(VantaUiNode.canvas((g, f, x, y, w, h, st) ->
-                name.vantaclient.client.gui.menu.MenuIcons.draw(g, Icon.SEARCH, x + 4, y + (h - 18) / 2, 18,
-                        MenuTheme.TEXT_DIM)).width(40));
         return box;
     }
 
@@ -281,6 +332,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             backStack.push(route);
             forwardStack.clear();
             route = target;
+            transitionStart = System.nanoTime();
         }
         cancelKeyCaptureQuietly();
         rebuildUi();
@@ -290,6 +342,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (backStack.isEmpty()) return;
         forwardStack.push(route);
         route = backStack.pop();
+        transitionStart = System.nanoTime();
         refocusSearch = false;
         cancelKeyCaptureQuietly();
         rebuildUi();
@@ -299,6 +352,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (forwardStack.isEmpty()) return;
         backStack.push(route);
         route = forwardStack.pop();
+        transitionStart = System.nanoTime();
         refocusSearch = false;
         cancelKeyCaptureQuietly();
         rebuildUi();

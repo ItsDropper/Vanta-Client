@@ -120,7 +120,7 @@ public final class ProfilesPage {
     private static VantaUiNode newCard(State state, MenuHost host) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             MenuTheme.fill(g, x, y, w, h, 14, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, 14, st.hovered() ? 0xFF3A3F4B : 0xFF23262E);
+            MenuTheme.outline(g, x, y, w, h, 14, st.hovered() ? 0x47FFFFFF : 0x26FFFFFF);
             MenuTheme.fill(g, x + w / 2 - 22, y + h / 2 - 36, 44, 44, 13, MenuTheme.alpha(MenuTheme.accent(), 46));
             MenuIcons.draw(g, Icon.PLUS, x + w / 2 - 10, y + h / 2 - 24, 20, MenuTheme.accent());
             MenuTheme.textCentered(g, font, "New profile", x + w / 2, y + h / 2 + 28,
@@ -142,7 +142,7 @@ public final class ProfilesPage {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
             MenuTheme.fill(g, x, y, w, h, 14, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, 14, active ? accent : st.hovered() ? 0xFF3A3F4B : 0xFF23262E);
+            MenuTheme.outline(g, x, y, w, h, 14, active ? accent : st.hovered() ? 0x47FFFFFF : 0x26FFFFFF);
             if (active) MenuTheme.outline(g, x + 1, y + 1, w - 2, h - 2, 13, MenuTheme.alpha(accent, 140));
             MenuTheme.fill(g, x + 14, y + 14, 38, 38, 11, MenuTheme.alpha(accent, 46));
             MenuIcons.draw(g, Icon.PROFILES, x + 23, y + 23, 20, accent);
@@ -153,10 +153,10 @@ public final class ProfilesPage {
             MenuTheme.text(g, font, active ? "Active" : updated, x + 14, y + 92,
                     active ? accent : MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
             int by = y + h - 14 - 30;
-            MenuTheme.fill(g, x + 14, by, 70, 30, 10, accent);
+            MenuTheme.accentFill(g, x + 14, by, 70, 30, 10, st.hover());
             MenuTheme.textCentered(g, font, "Apply", x + 14 + 35, by + 15, 0xFFFFFFFF, MenuTheme.FONT_MEDIUM);
             MenuTheme.fill(g, x + 92, by, 76, 30, 10, MenuTheme.FIELD);
-            MenuTheme.outline(g, x + 92, by, 76, 30, 10, 0xFF2E333D);
+            MenuTheme.outline(g, x + 92, by, 76, 30, 10, 0x33FFFFFF);
             MenuTheme.textCentered(g, font, "Update", x + 92 + 38, by + 15, MenuTheme.TEXT_DIM, MenuTheme.FONT_MEDIUM);
             MenuIcons.draw(g, Icon.TRASH, x + w - 14 - 22, by + 4, 22,
                     confirming ? MenuTheme.DANGER : MenuTheme.TEXT_MUTED);

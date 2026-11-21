@@ -157,7 +157,7 @@ public final class ModSettingsPage {
                             : Math.max(1, (int) Math.floor(setting.maximum()));
                     controlWidth = DROPDOWN_WIDTH;
                     VantaUiNode box = VantaUiNode.row(0, 0).height(30).background(MenuTheme.FIELD)
-                            .radius(8).border(0xFF2E333D);
+                            .radius(8).border(0x33FFFFFF);
                     box.add(VantaUiNode.textField(setting.name(), () -> {
                         Object value = readValue(setting);
                         return value instanceof String string ? string : "";

@@ -16,8 +16,8 @@ public final class MenuComponents {
     public static final Identifier LOGO =
             Identifier.fromNamespaceAndPath("dropperutils", "textures/gui/vanta_logo_transparent.png");
 
-    private static final int CARD_BORDER = 0xFF23262E;
-    private static final int CARD_BORDER_HOVER = 0xFF3A3F4B;
+    private static final int CARD_BORDER = 0x26FFFFFF;
+    private static final int CARD_BORDER_HOVER = 0x47FFFFFF;
 
     private static void focusRing(GuiGraphics g, VantaUiNode.PaintState st, int x, int y, int w, int h, int r) {
         if (st.focused()) MenuTheme.outline(g, x - 1, y - 1, w + 2, h + 2, r + 1, MenuTheme.alpha(MenuTheme.accent(), 235));
@@ -27,7 +27,7 @@ public final class MenuComponents {
 
     public static VantaUiNode iconButton(Icon icon, String tooltip, boolean enabled, Runnable action) {
         VantaUiNode node = VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
-            if (enabled && st.hovered()) MenuTheme.fill(g, x, y, w, h, 10, 0x1AFFFFFF);
+            if (enabled && st.hover() > 0.01f) MenuTheme.fill(g, x, y, w, h, 10, MenuTheme.alpha(0xFFFFFFFF, Math.round(26 * st.hover())));
             int color = !enabled ? 0xFF3C4049 : st.hovered() ? MenuTheme.TEXT : MenuTheme.TEXT_DIM;
             MenuIcons.draw(g, icon, x + (w - 18) / 2, y + (h - 18) / 2, 18, color);
             if (enabled) focusRing(g, st, x, y, w, h, 10);
@@ -41,8 +41,8 @@ public final class MenuComponents {
             if (selected) {
                 MenuTheme.fill(g, x, y, w, h, 13, 0x14FFFFFF);
                 MenuTheme.outline(g, x, y, w, h, 13, 0x55FFFFFF);
-            } else if (st.hovered()) {
-                MenuTheme.fill(g, x, y, w, h, 13, 0x0DFFFFFF);
+            } else if (st.hover() > 0.01f) {
+                MenuTheme.fill(g, x, y, w, h, 13, MenuTheme.alpha(0xFFFFFFFF, Math.round(16 * st.hover())));
             }
             int color = selected || st.hovered() ? MenuTheme.TEXT : MenuTheme.TEXT_DIM;
             MenuIcons.draw(g, icon, x + 14, y + (h - 18) / 2, 18, color);
@@ -63,13 +63,20 @@ public final class MenuComponents {
 
     public static VantaUiNode brand() {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
-            g.blit(RenderPipelines.GUI_TEXTURED, LOGO, x + 6, y + (h - 24) / 2, 0.0f, 0.0f, 33, 24,
-                    962, 702, 962, 702);
-            MenuTheme.text(g, font, "VANTA", x + 48, y + h / 2 - 1, MenuTheme.TEXT, MenuTheme.FONT_HEADING);
+            int logoW = 38;
+            int logoH = 28;
             int vantaWidth = MenuTheme.width(font, "VANTA", MenuTheme.FONT_HEADING);
-            MenuTheme.text(g, font, "CLIENT", x + 48 + vantaWidth + 6, y + h / 2 + 3,
+            int clientWidth = MenuTheme.width(font, "CLIENT", MenuTheme.FONT_SMALL);
+            int total = logoW + 10 + vantaWidth + 6 + clientWidth;
+            int left = x + Math.max(0, (w - total) / 2);
+            int cy = y + h / 2;
+            g.blit(RenderPipelines.GUI_TEXTURED, LOGO, left, cy - logoH / 2, 0.0f, 0.0f, logoW, logoH,
+                    962, 702, 962, 702);
+            MenuTheme.text(g, font, "VANTA", left + logoW + 10, cy, MenuTheme.TEXT, MenuTheme.FONT_HEADING);
+            // Same baseline as VANTA: cap centre of the 11px label sits 5 units below the heading's.
+            MenuTheme.text(g, font, "CLIENT", left + logoW + 16 + vantaWidth, cy + 5,
                     MenuTheme.accent(), MenuTheme.FONT_SMALL);
-        }).height(52);
+        }).height(60);
     }
 
     public static VantaUiNode footer(String name, String detail, Runnable infoAction) {
@@ -101,12 +108,12 @@ public final class MenuComponents {
         return VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
             if (selected) {
-                MenuTheme.fill(g, x, y, w, h, 12, st.hovered() ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.12f) : accent);
+                MenuTheme.accentFill(g, x, y, w, h, 12, st.hover());
             } else {
-                MenuTheme.fill(g, x, y, w, h, 12, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-                MenuTheme.outline(g, x, y, w, h, 12, st.hovered() ? CARD_BORDER_HOVER : CARD_BORDER);
+                MenuTheme.fill(g, x, y, w, h, 12, MenuTheme.mix(MenuTheme.CARD, MenuTheme.CARD_HOVER, st.hover()));
+                MenuTheme.outline(g, x, y, w, h, 12, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
             }
-            int color = selected ? 0xFFFFFFFF : st.hovered() ? MenuTheme.TEXT : MenuTheme.TEXT_DIM;
+            int color = selected ? 0xFFFFFFFF : st.hovered() ? MenuTheme.TEXT : 0xFFD0D5DE;
             int textX = x + 16;
             if (icon != null) {
                 MenuIcons.draw(g, icon, x + 14, y + (h - 16) / 2, 16, color);
@@ -123,10 +130,10 @@ public final class MenuComponents {
         return VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
             if (filled) {
-                MenuTheme.fill(g, x, y, w, h, 12, st.hovered() ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.12f) : accent);
+                MenuTheme.accentFill(g, x, y, w, h, 12, st.hover());
             } else {
-                MenuTheme.fill(g, x, y, w, h, 12, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-                MenuTheme.outline(g, x, y, w, h, 12, st.hovered() ? CARD_BORDER_HOVER : CARD_BORDER);
+                MenuTheme.fill(g, x, y, w, h, 12, MenuTheme.mix(MenuTheme.CARD, MenuTheme.CARD_HOVER, st.hover()));
+                MenuTheme.outline(g, x, y, w, h, 12, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
             }
             int color = filled || st.hovered() ? 0xFFFFFFFF : MenuTheme.TEXT_DIM;
             int labelWidth = MenuTheme.width(f, label, MenuTheme.FONT_MEDIUM);
@@ -150,7 +157,7 @@ public final class MenuComponents {
             int accent = MenuTheme.accent();
             MenuTheme.fill(g, x, y, w, h, 10, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.FIELD);
             MenuTheme.outline(g, x, y, w, h, 10,
-                    isActive ? accent : isDanger ? MenuTheme.DANGER : st.hovered() ? CARD_BORDER_HOVER : 0xFF2E333D);
+                    isActive ? accent : isDanger ? MenuTheme.DANGER : st.hovered() ? CARD_BORDER_HOVER : 0x33FFFFFF);
             String shown = MenuTheme.fit(font, text.get(), w - 20, MenuTheme.FONT_MEDIUM);
             MenuTheme.textCentered(g, font, shown, x + w / 2, y + h / 2,
                     isActive ? accent : MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
@@ -223,20 +230,22 @@ public final class MenuComponents {
                                       Supplier<Boolean> favorite, Runnable open) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
-            MenuTheme.fill(g, x, y, w, h, 14, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, 14, st.hovered() ? CARD_BORDER_HOVER : CARD_BORDER);
-            MenuTheme.dot(g, x + w - 18, y + 18, 8, entry.configurableInVanta() ? accent : MenuTheme.NEUTRAL_DOT);
+            MenuTheme.gradient(g, x, y, w, h, 16,
+                    MenuTheme.mix(0xA6161B27, 0xB41B2130, st.hover()), MenuTheme.mix(0x9C0F131C, 0xB4121722, st.hover()));
+            MenuTheme.outline(g, x, y, w, h, 16, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
+            if (entry.configurableInVanta()) MenuTheme.dot(g, x + w - 20, y + 20, 16, MenuTheme.alpha(accent, 48));
+            MenuTheme.dot(g, x + w - 20, y + 20, 8, entry.configurableInVanta() ? accent : MenuTheme.NEUTRAL_DOT);
             if (Boolean.TRUE.equals(favorite.get())) {
                 MenuIcons.draw(g, Icon.STAR_FILLED, x + 12, y + 10, 16, 0xFFF2C14E);
             }
             int art = 64;
-            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 28, art);
-            int buttonHeight = 34;
+            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 30, art);
+            int buttonHeight = 36;
             int bx = x + 14;
             int by = y + h - 14 - buttonHeight;
             int bw = w - 28;
-            MenuTheme.fill(g, bx, by, bw, buttonHeight, 11,
-                    st.hovered() ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.12f) : accent);
+            MenuTheme.fill(g, bx, by + 2, bw, buttonHeight, 11, 0x40000000);
+            MenuTheme.accentFill(g, bx, by, bw, buttonHeight, 11, st.hover());
             MenuTheme.textCentered(g, font, MenuTheme.fit(font, entry.name(), bw - 20, MenuTheme.FONT_MEDIUM),
                     bx + bw / 2, by + buttonHeight / 2, 0xFFFFFFFF, MenuTheme.FONT_MEDIUM);
             focusRing(g, st, x, y, w, h, 14);
@@ -250,8 +259,9 @@ public final class MenuComponents {
                                      Supplier<Boolean> favorite, Runnable open) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
-            MenuTheme.fill(g, x, y, w, h, 12, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, 12, st.hovered() ? CARD_BORDER_HOVER : CARD_BORDER);
+            MenuTheme.gradient(g, x, y, w, h, 14,
+                    MenuTheme.mix(0xA6161B27, 0xB41B2130, st.hover()), MenuTheme.mix(0x9C0F131C, 0xB4121722, st.hover()));
+            MenuTheme.outline(g, x, y, w, h, 14, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
             drawModArt(g, font, entry, icon.get(), x + 12, y + (h - 36) / 2, 36);
             int nameX = x + 62;
             MenuTheme.text(g, font, MenuTheme.fit(font, entry.name(), w - 300, MenuTheme.FONT_MEDIUM),
@@ -268,7 +278,7 @@ public final class MenuComponents {
             int bh = 34;
             int bx = x + w - bw - 14;
             int by = y + (h - bh) / 2;
-            MenuTheme.fill(g, bx, by, bw, bh, 11, st.hovered() ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.12f) : accent);
+            MenuTheme.accentFill(g, bx, by, bw, bh, 11, st.hover());
             MenuTheme.textCentered(g, font, entry.configurableInVanta() ? "Configure" : "Open",
                     bx + bw / 2, by + bh / 2, 0xFFFFFFFF, MenuTheme.FONT_MEDIUM);
             focusRing(g, st, x, y, w, h, 12);

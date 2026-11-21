@@ -56,7 +56,7 @@ public final class ThemesPage {
             boolean selected = VantaClientPreferences.get().accent == accent;
             int color = accent.color();
             MenuTheme.fill(g, x, y, w, h, 14, st.hovered() ? MenuTheme.CARD_HOVER : MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, 14, selected ? color : st.hovered() ? 0xFF3A3F4B : 0xFF23262E);
+            MenuTheme.outline(g, x, y, w, h, 14, selected ? color : st.hovered() ? 0x47FFFFFF : 0x26FFFFFF);
             if (selected) MenuTheme.outline(g, x + 1, y + 1, w - 2, h - 2, 13, MenuTheme.alpha(color, 120));
 
             // Miniature of the menu using this accent.
@@ -66,7 +66,7 @@ public final class ThemesPage {
             int ph = h - 14 - 14 - 34;
             MenuTheme.fill(g, px, py, pw, ph, 9, 0xFF0C0E12);
             MenuTheme.outline(g, px, py, pw, ph, 9, 0xFF22252C);
-            MenuTheme.fill(g, px + 8, py + 8, 18, 5, 2, 0xFF2A2D35);
+            MenuTheme.fill(g, px + 8, py + 8, 18, 5, 2, 0x30FFFFFF);
             for (int i = 0; i < 3; i++) {
                 MenuTheme.fill(g, px + 8, py + 20 + i * 11, 22, 7, 3, i == 0 ? MenuTheme.alpha(color, 90) : 0xFF1B1E25);
             }

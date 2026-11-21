@@ -25,14 +25,14 @@ public final class MenuTheme {
     public static final int SIZE_HEADING = 26;
     public static final int SIZE_SMALL = 11;
 
-    public static final int PANEL = 0xD90D0F13;
-    public static final int SIDEBAR = 0x66000000;
-    public static final int CARD = 0xFF14161B;
-    public static final int CARD_HOVER = 0xFF1A1D23;
-    public static final int ROW = 0xFF13151A;
-    public static final int FIELD = 0xFF1B1E25;
-    public static final int LINE = 0xFF272A33;
-    public static final int LINE_SOFT = 0x1FFFFFFF;
+    public static final int PANEL = 0xB80E1320;
+    public static final int SIDEBAR = 0x59000000;
+    public static final int CARD = 0x9E10141D;
+    public static final int CARD_HOVER = 0xB4181D29;
+    public static final int ROW = 0x9210141D;
+    public static final int FIELD = 0xB0141925;
+    public static final int LINE = 0x2EFFFFFF;
+    public static final int LINE_SOFT = 0x1AFFFFFF;
     public static final int TEXT = 0xFFF2F4F8;
     public static final int TEXT_DIM = 0xFFA3A9B5;
     public static final int TEXT_MUTED = 0xFF6F7581;
@@ -44,7 +44,14 @@ public final class MenuTheme {
         double opacity = VantaClientPreferences.get().panelOpacity;
         if (!Double.isFinite(opacity)) opacity = 0.85;
         opacity = Math.max(0.72, Math.min(0.98, opacity));
-        return (PANEL & 0x00FFFFFF) | (Math.round(255.0f * (float) opacity) << 24);
+        // Preference 0.85 maps to the reference alpha; the range stays see-through enough to show the blur.
+        int alpha = Math.round(((PANEL >>> 24) & 0xFF) * (float) (opacity / 0.85));
+        return (PANEL & 0x00FFFFFF) | (Math.min(236, alpha) << 24);
+    }
+
+    /** Slightly deeper tint for the bottom of the shell so the glass reads as lit from above. */
+    public static int panelBottom() {
+        return mix(panel(), 0xFF05070C, 0.25f);
     }
 
     public static int accent() {
@@ -65,9 +72,13 @@ public final class MenuTheme {
         return VantaUiTheme.withAlpha(color, alpha);
     }
 
-    /** Top edge for text of {@code size} px that should be optically centred on {@code centerY}. */
+    /**
+     * Top edge for text of {@code size} px whose capital letters are centred on {@code centerY}.
+     * Minecraft puts the baseline of TTF text 7 units below the draw position, and Poppins
+     * capitals are about 0.7 em tall, so the cap centre sits at {@code top + 7 - 0.35 * size}.
+     */
     public static int textTop(int centerY, int size) {
-        return centerY - Math.round(size * 0.45f);
+        return centerY - 7 + Math.round(size * 0.35f);
     }
 
     public static int sizeOf(Identifier fontId) {
@@ -107,6 +118,18 @@ public final class MenuTheme {
                                  int centerY, int color, Identifier fontId) {
         if (text == null || text.isEmpty()) return;
         text(graphics, font, text, rightX - width(font, text, fontId), centerY, color, fontId);
+    }
+
+    public static void gradient(GuiGraphics graphics, int x, int y, int w, int h, int radius, int top, int bottom) {
+        VantaUiTheme.fillSquircleGradient(graphics, x, y, w, h, radius, top, bottom);
+    }
+
+    /** Accent button fill: lighter at the top, deeper at the bottom, brighter on hover. */
+    public static void accentFill(GuiGraphics graphics, int x, int y, int w, int h, int radius, float hover) {
+        int accent = accent();
+        int top = mix(accent, 0xFFFFFFFF, 0.12f + 0.12f * hover);
+        int bottom = mix(accent, 0xFF000000, 0.16f - 0.10f * hover);
+        gradient(graphics, x, y, w, h, radius, top, bottom);
     }
 
     public static void fill(GuiGraphics graphics, int x, int y, int w, int h, int radius, int color) {

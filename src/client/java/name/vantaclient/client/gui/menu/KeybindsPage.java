@@ -129,7 +129,7 @@ public final class KeybindsPage {
         VantaUiNode scroll = VantaUiNode.column(14, 24).flex(1).scrollable();
 
         int available = Math.max(300, host.contentWidth());
-        float unit = Math.max(24.0f, Math.min(50.0f, (available - 150) / (LAYOUT_WIDTH + 0.2f)));
+        float unit = Math.max(24.0f, Math.min(58.0f, (available - 150) / (LAYOUT_WIDTH + 0.2f)));
         int keyboardHeight = Math.round(LAYOUT_HEIGHT * unit) + 8;
         int keyboardWidth = Math.round(LAYOUT_WIDTH * unit);
         int selected = host.selectedKeyCode();
@@ -162,6 +162,9 @@ public final class KeybindsPage {
     private static void paintKeyboard(GuiGraphics g, Font font, int x, int y, float unit,
                                       Map<String, List<KeyMapping>> index, int selected, int keyboardWidth) {
         int gap = 4;
+        int panelHeight = Math.round(LAYOUT_HEIGHT * unit) + 16;
+        MenuTheme.fill(g, x - 14, y - 6, keyboardWidth + 24, panelHeight, 16, 0x5C0B0F18);
+        MenuTheme.outline(g, x - 14, y - 6, keyboardWidth + 24, panelHeight, 16, 0x26FFFFFF);
         for (Key key : KEYS) {
             int kx = x + Math.round(key.x() * unit);
             int ky = y + 4 + Math.round(key.y() * unit);
@@ -173,8 +176,10 @@ public final class KeybindsPage {
         int my = y + 12;
         int bodyWidth = 84;
         int bodyHeight = Math.min(Math.round(unit * 3.2f), 150);
-        MenuTheme.fill(g, mx, my, bodyWidth, bodyHeight, 22, MenuTheme.CARD);
-        MenuTheme.outline(g, mx, my, bodyWidth, bodyHeight, 22, 0xFF2A2D35);
+        MenuTheme.fill(g, mx - 14, y - 6, bodyWidth + 28, panelHeight, 16, 0x5C0B0F18);
+        MenuTheme.outline(g, mx - 14, y - 6, bodyWidth + 28, panelHeight, 16, 0x26FFFFFF);
+        MenuTheme.fill(g, mx, my, bodyWidth, bodyHeight, 26, 0x660F131C);
+        MenuTheme.outline(g, mx, my, bodyWidth, bodyHeight, 26, 0x40FFFFFF);
         int buttonHeight = bodyHeight / 2 - 6;
         int half = bodyWidth / 2;
         paintKey(g, font, mx + 5, my + 5, half - 7, buttonHeight, "L",
@@ -189,17 +194,20 @@ public final class KeybindsPage {
                                  List<KeyMapping> users, boolean selected, int radius) {
         int state = stateColor(users);
         if (state != 0) {
-            MenuTheme.fill(g, x, y, w, h, radius, state);
+            MenuTheme.fill(g, x, y, w, h, radius, MenuTheme.alpha(state, 64));
+            MenuTheme.outline(g, x, y, w, h, radius, MenuTheme.alpha(state, 235));
         } else {
-            MenuTheme.fill(g, x, y, w, h, radius, MenuTheme.CARD);
-            MenuTheme.outline(g, x, y, w, h, radius, 0xFF2A2D35);
+            MenuTheme.fill(g, x, y, w, h, radius, 0x7A141926);
+            MenuTheme.outline(g, x, y, w, h, radius, 0x30FFFFFF);
         }
         if (selected) {
             MenuTheme.outline(g, x - 2, y - 2, w + 4, h + 4, radius + 2, 0xFFFFFFFF);
         }
         if (!label.isEmpty()) {
-            MenuTheme.textCentered(g, font, MenuTheme.fit(font, label, w - 4, MenuTheme.FONT_SMALL),
-                    x + w / 2, y + h / 2, state != 0 ? 0xFFFFFFFF : MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+            net.minecraft.resources.Identifier labelFont =
+                    label.length() == 1 ? MenuTheme.FONT_MEDIUM : MenuTheme.FONT_SMALL;
+            MenuTheme.textCentered(g, font, MenuTheme.fit(font, label, w - 4, labelFont),
+                    x + w / 2, y + h / 2, state != 0 ? MenuTheme.TEXT : MenuTheme.TEXT_DIM, labelFont);
         }
     }
 
@@ -235,7 +243,7 @@ public final class KeybindsPage {
             int[] colors = {MenuTheme.accent(), MenuTheme.DANGER, MenuTheme.CARD};
             for (int i = 0; i < labels.length; i++) {
                 MenuTheme.fill(g, cx, cy - 7, 14, 14, 4, colors[i]);
-                if (i == 2) MenuTheme.outline(g, cx, cy - 7, 14, 14, 4, 0xFF2A2D35);
+                if (i == 2) MenuTheme.outline(g, cx, cy - 7, 14, 14, 4, 0x30FFFFFF);
                 MenuTheme.text(g, font, labels[i], cx + 22, cy, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
                 cx += 22 + MenuTheme.width(font, labels[i], MenuTheme.FONT_SMALL) + 26;
             }

@@ -47,28 +47,46 @@ public final class VantaUiTheme {
     }
 
     private static final int MAX_CACHED_SQUIRCLE_RADIUS = 32;
-    private static final int[][] SQUIRCLE_INSETS = buildSquircleInsets();
+    /** Exact horizontal edge offset of a superellipse corner at the centre of each row. */
+    private static final float[][] SQUIRCLE_EDGES = buildSquircleEdges();
 
-    private static int[][] buildSquircleInsets() {
-        int[][] insets = new int[MAX_CACHED_SQUIRCLE_RADIUS + 1][];
-        insets[0] = new int[0];
+    private static float[][] buildSquircleEdges() {
+        float[][] edges = new float[MAX_CACHED_SQUIRCLE_RADIUS + 1][];
+        edges[0] = new float[0];
         for (int radius = 1; radius <= MAX_CACHED_SQUIRCLE_RADIUS; radius++) {
-            int[] rows = new int[radius];
+            float[] rows = new float[radius];
             for (int row = 0; row < radius; row++) {
                 double normalizedY = (radius - row - 0.5) / radius;
                 double y4 = normalizedY * normalizedY * normalizedY * normalizedY;
                 double normalizedX = Math.sqrt(Math.sqrt(Math.max(0.0, 1.0 - y4)));
-                rows[row] = Math.min(radius, (int) Math.ceil(radius * (1.0 - normalizedX)));
+                rows[row] = (float) Math.min(radius, radius * (1.0 - normalizedX));
             }
-            insets[radius] = rows;
+            edges[radius] = rows;
         }
-        return insets;
+        return edges;
+    }
+
+    private static float squircleEdge(int radius, int row) {
+        if (radius <= 0) return 0.0f;
+        int capped = Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS);
+        return SQUIRCLE_EDGES[capped][Math.min(row, capped - 1)];
     }
 
     private static int squircleInset(int radius, int row) {
-        return radius <= 0 ? 0
-                : SQUIRCLE_INSETS[Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS)]
-                        [Math.min(row, Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS) - 1)];
+        return (int) Math.ceil(squircleEdge(radius, row));
+    }
+
+    /** Fills the single partially covered pixel just outside a corner row's solid span. */
+    private static void edgePixels(GuiGraphics graphics, int x, int y, int width, int row,
+                                   float edge, int color) {
+        int solid = (int) Math.ceil(edge);
+        float coverage = solid - edge;
+        if (coverage <= 0.02f || solid <= 0) return;
+        int alpha = Math.round(((color >>> 24) & 0xFF) * coverage);
+        if (alpha <= 0) return;
+        int soft = withAlpha(color, alpha);
+        graphics.fill(x + solid - 1, y + row, x + solid, y + row + 1, soft);
+        graphics.fill(x + width - solid, y + row, x + width - solid + 1, y + row + 1, soft);
     }
 
     public static final int SPACE_1 = 4;
@@ -127,13 +145,72 @@ public final class VantaUiTheme {
         }
         if (height > r * 2) graphics.fill(x, y + r, x + width, y + height - r, color);
         for (int row = 0; row < r; row++) {
-            int inset = squircleInset(r, row);
+            float edge = squircleEdge(r, row);
+            int inset = (int) Math.ceil(edge);
             int left = x + inset;
             int right = x + width - inset;
-            if (right <= left) continue;
-            graphics.fill(left, y + row, right, y + row + 1, color);
-            graphics.fill(left, y + height - row - 1, right, y + height - row, color);
+            if (right > left) {
+                graphics.fill(left, y + row, right, y + row + 1, color);
+                graphics.fill(left, y + height - row - 1, right, y + height - row, color);
+            }
+            edgePixels(graphics, x, y, width, row, edge, color);
+            edgePixels(graphics, x, y + height - 2 * row - 1, width, row, edge, color);
         }
+    }
+
+    /** Vertical gradient inside the superellipse, drawn one row at a time. */
+    public static void fillSquircleGradient(GuiGraphics graphics, int x, int y, int width,
+                                            int height, int radius, int top, int bottom) {
+        fillSquircleSides(graphics, x, y, width, height, radius, top, bottom, true, true);
+    }
+
+    /**
+     * Gradient squircle whose left and right corners can be rounded independently, used for
+     * panel halves such as a sidebar that shares its outer corners with a larger shell.
+     */
+    public static void fillSquircleSides(GuiGraphics graphics, int x, int y, int width, int height,
+                                         int radius, int top, int bottom,
+                                         boolean roundLeft, boolean roundRight) {
+        if (graphics == null || width <= 0 || height <= 0) return;
+        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
+                Math.min(width / 2, height / 2)));
+        int midTop = r;
+        int midBottom = height - r;
+        if (midBottom > midTop) {
+            float tTop = height <= 1 ? 0.0f : midTop / (float) (height - 1);
+            float tBottom = height <= 1 ? 0.0f : midBottom / (float) (height - 1);
+            graphics.fillGradient(x, y + midTop, x + width, y + midBottom,
+                    blend(top, bottom, tTop), blend(top, bottom, tBottom));
+        }
+        for (int row = 0; row < r; row++) {
+            float edge = squircleEdge(r, row);
+            int inset = (int) Math.ceil(edge);
+            float coverage = inset - edge;
+            for (int side = 0; side < 2; side++) {
+                int drawRow = side == 0 ? row : height - row - 1;
+                float t = height <= 1 ? 0.0f : drawRow / (float) (height - 1);
+                int color = blend(top, bottom, t);
+                if ((color >>> 24) == 0) continue;
+                int left = x + (roundLeft ? inset : 0);
+                int right = x + width - (roundRight ? inset : 0);
+                if (right > left) graphics.fill(left, y + drawRow, right, y + drawRow + 1, color);
+                if (coverage > 0.02f && inset > 0) {
+                    int soft = withAlpha(color, Math.round(((color >>> 24) & 0xFF) * coverage));
+                    if (roundLeft) graphics.fill(x + inset - 1, y + drawRow, x + inset, y + drawRow + 1, soft);
+                    if (roundRight) graphics.fill(x + width - inset, y + drawRow,
+                            x + width - inset + 1, y + drawRow + 1, soft);
+                }
+            }
+        }
+    }
+
+    private static int blend(int from, int to, float amount) {
+        float t = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
+        int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
+        int g = Math.round(((from >>> 8) & 255) * (1.0f - t) + ((to >>> 8) & 255) * t);
+        int b = Math.round((from & 255) * (1.0f - t) + (to & 255) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     /** One-pixel superellipse outline for standard controls. */
@@ -150,16 +227,33 @@ public final class VantaUiTheme {
                 Math.min(width / 2, height / 2)));
         int t = Math.max(1, Math.min(thickness, Math.min(width / 2, height / 2)));
         for (int row = 0; row < height; row++) {
-            int inset = row < r ? squircleInset(r, row)
-                    : row >= height - r ? squircleInset(r, height - row - 1) : 0;
+            int mirrored = row < r ? row : row >= height - r ? height - row - 1 : -1;
+            int inset = mirrored >= 0 ? squircleInset(r, mirrored) : 0;
             int left = x + inset;
             int right = x + width - inset;
             if (right <= left) continue;
             if (row < t || row >= height - t) {
                 graphics.fill(left, y + row, right, y + row + 1, color);
             } else {
-                graphics.fill(left, y + row, Math.min(right, left + t), y + row + 1, color);
-                graphics.fill(Math.max(left, right - t), y + row, right, y + row + 1, color);
+                // Bridge to the previous corner row so steep arcs stay one connected stroke.
+                int span = mirrored >= 0 && mirrored > 0
+                        ? Math.max(t, squircleInset(r, mirrored - 1) - inset) : t;
+                span = Math.min(span, (right - left) / 2 + 1);
+                graphics.fill(left, y + row, left + span, y + row + 1, color);
+                graphics.fill(right - span, y + row, right, y + row + 1, color);
+            }
+            if (mirrored >= 0) {
+                float edge = squircleEdge(r, mirrored);
+                int solid = (int) Math.ceil(edge);
+                float coverage = solid - edge;
+                if (coverage > 0.02f && solid > 0) {
+                    int alpha = Math.round(((color >>> 24) & 0xFF) * coverage);
+                    if (alpha > 0) {
+                        int soft = withAlpha(color, alpha);
+                        graphics.fill(x + solid - 1, y + row, x + solid, y + row + 1, soft);
+                        graphics.fill(x + width - solid, y + row, x + width - solid + 1, y + row + 1, soft);
+                    }
+                }
             }
         }
     }

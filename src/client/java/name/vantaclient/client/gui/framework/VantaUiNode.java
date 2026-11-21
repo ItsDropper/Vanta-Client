@@ -511,8 +511,11 @@ public final class VantaUiNode {
                     for (int i = 0; i < cachedTextLines.size(); i++)
                         graphics.drawString(font, styledText(cachedTextLines.get(i), textFont), x, y + i * 14, textColor);
                 } else {
-                    graphics.drawString(font, styledText(currentText(), textFont), x,
-                            y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2), textColor);
+                    int menuSize = menuFontSize(textFont);
+                    int textY = menuSize > 0
+                            ? y + height / 2 - 7 + Math.round(menuSize * 0.35f)
+                            : y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2);
+                    graphics.drawString(font, styledText(currentText(), textFont), x, textY, textColor);
                 }
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
@@ -702,12 +705,13 @@ public final class VantaUiNode {
                         ? fitText(font, placeholder, availableWidth, UI_FONT)
                         : cachedInputVisibleText;
                 graphics.drawString(font, styledText(display, UI_FONT), x + 8,
-                        y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
+                        menuStyle ? menuTextTop() : y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, textColor);
 
                 if (focused && caretVisible && width > 12) {
                     int caretX = Math.min(x + width - 5, x + 8 + cachedInputCursorWidth);
-                    int caretY = y + (height - 12) / 2;
-                    graphics.fill(caretX, caretY, caretX + 1, caretY + 12, accent);
+                    int caretH = menuStyle ? 16 : 12;
+                    int caretY = y + (height - caretH) / 2;
+                    graphics.fill(caretX, caretY, caretX + 1, caretY + caretH, accent);
                 }
             }
         }
@@ -724,28 +728,31 @@ public final class VantaUiNode {
 
     private void renderMenuToggle(GuiGraphics graphics, Font font, int accent) {
         boolean value = toggleValue != null && toggleValue.getAsBoolean();
-        int trackWidth = 38;
-        int trackHeight = 20;
+        int trackWidth = 44;
+        int trackHeight = 24;
         int trackX = x + width - trackWidth;
         int trackY = y + (height - trackHeight) / 2;
         String state = value ? "On" : "Off";
         int stateWidth = textWidth(font, state, MENU_FONT);
         graphics.drawString(font, styledText(state, MENU_FONT),
-                trackX - 12 - stateWidth, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                trackX - 12 - stateWidth, menuTextTop(),
                 !enabled ? VantaUiTheme.TEXT_MUTED : value ? 0xFFF2F4F8 : 0xFF8A909B);
         if (!label.isBlank()) {
             String shown = fitText(font, label, Math.max(0, width - trackWidth - stateWidth - 24), textFont);
             graphics.drawString(font, styledText(shown, textFont), x,
-                    y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                    menuTextTop(),
                     enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
         }
         int track = !enabled ? 0xFF1B1E24 : mixColor(0xFF2A2E36, accent, animatedToggle);
-        VantaUiTheme.fillSquircle(graphics, trackX, trackY, trackWidth, trackHeight, 10, track);
-        int knobX = trackX + 3 + Math.round((trackWidth - 6 - 14) * animatedToggle);
-        VantaUiTheme.fillSquircle(graphics, knobX, trackY + 3, 14, 14, 7, VantaUiTheme.WHITE);
+        int trackTop = enabled ? mixColor(0xFF343943, mixColor(accent, 0xFFFFFFFF, 0.14f), animatedToggle) : track;
+        VantaUiTheme.fillSquircleGradient(graphics, trackX, trackY, trackWidth, trackHeight, 12, trackTop, track);
+        int knobSize = 18;
+        int knobX = trackX + 3 + Math.round((trackWidth - 6 - knobSize) * animatedToggle);
+        VantaUiTheme.fillSquircle(graphics, knobX, trackY + 4, knobSize, knobSize, knobSize / 2, 0x44000000);
+        VantaUiTheme.fillSquircle(graphics, knobX, trackY + 3, knobSize, knobSize, knobSize / 2, VantaUiTheme.WHITE);
         if (focused) {
             VantaUiTheme.outlineSquircle(graphics, trackX - 2, trackY - 2,
-                    trackWidth + 4, trackHeight + 4, 11, VantaUiTheme.withAlpha(accent, 235));
+                    trackWidth + 4, trackHeight + 4, 14, VantaUiTheme.withAlpha(accent, 235));
         }
     }
 
@@ -764,33 +771,51 @@ public final class VantaUiNode {
             cachedSliderValueText = formatValue(value);
         }
         int trackWidth = menuSliderTrackWidth();
-        int trackY = y + height / 2 - 2;
+        int trackY = y + height / 2 - 3;
         int fill = (int) Math.round(trackWidth * normalized);
-        VantaUiTheme.fillSquircle(graphics, x, trackY, trackWidth, 4, 2, 0xFF2A2E36);
+        VantaUiTheme.fillSquircle(graphics, x, trackY, trackWidth, 6, 3, 0xFF2A2E36);
         if (fill > 0) {
-            VantaUiTheme.fillSquircle(graphics, x, trackY, Math.max(4, fill), 4, 2,
+            VantaUiTheme.fillSquircle(graphics, x, trackY, Math.max(6, fill), 6, 3,
                     enabled ? accent : VantaUiTheme.TEXT_MUTED);
         }
-        int knobSize = over || focused ? 14 : 12;
+        int knobSize = over || focused ? 18 : 16;
+        VantaUiTheme.fillSquircle(graphics, x + fill - knobSize / 2, y + height / 2 - knobSize / 2 + 1,
+                knobSize, knobSize, knobSize / 2, 0x44000000);
         VantaUiTheme.fillSquircle(graphics, x + fill - knobSize / 2, y + height / 2 - knobSize / 2,
                 knobSize, knobSize, knobSize / 2, VantaUiTheme.WHITE);
         int valueWidth = textWidth(font, cachedSliderValueText, MENU_FONT);
         graphics.drawString(font, styledText(cachedSliderValueText, MENU_FONT),
-                x + width - valueWidth, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                x + width - valueWidth, menuTextTop(),
                 enabled ? 0xFFF2F4F8 : VantaUiTheme.TEXT_MUTED);
+    }
+
+    /** Size of the menu fonts (vanta:medium, :small, :heading); -1 for every other font. */
+    private static int menuFontSize(Identifier fontId) {
+        if (fontId == null || !"vanta".equals(fontId.getNamespace())) return -1;
+        return switch (fontId.getPath()) {
+            case "medium" -> 13;
+            case "small" -> 11;
+            case "heading" -> 26;
+            default -> -1;
+        };
+    }
+
+    /** Top edge that vertically centres 13px menu text (baseline sits 7 units below the top). */
+    private int menuTextTop() {
+        return y + height / 2 - 2;
     }
 
     private void renderMenuDropdown(GuiGraphics graphics, Font font, int accent) {
         boolean open = dropdownOpen;
         int fill = open || hovered ? 0xFF22262E : 0xFF1B1E25;
-        VantaUiTheme.fillSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 8, fill);
-        VantaUiTheme.outlineSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 8,
+        VantaUiTheme.fillSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 10, fill);
+        VantaUiTheme.outlineSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 10,
                 focused || open ? VantaUiTheme.withAlpha(accent, 235) : 0xFF2E333D);
         String selectedText = dropdownValue == null ? "" : dropdownValue.get();
         String shown = fitText(font, selectedText == null ? "" : selectedText,
                 Math.max(0, width - 38), MENU_FONT);
-        graphics.drawString(font, styledText(shown, MENU_FONT), x + 12,
-                y + (VantaUiTheme.CONTROL_HEIGHT - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+        graphics.drawString(font, styledText(shown, MENU_FONT), x + 14,
+                y + VantaUiTheme.CONTROL_HEIGHT / 2 - 2,
                 enabled ? 0xFFF2F4F8 : VantaUiTheme.TEXT_MUTED);
         int arrowX = x + width - 18;
         int arrowY = y + VantaUiTheme.CONTROL_HEIGHT / 2;
@@ -1015,7 +1040,7 @@ public final class VantaUiNode {
                 String optionText = fitText(font, option,
                         Math.max(0, bounds.width() - 18), UI_FONT);
                 graphics.drawString(font, styledText(optionText, UI_FONT),
-                        bounds.x() + 9, optionY + 7,
+                        bounds.x() + 9, menuStyle ? optionY + 9 : optionY + 7,
                         highlighted ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_SECONDARY);
             }
             if (dropdownOptions.size() > bounds.visibleOptions()) {
