@@ -45,7 +45,7 @@ public final class VantaLobbyRenderer {
         graphics.submitSkinRenderState(
                 model,
                 skin.body().texturePath(),
-                compact ? 38.0f : 44.0f,
+                compact ? 38.0f : 58.0f,
                 -4.0f,
                 idleYaw + subjectYaw * 0.18f,
                 subjectPitch * 0.12f,
