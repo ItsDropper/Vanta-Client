@@ -234,6 +234,7 @@ public abstract class TitleScreenMixin {
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
         VantaLobbyChrome.renderSceneAtmosphere(graphics, width, height);
+        VantaLobbyChrome.renderPlayPanel(graphics, width, height);
     }
 
     @Redirect(method = "render", at = @At(value = "INVOKE",
