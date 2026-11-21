@@ -216,12 +216,15 @@ public final class VantaLobbyWorld {
             cameraRig.setYHeadRot(yaw);
             cameraRig.setYBodyRot(yaw);
             if (avatar != null) {
-                avatar.snapTo(avatar.getX(), avatar.getY(), avatar.getZ(), yaw, 0.0f);
-                avatar.setYHeadRot(yaw);
-                avatar.setYBodyRot(yaw);
+                // Face the visible model toward the lobby camera. The camera sits
+                // on the +Z side of the avatar and looks back toward -Z.
+                float avatarYaw = camera.subjectYaw();
+                avatar.snapTo(avatar.getX(), avatar.getY(), avatar.getZ(), avatarYaw, 0.0f);
+                avatar.setYHeadRot(avatarYaw);
+                avatar.setYBodyRot(avatarYaw);
                 LivingEntityAccessor avatarRotation = (LivingEntityAccessor) avatar;
-                avatarRotation.vanta$setPreviousHeadYaw(yaw);
-                avatarRotation.vanta$setPreviousBodyYaw(yaw);
+                avatarRotation.vanta$setPreviousHeadYaw(avatarYaw);
+                avatarRotation.vanta$setPreviousBodyYaw(avatarYaw);
             }
             LivingEntityAccessor rotationAccessor = (LivingEntityAccessor) cameraRig;
             // The lobby player is intentionally not ticked. Vanilla's player renderer
@@ -252,9 +255,11 @@ public final class VantaLobbyWorld {
         // Keep the avatar in the world while framing it with an independent, elevated
         // camera transform. Third-person mode enables the player renderer; the explicit
         // camera position avoids the vanilla fixed-distance third-person composition.
-        cameraAccessor.vanta$setPosition(0.5, 70.0, 7.5);
+        // The avatar is at z=-5.5. Keep the camera on its +Z side and
+        // explicitly face north (-Z); yaw 0 would look away from the avatar.
+        cameraAccessor.vanta$setPosition(avatar.getX(), avatar.getY() + 6.0, avatar.getZ() + 13.0);
         cameraAccessor.vanta$setRotation(
-                camera.sceneYaw(), 19.0f + camera.scenePitch());
+                180.0f + camera.sceneYaw(), 19.0f + camera.scenePitch());
     }
 
     public static void endFrame() {
