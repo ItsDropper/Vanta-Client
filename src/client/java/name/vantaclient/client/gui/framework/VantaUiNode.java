@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * clipping and interaction primitives currently needed by Vanta screens.
  */
 public final class VantaUiNode {
-    public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS }
+    public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS, CANVAS }
     public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET, COMBAT, MISC }
     public enum Direction { ROW, COLUMN, STACK }
     public enum Alignment { START, CENTER, END, STRETCH }
@@ -34,12 +34,30 @@ public final class VantaUiNode {
     public record DropdownPopupBounds(int x, int y, int width, int height,
                                       int firstOption, int visibleOptions) {}
 
+    /** Per-frame state handed to a {@link Painter}. */
+    public record PaintState(boolean hovered, boolean focused, float hover,
+                             int mouseX, int mouseY) {}
+
+    /** Custom drawing callback for a {@link Kind#CANVAS} node; coordinates are logical GUI units. */
+    @FunctionalInterface
+    public interface Painter {
+        void paint(GuiGraphics graphics, Font font, int x, int y, int width, int height,
+                   PaintState state);
+    }
+
+    /** Pointer callback with coordinates relative to the node's top-left corner and the node's size. */
+    @FunctionalInterface
+    public interface PointerAction {
+        void click(int localX, int localY, int width, int height);
+    }
+
     final Kind kind;
     final Direction direction;
     final List<VantaUiNode> children = new ArrayList<>();
     static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
     private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
     private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
+    static final Identifier MENU_FONT = Identifier.fromNamespaceAndPath("vanta", "medium");
 
     String label = "";
     private Icon icon;
@@ -100,6 +118,11 @@ public final class VantaUiNode {
     private boolean caretVisible = true;
 
     private Runnable action;
+    private Painter painter;
+    private PointerAction pointerAction;
+    private int cornerRadius = -1;
+    private int borderColor;
+    private boolean menuStyle;
     private BooleanSupplier toggleValue;
     private Consumer<Boolean> toggleSetter;
     private DoubleSupplier sliderValue;
@@ -312,6 +335,14 @@ public final class VantaUiNode {
         return node;
     }
 
+    /** Creates a node whose pixels are produced by {@code painter}. Add {@link #onClick} to make it interactive. */
+    public static VantaUiNode canvas(Painter painter) {
+        if (painter == null) throw new IllegalArgumentException("Canvas requires a painter.");
+        VantaUiNode node = new VantaUiNode(Kind.CANVAS, null);
+        node.painter = painter;
+        return node;
+    }
+
     public VantaUiNode add(VantaUiNode child) {
         if (kind != Kind.CONTAINER) {
             throw new IllegalStateException("Only containers can own child nodes.");
@@ -322,6 +353,18 @@ public final class VantaUiNode {
     }
 
     public VantaUiNode background(int color) { background = color; return this; }
+    /** Corner radius used by this node's own background and border. */
+    public VantaUiNode radius(int value) { cornerRadius = Math.max(0, value); return this; }
+    /** One-pixel outline drawn over the background with the node's corner radius. */
+    public VantaUiNode border(int color) { borderColor = color; return this; }
+    /** Switches toggles, dropdowns, sliders and text fields to the flat menu skin. */
+    public VantaUiNode menuStyle() { menuStyle = true; return this; }
+    /** Selects the font used by text, button and field labels. */
+    public VantaUiNode font(Identifier fontId) { if (fontId != null) textFont = fontId; return this; }
+    /** Runs {@code callback} when a canvas or button node is clicked or activated by keyboard. */
+    public VantaUiNode onClick(Runnable callback) { action = callback; return this; }
+    /** Receives the click position relative to this node. Used by canvas nodes. */
+    public VantaUiNode onClickAt(PointerAction callback) { pointerAction = callback; return this; }
     public VantaUiNode iconColor(int color) { textColor = color; return this; }
     public VantaUiNode padding(int value) { padding = Math.max(0, value); return this; }
     public VantaUiNode gap(int value) { gap = Math.max(0, value); return this; }
@@ -374,7 +417,8 @@ public final class VantaUiNode {
     public int height() { return height; }
     public boolean isInteractive() {
         return kind == Kind.BUTTON || kind == Kind.TOGGLE
-                || kind == Kind.SLIDER || kind == Kind.DROPDOWN || kind == Kind.TEXT_FIELD;
+                || kind == Kind.SLIDER || kind == Kind.DROPDOWN || kind == Kind.TEXT_FIELD
+                || (kind == Kind.CANVAS && (action != null || pointerAction != null));
     }
     public boolean isVisible() { return visible; }
     public boolean isEnabled() { return enabled; }
@@ -413,7 +457,8 @@ public final class VantaUiNode {
                 case VantaUiTheme.TOOLTIP_SURFACE -> VantaCompose.Material.POPOVER;
                 default -> null;
             };
-            int radius = background == VantaUiTheme.PANEL ? 18
+            int radius = cornerRadius >= 0 ? cornerRadius
+                    : background == VantaUiTheme.PANEL ? 18
                     : background == VantaUiTheme.PANEL_RAISED ? 13
                     : background == VantaUiTheme.TOOLTIP_SURFACE ? 10
                     : VantaUiTheme.RADIUS_MEDIUM;
@@ -433,6 +478,10 @@ public final class VantaUiNode {
                 VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
                         VantaUiTheme.applyPanelOpacity(background));
             }
+        }
+        if (borderColor != 0) {
+            VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
+                    cornerRadius >= 0 ? cornerRadius : VantaUiTheme.RADIUS_MEDIUM, borderColor);
         }
 
         if (kind == Kind.CONTAINER) {
@@ -482,6 +531,8 @@ public final class VantaUiNode {
                 }
             }
             case SPACER, CONTAINER -> { }
+            case CANVAS -> painter.paint(graphics, font, x, y, width, height,
+                    new PaintState(hovered || over && interactiveCanvas(), focused, hoverAmount, mouseX, mouseY));
             case PROGRESS -> {
                 if (width > 0 && height >= 8) {
                     if (!label.isBlank()) {
@@ -533,6 +584,10 @@ public final class VantaUiNode {
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2, color);
             }
             case TOGGLE -> {
+                if (menuStyle) {
+                    renderMenuToggle(graphics, font, accent);
+                    break;
+                }
                 String shownLabel = fitText(font, label, Math.max(0, width - 52), UI_FONT);
                 graphics.drawString(font, styledText(shownLabel, UI_FONT), x,
                         y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
@@ -549,6 +604,10 @@ public final class VantaUiNode {
                         VantaUiTheme.withAlpha(accent, 180));
             }
             case SLIDER -> {
+                if (menuStyle) {
+                    renderMenuSlider(graphics, font, accent, over);
+                    break;
+                }
                 double value = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
                 if (!Double.isFinite(value)) value = sliderMinimum;
                 value = clamp(value, sliderMinimum, sliderMaximum);
@@ -576,6 +635,10 @@ public final class VantaUiNode {
                 if (focused) graphics.fill(x, y + height - 1, x + width, y + height, accent);
             }
             case DROPDOWN -> {
+                if (menuStyle) {
+                    renderMenuDropdown(graphics, font, accent);
+                    break;
+                }
                 int controlHeight = VantaUiTheme.CONTROL_HEIGHT;
                 int boxWidth = Math.min(width, Math.min(150, Math.max(72, width / 2)));
                 int boxX = x + width - boxWidth;
@@ -601,11 +664,13 @@ public final class VantaUiNode {
                 // Floating options render after the complete tree to escape parent scissors.
             }
             case TEXT_FIELD -> {
-                int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
-                VantaUiTheme.fillSquircle(graphics, x, y, width, height,
-                        VantaUiTheme.RADIUS_MEDIUM, fieldBackground);
-                if (focused) VantaUiTheme.fillSquircle(graphics, x + 7, y + height - 2,
-                        Math.max(0, width - 14), 2, 1, accent);
+                if (!menuStyle) {
+                    int fieldBackground = focused ? VantaUiTheme.INPUT_FOCUS_SURFACE : VantaUiTheme.INPUT_SURFACE;
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height,
+                            VantaUiTheme.RADIUS_MEDIUM, fieldBackground);
+                    if (focused) VantaUiTheme.fillSquircle(graphics, x + 7, y + height - 2,
+                            Math.max(0, width - 14), 2, 1, accent);
+                }
 
                 String value = currentInput();
                 int availableWidth = Math.max(0, width - 18);
@@ -647,10 +712,93 @@ public final class VantaUiNode {
             }
         }
 
-        if (focused && kind != Kind.SLIDER && kind != Kind.TOGGLE
+        if (focused && kind != Kind.SLIDER && kind != Kind.TOGGLE && kind != Kind.CANVAS
                 && kind != Kind.DROPDOWN && kind != Kind.TEXT_FIELD) {
             graphics.fill(x, y + height - 1, x + width, y + height, accent);
         }
+    }
+
+    private boolean interactiveCanvas() {
+        return action != null || pointerAction != null;
+    }
+
+    private void renderMenuToggle(GuiGraphics graphics, Font font, int accent) {
+        boolean value = toggleValue != null && toggleValue.getAsBoolean();
+        int trackWidth = 38;
+        int trackHeight = 20;
+        int trackX = x + width - trackWidth;
+        int trackY = y + (height - trackHeight) / 2;
+        String state = value ? "On" : "Off";
+        int stateWidth = textWidth(font, state, MENU_FONT);
+        graphics.drawString(font, styledText(state, MENU_FONT),
+                trackX - 12 - stateWidth, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                !enabled ? VantaUiTheme.TEXT_MUTED : value ? 0xFFF2F4F8 : 0xFF8A909B);
+        if (!label.isBlank()) {
+            String shown = fitText(font, label, Math.max(0, width - trackWidth - stateWidth - 24), textFont);
+            graphics.drawString(font, styledText(shown, textFont), x,
+                    y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                    enabled ? VantaUiTheme.TEXT_PRIMARY : VantaUiTheme.TEXT_MUTED);
+        }
+        int track = !enabled ? 0xFF1B1E24 : mixColor(0xFF2A2E36, accent, animatedToggle);
+        VantaUiTheme.fillSquircle(graphics, trackX, trackY, trackWidth, trackHeight, 10, track);
+        int knobX = trackX + 3 + Math.round((trackWidth - 6 - 14) * animatedToggle);
+        VantaUiTheme.fillSquircle(graphics, knobX, trackY + 3, 14, 14, 7, VantaUiTheme.WHITE);
+        if (focused) {
+            VantaUiTheme.outlineSquircle(graphics, trackX - 2, trackY - 2,
+                    trackWidth + 4, trackHeight + 4, 11, VantaUiTheme.withAlpha(accent, 235));
+        }
+    }
+
+    private int menuSliderTrackWidth() {
+        return Math.max(8, width - 58);
+    }
+
+    private void renderMenuSlider(GuiGraphics graphics, Font font, int accent, boolean over) {
+        double value = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
+        if (!Double.isFinite(value)) value = sliderMinimum;
+        value = clamp(value, sliderMinimum, sliderMaximum);
+        double range = sliderMaximum - sliderMinimum;
+        double normalized = range <= 0.0 ? 0.0 : clamp((value - sliderMinimum) / range, 0.0, 1.0);
+        if (Double.compare(value, cachedSliderValue) != 0) {
+            cachedSliderValue = value;
+            cachedSliderValueText = formatValue(value);
+        }
+        int trackWidth = menuSliderTrackWidth();
+        int trackY = y + height / 2 - 2;
+        int fill = (int) Math.round(trackWidth * normalized);
+        VantaUiTheme.fillSquircle(graphics, x, trackY, trackWidth, 4, 2, 0xFF2A2E36);
+        if (fill > 0) {
+            VantaUiTheme.fillSquircle(graphics, x, trackY, Math.max(4, fill), 4, 2,
+                    enabled ? accent : VantaUiTheme.TEXT_MUTED);
+        }
+        int knobSize = over || focused ? 14 : 12;
+        VantaUiTheme.fillSquircle(graphics, x + fill - knobSize / 2, y + height / 2 - knobSize / 2,
+                knobSize, knobSize, knobSize / 2, VantaUiTheme.WHITE);
+        int valueWidth = textWidth(font, cachedSliderValueText, MENU_FONT);
+        graphics.drawString(font, styledText(cachedSliderValueText, MENU_FONT),
+                x + width - valueWidth, y + (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                enabled ? 0xFFF2F4F8 : VantaUiTheme.TEXT_MUTED);
+    }
+
+    private void renderMenuDropdown(GuiGraphics graphics, Font font, int accent) {
+        boolean open = dropdownOpen;
+        int fill = open || hovered ? 0xFF22262E : 0xFF1B1E25;
+        VantaUiTheme.fillSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 8, fill);
+        VantaUiTheme.outlineSquircle(graphics, x, y, width, VantaUiTheme.CONTROL_HEIGHT, 8,
+                focused || open ? VantaUiTheme.withAlpha(accent, 235) : 0xFF2E333D);
+        String selectedText = dropdownValue == null ? "" : dropdownValue.get();
+        String shown = fitText(font, selectedText == null ? "" : selectedText,
+                Math.max(0, width - 38), MENU_FONT);
+        graphics.drawString(font, styledText(shown, MENU_FONT), x + 12,
+                y + (VantaUiTheme.CONTROL_HEIGHT - VantaUiTheme.TEXT_LINE_HEIGHT) / 2,
+                enabled ? 0xFFF2F4F8 : VantaUiTheme.TEXT_MUTED);
+        int arrowX = x + width - 18;
+        int arrowY = y + VantaUiTheme.CONTROL_HEIGHT / 2;
+        int direction = open ? -1 : 1;
+        line(graphics, arrowX - 3, arrowY - direction * 1, arrowX, arrowY + direction * 2,
+                VantaUiTheme.TEXT_SECONDARY, 1, 1);
+        line(graphics, arrowX, arrowY + direction * 2, arrowX + 3, arrowY - direction * 1,
+                VantaUiTheme.TEXT_SECONDARY, 1, 1);
     }
 
     private static void drawIcon(GuiGraphics g, Icon icon, int x, int y, int w, int h, int color) {
@@ -744,7 +892,8 @@ public final class VantaUiNode {
     DropdownPopupBounds dropdownPopupBounds(int viewportWidth, int viewportHeight) {
         if (!visible || width <= 0 || height <= 0) return null;
         if (kind == Kind.DROPDOWN && dropdownOpen) {
-            int boxWidth = Math.min(width, Math.min(150, Math.max(72, width / 2)));
+            int boxWidth = menuStyle ? width
+                    : Math.min(width, Math.min(150, Math.max(72, width / 2)));
             int popupWidth = Math.min(boxWidth, Math.max(1, viewportWidth - 16));
             int visibleOptions = Math.max(1, Math.min(
                     Math.min(8, dropdownOptions.size()), Math.max(1, (viewportHeight - 16) / 22)));
@@ -842,10 +991,10 @@ public final class VantaUiNode {
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM, 0x55000000);
             VantaUiTheme.fillSquircle(graphics, bounds.x(), bounds.y(),
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
-                    VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
+                    menuStyle ? 0xFF181B21 : VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
             VantaUiTheme.outlineSquircle(graphics, bounds.x(), bounds.y(),
                     bounds.width(), bounds.height(), VantaUiTheme.RADIUS_MEDIUM,
-                    VantaUiTheme.BORDER);
+                    menuStyle ? 0xFF2E333D : VantaUiTheme.BORDER);
             String selected = dropdownValue == null ? "" : dropdownValue.get();
             for (int visibleIndex = 0; visibleIndex < bounds.visibleOptions(); visibleIndex++) {
                 int optionIndex = bounds.firstOption() + visibleIndex;
@@ -1053,6 +1202,13 @@ public final class VantaUiNode {
         if (!enabled || button != 0) return;
         switch (kind) {
             case BUTTON -> { if (action != null) action.run(); }
+            case CANVAS -> {
+                if (pointerAction != null) {
+                    pointerAction.click((int) Math.floor(mouseX - x), (int) Math.floor(mouseY - y), width, height);
+                } else if (action != null) {
+                    action.run();
+                }
+            }
             case TOGGLE -> {
                 if (toggleSetter != null && toggleValue != null) {
                     toggleSetter.accept(!toggleValue.getAsBoolean());
@@ -1174,6 +1330,7 @@ public final class VantaUiNode {
         if (!enabled) return;
         switch (kind) {
             case BUTTON -> { if (action != null) action.run(); }
+            case CANVAS -> { if (action != null) action.run(); }
             case TOGGLE -> {
                 if (toggleSetter != null && toggleValue != null) {
                     toggleSetter.accept(!toggleValue.getAsBoolean());
@@ -1257,7 +1414,8 @@ public final class VantaUiNode {
 
     private void updateSlider(double mouseX) {
         if (sliderSetter == null || width <= 0) return;
-        double normalized = clamp((mouseX - x) / width, 0.0, 1.0);
+        double span = menuStyle ? menuSliderTrackWidth() : width;
+        double normalized = clamp((mouseX - x) / span, 0.0, 1.0);
         setSliderValue(sliderMinimum + normalized * (sliderMaximum - sliderMinimum));
     }
 

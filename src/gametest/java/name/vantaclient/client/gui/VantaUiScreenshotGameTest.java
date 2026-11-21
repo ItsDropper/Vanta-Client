@@ -68,14 +68,14 @@ import java.util.Arrays;
  */
 @SuppressWarnings("UnstableApiUsage")
 public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
-    private static final int PAGE_OVERVIEW = 0;
-    private static final int PAGE_HUD = 1;
-    private static final int PAGE_VISUAL = 2;
-    private static final int PAGE_COMBAT = 3;
-    private static final int PAGE_MISC = 4;
-    private static final int PAGE_APPEARANCE = 5;
-    private static final int PAGE_FEATURE_SETTINGS = 6;
-    private static final int PAGE_CONTROLS = 7;
+    private static final int PAGE_MODS_GRID = 0;
+    private static final int PAGE_MODS_LIST = 1;
+    private static final int PAGE_PROFILES = 2;
+    private static final int PAGE_KEYBINDS = 3;
+    private static final int PAGE_THEMES = 4;
+    private static final int PAGE_PREFERENCES = 5;
+    private static final int PAGE_MOD_SETTINGS = 6;
+    private static final int PAGE_MODS_FILTERED = 7;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -402,12 +402,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                         + screenWidth + "x" + screenHeight + ".");
             }
         }
-        if (VantaSettingsScreen.featureGridColumns(899.0f) != 1
-                || VantaSettingsScreen.featureGridColumns(900.0f) != 2
-                || VantaSettingsScreen.featureGridColumns(1479.0f) != 2
-                || VantaSettingsScreen.featureGridColumns(1480.0f) != 3
-                || VantaSettingsScreen.featureGridColumns(Float.NaN) != 1) {
-            throw new AssertionError("Feature grid breakpoints must select one, two or three columns deterministically.");
+        if (name.vantaclient.client.gui.menu.ModsPage.columnsFor(900) != 4
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(819) != 3
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(600) != 3
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(599) != 2) {
+            throw new AssertionError("Mod grid breakpoints must select two, three or four columns deterministically.");
         }
         context.runOnClient(client -> {
             int[][] viewports = {{1280, 720}, {960, 540}, {640, 360}, {480, 270}};
@@ -1843,22 +1842,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static void capturePages(ClientGameTestContext context,
                                      VantaSettingsScreen screen,
                                      String viewportLabel) {
-        capturePage(context, screen, PAGE_OVERVIEW,
-                "vanta-ui-" + viewportLabel + "-overview");
-        capturePage(context, screen, PAGE_HUD,
-                "vanta-ui-" + viewportLabel + "-hud");
-        capturePage(context, screen, PAGE_VISUAL,
-                "vanta-ui-" + viewportLabel + "-visual");
-        capturePage(context, screen, PAGE_COMBAT,
-                "vanta-ui-" + viewportLabel + "-combat");
-        capturePage(context, screen, PAGE_MISC,
-                "vanta-ui-" + viewportLabel + "-misc");
-        capturePage(context, screen, PAGE_APPEARANCE,
-                "vanta-ui-" + viewportLabel + "-appearance");
-        capturePage(context, screen, PAGE_FEATURE_SETTINGS,
-                "vanta-ui-" + viewportLabel + "-feature-settings");
-        capturePage(context, screen, PAGE_CONTROLS,
-                "vanta-ui-" + viewportLabel + "-controls");
+        capturePage(context, screen, PAGE_MODS_GRID, "vanta-ui-" + viewportLabel + "-mods");
+        capturePage(context, screen, PAGE_MODS_LIST, "vanta-ui-" + viewportLabel + "-mods-list");
+        capturePage(context, screen, PAGE_PROFILES, "vanta-ui-" + viewportLabel + "-profiles");
+        capturePage(context, screen, PAGE_KEYBINDS, "vanta-ui-" + viewportLabel + "-keybinds");
+        capturePage(context, screen, PAGE_THEMES, "vanta-ui-" + viewportLabel + "-themes");
+        capturePage(context, screen, PAGE_PREFERENCES, "vanta-ui-" + viewportLabel + "-preferences");
+        capturePage(context, screen, PAGE_MOD_SETTINGS, "vanta-ui-" + viewportLabel + "-mod-settings");
+        capturePage(context, screen, PAGE_MODS_FILTERED, "vanta-ui-" + viewportLabel + "-mods-hud");
     }
 
     private static void capturePage(ClientGameTestContext context,

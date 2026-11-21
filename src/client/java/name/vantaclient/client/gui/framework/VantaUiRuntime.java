@@ -307,6 +307,11 @@ public final class VantaUiRuntime {
         averageUiRenderNanos = 0L;
     }
 
+    /** Moves keyboard focus to {@code node}; used to keep a search field focused across rebuilds. */
+    public void focus(VantaUiNode node) {
+        setFocused(node);
+    }
+
     private void setFocused(VantaUiNode node) {
         pendingFocusReveal = null;
         interactions.focus(node);

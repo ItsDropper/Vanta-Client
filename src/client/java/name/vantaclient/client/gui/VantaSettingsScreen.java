@@ -1,27 +1,28 @@
 package name.vantaclient.client.gui;
 
-import name.vantaclient.client.gui.compose.VantaCompose;
-import name.vantaclient.client.config.DropperUtilsConfig;
+import com.mojang.blaze3d.platform.InputConstants;
 import name.vantaclient.client.config.VantaClientPreferences;
-import name.vantaclient.client.feature.Category;
 import name.vantaclient.client.feature.Feature;
 import name.vantaclient.client.feature.FeatureRegistry;
-import name.vantaclient.client.feature.FarViewFeature;
-import name.vantaclient.client.util.FarViewController;
-import name.vantaclient.client.util.FarTerrainRenderer;
-import name.vantaclient.client.init.Keybinds;
-import name.vantaclient.client.init.FeatureKeybinds;
-import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.client.KeyMapping;
-import org.lwjgl.glfw.GLFW;
-import name.vantaclient.client.gui.components.settings.BooleanSetting;
-import name.vantaclient.client.gui.components.settings.ChoiceSetting;
-import name.vantaclient.client.gui.components.settings.Setting;
 import name.vantaclient.client.gui.components.settings.SettingRegistry;
-import name.vantaclient.client.gui.components.settings.SliderSetting;
+import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
-import name.vantaclient.client.gui.framework.VantaUiTheme;
+import name.vantaclient.client.gui.menu.KeybindsPage;
+import name.vantaclient.client.gui.menu.MenuComponents;
+import name.vantaclient.client.gui.menu.MenuHost;
+import name.vantaclient.client.gui.menu.MenuIcons.Icon;
+import name.vantaclient.client.gui.menu.MenuTheme;
+import name.vantaclient.client.gui.menu.ModCatalog;
+import name.vantaclient.client.gui.menu.ModEntry;
+import name.vantaclient.client.gui.menu.ModSettingsPage;
+import name.vantaclient.client.gui.menu.ModsPage;
+import name.vantaclient.client.gui.menu.PreferencesPage;
+import name.vantaclient.client.gui.menu.ProfilesPage;
+import name.vantaclient.client.gui.menu.ThemesPage;
+import name.vantaclient.client.init.Keybinds;
+import name.vantaclient.client.platform.ClientPlatform;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -29,32 +30,57 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
-import java.util.Locale;
 
-/** The live, retained-mode settings workspace for Vanta Client. */
-public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen {
-    private enum Page { HUD, VISUAL, COMBAT, MISC, APPEARANCE, CONTROLS }
+/**
+ * Vanta's main menu: a translucent panel with a sidebar (Mods, Profiles, Keybinds, Themes,
+ * Preferences), a history-aware top bar with search, and one page body at a time.
+ */
+public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen, MenuHost {
+    private static final int MAX_WIDTH = 1240;
+    private static final int MAX_HEIGHT = 780;
 
     private final Screen parent;
     private VantaUiRuntime runtime;
-    private Page page = Page.VISUAL;
-    private Feature selectedFeature;
-    private String searchQuery = "";
-    private String pendingSearch = "";
+    private ModCatalog catalog;
+    private final ModsPage.State modsState = new ModsPage.State();
+    private final ProfilesPage.State profilesState = new ProfilesPage.State();
+
+    private Route route = Route.of(Page.MODS);
+    private final Deque<Route> backStack = new ArrayDeque<>();
+    private final Deque<Route> forwardStack = new ArrayDeque<>();
+    private boolean modsGroupOpen = true;
+    private boolean personalGroupOpen = true;
+
+    private String searchText = "";
+    private VantaUiNode searchNode;
+    private boolean refocusSearch;
+    private VantaUiNode focusTarget;
+
     private KeyMapping pendingKeyCapture;
     private int capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
     private int capturedMouseButton = -1;
+    private int selectedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
 
     public VantaSettingsScreen(Screen parent) {
-        super(Component.literal("Vanta Client Settings"));
+        super(Component.literal("Vanta Client"));
         this.parent = parent;
     }
 
+    // ---- lifecycle ---------------------------------------------------------------------------
+
     @Override
     protected void init() {
+        if (catalog == null) {
+            catalog = new ModCatalog(minecraft);
+            catalog.refresh(this::rebuild);
+        } else {
+            catalog.restoreIcons();
+        }
         rebuildUi();
     }
 
@@ -62,477 +88,290 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRoot());
         runtime.setScale((float) VantaClientPreferences.get().uiScale);
-        runtime.setMaxViewportSize(1200, 760);
+        runtime.setMaxViewportSize(MAX_WIDTH, MAX_HEIGHT);
         runtime.layout(font, width, height);
+        if (focusTarget != null) {
+            runtime.focus(focusTarget);
+        } else if (refocusSearch && searchNode != null) {
+            runtime.focus(searchNode);
+        }
+        focusTarget = null;
     }
 
+    /**
+     * Screenshot hook: 0 mods grid, 1 mods list, 2 profiles, 3 keybinds, 4 themes,
+     * 5 preferences, 6 settings of the first built-in feature with options, 7 HUD filter with a search.
+     */
     void setPageForScreenshot(int targetPage) {
-        page = switch (targetPage) {
-            case 0 -> Page.VISUAL;
-            case 1 -> Page.HUD;
-            case 2 -> Page.VISUAL;
-            case 3 -> Page.COMBAT;
-            case 4 -> Page.MISC;
-            case 5 -> Page.APPEARANCE;
-            case 6 -> Page.VISUAL;
-            case 7 -> Page.CONTROLS;
+        resetCapture();
+        backStack.clear();
+        forwardStack.clear();
+        searchText = "";
+        refocusSearch = false;
+        modsState.reset();
+        VantaClientPreferences.get().modsListView = targetPage == 1;
+        route = switch (targetPage) {
+            case 0, 1, 7 -> Route.of(Page.MODS);
+            case 2 -> Route.of(Page.PROFILES);
+            case 3 -> Route.of(Page.KEYBINDS);
+            case 4 -> Route.of(Page.THEMES);
+            case 5 -> Route.of(Page.PREFERENCES);
+            case 6 -> {
+                Feature feature = FeatureRegistry.FEATURES.stream()
+                        .filter(candidate -> !SettingRegistry.getSettings(candidate).isEmpty())
+                        .findFirst().orElse(null);
+                yield feature == null ? Route.of(Page.MODS)
+                        : new Route(Page.MOD, ModCatalog.builtInId(feature));
+            }
             default -> throw new IllegalArgumentException("Unknown settings page: " + targetPage);
         };
-        pendingKeyCapture = null;
-        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
-        capturedMouseButton = -1;
-        Keybinds.setCaptureActive(false);
-        selectedFeature = targetPage == 6
-                ? FeatureRegistry.FEATURES.stream()
-                        .filter(feature -> !SettingRegistry.getSettings(feature).isEmpty())
-                        .findFirst().orElse(null)
-                : null;
-        searchQuery = "";
-        pendingSearch = "";
+        if (targetPage == 7) modsState.selectGroup(ModEntry.Group.HUD);
         rebuildUi();
     }
 
+    // ---- layout ------------------------------------------------------------------------------
+
+    private int shellWidth() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        float effective = (float) VantaClientPreferences.get().uiScale / (guiScale > 0 ? guiScale : 1.0f);
+        if (!Float.isFinite(effective) || effective <= 0) effective = 1.0f;
+        int layoutWidth = Math.round(width / effective);
+        int margin = Math.max(1, Math.round(layoutWidth * 0.025f));
+        return Math.min(Math.max(0, layoutWidth - margin * 2), MAX_WIDTH);
+    }
+
+    private int sidebarWidth() {
+        return shellWidth() < 900 ? 210 : 252;
+    }
+
+    @Override
+    public int contentWidth() {
+        return Math.max(240, shellWidth() - sidebarWidth() - 1 - 48);
+    }
+
     private VantaUiNode buildRoot() {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 1040.0f
-                || VantaUiRuntime.designHeight(width, height) < 620.0f
-                || VantaClientPreferences.get().compactMode;
-
-        VantaUiNode root = VantaUiNode.column(8, 8);
-
-        VantaUiNode header = VantaUiNode.row(8, 10)
-                .height(compact ? 36 : 38)
-                .align(VantaUiNode.Alignment.CENTER);
-        header.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(26, 20));
-        VantaUiNode brand = VantaUiNode.column(1, 0);
-        brand.add(VantaUiNode.title("VANTA"));
-        
-        header.add(brand);
-        header.add(VantaUiNode.spacer(1).flex(1));
-        header.add(VantaUiNode.button("×", this::onClose)
-                .size(30, 28).tooltip("Close Vanta settings"));
-        root.add(header);
-
-        VantaUiNode body = compact
-                ? VantaUiNode.column(8, 0).flex(1)
-                : VantaUiNode.row(12, 0).flex(1);
-        VantaUiNode navigation;
-        if (compact) {
-            navigation = VantaUiNode.row(3, 3).height(34)
-                    .background(VantaUiTheme.PANEL)
-                    .justify(VantaUiNode.Justification.CENTER);
-            navigation.add(compactNav(Page.HUD, VantaUiNode.Icon.HUD));
-            navigation.add(compactNav(Page.VISUAL, VantaUiNode.Icon.VISUALS));
-            navigation.add(compactNav(Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
-            navigation.add(compactNav(Page.MISC, VantaUiNode.Icon.SPARK));
-            navigation.add(compactNav(Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
-            navigation.add(compactNav(Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
-        } else {
-            navigation = VantaCompose.surface(VantaCompose.Material.PANEL, 4, 9)
-                    .width(148);
-            navigation.add(nav("HUD editor", Page.HUD, VantaUiNode.Icon.HUD));
-            navigation.add(nav("Visuals", Page.VISUAL, VantaUiNode.Icon.VISUALS));
-            navigation.add(nav("Combat", Page.COMBAT, VantaUiNode.Icon.CROSSHAIR));
-            navigation.add(nav("Utilities", Page.MISC, VantaUiNode.Icon.SPARK));
-            navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(nav("Appearance", Page.APPEARANCE, VantaUiNode.Icon.DISPLAY));
-            navigation.add(nav("Keybinds", Page.CONTROLS, VantaUiNode.Icon.KEYBOARD));
-            navigation.add(VantaUiNode.spacer(1).flex(1));
-            navigation.add(VantaUiNode.button("Mod library", VantaUiNode.Icon.OVERVIEW,
-                    () -> Minecraft.getInstance().setScreen(new VantaIntegrationsScreen(this)))
-                    .height(36).tooltip("Installed mods and integrations"));
-        }
-
-        VantaUiNode content = VantaCompose.surface(VantaCompose.Material.PANEL,
-                        compact ? 8 : 10, compact ? 10 : 14)
-                .flex(1).scrollable();
-        addPageContent(content);
-        body.add(navigation);
-        body.add(content);
-        root.add(body);
-        return root;
+        VantaUiNode shell = VantaUiNode.row(0, 0)
+                .background(MenuTheme.panel()).radius(18).border(0x30FFFFFF);
+        shell.add(buildSidebar());
+        shell.add(VantaUiNode.spacer(1).width(1).background(MenuTheme.LINE_SOFT).radius(0));
+        shell.add(buildContent());
+        return shell;
     }
 
-    private VantaUiNode compactNav(Page target, VantaUiNode.Icon icon) {
-        String label = switch (target) {
-            case HUD -> "HUD";
-            case VISUAL -> "Visual";
-            case COMBAT -> "Combat";
-            case MISC -> "Miscellaneous";
-            case APPEARANCE -> "Appearance";
-            case CONTROLS -> "Controls";
-        };
-        return VantaUiNode.button("", icon, () -> {
-            page = target;
-            selectedFeature = null;
+    private VantaUiNode buildSidebar() {
+        VantaUiNode side = VantaUiNode.column(4, 16).width(sidebarWidth());
+        side.add(MenuComponents.brand());
+        side.add(VantaUiNode.spacer(10));
+        side.add(MenuComponents.groupHeader("MODS & OPTIONS", modsGroupOpen, () -> {
+            modsGroupOpen = !modsGroupOpen;
             rebuildUi();
-        }).size(38, 28).selected(page == target)
-                .tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
-    }
-
-    private VantaUiNode nav(String label, Page target, VantaUiNode.Icon icon) {
-        return VantaCompose.navigationItem(label, icon, page == target, () -> {
-            page = target;
-            selectedFeature = null;
-            rebuildUi();
-        }).tooltip("Open " + label.toLowerCase(Locale.ROOT) + " settings");
-    }
-
-    private void addPageContent(VantaUiNode content) {
-        if (selectedFeature != null) {
-            addFeatureSettings(content, selectedFeature);
-            return;
-        }
-        switch (page) {
-            case APPEARANCE -> addAppearance(content);
-            case CONTROLS -> addControls(content);
-            case HUD, VISUAL, COMBAT, MISC -> addFeatureCategory(content);
-        }
-    }
-
-    private VantaUiNode categoryCard(String label, String detail, Page target,
-                                      VantaUiNode.Icon icon) {
-        List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
-                .filter(feature -> feature.getCategory() == toCategory(target)).toList();
-        VantaUiNode card = VantaUiNode.column(7, 10)
-                .flex(1).height(112).background(VantaUiTheme.PANEL_RAISED).padding(10);
-        VantaUiNode identity = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-        identity.add(VantaUiNode.icon(icon).size(18, 18)
-                .iconColor(VantaClientPreferences.get().accent.color()));
-        identity.add(VantaUiNode.text(label));
-        identity.add(VantaUiNode.spacer(1).flex(1));
-        identity.add(VantaUiNode.dynamicText(
-                () -> categoryFeatures.stream().filter(Feature::isEnabled).count()
-                        + " / " + categoryFeatures.size(),
-                VantaUiTheme.TEXT_SECONDARY));
-        card.add(identity);
-        card.add(VantaUiNode.paragraph(detail, VantaUiTheme.TEXT_MUTED, 2));
-        card.add(VantaUiNode.button("Open " + label, () -> {
-            page = target;
-            selectedFeature = null;
-            rebuildUi();
-        }).height(27));
-        return card;
-    }
-
-    private VantaUiNode categoryShortcut(String label, String detail, Page target,
-                                         VantaUiNode.Icon icon) {
-        VantaUiNode row = VantaUiNode.row(10, 5).align(VantaUiNode.Alignment.CENTER);
-        row.add(VantaUiNode.icon(icon).iconColor(VantaUiTheme.TEXT_SECONDARY));
-        VantaUiNode labels = VantaUiNode.column(2, 0).flex(1);
-        labels.add(VantaUiNode.text(label));
-        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
-        row.add(labels);
-        row.add(VantaUiNode.button("Open", () -> {
-            page = target;
-            rebuildUi();
-        }).height(28));
-        return row;
-    }
-
-    private void addFeatureCategory(VantaUiNode content) {
-        float availableWidth = VantaUiRuntime.designWidth(width, height);
-        boolean compact = availableWidth < 760.0f || VantaClientPreferences.get().compactMode;
-        Category category = toCategory(page);
-        List<Feature> features = FeatureRegistry.FEATURES.stream()
-                .filter(feature -> feature.getCategory() == category)
-                .filter(feature -> feature != FarViewFeature.INSTANCE)
-                .filter(this::matchesSearch)
-                .toList();
-        List<Feature> categoryFeatures = FeatureRegistry.FEATURES.stream()
-                .filter(feature -> feature.getCategory() == category)
-                .toList();
-        VantaUiNode.Icon categoryIcon = switch (category) {
-            case HUD -> VantaUiNode.Icon.HUD;
-            case VISUAL -> VantaUiNode.Icon.VISUALS;
-            case COMBAT -> VantaUiNode.Icon.COMBAT;
-            case MISC -> VantaUiNode.Icon.MISC;
-        };
-        long enabledCount = categoryFeatures.stream().filter(Feature::isEnabled).count();
-
-        VantaUiNode heading = VantaUiNode.column(2, 0);
-        heading.add(VantaUiNode.title(categoryTitle(category)));
-        if (page == Page.HUD) {
-            heading.add(VantaUiNode.button("Edit HUD", VantaUiNode.Icon.HUD,
-                    () -> Minecraft.getInstance().setScreen(
-                            new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .height(30));
-        }
-        content.add(heading);
-
-        VantaUiNode toolbar = VantaUiNode.row(6, 6)
-                .height(34)
-                .background(VantaUiTheme.INPUT_SURFACE)
-                .align(VantaUiNode.Alignment.CENTER);
-        toolbar.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-        toolbar.add(VantaUiNode.textField("Search features…", () -> pendingSearch,
-                value -> pendingSearch = value, 64).flex(1));
-        if (!pendingSearch.isBlank() || !searchQuery.isBlank()) {
-            toolbar.add(VantaUiNode.button("×", () -> {
-                pendingSearch = "";
-                searchQuery = "";
-                rebuildUi();
-            }).size(26, 26).tooltip("Clear search"));
-        }
-        toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH, () -> {
-            searchQuery = pendingSearch.trim().toLowerCase(Locale.ROOT);
-            rebuildUi();
-        }).height(28));
-        content.add(toolbar);
-
-        if (features.isEmpty()) {
-            VantaUiNode empty = VantaCompose.surface(VantaCompose.Material.ELEVATED, 8, 18);
-            empty.add(VantaUiNode.title(searchQuery.isBlank()
-                    ? "Nothing here yet" : "No matching modules"));
-            empty.add(VantaUiNode.paragraph(searchQuery.isBlank()
-                    ? "This workspace has no registered features."
-                    : "Try another name or setting keyword.",
-                    VantaUiTheme.TEXT_SECONDARY, 2));
-            if (!searchQuery.isBlank()) {
-                empty.add(VantaUiNode.button("Clear search", () -> {
-                    pendingSearch = "";
-                    searchQuery = "";
-                    rebuildUi();
-                }).height(30));
-            }
-            content.add(empty);
-            return;
-        }
-
-        int columns = featureGridColumns(availableWidth);
-        int cardHeight = compact ? 116 : 124;
-        VantaUiNode grid = VantaUiNode.column(compact ? 8 : 12, 0);
-        for (int offset = 0; offset < features.size(); offset += columns) {
-            VantaUiNode gridRow = VantaUiNode.row(compact ? 8 : 12, 0)
-                    .height(cardHeight);
-            int rowEnd = Math.min(features.size(), offset + columns);
-            for (int index = offset; index < rowEnd; index++) {
-                gridRow.add(featureCard(features.get(index), categoryIcon, compact).flex(1));
-            }
-            if (rowEnd - offset < columns) {
-                gridRow.add(VantaUiNode.spacer(1).flex(columns - (rowEnd - offset)));
-            }
-            grid.add(gridRow);
-        }
-        content.add(grid);
-        if (category == Category.VISUAL) {
-            content.add(VantaUiNode.text("FarView · temporarily unavailable", VantaUiTheme.TEXT_MUTED));
-        }
-    }
-
-    static int featureGridColumns(float availableWidth) {
-        if (availableWidth >= 1480.0f) return 3;
-        if (availableWidth >= 900.0f) return 2;
-        return 1;
-    }
-
-    private VantaUiNode featureCard(Feature feature, VantaUiNode.Icon categoryIcon,
-                                    boolean compact) {
-        boolean hasSettings = !SettingRegistry.getSettings(feature).isEmpty();
-        String description = VantaClientPreferences.get().showDescriptions
-                ? feature.getDescription() : null;
-        return VantaCompose.moduleCard(
-                feature.getName(),
-                description,
-                categoryIcon,
-                () -> feature.isEnabled() ? "ENABLED" : "DISABLED",
-                VantaClientPreferences.get().accent.color(),
-                compact ? 128 : 140,
-                compact,
-                hasSettings,
-                () -> {
-                    selectedFeature = feature;
-                    rebuildUi();
-                },
-                feature::isEnabled,
-                enabled -> {
-                    if (feature.isEnabled() != enabled) feature.toggle();
-                    feature.saveConfig();
-                    DropperUtilsConfig.save();
-                });
-    }
-
-    private boolean matchesSearch(Feature feature) {
-        if (searchQuery.isBlank()) return true;
-        if (feature.getName().toLowerCase(Locale.ROOT).contains(searchQuery)
-                || (feature.getDescription() != null
-                && feature.getDescription().toLowerCase(Locale.ROOT).contains(searchQuery))) {
-            return true;
-        }
-        return SettingRegistry.getSettings(feature).stream().anyMatch(setting -> {
-            String name = setting instanceof SliderSetting slider ? slider.getName()
-                    : setting instanceof BooleanSetting toggle ? toggle.getName()
-                    : setting instanceof ChoiceSetting choice ? choice.getName() : "";
-            return name.toLowerCase(Locale.ROOT).contains(searchQuery);
-        });
-    }
-
-    private void addFeatureSettings(VantaUiNode content, Feature feature) {
-        content.add(VantaUiNode.button("Back to " + categoryTitle(feature.getCategory()),
-                VantaUiNode.Icon.OVERVIEW, () -> {
-                    selectedFeature = null;
-                    rebuildUi();
-                }).height(30));
-        content.add(VantaUiNode.text(categoryTitle(feature.getCategory()), VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.title(feature.getName()));
-        if (VantaClientPreferences.get().showDescriptions) {
-            content.add(VantaUiNode.paragraph(feature.getDescription(),
-                    VantaUiTheme.TEXT_SECONDARY, 2));
-        }
-        content.add(VantaUiNode.toggle("Enable feature", feature::isEnabled, enabled -> {
-            if (feature.isEnabled() != enabled) feature.toggle();
-            feature.saveConfig();
-            DropperUtilsConfig.save();
         }));
-        List<Setting> settings = SettingRegistry.getSettings(feature);
-        if (settings.isEmpty()) {
-            content.add(VantaUiNode.text("This feature has no additional options.",
-                    VantaUiTheme.TEXT_MUTED));
-            return;
+        if (modsGroupOpen) {
+            side.add(navItem(Icon.MODS, "Mods", Page.MODS));
+            side.add(navItem(Icon.PROFILES, "Profiles", Page.PROFILES));
+            side.add(navItem(Icon.KEYBINDS, "Keybinds", Page.KEYBINDS));
         }
-        VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
-        for (Setting setting : settings) {
-            if (setting instanceof SliderSetting slider) {
-                panel.add(VantaUiNode.slider(slider.getName(), slider.getMin(), slider.getMax(),
-                        Math.max(0.0, (slider.getMax() - slider.getMin()) / 100.0),
-                        () -> safeNumber(slider), slider.getSetter()::accept));
-            } else if (setting instanceof BooleanSetting toggle) {
-                panel.add(VantaUiNode.toggle(toggle.getName(),
-                        () -> safeBoolean(toggle), toggle.getSetter()::accept));
-            } else if (setting instanceof ChoiceSetting choice) {
-                panel.add(VantaUiNode.dropdown(choice.getName(), choice.getOptions(),
-                        choice.getGetter(), choice.getSetter()::accept));
+        side.add(VantaUiNode.spacer(8));
+        side.add(MenuComponents.groupHeader("PERSONALIZATION", personalGroupOpen, () -> {
+            personalGroupOpen = !personalGroupOpen;
+            rebuildUi();
+        }));
+        if (personalGroupOpen) {
+            side.add(navItem(Icon.THEMES, "Themes", Page.THEMES));
+            side.add(navItem(Icon.PREFERENCES, "Preferences", Page.PREFERENCES));
+        }
+        side.add(VantaUiNode.spacer(1).flex(1));
+        side.add(MenuComponents.navItem(Icon.EDIT_HUD, "Edit HUD", false, () ->
+                minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this))));
+        side.add(VantaUiNode.spacer(1).height(1).background(MenuTheme.LINE_SOFT).radius(0));
+        String user = minecraft.getUser() == null ? "Player" : minecraft.getUser().getName();
+        side.add(MenuComponents.footer(user, "Fabric " + ClientPlatform.minecraftVersion(), () ->
+                name.vantaclient.client.gui.VantaNotificationManager.info("Vanta Client",
+                        "Version " + ClientPlatform.clientVersion() + " for Minecraft "
+                                + ClientPlatform.minecraftVersion())));
+        return side;
+    }
+
+    private VantaUiNode navItem(Icon icon, String label, Page page) {
+        return MenuComponents.navItem(icon, label, route.page() == page, () -> navigate(Route.of(page)));
+    }
+
+    private String title() {
+        return switch (route.page()) {
+            case MODS -> "Mods";
+            case PROFILES -> "Profiles";
+            case KEYBINDS -> "Keybinds";
+            case THEMES -> "Themes";
+            case PREFERENCES -> "Preferences";
+            case MOD -> {
+                ModEntry entry = catalog.find(route.modId());
+                yield entry == null ? "Mod" : entry.name();
+            }
+        };
+    }
+
+    private VantaUiNode buildContent() {
+        VantaUiNode content = VantaUiNode.column(0, 0).flex(1);
+        VantaUiNode bar = VantaUiNode.row(10, 22).height(84).align(VantaUiNode.Alignment.CENTER);
+        bar.add(MenuComponents.iconButton(Icon.ARROW_LEFT, "Back", !backStack.isEmpty(), this::goBack));
+        bar.add(MenuComponents.iconButton(Icon.ARROW_RIGHT, "Forward", !forwardStack.isEmpty(), this::goForward));
+        String pageTitle = title();
+        bar.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f,
+                MenuTheme.fit(f, pageTitle, w, MenuTheme.FONT_HEADING), x + 6, y + h / 2,
+                MenuTheme.TEXT, MenuTheme.FONT_HEADING)).flex(1).height(40));
+        if (route.page() == Page.MOD) {
+            ModEntry entry = catalog.find(route.modId());
+            if (entry != null) {
+                String info = (entry.description().isBlank() ? entry.name() : entry.description())
+                        + (entry.version().isBlank() ? "" : "  ·  " + entry.version());
+                bar.add(MenuComponents.iconButton(Icon.INFO, info, true, () -> { }));
+                boolean favorite = VantaClientPreferences.get().favoriteMods.contains(entry.id());
+                bar.add(MenuComponents.iconButton(favorite ? Icon.STAR_FILLED : Icon.STAR,
+                        favorite ? "Remove from favorites" : "Add to favorites", true, () -> {
+                            var favorites = VantaClientPreferences.get().favoriteMods;
+                            if (!favorites.add(entry.id())) favorites.remove(entry.id());
+                            VantaClientPreferences.save();
+                            rebuildUi();
+                        }));
             }
         }
-        content.add(panel);
+        bar.add(buildSearch());
+        bar.add(MenuComponents.iconButton(Icon.CLOSE, "Close", true, this::onClose));
+        content.add(bar);
+        content.add(buildBody());
+        return content;
     }
 
-    private double safeNumber(SliderSetting setting) {
-        try {
-            Double value = setting.getGetter().get();
-            return value == null || !Double.isFinite(value) ? setting.getMin() : value;
-        } catch (RuntimeException exception) {
-            return setting.getMin();
-        }
+    private VantaUiNode buildSearch() {
+        VantaUiNode box = VantaUiNode.row(0, 0).width(292).height(40)
+                .background(MenuTheme.FIELD).radius(12).border(MenuTheme.alpha(MenuTheme.accent(), 215));
+        searchNode = VantaUiNode.textField("Search mods", () -> searchText, value -> {
+            searchText = value;
+            refocusSearch = true;
+            if (route.page() != Page.MODS) navigate(Route.of(Page.MODS));
+            else rebuildUi();
+        }, 40).menuStyle().height(40).flex(1);
+        box.add(searchNode);
+        box.add(VantaUiNode.canvas((g, f, x, y, w, h, st) ->
+                name.vantaclient.client.gui.menu.MenuIcons.draw(g, Icon.SEARCH, x + 4, y + (h - 18) / 2, 18,
+                        MenuTheme.TEXT_DIM)).width(40));
+        return box;
     }
 
-    private boolean safeBoolean(BooleanSetting setting) {
-        try {
-            return Boolean.TRUE.equals(setting.getGetter().get());
-        } catch (RuntimeException exception) {
-            return false;
-        }
+    private VantaUiNode buildBody() {
+        return switch (route.page()) {
+            case MODS -> ModsPage.build(this);
+            case PROFILES -> ProfilesPage.build(this);
+            case KEYBINDS -> KeybindsPage.build(this);
+            case THEMES -> ThemesPage.build(this);
+            case PREFERENCES -> PreferencesPage.build(this);
+            case MOD -> {
+                ModEntry entry = catalog.find(route.modId());
+                yield entry == null ? ModsPage.build(this) : ModSettingsPage.build(this, entry);
+            }
+        };
     }
 
-    private void addControls(VantaUiNode content) {
-        content.add(VantaUiNode.text("Input preferences", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.title("Controls"));
-        content.add(VantaUiNode.paragraph(
-                "Customize Vanta's built-in shortcuts. Vanilla Minecraft bindings remain in Options → Controls. "
-                        + "Choose Change, then press a key or click a mouse button. Escape cancels; Backspace unbinds.",
-                VantaUiTheme.TEXT_SECONDARY, 3));
+    // ---- navigation --------------------------------------------------------------------------
 
-        VantaUiNode panel = VantaUiNode.column(8, 12)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(12);
-        addKeybindRow(panel, "Open Vanta settings",
-                "Open the Vanta settings workspace.", Keybinds.guiKey);
-        panel.add(divider());
-        addKeybindRow(panel, "Fullbright",
-                "Toggle the Fullbright feature.", Keybinds.fullbrightKey);
-        panel.add(divider());
-        addKeybindRow(panel, "Zoom",
-                "Hold to zoom the camera.", Keybinds.zoomKey);
-        panel.add(divider());
-        addKeybindRow(panel, "Toggle sprint",
-                "Toggle the Vanta sprint state.", Keybinds.sprintToggleKey);
-        panel.add(divider());
-        addKeybindRow(panel, "Toggle sneak",
-                "Toggle the Vanta sneak state.", Keybinds.sneakToggleKey);
-        content.add(panel);
-
-        VantaUiNode featurePanel = VantaUiNode.column(6, 12)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(12);
-        featurePanel.add(VantaUiNode.text("Feature shortcuts", VantaUiTheme.TEXT_MUTED));
-        featurePanel.add(VantaUiNode.text(
-                "Optional shortcuts that toggle individual Vanta features. They are unbound by default.",
-                VantaUiTheme.TEXT_SECONDARY));
-        for (FeatureKeybinds.Binding binding : FeatureKeybinds.bindings()) {
-            featurePanel.add(divider());
-            addKeybindRow(featurePanel, binding.feature().getName(),
-                    binding.feature().getDescription(), binding.mapping());
+    @Override
+    public void navigate(Route target) {
+        if (target == null) return;
+        if (!target.equals(route)) {
+            backStack.push(route);
+            forwardStack.clear();
+            route = target;
         }
-        content.add(featurePanel);
-
-        if (pendingKeyCapture != null) {
-            VantaUiNode waiting = VantaUiNode.row(8, 10)
-                    .height(42)
-                    .background(VantaUiTheme.SURFACE_SELECTED)
-                    .align(VantaUiNode.Alignment.CENTER);
-            waiting.add(VantaUiNode.dynamicText(
-                    () -> "Waiting for input: " + pendingKeyCapture.getTranslatedKeyMessage().getString(),
-                    VantaUiTheme.TEXT_PRIMARY).flex(1));
-            waiting.add(VantaUiNode.button("Cancel", this::cancelKeyCapture).height(28));
-            content.add(waiting);
-        }
-        content.add(VantaUiNode.text(
-                "Feature shortcuts are also available here; all are unbound by default and saved with Minecraft's normal controls.",
-                VantaUiTheme.TEXT_MUTED));
+        cancelKeyCaptureQuietly();
+        rebuildUi();
     }
 
-    private void addKeybindRow(VantaUiNode panel, String label,
-                               String description, KeyMapping mapping) {
-        VantaUiNode row = VantaUiNode.row(10, 6)
-                .height(42)
-                .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(label));
-        labels.add(VantaUiNode.text(description, VantaUiTheme.TEXT_MUTED));
-        row.add(labels);
-        row.add(VantaUiNode.dynamicText(
-                () -> mapping.getTranslatedKeyMessage().getString(),
-                VantaUiTheme.TEXT_SECONDARY));
-        if (hasBindingConflict(mapping)) {
-            row.add(VantaUiNode.text("CONFLICT", 0xFFFFC978)
-                    .tooltip("This shortcut is also assigned to another Minecraft or Vanta action."));
-        }
-        row.add(VantaUiNode.button(pendingKeyCapture == mapping ? "WAITING…" : "Change",
-                () -> beginKeyCapture(mapping))
-                .size(88, 30).enabled(pendingKeyCapture == null));
-        row.add(VantaUiNode.button("Reset", () -> resetKeyMapping(mapping))
-                .size(62, 30).enabled(pendingKeyCapture == null));
-        panel.add(row);
+    private void goBack() {
+        if (backStack.isEmpty()) return;
+        forwardStack.push(route);
+        route = backStack.pop();
+        refocusSearch = false;
+        cancelKeyCaptureQuietly();
+        rebuildUi();
+    }
+
+    private void goForward() {
+        if (forwardStack.isEmpty()) return;
+        backStack.push(route);
+        route = forwardStack.pop();
+        refocusSearch = false;
+        cancelKeyCaptureQuietly();
+        rebuildUi();
+    }
+
+    // ---- MenuHost ----------------------------------------------------------------------------
+
+    @Override public void focusAfterBuild(VantaUiNode node) { focusTarget = node; }
+    @Override public Minecraft minecraft() { return minecraft; }
+    @Override public net.minecraft.client.gui.Font font() { return font; }
+    @Override public Screen screen() { return this; }
+    @Override public ModCatalog catalog() { return catalog; }
+    @Override public String search() { return searchText; }
+    @Override public ModsPage.State modsState() { return modsState; }
+    @Override public ProfilesPage.State profilesState() { return profilesState; }
+    @Override public KeyMapping pendingKey() { return pendingKeyCapture; }
+    @Override public int selectedKeyCode() { return selectedKeyCode; }
+
+    @Override
+    public void selectKeyCode(int glfwKeyCode) {
+        selectedKeyCode = selectedKeyCode == glfwKeyCode ? GLFW.GLFW_KEY_UNKNOWN : glfwKeyCode;
+        refocusSearch = false;
+        rebuildUi();
+    }
+
+    @Override
+    public void rebuild() {
+        if (runtime != null) rebuildUi();
     }
 
     boolean hasBindingConflict(KeyMapping mapping) {
+        return hasConflict(mapping);
+    }
+
+    @Override
+    public boolean hasConflict(KeyMapping mapping) {
         if (mapping == null || mapping.isUnbound()) return false;
         String binding = mapping.saveString();
         for (KeyMapping candidate : Minecraft.getInstance().options.keyMappings) {
-            if (candidate != mapping && !candidate.isUnbound()
-                    && candidate.saveString().equals(binding)) {
+            if (candidate != mapping && !candidate.isUnbound() && candidate.saveString().equals(binding)) {
                 return true;
             }
         }
         return false;
     }
 
-    void beginKeyCapture(KeyMapping mapping) {
+    @Override
+    public void beginKeyCapture(KeyMapping mapping) {
         if (mapping == null || pendingKeyCapture != null) return;
         pendingKeyCapture = mapping;
         capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
         capturedMouseButton = -1;
         Keybinds.setCaptureActive(true);
+        refocusSearch = false;
         rebuildUi();
     }
 
-    private void cancelKeyCapture() {
+    @Override
+    public void cancelKeyCapture() {
+        cancelKeyCaptureQuietly();
+        rebuildUi();
+    }
+
+    private void cancelKeyCaptureQuietly() {
         pendingKeyCapture = null;
         capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
         capturedMouseButton = -1;
         Keybinds.setCaptureActive(false);
-        rebuildUi();
+    }
+
+    private void resetCapture() {
+        cancelKeyCaptureQuietly();
+        selectedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
     }
 
     private void completeKeyCapture(InputConstants.Key key, int keyboardKey, int mouseButton) {
@@ -544,12 +383,13 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         pendingKeyCapture = null;
         capturedKeyCode = keyboardKey;
         capturedMouseButton = mouseButton;
-        Keybinds.setCaptureActive(
-                keyboardKey != GLFW.GLFW_KEY_UNKNOWN || mouseButton >= 0);
+        Keybinds.setCaptureActive(keyboardKey != GLFW.GLFW_KEY_UNKNOWN || mouseButton >= 0);
+        refocusSearch = false;
         rebuildUi();
     }
 
-    private void resetKeyMapping(KeyMapping mapping) {
+    @Override
+    public void resetKey(KeyMapping mapping) {
         if (mapping == null || pendingKeyCapture != null) return;
         mapping.setKey(mapping.getDefaultKey());
         KeyMapping.resetMapping();
@@ -557,105 +397,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         rebuildUi();
     }
 
-    private void addAppearance(VantaUiNode content) {
-        VantaClientPreferences preferences = VantaClientPreferences.get();
-        content.add(VantaUiNode.text("Interface preferences", VantaUiTheme.TEXT_MUTED));
-        content.add(VantaUiNode.title("Appearance"));
-        content.add(VantaUiNode.paragraph(
-                "A restrained visual system shared by settings and the HUD editor.",
-                VantaUiTheme.TEXT_SECONDARY, 2));
-
-        VantaUiNode panel = VantaUiNode.column(8, 12).background(VantaUiTheme.PANEL_RAISED);
-        panel.add(VantaUiNode.text("Accent color", VantaUiTheme.TEXT_SECONDARY));
-        VantaUiNode accents = VantaUiNode.row(8, 8)
-                .height(34)
-                .align(VantaUiNode.Alignment.CENTER);
-        for (VantaClientPreferences.Accent accent : VantaClientPreferences.Accent.values()) {
-            String label = accent.name().charAt(0)
-                    + accent.name().substring(1).toLowerCase(Locale.ROOT);
-            accents.add(VantaUiNode.button(label, () -> {
-                VantaClientPreferences.get().accent = accent;
-                VantaClientPreferences.save();
-                rebuildUi();
-            }).height(30).background(accent.color())
-                    .selected(VantaClientPreferences.get().accent == accent)
-                    .tooltip("Use " + label.toLowerCase(Locale.ROOT) + " as the interface accent"));
-        }
-        panel.add(accents);
-        panel.add(divider());
-        panel.add(VantaUiNode.toggle("Interface animations", () -> VantaClientPreferences.get().animations,
-                value -> { VantaClientPreferences.get().animations = value; VantaClientPreferences.save(); }));
-        panel.add(divider());
-        panel.add(VantaUiNode.toggle("Compact layout", () -> VantaClientPreferences.get().compactMode,
-                value -> {
-                    VantaClientPreferences.get().compactMode = value;
-                    VantaClientPreferences.save();
-                    rebuildUi();
-                }));
-        panel.add(divider());
-        panel.add(VantaUiNode.toggle("Setting descriptions", () -> VantaClientPreferences.get().showDescriptions,
-                value -> {
-                    VantaClientPreferences.get().showDescriptions = value;
-                    VantaClientPreferences.save();
-                    rebuildUi();
-                }));
-        panel.add(divider());
-        panel.add(VantaUiNode.slider("Interface scale", 0.8, 1.2, 0.05,
-                () -> VantaClientPreferences.get().uiScale,
-                value -> { VantaClientPreferences.get().uiScale = value; VantaClientPreferences.save(); }));
-        panel.add(divider());
-        panel.add(VantaUiNode.slider("Panel opacity", 0.72, 0.98, 0.02,
-                () -> VantaClientPreferences.get().panelOpacity,
-                value -> { VantaClientPreferences.get().panelOpacity = value; VantaClientPreferences.save(); }));
-        content.add(panel);
-        content.add(VantaUiNode.text("Changes are saved to your local Vanta configuration.",
-                VantaUiTheme.TEXT_MUTED));
-    }
-
-    private void addPageContentHud(VantaUiNode content) {
-        content.add(VantaUiNode.title("HUD"));
-    }
-
-    private VantaUiNode sectionTitle(VantaUiNode.Icon icon, String title, String detail) {
-        VantaUiNode row = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-        row.add(VantaUiNode.icon(icon));
-        VantaUiNode labels = VantaUiNode.column(2, 0);
-        labels.add(VantaUiNode.text(title));
-        labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
-        row.add(labels);
-        return row;
-    }
-
-    private VantaUiNode divider() {
-        return VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE);
-    }
-
-    private static Category toCategory(Page page) {
-        return switch (page) {
-            case HUD -> Category.HUD;
-            case VISUAL -> Category.VISUAL;
-            case COMBAT -> Category.COMBAT;
-            default -> Category.MISC;
-        };
-    }
-
-    private static String categoryTitle(Category category) {
-        return switch (category) {
-            case HUD -> "HUD features";
-            case VISUAL -> "Visual features";
-            case COMBAT -> "Combat features";
-            case MISC -> "Miscellaneous features";
-        };
-    }
-
-    private static String categoryDescription(Category category) {
-        return switch (category) {
-            case HUD -> "Configure overlays and information displayed in-game.";
-            case VISUAL -> "Control rendering effects and visual adjustments.";
-            case COMBAT -> "Configure combat utilities and related behavior.";
-            case MISC -> "Additional client features and utilities.";
-        };
-    }
+    // ---- Screen plumbing ---------------------------------------------------------------------
 
     @Override
     public void tick() {
@@ -716,8 +458,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                 Keybinds.setCaptureActive(true);
                 rebuildUi();
             } else if (event.key() == GLFW.GLFW_KEY_BACKSPACE) {
-                completeKeyCapture(
-                        InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_UNKNOWN),
+                completeKeyCapture(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_UNKNOWN),
                         GLFW.GLFW_KEY_BACKSPACE, -1);
             } else {
                 completeKeyCapture(InputConstants.getKey(event), event.key(), -1);
@@ -747,11 +488,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     @Override
     public void removed() {
-        pendingKeyCapture = null;
-        capturedKeyCode = GLFW.GLFW_KEY_UNKNOWN;
-        capturedMouseButton = -1;
-        Keybinds.setCaptureActive(false);
+        cancelKeyCaptureQuietly();
         if (runtime != null) runtime.dispose();
+        if (catalog != null) catalog.release();
         super.removed();
     }
 

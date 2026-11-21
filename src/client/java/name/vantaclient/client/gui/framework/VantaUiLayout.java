@@ -14,6 +14,7 @@ final class VantaUiLayout {
         int measured = switch (node.kind) {
             case TEXT -> VantaUiNode.textWidth(font, node.currentText(), node.textFont);
             case ICON, IMAGE -> 16;
+            case CANVAS -> 16;
             case SPACER -> 1;
             case BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS -> 160;
             case CONTAINER -> {
@@ -41,6 +42,7 @@ final class VantaUiLayout {
         int measured = switch (node.kind) {
             case TEXT -> node.textMaximumLines > 1 ? node.textMaximumLines * 14 : 14;
             case ICON, IMAGE -> 16;
+            case CANVAS -> 16;
             case SPACER -> 0;
             case BUTTON, TOGGLE, DROPDOWN, TEXT_FIELD -> VantaUiTheme.CONTROL_HEIGHT;
             case PROGRESS -> 30;

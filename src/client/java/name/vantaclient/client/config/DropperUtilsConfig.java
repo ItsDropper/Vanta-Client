@@ -126,6 +126,28 @@ public class DropperUtilsConfig {
         return INSTANCE;
     }
 
+    /** Deep copy of the live configuration as JSON, used by profile snapshots. */
+    public static com.google.gson.JsonElement snapshot() {
+        return GSON.toJsonTree(get());
+    }
+
+    /** Replaces the live configuration with a previously captured snapshot and persists it. */
+    public static boolean restore(com.google.gson.JsonElement snapshot) {
+        try {
+            DropperUtilsConfig restored = GSON.fromJson(snapshot, DropperUtilsConfig.class);
+            if (restored == null) return false;
+            restored.configVersion = get().configVersion;
+            INSTANCE = restored;
+            sanitizeHudConfiguration();
+            save();
+            return true;
+        } catch (RuntimeException exception) {
+            System.err.println("[Vanta Client] Could not restore configuration snapshot: "
+                    + exception.getMessage());
+            return false;
+        }
+    }
+
     public static void save() {
         try (FileWriter writer = new FileWriter(file())) {
             GSON.toJson(INSTANCE, writer);

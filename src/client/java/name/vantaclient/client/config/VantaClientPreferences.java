@@ -63,6 +63,10 @@ public final class VantaClientPreferences {
     /** Approved Minecraft profile UUIDs, keyed by the normalized save-root path. */
     public Map<String, Set<String>> remoteWorldWhitelists = new HashMap<>();
     public Set<String> favoriteMods = new HashSet<>();
+    /** Id of the profile last applied from the Profiles page, or empty. */
+    public String activeProfile = "";
+    /** Mods page layout: true shows rows instead of the card grid. */
+    public boolean modsListView = false;
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
     public Map<String, Boolean> hudBackgrounds = new HashMap<>();
@@ -124,6 +128,7 @@ public final class VantaClientPreferences {
             profileIds.addAll(normalized);
         }
         if (instance.favoriteMods == null) instance.favoriteMods = new HashSet<>();
+        if (instance.activeProfile == null) instance.activeProfile = "";
         if (instance.vanillaHudPositions == null) instance.vanillaHudPositions = new HashMap<>();
         if (instance.hudBackgrounds == null) instance.hudBackgrounds = new HashMap<>();
         instance.hudBackgrounds.entrySet().removeIf(entry ->
@@ -140,6 +145,37 @@ public final class VantaClientPreferences {
             position.y = Math.max(0.0f, Math.min(1.0f, position.y));
             position.scale = Math.max(0.25f, Math.min(3.0f, position.scale));
         }
+    }
+
+    /** Interface preferences captured in profiles; remote-sharing settings are never included. */
+    public com.google.gson.JsonObject profileSnapshot() {
+        com.google.gson.JsonObject json = GSON.toJsonTree(this).getAsJsonObject();
+        json.remove("remoteRelayEndpoint");
+        json.remove("remoteMaximumIpPrivacy");
+        json.remove("remoteWorldWhitelists");
+        json.remove("favoriteMods");
+        json.remove("activeProfile");
+        return json;
+    }
+
+    /** Applies a profile snapshot while keeping remote-sharing settings, favourites and the active profile. */
+    public static void applyProfileSnapshot(com.google.gson.JsonObject snapshot) {
+        VantaClientPreferences current = get();
+        VantaClientPreferences restored = GSON.fromJson(snapshot, VantaClientPreferences.class);
+        if (restored == null) return;
+        restored.remoteRelayEndpoint = current.remoteRelayEndpoint;
+        restored.remoteMaximumIpPrivacy = current.remoteMaximumIpPrivacy;
+        restored.remoteWorldWhitelists = current.remoteWorldWhitelists;
+        restored.favoriteMods = current.favoriteMods;
+        restored.activeProfile = current.activeProfile;
+        instance = restored;
+        if (instance.accent == null) instance.accent = Accent.BLUE;
+        instance.uiScale = Math.max(0.8, Math.min(1.2, Double.isFinite(instance.uiScale) ? instance.uiScale : 1.0));
+        instance.panelOpacity = Math.max(0.72, Math.min(0.98,
+                Double.isFinite(instance.panelOpacity) ? instance.panelOpacity : 0.85));
+        if (instance.vanillaHudPositions == null) instance.vanillaHudPositions = new HashMap<>();
+        if (instance.hudBackgrounds == null) instance.hudBackgrounds = new HashMap<>();
+        save();
     }
 
     public boolean isHudBackgroundEnabled(String backgroundId) {
