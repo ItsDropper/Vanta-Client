@@ -36,6 +36,7 @@ import name.vantaclient.client.integration.net.VantaRelayClient;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
@@ -1582,8 +1583,13 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         TitleScreen titleScreen = context.computeOnClient(client -> new TitleScreen());
         context.setScreen(() -> titleScreen);
         context.waitForScreen(TitleScreen.class);
-        context.waitTicks(4);
+        // The title lobby compiles its generated chunks asynchronously. Four ticks
+        // only captured the fallback panorama before the world had rendered.
+        context.waitTicks(80);
         context.runOnClient(client -> {
+            if (!VantaLobbyWorld.isWorldReadyForDisplay()) {
+                throw new AssertionError("Title lobby did not finish rendering its world before the screenshot.");
+            }
             boolean hasSettingsShortcut = titleScreen.children().stream()
                     .filter(net.minecraft.client.gui.components.AbstractWidget.class::isInstance)
                     .map(net.minecraft.client.gui.components.AbstractWidget.class::cast)
