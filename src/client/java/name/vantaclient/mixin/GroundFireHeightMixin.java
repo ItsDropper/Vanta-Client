@@ -1,53 +1,26 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.feature.GroundFireHeightFeature;
-import net.minecraft.client.renderer.block.ModelBlockRenderer;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.Identifier;
-import org.joml.Vector3f;
-import org.joml.Vector3fc;
+import net.minecraft.client.particle.FlameParticle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Adjusts only vanilla ground-fire model geometry. The first-person fire overlay
- * is rendered by a separate path and is intentionally unaffected.
+ * Marks vanilla flame particle quads for vertical scaling during particle mesh
+ * construction. A negative size is used as an internal marker and is decoded
+ * by QuadParticleRenderStateMixin before vertices are emitted.
  */
-@Mixin(ModelBlockRenderer.class)
+@Mixin(FlameParticle.class)
 public abstract class GroundFireHeightMixin {
-    @ModifyVariable(
-            method = "putQuadData",
-            at = @At("HEAD"),
-            argsOnly = true,
-            ordinal = 0
-    )
-    private BakedQuad vanta$scaleGroundFireQuad(BakedQuad quad) {
-        if (!GroundFireHeightFeature.INSTANCE.isEnabled()) return quad;
+    @Inject(method = "getQuadSize(F)F", at = @At("RETURN"), cancellable = true)
+    private void vanta$markGroundFireQuad(float tickProgress, CallbackInfoReturnable<Float> cir) {
+        if (!GroundFireHeightFeature.INSTANCE.isEnabled()) return;
 
-        float scale = GroundFireHeightFeature.getHeightScale();
-        if (Math.abs(scale - 1.0f) < 0.0001f || !isFireSprite(quad.sprite())) return quad;
-
-        return new BakedQuad(
-                scalePosition(quad.position0(), scale),
-                scalePosition(quad.position1(), scale),
-                scalePosition(quad.position2(), scale),
-                scalePosition(quad.position3(), scale),
-                quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3(),
-                quad.tintIndex(), quad.direction(), quad.sprite(), quad.shade(), quad.lightEmission());
-    }
-
-    private static boolean isFireSprite(TextureAtlasSprite sprite) {
-        Identifier id = sprite.contents().name();
-        if (!"minecraft".equals(id.getNamespace())) return false;
-
-        String path = id.getPath();
-        return path.equals("block/fire_0") || path.equals("block/fire_1")
-                || path.equals("block/soul_fire_0") || path.equals("block/soul_fire_1");
-    }
-
-    private static Vector3f scalePosition(Vector3fc position, float scale) {
-        return new Vector3f(position.x(), position.y() * scale, position.z());
+        float size = cir.getReturnValue();
+        if (Float.isFinite(size) && size > 0.0f) {
+            cir.setReturnValue(-size);
+        }
     }
 }
