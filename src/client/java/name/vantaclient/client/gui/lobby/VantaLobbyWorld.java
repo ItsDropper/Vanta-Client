@@ -103,6 +103,11 @@ public final class VantaLobbyWorld {
         return active && level != null;
     }
 
+    /** GameRenderer's renderLevel argument is computed before beginFrame swaps in the synthetic level. */
+    public static boolean shouldRenderTitleWorld() {
+        return isActive() && Minecraft.getInstance().screen instanceof TitleScreen;
+    }
+
     /** The panorama may only be removed after the world renderer has produced terrain meshes. */
     public static boolean isWorldReadyForDisplay() {
         return active && level != null && terrainRendered;
