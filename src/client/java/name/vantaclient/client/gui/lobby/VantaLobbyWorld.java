@@ -17,6 +17,7 @@ import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.tags.TagLoader;
@@ -37,7 +38,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.core.RegistryDataLoader;
+import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.stats.StatsCounter;
 
@@ -144,7 +145,7 @@ public final class VantaLobbyWorld {
         CommonListenerCookie cookie = new CommonListenerCookie(
                 new LevelLoadTracker(),
                 mc.getGameProfile(),
-                mc.telemetryManager.createWorldSessionManager(false, null, null),
+                mc.getTelemetryManager().createWorldSessionManager(false, null, null),
                 registries,
                 FeatureFlags.DEFAULT_FLAGS,
                 "vanta-title-lobby",
@@ -173,7 +174,7 @@ public final class VantaLobbyWorld {
                 0L,
                 63
         );
-        level.chunkSource.updateViewCenter(CENTER_X, CENTER_Z);
+        level.getChunkSource().updateViewCenter(CENTER_X, CENTER_Z);
         generateTerrain(level);
         level.setTimeFromServer(0L, 6000L, false);
         gameMode = new MultiPlayerGameMode(mc, listener);
@@ -192,7 +193,7 @@ public final class VantaLobbyWorld {
 
     private static RegistryAccess.Frozen loadRegistries() throws Exception {
         try (MultiPackResourceManager resources = new MultiPackResourceManager(
-                PackType.SERVER_DATA, List.of(new ServerPacksSource()))) {
+                PackType.SERVER_DATA, List.<PackResources>of(ServerPacksSource.createVanillaPackSource()))) {
             RegistryAccess.Frozen layers = RegistryLayer.createRegistryAccess();
             var staticTags = TagLoader.loadTagsForExistingRegistries(resources, layers.getLayer(RegistryLayer.STATIC));
             var worldLayer = RegistryLayer.WORLDGEN;
