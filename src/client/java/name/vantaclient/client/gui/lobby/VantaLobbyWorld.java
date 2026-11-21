@@ -151,6 +151,7 @@ public final class VantaLobbyWorld {
         previousCameraEyeHeight = cameraAccessor.vanta$getEyeHeight();
         previousCameraEyeHeightOld = cameraAccessor.vanta$getEyeHeightOld();
         previousCameraEyeHeightSaved = true;
+        swapped = true;
         try {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
             float yaw = 180.0f + camera.subjectYaw();
@@ -167,7 +168,6 @@ public final class VantaLobbyWorld {
             cameraAccessor.vanta$setEyeHeightOld(cameraRig.getEyeHeight());
             mc.options.setServerRenderDistance(VIEW_DISTANCE);
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
-            swapped = true;
         } catch (Throwable error) {
             restore();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
@@ -263,6 +263,13 @@ public final class VantaLobbyWorld {
         try {
             mc.levelRenderer.setLevel(level);
             mc.gameRenderer.setLevel(level);
+            // replaceWithPacketData does not go through the normal chunk packet listener,
+            // so explicitly dirty the complete render-section volume after the view area
+            // is recreated. This guarantees the first compile sees the injected chunks.
+            mc.levelRenderer.setSectionRangeDirty(
+                    -VIEW_DISTANCE, level.getMinSectionY(), -VIEW_DISTANCE,
+                    VIEW_DISTANCE, level.getMinSectionY() + level.getSectionsCount() - 1, VIEW_DISTANCE);
+            mc.levelRenderer.needsUpdate();
         } finally {
             mc.options.setServerRenderDistance(configuredRenderDistance);
         }
@@ -365,9 +372,8 @@ public final class VantaLobbyWorld {
             world.getLightEngine().runLightUpdates();
         }
 
-        // Match PolyPlus's post-population requeue: the LevelRenderer's view area
-        // exists before chunks are inserted, so notify its occlusion graph only
-        // after every chunk and its lighting data are ready.
+        // Confirm every generated chunk remains resident and publish its light-ready
+        // state to optional renderers that bypass vanilla's chunk packet listener.
         for (int cx = -CHUNK_RADIUS; cx <= CHUNK_RADIUS; cx++) {
             for (int cz = -CHUNK_RADIUS; cz <= CHUNK_RADIUS; cz++) {
                 LevelChunk chunk = world.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
