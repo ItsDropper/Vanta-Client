@@ -117,7 +117,7 @@ public final class VantaLobbyWorld {
             Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
             java.util.logging.Logger.getLogger("VantaClient").info(
                     "Vanta title world is visible (" + renderedSections + " rendered sections, camera="
-                            + camera.position() + ", rotation=" + camera.getYRot() + "/" + camera.getXRot() + ")");
+                            + camera.position() + ", rotation=" + camera.rotation() + ")");
         }
     }
 
