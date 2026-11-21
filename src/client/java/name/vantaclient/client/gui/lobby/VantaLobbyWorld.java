@@ -679,12 +679,12 @@ public final class VantaLobbyWorld {
         private static Supplier<PlayerSkin> lookup;
 
         private static PlayerSkin get(Minecraft mc, GameProfile launchProfile) {
-            UUID id = launchProfile.getId();
+            UUID id = launchProfile.id();
             GameProfile profile;
             synchronized (VantaLobbySkin.class) {
-                if (resolvedProfile != null && resolvedProfile.getId().equals(id)) {
+                if (resolvedProfile != null && resolvedProfile.id().equals(id)) {
                     profile = resolvedProfile;
-                } else if (launchProfile.getProperties().containsKey("textures")) {
+                } else if (launchProfile.properties().containsKey("textures")) {
                     resolvedProfile = launchProfile;
                     profile = launchProfile;
                 } else {
@@ -728,8 +728,8 @@ public final class VantaLobbyWorld {
                 synchronized (VantaLobbySkin.class) {
                     if (!id.equals(pendingId)) return;
                     fetching = false;
-                    if (profile != null && id.equals(profile.getId())
-                            && profile.getProperties().containsKey("textures")) {
+                    if (profile != null && id.equals(profile.id())
+                            && profile.properties().containsKey("textures")) {
                         resolvedProfile = profile;
                         lookupProfile = null;
                         lookup = null;
