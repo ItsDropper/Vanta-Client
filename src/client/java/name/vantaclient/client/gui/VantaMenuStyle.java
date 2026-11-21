@@ -101,13 +101,14 @@ public final class VantaMenuStyle {
     }
 
     public static int menuLeft(int screenWidth) {
-        return Math.max(0, (screenWidth - menuButtonWidth(screenWidth)) / 2);
+        int width = menuButtonWidth(screenWidth);
+        return Math.max(8, screenWidth - width - Math.max(12, Math.round(screenWidth * 0.035f)));
     }
 
     public static int menuButtonWidth(int screenWidth) {
         if (screenWidth <= 0) return 0;
         return Math.max(1, Math.min(Math.max(1, screenWidth - 24),
-                Math.max(120, Math.min(244, Math.round(screenWidth * 0.34f)))));
+                Math.max(120, Math.min(280, Math.round(screenWidth * 0.36f)))));
     }
 
     public static int menuButtonHeight(int screenHeight) {
@@ -128,7 +129,7 @@ public final class VantaMenuStyle {
                 + secondaryHeight + (compact ? 3 : 6) + settingsHeight;
         int utilityTop = screenHeight - ((screenHeight < 520) ? 48 : 88);
         int maximumTop = Math.max(0, utilityTop - menuStackHeight - 4);
-        int preferredTop = screenHeight / 2 - (compact ? 40 : 24);
+        int preferredTop = Math.max(screenHeight / 2 - (compact ? 24 : 10), screenHeight * 48 / 100);
         return Math.max(0, Math.min(preferredTop, maximumTop));
     }
 
@@ -146,9 +147,8 @@ public final class VantaMenuStyle {
         int markWidth = compact ? 28 : screenWidth < 700 ? 42 : 56;
         int markHeight = compact ? 21 : screenWidth < 700 ? 31 : 41;
         VantaLobbyCamera camera = VantaLobbyScene.camera();
-        int x = (screenWidth - markWidth) / 2 + Math.round(camera.brandOffsetX());
-        int y = (compact ? 3 : Math.max(8, menuTop(screenHeight) - 104))
-                + Math.round(camera.brandOffsetY());
+        int x = 28 + Math.round(camera.brandOffsetX());
+        int y = (compact ? 7 : 12) + Math.round(camera.brandOffsetY());
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
@@ -156,11 +156,12 @@ public final class VantaMenuStyle {
 
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
-        graphics.drawCenteredString(font, ComponentText.brand(), screenWidth / 2, y + (compact ? 25 : 49),
-                withAlpha(0xFFFFFFFF, alpha));
+        int brandX = x + markWidth + 10;
+        graphics.drawString(font, ComponentText.brand(), brandX, y + (compact ? 5 : 10),
+                withAlpha(0xFFFFFFFF, alpha), false);
         if (!compact) {
-            graphics.drawCenteredString(font, ComponentText.caption(), screenWidth / 2, y + 83,
-                    withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)));
+            graphics.drawString(font, ComponentText.caption(), brandX, y + 34,
+                    withAlpha(0xFFAAB4C3, Math.round(alpha * 0.78f)), false);
         }
 
     }
