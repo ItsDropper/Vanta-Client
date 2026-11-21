@@ -194,7 +194,7 @@ public final class VantaLobbyWorld {
     private static RegistryAccess.Frozen loadRegistries() throws Exception {
         try (MultiPackResourceManager resources = new MultiPackResourceManager(
                 PackType.SERVER_DATA, List.<PackResources>of(ServerPacksSource.createVanillaPackSource()))) {
-            RegistryAccess.Frozen layers = RegistryLayer.createRegistryAccess();
+            var layers = RegistryLayer.createRegistryAccess();
             var staticTags = TagLoader.loadTagsForExistingRegistries(resources, layers.getLayer(RegistryLayer.STATIC));
             var worldLayer = RegistryLayer.WORLDGEN;
             var worldContext = layers.getAccessForLoading(worldLayer);
