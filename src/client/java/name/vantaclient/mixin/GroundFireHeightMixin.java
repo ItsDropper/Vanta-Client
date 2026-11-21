@@ -1,66 +1,53 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.feature.GroundFireHeightFeature;
+import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.GeometryBakedModel;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
- * Scales ground-fire block-model geometry vertically, leaving UVs untouched so the
- * vanilla flame texture animation continues to run normally.
+ * Adjusts only vanilla ground-fire model geometry. The first-person fire overlay
+ * is rendered by a separate path and is intentionally unaffected.
  */
-@Mixin(GeometryBakedModel.class)
+@Mixin(ModelBlockRenderer.class)
 public abstract class GroundFireHeightMixin {
-    @Inject(method = "getQuads", at = @At("RETURN"), cancellable = true)
-    private void vanta$scaleGroundFireQuads(
-            net.minecraft.core.Direction side,
-            CallbackInfoReturnable<List<BakedQuad>> cir) {
-        if (!GroundFireHeightFeature.INSTANCE.isEnabled()) return;
+    @ModifyVariable(
+            method = "putQuadData",
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
+    private BakedQuad vanta$scaleGroundFireQuad(BakedQuad quad) {
+        if (!GroundFireHeightFeature.INSTANCE.isEnabled()) return quad;
 
         float scale = GroundFireHeightFeature.getHeightScale();
-        if (Math.abs(scale - 1.0f) < 0.0001f) return;
+        if (Math.abs(scale - 1.0f) < 0.0001f || !isFireSprite(quad.sprite())) return quad;
 
-        List<BakedQuad> original = cir.getReturnValue();
-        if (original == null || original.isEmpty()) return;
-
-        List<BakedQuad> transformed = null;
-        for (int i = 0; i < original.size(); i++) {
-            BakedQuad quad = original.get(i);
-            if (!isFireSprite(quad.sprite())) continue;
-            if (transformed == null) transformed = new ArrayList<>(original);
-            transformed.set(i, scaleQuad(quad, scale));
-        }
-        if (transformed != null) cir.setReturnValue(transformed);
-    }
-
-    private static boolean isFireSprite(TextureAtlasSprite sprite) {
-        Identifier id = sprite.contents().getId();
-        if (!"minecraft".equals(id.getNamespace())) return false;
-        String path = id.getPath();
-        return path.equals("block/fire_0") || path.equals("block/fire_1")
-                || path.equals("block/soul_fire_0") || path.equals("block/soul_fire_1");
-    }
-
-    private static BakedQuad scaleQuad(BakedQuad quad, float scale) {
         return new BakedQuad(
                 scalePosition(quad.position0(), scale),
                 scalePosition(quad.position1(), scale),
                 scalePosition(quad.position2(), scale),
                 scalePosition(quad.position3(), scale),
                 quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3(),
-                quad.tintIndex(), quad.face(), quad.sprite(), quad.shade(), quad.lightEmission());
+                quad.tintIndex(), quad.direction(), quad.sprite(), quad.shade(), quad.lightEmission());
     }
 
-    private static Vector3f scalePosition(org.joml.Vector3fc position, float scale) {
+    private static boolean isFireSprite(TextureAtlasSprite sprite) {
+        ResourceLocation id = sprite.contents().name();
+        if (!"minecraft".equals(id.getNamespace())) return false;
+
+        String path = id.getPath();
+        return path.equals("block/fire_0") || path.equals("block/fire_1")
+                || path.equals("block/soul_fire_0") || path.equals("block/soul_fire_1");
+    }
+
+    private static Vector3f scalePosition(Vector3fc position, float scale) {
         return new Vector3f(position.x(), position.y() * scale, position.z());
     }
 }
