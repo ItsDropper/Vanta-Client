@@ -39,7 +39,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
-import net.minecraft.server.packs.PackResources;
 import net.minecraft.stats.StatsCounter;
 
 import java.util.List;
@@ -240,7 +239,7 @@ public final class VantaLobbyWorld {
                 }
                 ChunkPos pos = new ChunkPos(cx, cz);
                 LevelChunk chunk = new LevelChunk(world, pos, UpgradeData.EMPTY,
-                        new LevelChunkTicks<>(), new LevelChunkTicks<>(), 0L, sections, null, null);
+                        new LevelChunkTicks(), new LevelChunkTicks(), 0L, sections, null, null);
                 Heightmap.primeHeightmaps(chunk, ChunkStatus.FULL.heightmapsAfter());
                 ClientboundLevelChunkPacketData packet = new ClientboundLevelChunkPacketData(chunk);
                 world.getChunkSource().replaceWithPacketData(cx, cz, packet.getReadBuffer(), packet.getHeightmaps(),
