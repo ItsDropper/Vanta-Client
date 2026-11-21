@@ -3,6 +3,7 @@ package name.vantaclient.client.gui.lobby;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import name.vantaclient.mixin.CameraAccessor;
+import name.vantaclient.mixin.LivingEntityAccessor;
 import name.vantaclient.mixin.AbstractClientPlayerAccessor;
 import name.vantaclient.mixin.ConnectionAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -119,17 +120,13 @@ public final class VantaLobbyWorld {
     public static void markWorldRendered() {
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
         int renderedSections = getVisibleTerrainSectionCount();
-        boolean sectionsSettled = Minecraft.getInstance().levelRenderer.hasRenderedAllSections();
-        Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        // A non-zero section count alone is not enough: the first render can
-        // report sections while Camera.setup has not yet applied the lobby yaw.
-        // Keep the panorama until the camera is actually facing the generated scene.
-        boolean cameraFacingLobby = Math.abs(camera.rotation().y) > 0.5f;
-        if (sectionsSettled && renderedSections > 0 && cameraFacingLobby) {
+        // renderLevel's tail is reached only after the actual terrain pass. Requiring
+        // hasRenderedAllSections() here deadlocks some startup/render backends: they
+        // keep reporting pending section work even while visible terrain is on screen.
+        if (renderedSections > 0) {
             terrainRendered = true;
             java.util.logging.Logger.getLogger("VantaClient").info(
-                    "Vanta title world is visible (" + renderedSections + " rendered sections, camera="
-                            + camera.position() + ", rotation=" + camera.rotation() + ")");
+                    "Vanta title world is visible (" + renderedSections + " rendered sections)");
         }
     }
 
@@ -212,6 +209,12 @@ public final class VantaLobbyWorld {
             cameraRig.snapTo(cameraRig.getX(), cameraRig.getY(), cameraRig.getZ(), yaw, 0.0f);
             cameraRig.setYHeadRot(yaw);
             cameraRig.setYBodyRot(yaw);
+            LivingEntityAccessor rotationAccessor = (LivingEntityAccessor) cameraRig;
+            // The lobby player is intentionally not ticked. Vanilla's player renderer
+            // interpolates head/body yaw from their previous values; leaving those at
+            // the constructor defaults makes the model snap back and forth every frame.
+            rotationAccessor.vanta$setPreviousHeadYaw(yaw);
+            rotationAccessor.vanta$setPreviousBodyYaw(yaw);
             mc.level = level;
             mc.player = cameraRig;
             mc.gameMode = gameMode;
@@ -235,9 +238,9 @@ public final class VantaLobbyWorld {
         // Keep the avatar in the world while framing it with an independent, elevated
         // camera transform. Third-person mode enables the player renderer; the explicit
         // camera position avoids the vanilla fixed-distance third-person composition.
-        cameraAccessor.vanta$setPosition(0.5, 68.0, 2.5);
+        cameraAccessor.vanta$setPosition(0.5, 70.0, 7.5);
         cameraAccessor.vanta$setRotation(
-                180.0f + camera.sceneYaw(), 25.0f + camera.scenePitch());
+                180.0f + camera.sceneYaw(), 19.0f + camera.scenePitch());
     }
 
     public static void endFrame() {
@@ -396,7 +399,12 @@ public final class VantaLobbyWorld {
                             for (int y = ground + 1; y <= 61; y++)
                                 put(sections, minSection, chunkMinY, x, y, z, Blocks.WATER.defaultBlockState());
                         }
-                        if (!(Math.abs(wx) <= 7 && wz >= -35 && wz <= -19)
+                        // Keep the foreground sightline from the lobby camera to the
+                        // avatar clear. Random tree placement in this corridor can fully
+                        // occlude the subject even though the world itself rendered correctly.
+                        boolean lobbySightline = Math.abs(wx) <= 4 && wz >= -14 && wz <= 10;
+                        if (!lobbySightline
+                                && !(Math.abs(wx) <= 7 && wz >= -35 && wz <= -19)
                                 && !(Math.abs(wx) <= 2 && wz >= -20 && wz <= -4)
                                 && ground > 62 && Math.floorMod(wx * 31 + wz * 17, 137) == 0) {
                             growTree(sections, minSection, chunkMinY, x, ground + 1, z);
