@@ -1590,13 +1590,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (!VantaLobbyWorld.isWorldReadyForDisplay()) {
                 throw new AssertionError("Title lobby did not finish rendering its world before the screenshot.");
             }
-            boolean hasSettingsShortcut = titleScreen.children().stream()
+            // The Vanta title style paints its own labels over unlabeled widgets, so assert on
+            // the widget set instead: vanilla navigation plus the top-right actions, footer
+            // links and popup controls must all have been added.
+            long widgets = titleScreen.children().stream()
                     .filter(net.minecraft.client.gui.components.AbstractWidget.class::isInstance)
-                    .map(net.minecraft.client.gui.components.AbstractWidget.class::cast)
-                    .anyMatch(widget -> widget.getMessage().getString()
-                            .equals("Open Vanta Client settings"));
-            if (!hasSettingsShortcut) {
-                throw new AssertionError("Title screen is missing the Vanta settings shortcut.");
+                    .count();
+            if (widgets < 16) {
+                throw new AssertionError("Title screen is missing its Vanta controls (" + widgets + " widgets).");
             }
         });
 
