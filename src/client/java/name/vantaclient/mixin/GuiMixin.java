@@ -7,6 +7,8 @@ import name.vantaclient.client.hud.HudRenderer;
 import name.vantaclient.client.platform.ClientPlatform;
 import name.vantaclient.client.hud.VanillaHudLayout;
 import name.vantaclient.client.gui.VantaNotificationManager;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
+import net.minecraft.client.gui.screens.TitleScreen;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -27,6 +29,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public class GuiMixin {
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    private void vanta$hideGameplayHudInTitleWorld(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof TitleScreen && VantaLobbyWorld.isActive()) ci.cancel();
+    }
+
     /** Set -Dvanta.client.loaderHud=true to re-enable custom HUD rendering on VantaLoader. */
     private static final boolean LOADER_HUD_ENABLED = Boolean.getBoolean("vanta.client.loaderHud");
     private static final Identifier SATURATION_TEXTURE =
