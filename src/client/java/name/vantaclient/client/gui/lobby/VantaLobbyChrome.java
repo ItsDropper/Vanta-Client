@@ -90,9 +90,7 @@ public final class VantaLobbyChrome {
         int y = (barHeight - mc.font.lineHeight) / 2;
         for (int i = 0; i < items.length; i++) {
             int color = i == 0 ? 0xFFF4F6FA : 0xFF8793A4;
-            mc.font.drawInBatch(items[i], x, y, color, false,
-                    graphics.pose().last().pose(), graphics.bufferSource(),
-                    net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(mc.font, items[i], x, y, color, false);
             int itemWidth = mc.font.width(items[i]);
             if (i == 0) graphics.fill(x, barHeight - 3, x + itemWidth, barHeight - 1,
                     new VantaUiTheme().accent());
