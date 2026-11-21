@@ -40,6 +40,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.stats.StatsCounter;
 
 import java.util.List;
