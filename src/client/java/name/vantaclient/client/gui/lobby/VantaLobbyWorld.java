@@ -17,6 +17,7 @@ import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.tags.TagLoader;
@@ -186,6 +187,7 @@ public final class VantaLobbyWorld {
         cameraRig.setYHeadRot(180.0f);
         cameraRig.setYBodyRot(180.0f);
         cameraRig.setId(0x56414E54);
+        level.addEntity(cameraRig);
         mc.levelRenderer.setLevel(level);
         mc.gameRenderer.setLevel(level);
     }
