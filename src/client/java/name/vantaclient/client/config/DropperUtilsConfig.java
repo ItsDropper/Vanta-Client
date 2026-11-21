@@ -80,7 +80,7 @@ public class DropperUtilsConfig {
     public int motionBlurSamples = 6;
     public float motionBlurSensitivity = 1.0f;
     public float lowFireHeight = 0.5f;
-    /** Vertical scale applied to ground-fire model vertices when Ground Fire Height is enabled. */
+    /** Vertical scale applied to vanilla world flame particle quads when Ground Fire Height is enabled. */
     public float groundFireHeight = 1.0f;
     public float fullbrightBrightness = 100.0f;
     public float fullbrightMinimum = 0.0f;
