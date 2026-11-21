@@ -19,6 +19,13 @@ public class GameRendererMixin {
         VantaLobbyWorld.beginFrame();
     }
 
+    // Minecraft computes this argument before beginFrame can install the synthetic title level.
+    // Force the world-render path only for the active title lobby; preserve vanilla elsewhere.
+    @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private boolean vanta$enableTitleWorldRender(boolean renderLevel) {
+        return renderLevel || VantaLobbyWorld.shouldRenderTitleWorld();
+    }
+
     @Inject(method = "render", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/fog/FogRenderer;endFrame()V"))
     private void vanta$finishTitleWorldAfterTerrain(CallbackInfo ci) {
