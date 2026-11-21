@@ -104,6 +104,13 @@ public final class VantaLobbyWorld {
         previousCamera = mc.getCameraEntity();
         previousCameraType = mc.options.getCameraType();
         try {
+            VantaLobbyCamera camera = VantaLobbyScene.camera();
+            float yaw = 180.0f + camera.subjectYaw();
+            float pitch = camera.subjectPitch();
+            cameraRig.setYRot(yaw);
+            cameraRig.setYHeadRot(yaw);
+            cameraRig.setYBodyRot(yaw);
+            cameraRig.setXRot(pitch);
             mc.level = level;
             mc.player = cameraRig;
             mc.gameMode = gameMode;
