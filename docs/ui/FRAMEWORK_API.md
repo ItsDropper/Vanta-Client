@@ -143,3 +143,23 @@ The prototype exposes a smoothed CPU-side command-submission timer. It measures 
 - Generic modal dialog and color-picker components are not implemented. Progress is currently indeterminate; a determinate transfer bar requires a downloader API that exposes byte progress.
 - The runtime is not a Compose replacement. It does not implement compiler transforms, recomposition effects, coroutine state or general-purpose modifier semantics.
 - No automated layout/input unit test suite has been added; build success only confirms compilation.
+
+## Canvas nodes and the menu skin
+
+`VantaUiNode.canvas(painter)` creates a node painted by caller code. The painter receives the node
+bounds and a `PaintState` (`hovered`, `focused`, eased `hover` 0..1, local mouse position). Add
+`onClick` or `onClickAt` to make it interactive. `radius`, `border` and `font` adjust a node's own
+background, outline and label font. `menuStyle()` switches toggles, sliders, dropdowns and text
+fields to the flat menu skin used by `gui/menu`.
+
+`VantaUiRuntime.setZoom(float)` multiplies the preferred scale so a full-window menu can size
+itself to the window. `VantaSettingsScreen` picks an eighth-step zoom that fits its 1400x780 design
+size to about 94% x 90% of the window.
+
+`VantaUiTheme.fillSquircle`/`outlineSquircle` anti-alias their corner arcs with one partial-alpha
+pixel per row. `fillSquircleGradient` and `fillSquircleSides` draw vertical gradients and
+half-rounded shapes.
+
+Text metrics: Minecraft draws TTF text with its baseline 7 units below the draw position, and Poppins
+capitals are about 0.7 em tall, so `MenuTheme.textTop(centerY, size)` is
+`centerY - 7 + round(0.35 * size)`.
