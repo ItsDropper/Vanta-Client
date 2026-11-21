@@ -20,7 +20,7 @@ public abstract class PanoramaRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void vanta$hidePanoramaWhenWorldIsReady(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
-        if (client.screen instanceof TitleScreen && VantaLobbyWorld.isActive()) ci.cancel();
+        if (client.screen instanceof TitleScreen && VantaLobbyWorld.isWorldReadyForDisplay()) ci.cancel();
     }
     @ModifyArg(
             method = "render",
