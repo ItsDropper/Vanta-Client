@@ -82,7 +82,7 @@ public final class ProfilesPage {
     private static void openFolder() {
         try {
             Files.createDirectories(ProfileManager.directory());
-            net.minecraft.Util.getPlatform().openPath(ProfileManager.directory());
+            net.minecraft.util.Util.getPlatform().openPath(ProfileManager.directory());
         } catch (IOException | RuntimeException exception) {
             VantaNotificationManager.warning("Could not open folder", exception.getMessage() == null
                     ? "The profiles folder is unavailable." : exception.getMessage());
