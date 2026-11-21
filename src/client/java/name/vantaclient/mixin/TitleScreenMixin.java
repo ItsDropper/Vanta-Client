@@ -252,7 +252,6 @@ public abstract class TitleScreenMixin {
     private void vanta$updateLobbyCamera(GuiGraphics graphics, int mouseX, int mouseY,
                                          float partialTick, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
-        VantaLobbyWorld.start();
         VantaLobbyScene.update(mouseX, mouseY,
                 client.getWindow().getGuiScaledWidth(),
                 client.getWindow().getGuiScaledHeight());
