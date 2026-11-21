@@ -62,11 +62,11 @@ public abstract class TitleScreenMixin {
     private void vanta$composeMenu(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
-        TitleStyle style = VantaClientPreferences.get().titleStyle;
-        if (style == TitleStyle.VANILLA) return;
+        TitleStyle titleStyle = VantaClientPreferences.get().titleStyle;
+        if (titleStyle == TitleStyle.VANILLA) return;
         VantaLobbyScene.begin();
         splash = null;
-        if (style == TitleStyle.LOBBY) {
+        if (titleStyle == TitleStyle.LOBBY) {
             vanta$ui = new VantaTitleUi(screen);
             vanta$ui.init((ScreenAccessor) (Object) this);
             return;
