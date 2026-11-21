@@ -19,20 +19,6 @@ public class GameRendererMixin {
         VantaLobbyWorld.beginFrame();
     }
 
-    // Re-apply the lobby view after GameRenderer has performed its normal camera update.
-    @Inject(
-            method = "render",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/GameRenderer;updateCamera(Lnet/minecraft/client/DeltaTracker;)V",
-                    shift = At.Shift.AFTER
-            )
-    )
-    private void vanta$applyLobbyCameraAfterUpdate(CallbackInfo ci) {
-        VantaLobbyWorld.applyCameraRotation();
-    }
-
-
     @Inject(method = "render", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/fog/FogRenderer;endFrame()V"))
     private void vanta$finishTitleWorldAfterTerrain(CallbackInfo ci) {
