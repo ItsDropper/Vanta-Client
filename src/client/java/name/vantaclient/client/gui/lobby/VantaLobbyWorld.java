@@ -188,6 +188,8 @@ public final class VantaLobbyWorld {
                 0L,
                 63
         );
+        mc.levelRenderer.setLevel(level);
+        mc.gameRenderer.setLevel(level);
         level.getChunkSource().updateViewCenter(CENTER_X, CENTER_Z);
         generateTerrain(level);
         level.setTimeFromServer(0L, 6000L, false);
@@ -202,8 +204,6 @@ public final class VantaLobbyWorld {
         cameraRig.setYBodyRot(0.0f);
         cameraRig.setId(0x56414E54);
         level.addEntity(cameraRig);
-        mc.levelRenderer.setLevel(level);
-        mc.gameRenderer.setLevel(level);
     }
 
     private static RegistryAccess.Frozen loadRegistries() throws Exception {
