@@ -270,6 +270,7 @@ public final class VantaLobbyWorld {
                         packet.getBlockEntitiesTagsConsumer(cx, cz));
                 if (loaded != null) {
                     ChunkPos loadedPos = new ChunkPos(cx, cz);
+                    Minecraft.getInstance().levelRenderer.onChunkReadyToRender(loaded.getPos());
                     world.getLightEngine().setLightEnabled(loadedPos, true);
                     for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
                         world.getLightEngine().updateSectionStatus(
