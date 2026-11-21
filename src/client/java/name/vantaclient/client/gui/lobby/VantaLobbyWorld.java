@@ -223,6 +223,10 @@ public final class VantaLobbyWorld {
             cameraAccessor.vanta$setEyeHeightOld(cameraRig.getEyeHeight());
             mc.options.setServerRenderDistance(VIEW_DISTANCE);
             mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+            // The lobby is detached during client ticks, so Minecraft's normal
+            // render-frame level update never reaches it. PolyPlus explicitly updates
+            // its scene here; this advances queued sky/block light and renderer dirtiness.
+            level.update();
         } catch (Throwable error) {
             restore();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
@@ -428,15 +432,24 @@ public final class VantaLobbyWorld {
                 }
                 {
                     ChunkPos loadedPos = new ChunkPos(cx, cz);
-                    world.getLightEngine().setLightEnabled(loadedPos, true);
-                    for (int skySection = 5; skySection < world.getLightEngine().getMaxLightSection(); skySection++) {
+                    // Match the native chunk-light initialization order: queue full sky light
+                    // above the highest occupied section, publish section opacity, then enable
+                    // the chunk so the light engine can propagate through the complete column.
+                    int highestOccupiedSection = minSection - 1;
+                    for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+                        LevelChunkSection section = sections[sectionIndex];
+                        world.getLightEngine().updateSectionStatus(
+                                SectionPos.of(loadedPos, minSection + sectionIndex), section.hasOnlyAir());
+                        if (!section.hasOnlyAir()) {
+                            highestOccupiedSection = minSection + sectionIndex;
+                        }
+                    }
+                    for (int skySection = highestOccupiedSection + 1;
+                         skySection < world.getLightEngine().getMaxLightSection(); skySection++) {
                         world.getLightEngine().queueSectionData(LightLayer.SKY,
                                 SectionPos.of(loadedPos, skySection), new DataLayer(15));
                     }
-                    for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-                        world.getLightEngine().updateSectionStatus(
-                                SectionPos.of(loadedPos, minSection + sectionIndex), sections[sectionIndex].hasOnlyAir());
-                    }
+                    world.getLightEngine().setLightEnabled(loadedPos, true);
 
                 }
             }
