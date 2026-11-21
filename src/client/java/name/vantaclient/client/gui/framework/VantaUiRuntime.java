@@ -145,7 +145,9 @@ public final class VantaUiRuntime {
         int logicalMouseX = Math.round((mouseX - offsetX) / uiScale);
         int logicalMouseY = Math.round((mouseY - offsetY) / uiScale);
 
-        root.clearHover();
+        // Only the previous hover target can be hovered. Clearing the entire retained
+        // tree every frame was redundant O(n) traversal on large mods/keybind pages.
+        if (hovered != null) hovered.setHovered(false);
         hovered = root.hitTest(logicalMouseX, logicalMouseY);
         if (hovered != null) hovered.setHovered(true);
         boolean animationsEnabled = theme.animationsEnabled();
