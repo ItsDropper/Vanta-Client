@@ -57,6 +57,7 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
         VantaLobbyScene.begin();
+        VantaLobbyWorld.start();
         splash = null;
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
