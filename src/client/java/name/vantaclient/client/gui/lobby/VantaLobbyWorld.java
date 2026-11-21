@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
@@ -36,6 +37,7 @@ import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -44,6 +46,7 @@ import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.stats.StatsCounter;
 
 import java.util.List;
+import java.lang.reflect.Method;
 
 /**
  * Owns an isolated, generated ClientLevel for the title screen.
@@ -68,6 +71,9 @@ public final class VantaLobbyWorld {
     private static MultiPlayerGameMode previousGameMode;
     private static Entity previousCamera;
     private static net.minecraft.client.CameraType previousCameraType;
+    private static boolean sodiumLookupDone;
+    private static Method sodiumTrackerLookup;
+    private static Method sodiumChunkStatus;
 
     private VantaLobbyWorld() {}
 
@@ -260,8 +266,17 @@ public final class VantaLobbyWorld {
                         new LevelChunkTicks(), new LevelChunkTicks(), 0L, sections, null, null);
                 Heightmap.primeHeightmaps(chunk, ChunkStatus.FULL.heightmapsAfter());
                 ClientboundLevelChunkPacketData packet = new ClientboundLevelChunkPacketData(chunk);
-                world.getChunkSource().replaceWithPacketData(cx, cz, packet.getReadBuffer(), packet.getHeightmaps(),
+                LevelChunk loaded = world.getChunkSource().replaceWithPacketData(cx, cz, packet.getReadBuffer(), packet.getHeightmaps(),
                         packet.getBlockEntitiesTagsConsumer(cx, cz));
+                if (loaded != null) {
+                    ChunkPos loadedPos = new ChunkPos(cx, cz);
+                    world.getLightEngine().setLightEnabled(loadedPos, true);
+                    for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+                        world.getLightEngine().updateSectionStatus(
+                                SectionPos.of(loadedPos, minSection + sectionIndex), sections[sectionIndex].hasOnlyAir());
+                    }
+                    notifySodiumChunkReady(world, cx, cz);
+                }
             }
         }
         for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
@@ -324,6 +339,26 @@ public final class VantaLobbyWorld {
                                  int chunkX, int chunkZ, int x, int y, int z, BlockState state) {
         if (Math.floorDiv(x, 16) != chunkX || Math.floorDiv(z, 16) != chunkZ) return;
         put(sections, minSection, minY, Math.floorMod(x, 16), y, Math.floorMod(z, 16), state);
+    }
+
+    private static void notifySodiumChunkReady(ClientLevel world, int chunkX, int chunkZ) {
+        try {
+            if (!sodiumLookupDone) {
+                sodiumLookupDone = true;
+                Class<?> holder = Class.forName("net.caffeinemc.mods.sodium.client.render.chunk.map.ChunkTrackerHolder");
+                Class<?> tracker = Class.forName("net.caffeinemc.mods.sodium.client.render.chunk.map.ChunkTracker");
+                sodiumTrackerLookup = holder.getMethod("get", ClientLevel.class);
+                sodiumChunkStatus = tracker.getMethod("onChunkStatusAdded", int.class, int.class, int.class);
+            }
+            if (sodiumTrackerLookup != null && sodiumChunkStatus != null) {
+                Object tracker = sodiumTrackerLookup.invoke(null, world);
+                sodiumChunkStatus.invoke(tracker, chunkX, chunkZ, 2);
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // Sodium is optional; vanilla chunk readiness remains authoritative.
+            sodiumTrackerLookup = null;
+            sodiumChunkStatus = null;
+        }
     }
 
     private static int terrainHeight(int x, int z) {
