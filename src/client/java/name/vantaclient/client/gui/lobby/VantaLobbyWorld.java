@@ -113,7 +113,7 @@ public final class VantaLobbyWorld {
         previousCameraType = mc.options.getCameraType();
         try {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
-            float yaw = camera.subjectYaw();
+            float yaw = 180.0f + camera.subjectYaw();
             float pitch = camera.subjectPitch();
             cameraRig.setYRot(yaw);
             cameraRig.setYHeadRot(yaw);
@@ -123,7 +123,7 @@ public final class VantaLobbyWorld {
             mc.player = cameraRig;
             mc.gameMode = gameMode;
             mc.setCameraEntity(cameraRig);
-            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
+            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             swapped = true;
         } catch (Throwable error) {
             restore();
@@ -199,10 +199,10 @@ public final class VantaLobbyWorld {
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
         cameraRig.setPos(0.5, 64.0, -5.5);
-        cameraRig.setYRot(0.0f);
+        cameraRig.setYRot(180.0f);
         cameraRig.setXRot(4.0f);
-        cameraRig.setYHeadRot(0.0f);
-        cameraRig.setYBodyRot(0.0f);
+        cameraRig.setYHeadRot(180.0f);
+        cameraRig.setYBodyRot(180.0f);
         cameraRig.setId(0x56414E54);
         level.addEntity(cameraRig);
     }
@@ -282,12 +282,24 @@ public final class VantaLobbyWorld {
                         world.getLightEngine().updateSectionStatus(
                                 SectionPos.of(loadedPos, minSection + sectionIndex), sections[sectionIndex].hasOnlyAir());
                     }
-                    notifySodiumChunkReady(world, cx, cz);
+
                 }
             }
         }
         for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
             world.getLightEngine().runLightUpdates();
+        }
+
+        // Match PolyPlus's post-population requeue: the LevelRenderer's view area
+        // exists before chunks are inserted, so notify its occlusion graph only
+        // after every chunk and its lighting data are ready.
+        for (int cx = -VIEW_DISTANCE; cx <= VIEW_DISTANCE; cx++) {
+            for (int cz = -VIEW_DISTANCE; cz <= VIEW_DISTANCE; cz++) {
+                LevelChunk chunk = world.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
+                if (chunk == null) continue;
+                Minecraft.getInstance().levelRenderer.onChunkReadyToRender(chunk.getPos());
+                notifySodiumChunkReady(world, cx, cz);
+            }
         }
     }
 
