@@ -744,7 +744,7 @@ public final class VantaLobbyWorld {
     }
 
     /** Visible avatar with the same explicit account-skin lookup used by PolyPlus. */
-    private static final class VantaLobbyAvatar extends RemotePlayer {
+    private static class VantaLobbyAvatar extends RemotePlayer {
         private final Supplier<PlayerSkin> skinLookup;
 
         private VantaLobbyAvatar(ClientLevel level, GameProfile profile,
