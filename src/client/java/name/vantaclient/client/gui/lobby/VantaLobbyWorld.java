@@ -155,13 +155,13 @@ public final class VantaLobbyWorld {
 
     public static void start() {
         Minecraft mc = Minecraft.getInstance();
-        if (active || mc.level != null) return;
+        if (active || mc.level != null || !(mc.screen instanceof TitleScreen)) return;
         long now = System.nanoTime();
         if (now < nextStartAttemptNanos) return;
         // TitleScreen.init can run while Minecraft is still transitioning out of
         // startup/world teardown. Retry from the render loop rather than making
         // successful lobby creation depend on that single lifecycle callback.
-        nextStartAttemptNanos = now + 2_000_000_000L;
+        nextStartAttemptNanos = now + 250_000_000L;
         try {
             build();
             terrainRendered = false;
@@ -240,7 +240,7 @@ public final class VantaLobbyWorld {
         // camera position avoids the vanilla fixed-distance third-person composition.
         cameraAccessor.vanta$setPosition(0.5, 70.0, 7.5);
         cameraAccessor.vanta$setRotation(
-                180.0f + camera.sceneYaw(), 19.0f + camera.scenePitch());
+                camera.sceneYaw(), 19.0f + camera.scenePitch());
     }
 
     public static void endFrame() {
@@ -441,7 +441,28 @@ public final class VantaLobbyWorld {
                 }
             }
         }
-        for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
+        // Chunk packet injection bypasses the normal block-update lighting path.
+        // Explicitly seed every emissive block so lanterns and other fixtures produce
+        // block light in the synthetic level just as they do in a joined world.
+        for (int cx = -CHUNK_RADIUS; cx <= CHUNK_RADIUS; cx++) {
+            for (int cz = -CHUNK_RADIUS; cz <= CHUNK_RADIUS; cz++) {
+                LevelChunk chunk = world.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
+                if (chunk == null) continue;
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        for (int y = 60; y <= 80; y++) {
+                            BlockState state = chunk.getBlockState(new net.minecraft.core.BlockPos(
+                                    cx * 16 + x, y, cz * 16 + z));
+                            if (state.getLightEmission() > 0) {
+                                world.getLightEngine().checkBlock(new net.minecraft.core.BlockPos(
+                                        cx * 16 + x, y, cz * 16 + z));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 128; pass++) {
             world.getLightEngine().runLightUpdates();
         }
 
