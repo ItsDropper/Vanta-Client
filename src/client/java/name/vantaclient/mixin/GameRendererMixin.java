@@ -39,6 +39,7 @@ public class GameRendererMixin {
     @Inject(method = "renderLevel", at = @At("TAIL"))
     private void dropperutils$endWorldRender(CallbackInfo ci) {
         ClientPerformanceMetrics.endWorldRender();
+        VantaLobbyWorld.markWorldRendered();
     }
 
     @ModifyVariable(
