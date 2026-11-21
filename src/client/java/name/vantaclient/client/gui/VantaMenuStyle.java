@@ -337,7 +337,7 @@ public final class VantaMenuStyle {
 
         private static net.minecraft.network.chat.Component brand() {
             return net.minecraft.network.chat.Component.literal("Vanta Client")
-                    .withStyle(style -> style.withFont(BRAND_FONT).withBold(true));
+                    .withStyle(style -> style.withFont(UI_FONT).withBold(true));
         }
 
         private static net.minecraft.network.chat.Component caption() {
