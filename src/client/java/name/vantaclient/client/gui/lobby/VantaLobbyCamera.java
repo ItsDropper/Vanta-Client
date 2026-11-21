@@ -34,8 +34,9 @@ public final class VantaLobbyCamera {
     public void update(int mouseX, int mouseY, int width, int height, float deltaSeconds) {
         if (width <= 0 || height <= 0) return;
 
-        pointerX = clamp(mouseX / (float) width, 0.0f, 1.0f);
-        pointerY = clamp(mouseY / (float) height, 0.0f, 1.0f);
+        boolean pointerInside = mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height;
+        pointerX = pointerInside ? clamp(mouseX / (float) width, 0.0f, 1.0f) : 0.5f;
+        pointerY = pointerInside ? clamp(mouseY / (float) height, 0.0f, 1.0f) : 0.5f;
 
         float horizontal = (pointerX - 0.5f) * 2.0f;
         float vertical = (pointerY - 0.5f) * 2.0f;
