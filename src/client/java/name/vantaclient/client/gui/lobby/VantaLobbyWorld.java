@@ -72,6 +72,7 @@ public final class VantaLobbyWorld {
     private static MultiPlayerGameMode previousGameMode;
     private static Entity previousCamera;
     private static net.minecraft.client.CameraType previousCameraType;
+    private static int previousServerRenderDistance;
     private static boolean sodiumLookupDone;
     private static Method sodiumTrackerLookup;
     private static Method sodiumChunkStatus;
@@ -111,6 +112,7 @@ public final class VantaLobbyWorld {
         previousGameMode = mc.gameMode;
         previousCamera = mc.getCameraEntity();
         previousCameraType = mc.options.getCameraType();
+        previousServerRenderDistance = mc.options.getEffectiveRenderDistance();
         try {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
             float yaw = 180.0f + camera.subjectYaw();
@@ -123,6 +125,7 @@ public final class VantaLobbyWorld {
             mc.player = cameraRig;
             mc.gameMode = gameMode;
             mc.setCameraEntity(cameraRig);
+            mc.options.setServerRenderDistance(VIEW_DISTANCE);
             mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
             swapped = true;
         } catch (Throwable error) {
@@ -142,6 +145,7 @@ public final class VantaLobbyWorld {
             mc.level = previousLevel;
             mc.player = previousPlayer;
             mc.gameMode = previousGameMode;
+            mc.options.setServerRenderDistance(previousServerRenderDistance);
             mc.options.setCameraType(previousCameraType);
             mc.setCameraEntity(previousCamera);
         } finally {
@@ -150,6 +154,7 @@ public final class VantaLobbyWorld {
             previousGameMode = null;
             previousCamera = null;
             previousCameraType = null;
+            previousServerRenderDistance = 0;
             swapped = false;
         }
     }
