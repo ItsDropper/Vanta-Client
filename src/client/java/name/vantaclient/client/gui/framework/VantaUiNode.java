@@ -1164,7 +1164,10 @@ public final class VantaUiNode {
             caretTicks = 0;
             caretVisible = true;
         }
-        for (VantaUiNode child : children) child.tick();
+        for (VantaUiNode child : children) {
+            if (scrollable && !intersectsScrollViewport(child)) continue;
+            child.tick();
+        }
     }
 
     void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor,
@@ -1221,7 +1224,9 @@ public final class VantaUiNode {
             return isInteractive() && enabled ? this : null;
         }
         for (int i = children.size() - 1; i >= 0; i--) {
-            VantaUiNode hit = children.get(i).hitTest(mouseX, mouseY);
+            VantaUiNode child = children.get(i);
+            if (scrollable && !intersectsScrollViewport(child)) continue;
+            VantaUiNode hit = child.hitTest(mouseX, mouseY);
             if (hit != null) return hit;
         }
         if (isInteractive() && enabled) return this;
