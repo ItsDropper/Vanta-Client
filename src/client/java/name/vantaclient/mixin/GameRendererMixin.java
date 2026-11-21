@@ -1,6 +1,7 @@
 package name.vantaclient.mixin;
 
-import name.vantaclient.client.feature.ZoomFeature;\nimport name.vantaclient.client.gui.lobby.VantaLobbyWorld;
+import name.vantaclient.client.feature.ZoomFeature;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,7 +12,17 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameRenderer.class)
-public class GameRendererMixin {\n\n    @Inject(method = "render", at = @At("HEAD"))\n    private void vanta$beginTitleWorld(CallbackInfo ci) {\n        VantaLobbyWorld.beginFrame();\n    }\n\n    @Inject(method = "render", at = @At("RETURN"))\n    private void vanta$endTitleWorld(CallbackInfo ci) {\n        VantaLobbyWorld.endFrame();\n    }
+public class GameRendererMixin {
+
+    @Inject(method = "render", at = @At("HEAD"))
+    private void vanta$beginTitleWorld(CallbackInfo ci) {
+        VantaLobbyWorld.beginFrame();
+    }
+
+    @Inject(method = "render", at = @At("RETURN"))
+    private void vanta$endTitleWorld(CallbackInfo ci) {
+        VantaLobbyWorld.endFrame();
+    }
 
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void dropperutils$beginWorldRender(CallbackInfo ci) {
