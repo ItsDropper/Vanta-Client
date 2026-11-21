@@ -1,11 +1,14 @@
 package name.vantaclient.mixin;
 
-import name.vantaclient.client.gui.lobby.VantaLobbyScene;\nimport name.vantaclient.client.gui.lobby.VantaLobbyWorld;
+import name.vantaclient.client.gui.lobby.VantaLobbyScene;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.PanoramaRenderer;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;\nimport org.spongepowered.asm.mixin.injection.Inject;\nimport org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
@@ -13,7 +16,11 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * transform used by Minecraft's title panorama.
  */
 @Mixin(PanoramaRenderer.class)
-public abstract class PanoramaRendererMixin {\n    @Inject(method = "render", at = @At("HEAD"), cancellable = true)\n    private void vanta$hidePanoramaWhenWorldIsReady(net.minecraft.client.Minecraft client, float alpha, float tickDelta, CallbackInfo ci) {\n        if (client.screen instanceof TitleScreen && VantaLobbyWorld.isActive()) ci.cancel();\n    }
+public abstract class PanoramaRendererMixin {
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    private void vanta$hidePanoramaWhenWorldIsReady(net.minecraft.client.Minecraft client, float alpha, float tickDelta, CallbackInfo ci) {
+        if (client.screen instanceof TitleScreen && VantaLobbyWorld.isActive()) ci.cancel();
+    }
     @ModifyArg(
             method = "render",
             at = @At(
