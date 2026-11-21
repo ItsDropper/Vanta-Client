@@ -226,33 +226,64 @@ public final class VantaUiTheme {
         int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
                 Math.min(width / 2, height / 2)));
         int t = Math.max(1, Math.min(thickness, Math.min(width / 2, height / 2)));
-        for (int row = 0; row < height; row++) {
-            int mirrored = row < r ? row : row >= height - r ? height - row - 1 : -1;
-            int inset = mirrored >= 0 ? squircleInset(r, mirrored) : 0;
+
+        if (r == 0) {
+            graphics.fill(x, y, x + width, y + t, color);
+            graphics.fill(x, y + height - t, x + width, y + height, color);
+            int middleTop = y + t;
+            int middleBottom = y + height - t;
+            if (middleBottom > middleTop) {
+                graphics.fill(x, middleTop, x + t, middleBottom, color);
+                graphics.fill(x + width - t, middleTop, x + width, middleBottom, color);
+            }
+            return;
+        }
+
+        // Straight edges are single batched rectangles. Only the rounded corners
+        // need scanline geometry; iterating the entire component height here made
+        // every card outline cost O(height) GUI draw submissions every frame.
+        int straightTop = y + r;
+        int straightBottom = y + height - r;
+        if (straightBottom > straightTop) {
+            graphics.fill(x, straightTop, x + t, straightBottom, color);
+            graphics.fill(x + width - t, straightTop, x + width, straightBottom, color);
+        }
+        if (t > r) {
+            graphics.fill(x + r, y + r, x + width - r, y + t, color);
+            graphics.fill(x + r, y + height - t, x + width - r, y + height - r, color);
+        }
+
+        for (int row = 0; row < r; row++) {
+            float edge = squircleEdge(r, row);
+            int inset = (int) Math.ceil(edge);
             int left = x + inset;
             int right = x + width - inset;
-            if (right <= left) continue;
-            if (row < t || row >= height - t) {
+            int bottomRow = y + height - row - 1;
+
+            if (row < t) {
                 graphics.fill(left, y + row, right, y + row + 1, color);
+                graphics.fill(left, bottomRow, right, bottomRow + 1, color);
             } else {
-                // Bridge to the previous corner row so steep arcs stay one connected stroke.
-                int span = mirrored >= 0 && mirrored > 0
-                        ? Math.max(t, squircleInset(r, mirrored - 1) - inset) : t;
+                int span = row > 0
+                        ? Math.max(t, squircleInset(r, row - 1) - inset) : t;
                 span = Math.min(span, (right - left) / 2 + 1);
                 graphics.fill(left, y + row, left + span, y + row + 1, color);
                 graphics.fill(right - span, y + row, right, y + row + 1, color);
+                graphics.fill(left, bottomRow, left + span, bottomRow + 1, color);
+                graphics.fill(right - span, bottomRow, right, bottomRow + 1, color);
             }
-            if (mirrored >= 0) {
-                float edge = squircleEdge(r, mirrored);
-                int solid = (int) Math.ceil(edge);
-                float coverage = solid - edge;
-                if (coverage > 0.02f && solid > 0) {
-                    int alpha = Math.round(((color >>> 24) & 0xFF) * coverage);
-                    if (alpha > 0) {
-                        int soft = withAlpha(color, alpha);
-                        graphics.fill(x + solid - 1, y + row, x + solid, y + row + 1, soft);
-                        graphics.fill(x + width - solid, y + row, x + width - solid + 1, y + row + 1, soft);
-                    }
+
+            float coverage = inset - edge;
+            if (coverage > 0.02f && inset > 0) {
+                int alpha = Math.round(((color >>> 24) & 0xFF) * coverage);
+                if (alpha > 0) {
+                    int soft = withAlpha(color, alpha);
+                    graphics.fill(x + inset - 1, y + row, x + inset, y + row + 1, soft);
+                    graphics.fill(x + width - inset, y + row,
+                            x + width - inset + 1, y + row + 1, soft);
+                    graphics.fill(x + inset - 1, bottomRow, x + inset, bottomRow + 1, soft);
+                    graphics.fill(x + width - inset, bottomRow,
+                            x + width - inset + 1, bottomRow + 1, soft);
                 }
             }
         }
