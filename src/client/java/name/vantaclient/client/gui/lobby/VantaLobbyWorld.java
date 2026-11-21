@@ -111,10 +111,13 @@ public final class VantaLobbyWorld {
     public static void markWorldRendered() {
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
         int renderedSections = getVisibleTerrainSectionCount();
-        if (renderedSections > 0) {
+        boolean sectionsSettled = Minecraft.getInstance().levelRenderer.hasRenderedAllSections();
+        if (sectionsSettled && renderedSections > 0) {
             terrainRendered = true;
+            Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
             java.util.logging.Logger.getLogger("VantaClient").info(
-                    "Vanta title world is visible (" + renderedSections + " rendered sections)");
+                    "Vanta title world is visible (" + renderedSections + " rendered sections, camera="
+                            + camera.position() + ", rotation=" + camera.getYRot() + "/" + camera.getXRot() + ")");
         }
     }
 
@@ -182,10 +185,12 @@ public final class VantaLobbyWorld {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
             float yaw = 180.0f + camera.subjectYaw();
             float pitch = camera.subjectPitch();
-            cameraRig.setYRot(yaw);
+            // The lobby rig is not ticked while the title screen is open. Keep its
+            // previous and current transforms identical so Camera.setup() does not
+            // interpolate from the constructor's origin/rotation on every frame.
+            cameraRig.snapTo(cameraRig.getX(), cameraRig.getY(), cameraRig.getZ(), yaw, pitch);
             cameraRig.setYHeadRot(yaw);
             cameraRig.setYBodyRot(yaw);
-            cameraRig.setXRot(pitch);
             mc.level = level;
             mc.player = cameraRig;
             mc.gameMode = gameMode;
@@ -303,9 +308,7 @@ public final class VantaLobbyWorld {
         cameraRig = gameMode.createPlayer(level, new StatsCounter(), new ClientRecipeBook());
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
-        cameraRig.setPos(0.5, 64.0, -5.5);
-        cameraRig.setYRot(180.0f);
-        cameraRig.setXRot(4.0f);
+        cameraRig.snapTo(0.5, 64.0, -5.5, 180.0f, 4.0f);
         cameraRig.setYHeadRot(180.0f);
         cameraRig.setYBodyRot(180.0f);
         cameraRig.setId(0x56414E54);
