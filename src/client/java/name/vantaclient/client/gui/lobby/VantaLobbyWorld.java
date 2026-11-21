@@ -112,7 +112,7 @@ public final class VantaLobbyWorld {
         previousCameraType = mc.options.getCameraType();
         try {
             VantaLobbyCamera camera = VantaLobbyScene.camera();
-            float yaw = 180.0f + camera.subjectYaw();
+            float yaw = camera.subjectYaw();
             float pitch = camera.subjectPitch();
             cameraRig.setYRot(yaw);
             cameraRig.setYHeadRot(yaw);
@@ -196,10 +196,10 @@ public final class VantaLobbyWorld {
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
         cameraRig.setPos(0.5, 64.0, -5.5);
-        cameraRig.setYRot(180.0f);
+        cameraRig.setYRot(0.0f);
         cameraRig.setXRot(4.0f);
-        cameraRig.setYHeadRot(180.0f);
-        cameraRig.setYBodyRot(180.0f);
+        cameraRig.setYHeadRot(0.0f);
+        cameraRig.setYBodyRot(0.0f);
         cameraRig.setId(0x56414E54);
         level.addEntity(cameraRig);
         mc.levelRenderer.setLevel(level);
