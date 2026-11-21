@@ -494,6 +494,7 @@ public final class VantaUiNode {
             }
             try {
                 for (VantaUiNode child : children) {
+                    if (scrollable && !intersectsScrollViewport(child)) continue;
                     child.render(graphics, font, theme, mouseX, mouseY);
                 }
             } finally {
@@ -1190,8 +1191,22 @@ public final class VantaUiNode {
             }
         }
         for (VantaUiNode child : children) {
+            if (scrollable && !intersectsScrollViewport(child)) continue;
             child.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
         }
+    }
+
+    /**
+     * Scroll containers may hold large retained lists. Nodes fully outside the viewport
+     * need no draw submission or per-frame animation until they scroll into view.
+     */
+    private boolean intersectsScrollViewport(VantaUiNode child) {
+        int left = x + padding;
+        int top = y + padding;
+        int right = x + width - padding;
+        int bottom = y + height - padding;
+        return child.x + child.width > left && child.x < right
+                && child.y + child.height > top && child.y < bottom;
     }
 
     void clearHover() {
