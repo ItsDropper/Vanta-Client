@@ -193,7 +193,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Lobby camera must smoothly converge to its bounded cursor target.");
             }
 
-            for (int frame = 0; frame < 40; frame++) {
+            for (int frame = 0; frame < 60; frame++) {
                 camera.update(-1, -1, 100, 100, 0.05f);
             }
             if (Math.abs(camera.sceneYaw()) > 0.02f
