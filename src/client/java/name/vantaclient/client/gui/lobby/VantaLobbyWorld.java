@@ -13,7 +13,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
@@ -33,7 +32,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.LevelChunkTicks;
+import net.minecraft.world.ticks.LevelChunkTicks;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
@@ -42,9 +41,8 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.RegistryDataLoader;
+import net.minecraft.core.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
-import net.minecraft.world.level.chunk.DataLayer;
 
 import java.util.List;
 import java.util.UUID;
@@ -86,7 +84,7 @@ public final class VantaLobbyWorld {
             active = true;
         } catch (Throwable error) {
             destroy();
-            Minecraft.getInstance().getLogger().error("Unable to create the Vanta title world", error);
+            java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to create the Vanta title world", error);
         }
     }
 
@@ -113,7 +111,7 @@ public final class VantaLobbyWorld {
             swapped = true;
         } catch (Throwable error) {
             restore();
-            mc.getLogger().error("Unable to activate the Vanta title world for rendering", error);
+            java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
         }
     }
 
@@ -182,7 +180,7 @@ public final class VantaLobbyWorld {
         cameraRig = gameMode.createPlayer(level, mc.getStats(), new ClientRecipeBook());
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
-        cameraRig.setPos(0.5, 65.0, -5.5);
+        cameraRig.setPos(0.5, 64.0, -5.5);
         cameraRig.setYRot(180.0f);
         cameraRig.setXRot(4.0f);
         cameraRig.setYHeadRot(180.0f);
@@ -290,7 +288,7 @@ public final class VantaLobbyWorld {
                 mc.gameRenderer.setLevel(null);
                 level.close();
             } catch (Throwable error) {
-                mc.getLogger().warn("Failed to release the Vanta title world cleanly", error);
+                java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.WARNING, "Failed to release the Vanta title world cleanly", error);
             }
         }
         level = null;
