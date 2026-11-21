@@ -209,7 +209,7 @@ public final class VantaLobbyWorld {
             // The lobby rig is not ticked while the title screen is open. Keep its
             // previous and current transforms identical so Camera.setup() does not
             // interpolate from the constructor's origin/rotation on every frame.
-            cameraRig.snapTo(cameraRig.getX(), cameraRig.getY(), cameraRig.getZ(), yaw, pitch);
+            cameraRig.snapTo(cameraRig.getX(), cameraRig.getY(), cameraRig.getZ(), yaw, 0.0f);
             cameraRig.setYHeadRot(yaw);
             cameraRig.setYBodyRot(yaw);
             mc.level = level;
