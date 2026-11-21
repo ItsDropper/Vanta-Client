@@ -356,6 +356,17 @@ public final class VantaLobbyWorld {
             mc.levelRenderer.setSectionRangeDirty(
                     -VIEW_DISTANCE, level.getMinSectionY(), -VIEW_DISTANCE,
                     VIEW_DISTANCE, level.getMinSectionY() + level.getSectionsCount() - 1, VIEW_DISTANCE);
+            // The section occlusion graph only walks chunks it was told are ready to render.
+            // Vanilla announces that from the chunk packet handler, which the lobby bypasses.
+            // Without this the terrain only appeared once a real world had populated the
+            // graph's chunk set (i.e. after joining a world and returning to the menu).
+            // PolyPlus does the same in LobbyCompat.requeueChunks.
+            for (int cx = -CHUNK_RADIUS; cx <= CHUNK_RADIUS; cx++) {
+                for (int cz = -CHUNK_RADIUS; cz <= CHUNK_RADIUS; cz++) {
+                    var chunk = level.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
+                    if (chunk != null) mc.levelRenderer.onChunkReadyToRender(chunk.getPos());
+                }
+            }
             mc.levelRenderer.needsUpdate();
         } finally {
             mc.options.setServerRenderDistance(configuredRenderDistance);
