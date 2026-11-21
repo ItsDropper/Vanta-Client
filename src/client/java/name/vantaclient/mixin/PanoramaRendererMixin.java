@@ -1,6 +1,8 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.gui.lobby.VantaLobbyScene;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.PanoramaRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,7 +23,9 @@ public abstract class PanoramaRendererMixin {
             index = 1
     )
     private float vanta$parallaxPitch(float pitch) {
-        return pitch + VantaLobbyScene.camera().scenePitch();
+        return Minecraft.getInstance().screen instanceof TitleScreen
+                ? pitch + VantaLobbyScene.camera().scenePitch()
+                : pitch;
     }
 
     @ModifyArg(
@@ -33,6 +37,8 @@ public abstract class PanoramaRendererMixin {
             index = 2
     )
     private float vanta$parallaxYaw(float yaw) {
-        return yaw + VantaLobbyScene.camera().sceneYaw();
+        return Minecraft.getInstance().screen instanceof TitleScreen
+                ? yaw + VantaLobbyScene.camera().sceneYaw()
+                : yaw;
     }
 }

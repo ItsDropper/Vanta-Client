@@ -244,13 +244,21 @@ public abstract class TitleScreenMixin {
     }
 
 
+    @Inject(method = "render", at = @At("HEAD"))
+    private void vanta$updateLobbyCamera(GuiGraphics graphics, int mouseX, int mouseY,
+                                         float partialTick, CallbackInfo ci) {
+        Minecraft client = Minecraft.getInstance();
+        VantaLobbyScene.update(mouseX, mouseY,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
+    }
+
     @Inject(method = "render", at = @At("TAIL"))
     private void vanta$renderVantaMenu(GuiGraphics graphics, int mouseX, int mouseY,
                                        float partialTick, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
-        VantaLobbyScene.update(mouseX, mouseY, width, height);
         long elapsed = VantaLobbyScene.elapsedMillis();
         VantaMenuStyle.renderTitleBranding(graphics, width, height, elapsed);
         VantaMenuStyle.renderPlayerCard(graphics, width, height, elapsed);
