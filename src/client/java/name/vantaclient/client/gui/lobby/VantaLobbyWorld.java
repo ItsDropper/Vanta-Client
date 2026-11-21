@@ -4,15 +4,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import name.vantaclient.mixin.CameraAccessor;
 import name.vantaclient.mixin.LivingEntityAccessor;
-import name.vantaclient.mixin.AbstractClientPlayerAccessor;
 import name.vantaclient.mixin.ConnectionAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.multiplayer.CommonListenerCookie;
 import net.minecraft.client.multiplayer.LevelLoadTracker;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -51,6 +50,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.stats.StatsCounter;
+import com.mojang.authlib.GameProfile;
+import net.minecraft.world.entity.player.PlayerSkin;
+import java.util.function.Supplier;
 
 import java.util.List;
 import java.lang.reflect.Method;
@@ -77,6 +79,7 @@ public final class VantaLobbyWorld {
     private static ClientPacketListener listener;
     private static MultiPlayerGameMode gameMode;
     private static LocalPlayer cameraRig;
+    private static VantaLobbyAvatar avatar;
     private static boolean active;
     private static long nextStartAttemptNanos;
     private static boolean terrainRendered;
@@ -209,6 +212,14 @@ public final class VantaLobbyWorld {
             cameraRig.snapTo(cameraRig.getX(), cameraRig.getY(), cameraRig.getZ(), yaw, 0.0f);
             cameraRig.setYHeadRot(yaw);
             cameraRig.setYBodyRot(yaw);
+            if (avatar != null) {
+                avatar.snapTo(avatar.getX(), avatar.getY(), avatar.getZ(), yaw, 0.0f);
+                avatar.setYHeadRot(yaw);
+                avatar.setYBodyRot(yaw);
+                LivingEntityAccessor avatarRotation = (LivingEntityAccessor) avatar;
+                avatarRotation.vanta$setPreviousHeadYaw(yaw);
+                avatarRotation.vanta$setPreviousBodyYaw(yaw);
+            }
             LivingEntityAccessor rotationAccessor = (LivingEntityAccessor) cameraRig;
             // The lobby player is intentionally not ticked. Vanilla's player renderer
             // interpolates head/body yaw from their previous values; leaving those at
@@ -344,15 +355,28 @@ public final class VantaLobbyWorld {
         level.setTimeFromServer(0L, 6000L, false);
         gameMode = new MultiPlayerGameMode(mc, listener);
         cameraRig = gameMode.createPlayer(level, new StatsCounter(), new ClientRecipeBook());
-        ((AbstractClientPlayerAccessor) cameraRig).vanta$setPlayerInfo(
-                new PlayerInfo(mc.getGameProfile(), false));
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
+        cameraRig.setInvisible(true);
         cameraRig.snapTo(0.5, 64.0, -5.5, 180.0f, 4.0f);
         cameraRig.setYHeadRot(180.0f);
         cameraRig.setYBodyRot(180.0f);
         cameraRig.setId(0x56414E54);
         level.addEntity(cameraRig);
+
+        // Keep the camera/player controller separate from the visible avatar. PolyPlus
+        // does this with a RemotePlayer subclass and an explicit SkinManager lookup;
+        // a LocalPlayer is the wrong entity to use as the lobby's visible model.
+        GameProfile profile = mc.getGameProfile();
+        Supplier<PlayerSkin> skinLookup = mc.getSkinManager().createLookup(profile, false);
+        avatar = new VantaLobbyAvatar(level, profile, skinLookup);
+        avatar.noPhysics = true;
+        avatar.setNoGravity(true);
+        avatar.snapTo(0.5, 64.0, -5.5, 180.0f, 4.0f);
+        avatar.setYHeadRot(180.0f);
+        avatar.setYBodyRot(180.0f);
+        avatar.setId(0x56414E55);
+        level.addEntity(avatar);
     }
 
     private static RegistryAccess.Frozen loadRegistries() throws Exception {
@@ -628,5 +652,22 @@ public final class VantaLobbyWorld {
         listener = null;
         gameMode = null;
         cameraRig = null;
+        avatar = null;
+    }
+
+    /** Visible avatar with the same explicit account-skin lookup used by PolyPlus. */
+    private static final class VantaLobbyAvatar extends RemotePlayer {
+        private final Supplier<PlayerSkin> skinLookup;
+
+        private VantaLobbyAvatar(ClientLevel level, GameProfile profile,
+                                  Supplier<PlayerSkin> skinLookup) {
+            super(level, profile);
+            this.skinLookup = skinLookup;
+        }
+
+        @Override
+        public PlayerSkin getSkin() {
+            return skinLookup.get();
+        }
     }
 }
