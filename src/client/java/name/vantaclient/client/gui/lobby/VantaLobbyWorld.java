@@ -113,7 +113,11 @@ public final class VantaLobbyWorld {
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
         int renderedSections = getVisibleTerrainSectionCount();
         boolean sectionsSettled = Minecraft.getInstance().levelRenderer.hasRenderedAllSections();
-        if (sectionsSettled && renderedSections > 0) {
+        // A non-zero section count alone is not enough: the first render can
+        // report sections while Camera.setup has not yet applied the lobby yaw.
+        // Keep the panorama until the camera is actually facing the generated scene.
+        boolean cameraFacingLobby = Math.abs(camera.rotation().y) > 0.5f;
+        if (sectionsSettled && renderedSections > 0 && cameraFacingLobby) {
             terrainRendered = true;
             Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
             java.util.logging.Logger.getLogger("VantaClient").info(
