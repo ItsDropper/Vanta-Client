@@ -58,7 +58,6 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
         VantaLobbyScene.begin();
-        VantaLobbyWorld.start();
         splash = null;
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
@@ -240,10 +239,6 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
-        VantaLobbyChrome.renderSceneAtmosphere(graphics, width, height);
-        VantaLobbyChrome.renderTopNavigation(graphics, width, height);
-        VantaLobbyChrome.renderPlayPanel(graphics, width, height);
-        VantaLobbyChrome.renderSideWidgets(graphics, width, height);
     }
 
     @Redirect(method = "render", at = @At(value = "INVOKE",
