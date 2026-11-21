@@ -1,7 +1,6 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.gui.VantaMenuStyle;
-import name.vantaclient.client.gui.lobby.VantaLobbyChrome;
 import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.gui.VantaSettingsScreen;
