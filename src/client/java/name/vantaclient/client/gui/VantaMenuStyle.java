@@ -6,6 +6,9 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
+import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
+import name.vantaclient.client.gui.lobby.VantaLobbyRenderer;
+import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.player.PlayerModel;
@@ -142,8 +145,10 @@ public final class VantaMenuStyle {
         boolean compact = screenHeight < 420 || screenWidth < 420;
         int markWidth = compact ? 28 : screenWidth < 700 ? 42 : 56;
         int markHeight = compact ? 21 : screenWidth < 700 ? 31 : 41;
-        int x = (screenWidth - markWidth) / 2;
-        int y = compact ? 3 : Math.max(8, menuTop(screenHeight) - 104);
+        VantaLobbyCamera camera = VantaLobbyScene.camera();
+        int x = (screenWidth - markWidth) / 2 + Math.round(camera.brandOffsetX());
+        int y = (compact ? 3 : Math.max(8, menuTop(screenHeight) - 104))
+                + Math.round(camera.brandOffsetY());
         graphics.blit(RenderPipelines.GUI_TEXTURED, VANTA_MARK,
                 x, y, 0.0f, 0.0f, markWidth, markHeight,
                 MARK_TEXTURE_WIDTH, MARK_TEXTURE_HEIGHT,
@@ -214,10 +219,13 @@ public final class VantaMenuStyle {
                 ? Math.min(168, Math.max(150, Math.round(screenWidth * 0.34f)))
                 : Math.min(236, Math.max(190, Math.round(screenWidth * 0.43f)));
         int height = compact ? 76 : 100;
-        int x = compact
+        VantaLobbyCamera camera = VantaLobbyScene.camera();
+        int x = (compact
                 ? Math.max(12, screenWidth - width - 12)
-                : Math.max(12, screenWidth - width - Math.max(18, Math.round(screenWidth * 0.045f)));
-        int y = compact ? 8 : Math.max(18, Math.round(screenHeight * 0.16f));
+                : Math.max(12, screenWidth - width - Math.max(18, Math.round(screenWidth * 0.045f))))
+                + Math.round(camera.cardOffsetX());
+        int y = (compact ? 8 : Math.max(18, Math.round(screenHeight * 0.16f)))
+                + Math.round(camera.cardOffsetY());
         int alpha = Math.round(255.0f * easeOut(Math.min(1.0f,
                 Math.max(0.0f, elapsedMillis / 480.0f))));
 
@@ -252,22 +260,9 @@ public final class VantaMenuStyle {
                         cachedPlayerModelType = modelType;
                     }
 
-                    AvatarRenderState pose = new AvatarRenderState();
-                    pose.skin = skin;
-                    pose.showHat = true;
-                    pose.showJacket = true;
-                    pose.showLeftPants = true;
-                    pose.showRightPants = true;
-                    pose.showLeftSleeve = true;
-                    pose.showRightSleeve = true;
-                    cachedPlayerModel.setupAnim(pose);
-                    float idleYaw = (float) Math.sin(elapsedMillis / 1900.0) * 7.0f;
-                    cachedPlayerModel.head.yRot = (float) Math.toRadians(idleYaw);
-                    cachedPlayerModel.head.xRot = (float) Math.toRadians(-3.0f);
-                    graphics.submitSkinRenderState(cachedPlayerModel,
-                            skin.body().texturePath(), compact ? 34.0f : 40.0f, -4.0f, idleYaw,
-                            0.0f, previewLeft, previewTop, previewRight, previewBottom);
-                    skinDrawn = true;
+                    skinDrawn = VantaLobbyRenderer.renderPlayerPreview(
+                            graphics, cachedPlayerModel, skin, elapsedMillis, compact,
+                            previewLeft, previewTop, previewRight, previewBottom);
                 }
             } catch (RuntimeException ignored) {
                 cachedSkinLookup = null;

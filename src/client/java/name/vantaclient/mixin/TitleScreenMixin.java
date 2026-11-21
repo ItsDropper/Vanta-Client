@@ -1,6 +1,8 @@
 package name.vantaclient.mixin;
 
 import name.vantaclient.client.gui.VantaMenuStyle;
+import name.vantaclient.client.gui.lobby.VantaLobbyChrome;
+import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.gui.VantaWorldShareScreen;
 import name.vantaclient.mixin.accessor.ScreenAccessor;
@@ -51,13 +53,11 @@ public abstract class TitleScreenMixin {
     private AbstractButton vanta$accessibilityShortcut;
 
     @Unique
-    private long vanta$openedAt;
-
     @Inject(method = "init", at = @At("TAIL"))
     private void vanta$composeMenu(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
-        vanta$openedAt = System.currentTimeMillis();
+        VantaLobbyScene.begin();
         splash = null;
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
@@ -234,7 +234,7 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
-        graphics.fill(0, 0, width, height, 0x79070A11);
+        VantaLobbyChrome.renderSceneAtmosphere(graphics, width, height);
     }
 
     @Redirect(method = "render", at = @At(value = "INVOKE",
@@ -251,7 +251,8 @@ public abstract class TitleScreenMixin {
         Minecraft client = Minecraft.getInstance();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
-        long elapsed = Math.max(0L, System.currentTimeMillis() - vanta$openedAt);
+        VantaLobbyScene.update(mouseX, mouseY, width, height);
+        long elapsed = VantaLobbyScene.elapsedMillis();
         VantaMenuStyle.renderTitleBranding(graphics, width, height, elapsed);
         VantaMenuStyle.renderPlayerCard(graphics, width, height, elapsed);
         VantaMenuStyle.renderFooter(graphics, width, height);
