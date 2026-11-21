@@ -2,7 +2,8 @@ package name.vantaclient.mixin;
 
 import name.vantaclient.client.gui.VantaMenuStyle;
 import name.vantaclient.client.gui.lobby.VantaLobbyChrome;
-import name.vantaclient.client.gui.lobby.VantaLobbyScene;\nimport name.vantaclient.client.gui.lobby.VantaLobbyWorld;
+import name.vantaclient.client.gui.lobby.VantaLobbyScene;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.gui.VantaSettingsScreen;
 import name.vantaclient.client.gui.VantaWorldShareScreen;
 import name.vantaclient.mixin.accessor.ScreenAccessor;
@@ -56,7 +57,8 @@ public abstract class TitleScreenMixin {
     private void vanta$composeMenu(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         Screen screen = (Screen) (Object) this;
-        VantaLobbyScene.begin();\n        VantaLobbyWorld.start();
+        VantaLobbyScene.begin();
+        VantaLobbyWorld.start();
         splash = null;
 
         int[] bounds = VantaMenuStyle.titleBrandBounds(
@@ -227,7 +229,12 @@ public abstract class TitleScreenMixin {
         button.setHeight(height);
     }
 
-    @Inject(method = "removed", at = @At("HEAD"))\n    private void vanta$releaseLobbyWorld(CallbackInfo ci) {\n        VantaLobbyWorld.stop();\n    }\n\n    @Inject(method = "renderBackground", at = @At("TAIL"))
+    @Inject(method = "removed", at = @At("HEAD"))
+    private void vanta$releaseLobbyWorld(CallbackInfo ci) {
+        VantaLobbyWorld.stop();
+    }
+
+    @Inject(method = "renderBackground", at = @At("TAIL"))
     private void vanta$dimPanorama(GuiGraphics graphics, int mouseX, int mouseY,
                                    float partialTick, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
