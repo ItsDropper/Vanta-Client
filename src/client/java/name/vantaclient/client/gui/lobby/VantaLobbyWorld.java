@@ -1,6 +1,5 @@
 package name.vantaclient.client.gui.lobby;
 
-import com.mojang.authlib.GameProfile;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -11,12 +10,10 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.packs.PackType;
@@ -37,15 +34,14 @@ import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.RegistryDataLoader;
 import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.stats.StatsCounter;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Owns an isolated, generated ClientLevel for the title screen.
@@ -96,7 +92,7 @@ public final class VantaLobbyWorld {
     /** Called at GameRenderer.render HEAD; restores the real client state at RETURN. */
     public static void beginFrame() {
         Minecraft mc = Minecraft.getInstance();
-        if (!isActive() || !(mc.screen instanceof TitleScreen) || mc.level != null || swapped) return;
+        if (mc.level != null && mc.level != level) {\n            destroy();\n            return;\n        }\n        if (!isActive() || !(mc.screen instanceof TitleScreen) || mc.level != null || swapped) return;
         previousLevel = mc.level;
         previousPlayer = mc.player;
         previousGameMode = mc.gameMode;
@@ -177,7 +173,7 @@ public final class VantaLobbyWorld {
         generateTerrain(level);
         level.setTimeFromServer(0L, 6000L, false);
         gameMode = new MultiPlayerGameMode(mc, listener);
-        cameraRig = gameMode.createPlayer(level, mc.getStats(), new ClientRecipeBook());
+        cameraRig = gameMode.createPlayer(level, new StatsCounter(), new ClientRecipeBook());
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
         cameraRig.setPos(0.5, 64.0, -5.5);
@@ -245,7 +241,7 @@ public final class VantaLobbyWorld {
                 world.chunkSource.replaceWithPacketData(cx, cz, packet);
             }
         }
-        world.getLightEngine().runLightUpdates();
+        for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {\n            world.getLightEngine().runLightUpdates();\n        }
     }
 
     private static int terrainHeight(int x, int z) {
