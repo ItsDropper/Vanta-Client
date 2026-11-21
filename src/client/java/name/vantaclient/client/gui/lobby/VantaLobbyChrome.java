@@ -57,7 +57,7 @@ public final class VantaLobbyChrome {
         boolean compact = height < 420 || width < 600;
         int x = 14;
         int cardWidth = Math.min(compact ? 176 : 230, Math.max(150, width / 3));
-        int bottom = height - (compact ? 54 : 62);
+        int bottom = height - (compact ? 60 : 70);
         int cardHeight = compact ? 54 : 66;
         int gap = 7;
 
@@ -71,11 +71,9 @@ public final class VantaLobbyChrome {
         graphics.drawString(mc.font, "PERFORMANCE", x + 12, bottom - cardHeight + 9,
                 0xFFB7C3D2, false);
         graphics.drawString(mc.font, mc.getFps() + " FPS", x + 12,
-                bottom - cardHeight + 29, 0xFFF0F4FA, false);
-
-        panel(graphics, x, bottom + 7, cardWidth, compact ? 26 : 32, compact);
-        graphics.drawString(mc.font, "Press Enter to open Social", x + 12, bottom + 16,
-                0xFFB7C3D2, false);
+                bottom - cardHeight + 27, 0xFFF0F4FA, false);
+        graphics.drawString(mc.font, "ENTER  ·  SOCIAL", x + 12,
+                bottom - cardHeight + (compact ? 41 : 45), 0xFF9BA8BA, false);
     }
 
     public static void renderTopNavigation(GuiGraphics graphics, int width, int height) {
