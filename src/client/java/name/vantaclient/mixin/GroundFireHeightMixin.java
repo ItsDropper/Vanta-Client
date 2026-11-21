@@ -8,6 +8,7 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,6 +21,10 @@ import java.util.List;
  */
 @Mixin(ModelBlockRenderer.class)
 public abstract class GroundFireHeightMixin {
+    @Unique
+    private static final ThreadLocal<Boolean> vanta$groundFireScalePushed =
+            ThreadLocal.withInitial(() -> false);
+
     @Inject(method = "tesselateBlock", at = @At("HEAD"))
     private void vanta$pushGroundFireScale(
             BlockAndTintGetter level,
@@ -32,12 +37,14 @@ public abstract class GroundFireHeightMixin {
             int overlayCoords,
             CallbackInfo ci
     ) {
+        vanta$groundFireScalePushed.set(false);
         if (!GroundFireHeightFeature.INSTANCE.isEnabled() || parts.isEmpty() || !vanta$isFire(state)) {
             return;
         }
 
         poseStack.pushPose();
         poseStack.scale(1.0F, GroundFireHeightFeature.getHeightScale(), 1.0F);
+        vanta$groundFireScalePushed.set(true);
     }
 
     @Inject(method = "tesselateBlock", at = @At("RETURN"))
@@ -52,8 +59,9 @@ public abstract class GroundFireHeightMixin {
             int overlayCoords,
             CallbackInfo ci
     ) {
-        if (GroundFireHeightFeature.INSTANCE.isEnabled() && !parts.isEmpty() && vanta$isFire(state)) {
+        if (vanta$groundFireScalePushed.get()) {
             poseStack.popPose();
+            vanta$groundFireScalePushed.remove();
         }
     }
 
