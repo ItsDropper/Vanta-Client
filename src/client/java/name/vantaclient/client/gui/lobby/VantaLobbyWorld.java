@@ -167,6 +167,7 @@ public final class VantaLobbyWorld {
 
     public static void stop() {
         restore();
+        nextStartAttemptNanos = 0L;
         destroy();
     }
 
@@ -212,6 +213,15 @@ public final class VantaLobbyWorld {
             restore();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
         }
+    }
+
+    /** Re-apply the lobby view after Camera.setup has selected the title camera. */
+    public static void applyCameraRotation() {
+        Minecraft mc = Minecraft.getInstance();
+        if (!isActive() || mc.level != level || !swapped || cameraRig == null) return;
+        VantaLobbyCamera camera = VantaLobbyScene.camera();
+        ((CameraAccessor) mc.gameRenderer.getMainCamera()).vanta$setRotation(
+                180.0f + camera.subjectYaw(), camera.subjectPitch());
     }
 
     public static void endFrame() {
@@ -547,7 +557,6 @@ public final class VantaLobbyWorld {
     private static void destroy() {
         Minecraft mc = Minecraft.getInstance();
         active = false;
-        nextStartAttemptNanos = 0L;
         if (level != null) {
             try {
                 mc.levelRenderer.setLevel(mc.level);
