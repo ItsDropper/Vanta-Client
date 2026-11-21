@@ -3,7 +3,6 @@ package name.vantaclient.mixin;
 import name.vantaclient.client.feature.GroundFireHeightFeature;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.GeometryBakedModel;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.Identifier;
 import org.joml.Vector3f;
