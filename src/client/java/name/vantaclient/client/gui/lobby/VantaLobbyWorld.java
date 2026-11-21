@@ -89,6 +89,9 @@ public final class VantaLobbyWorld {
     private static boolean sodiumLookupDone;
     private static Method sodiumTrackerLookup;
     private static Method sodiumChunkStatus;
+    private static boolean sodiumRendererLookupDone;
+    private static Method sodiumRendererLookup;
+    private static Method sodiumVisibleChunkCount;
     private static boolean vulkanLookupDone;
     private static Object vulkanChunkStatusMap;
     private static Method vulkanChunkStatus;
@@ -107,12 +110,35 @@ public final class VantaLobbyWorld {
     /** Called after LevelRenderer.renderLevel has completed for the lobby level. */
     public static void markWorldRendered() {
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
-        int renderedSections = Minecraft.getInstance().levelRenderer.countRenderedSections();
+        int renderedSections = getVisibleTerrainSectionCount();
         if (renderedSections > 0) {
             terrainRendered = true;
             java.util.logging.Logger.getLogger("VantaClient").info(
                     "Vanta title world is visible (" + renderedSections + " rendered sections)");
         }
+    }
+
+    /** Sodium replaces vanilla's visible-section list, so query its public renderer API when present. */
+    private static int getVisibleTerrainSectionCount() {
+        try {
+            if (!sodiumRendererLookupDone) {
+                sodiumRendererLookupDone = true;
+                Class<?> renderer = Class.forName("net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer");
+                sodiumRendererLookup = renderer.getMethod("instanceNullable");
+                sodiumVisibleChunkCount = renderer.getMethod("getVisibleChunkCount");
+            }
+            if (sodiumRendererLookup != null && sodiumVisibleChunkCount != null) {
+                Object renderer = sodiumRendererLookup.invoke(null);
+                if (renderer != null) {
+                    Object count = sodiumVisibleChunkCount.invoke(renderer);
+                    if (count instanceof Number number && number.intValue() > 0) return number.intValue();
+                }
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            sodiumRendererLookup = null;
+            sodiumVisibleChunkCount = null;
+        }
+        return Minecraft.getInstance().levelRenderer.countRenderedSections();
     }
 
     public static void start() {
