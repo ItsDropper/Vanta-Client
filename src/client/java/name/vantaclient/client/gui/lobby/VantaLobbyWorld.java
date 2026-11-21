@@ -17,7 +17,6 @@ import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.tags.TagLoader;
@@ -244,7 +243,8 @@ public final class VantaLobbyWorld {
                         new LevelChunkTicks<>(), new LevelChunkTicks<>(), 0L, sections, null, null);
                 Heightmap.primeHeightmaps(chunk, ChunkStatus.FULL.heightmapsAfter());
                 ClientboundLevelChunkPacketData packet = new ClientboundLevelChunkPacketData(chunk);
-                world.chunkSource.replaceWithPacketData(cx, cz, packet);
+                world.getChunkSource().replaceWithPacketData(cx, cz, packet.getReadBuffer(), packet.getHeightmaps(),
+                        packet.getBlockEntitiesTagsConsumer(cx, cz));
             }
         }
         for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
