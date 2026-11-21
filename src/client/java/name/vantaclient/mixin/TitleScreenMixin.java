@@ -52,7 +52,6 @@ public abstract class TitleScreenMixin {
     @Unique
     private AbstractButton vanta$accessibilityShortcut;
 
-    @Unique
     @Inject(method = "init", at = @At("TAIL"))
     private void vanta$composeMenu(CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();

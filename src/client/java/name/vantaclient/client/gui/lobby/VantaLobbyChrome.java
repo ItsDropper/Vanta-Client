@@ -18,7 +18,7 @@ public final class VantaLobbyChrome {
                 0x00070B14, 0xD9070B14);
 
         int sideWidth = Math.max(1, width / 14);
-        graphics.fillGradient(0, 0, sideWidth, height, 0x4D070A11, 0x00070A11);
-        graphics.fillGradient(width - sideWidth, 0, width, height, 0x00070A11, 0x4D070A11);
+        graphics.fill(0, 0, sideWidth, height, 0x18070A11);
+        graphics.fill(width - sideWidth, 0, width, height, 0x18070A11);
     }
 }

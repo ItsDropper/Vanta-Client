@@ -18,6 +18,7 @@
     "LightTextureMixin",
     "AbstractButtonMixin",
     "TitleScreenMixin",
+    "PanoramaRendererMixin",
     "PauseScreenMixin",
     "ScreenMixin",
     "MouseHandlerMixin",
