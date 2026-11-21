@@ -21,4 +21,7 @@ public interface CameraAccessor {
 
     @Invoker("setRotation")
     void vanta$setRotation(float yaw, float pitch);
+
+    @Invoker("setPosition")
+    void vanta$setPosition(double x, double y, double z);
 }
