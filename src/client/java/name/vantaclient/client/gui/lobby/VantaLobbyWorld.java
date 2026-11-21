@@ -194,8 +194,14 @@ public final class VantaLobbyWorld {
                 0L,
                 63
         );
-        mc.levelRenderer.setLevel(level);
-        mc.gameRenderer.setLevel(level);
+        int configuredRenderDistance = mc.options.getEffectiveRenderDistance();
+        mc.options.setServerRenderDistance(VIEW_DISTANCE);
+        try {
+            mc.levelRenderer.setLevel(level);
+            mc.gameRenderer.setLevel(level);
+        } finally {
+            mc.options.setServerRenderDistance(configuredRenderDistance);
+        }
         level.getChunkSource().updateViewCenter(CENTER_X, CENTER_Z);
         generateTerrain(level);
         level.setTimeFromServer(0L, 6000L, false);
@@ -277,7 +283,6 @@ public final class VantaLobbyWorld {
                         packet.getBlockEntitiesTagsConsumer(cx, cz));
                 if (loaded != null) {
                     ChunkPos loadedPos = new ChunkPos(cx, cz);
-                    Minecraft.getInstance().levelRenderer.onChunkReadyToRender(loaded.getPos());
                     world.getLightEngine().setLightEnabled(loadedPos, true);
                     for (int skySection = 5; skySection < world.getLightEngine().getMaxLightSection(); skySection++) {
                         world.getLightEngine().queueSectionData(LightLayer.SKY,
