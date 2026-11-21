@@ -16,7 +16,9 @@ public final class GroundFireHeightFeature extends Feature {
     }
 
     public static void setHeightScale(float value) {
-        DropperUtilsConfig.get().groundFireHeight = Math.max(0.25f, Math.min(2.0f, value));
+        DropperUtilsConfig.get().groundFireHeight = Float.isFinite(value)
+                ? Math.max(0.25f, Math.min(2.0f, value))
+                : 1.0f;
         DropperUtilsConfig.save();
     }
 
