@@ -212,7 +212,7 @@ public final class VantaLobbyWorld {
             cameraAccessor.vanta$setEyeHeight(cameraRig.getEyeHeight());
             cameraAccessor.vanta$setEyeHeightOld(cameraRig.getEyeHeight());
             mc.options.setServerRenderDistance(VIEW_DISTANCE);
-            mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
         } catch (Throwable error) {
             restore();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
