@@ -19,8 +19,15 @@ public class GameRendererMixin {
         VantaLobbyWorld.beginFrame();
     }
 
+
+    @Inject(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/fog/FogRenderer;endFrame()V"))
+    private void vanta$finishTitleWorldAfterTerrain(CallbackInfo ci) {
+        VantaLobbyWorld.endFrame();
+    }
+
     @Inject(method = "render", at = @At("RETURN"))
-    private void vanta$endTitleWorld(CallbackInfo ci) {
+    private void vanta$endTitleWorldFallback(CallbackInfo ci) {
         VantaLobbyWorld.endFrame();
     }
 
