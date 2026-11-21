@@ -35,6 +35,7 @@ import name.vantaclient.client.integration.net.LoopbackTcpBridge;
 import name.vantaclient.client.integration.net.VantaRelayClient;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
+import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
@@ -81,6 +82,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
         verifyRelayEndpointValidation(context);
+        verifyLobbyCamera(context);
         verifyFocusController(context);
         verifyPointerCapture(context);
         verifyComposeStateAndConstraints();
@@ -175,6 +177,33 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+
+    private static void verifyLobbyCamera(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            VantaLobbyCamera camera = new VantaLobbyCamera();
+            camera.reset();
+            for (int frame = 0; frame < 40; frame++) {
+                camera.update(100, 100, 100, 100, 0.05f);
+            }
+
+            if (Math.abs(camera.sceneYaw() + 1.6f) > 0.01f
+                    || Math.abs(camera.scenePitch() - 0.45f) > 0.01f
+                    || Math.abs(camera.subjectYaw() - 18.0f) > 0.05f
+                    || Math.abs(camera.subjectPitch() - 8.0f) > 0.05f) {
+                throw new AssertionError("Lobby camera must smoothly converge to its bounded cursor target.");
+            }
+
+            for (int frame = 0; frame < 40; frame++) {
+                camera.update(-1, -1, 100, 100, 0.05f);
+            }
+            if (Math.abs(camera.sceneYaw()) > 0.02f
+                    || Math.abs(camera.scenePitch()) > 0.02f
+                    || Math.abs(camera.subjectYaw()) > 0.1f
+                    || Math.abs(camera.subjectPitch()) > 0.1f) {
+                throw new AssertionError("Lobby camera must return smoothly to center when the pointer leaves the viewport.");
+            }
+        });
+    }
 
     private static void verifyFocusController(ClientGameTestContext context) {
         context.runOnClient(client -> {
