@@ -4,6 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "GameRendererMixin",
+    "CameraAccessor",
+    "ConnectionAccessor",
     "MotionBlurMixin",
     "PostChainAccessor",
     "PostPassAccessor",
