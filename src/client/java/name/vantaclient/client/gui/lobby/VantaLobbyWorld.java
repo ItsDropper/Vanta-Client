@@ -223,10 +223,6 @@ public final class VantaLobbyWorld {
             cameraAccessor.vanta$setEyeHeightOld(cameraRig.getEyeHeight());
             mc.options.setServerRenderDistance(VIEW_DISTANCE);
             mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
-            // The lobby is detached during client ticks, so Minecraft's normal
-            // render-frame level update never reaches it. PolyPlus explicitly updates
-            // its scene here; this advances queued sky/block light and renderer dirtiness.
-            level.update();
         } catch (Throwable error) {
             restore();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to activate the Vanta title world for rendering", error);
