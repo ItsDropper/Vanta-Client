@@ -221,7 +221,9 @@ public final class VantaLobbyWorld {
                     for (int z = 0; z < 16; z++) {
                         int wx = cx * 16 + x;
                         int wz = cz * 16 + z;
-                        int ground = terrainHeight(wx, wz);
+                        int ground = Math.abs(wx) <= 7 && wz >= -35 && wz <= -19
+                                || Math.abs(wx) <= 2 && wz >= -20 && wz <= -4
+                                ? 63 : terrainHeight(wx, wz);
                         for (int y = ground - 4; y <= ground; y++) {
                             BlockState state = y == ground ? Blocks.GRASS_BLOCK.defaultBlockState()
                                     : y >= ground - 2 ? Blocks.DIRT.defaultBlockState()
@@ -232,13 +234,18 @@ public final class VantaLobbyWorld {
                             for (int y = ground + 1; y <= 61; y++)
                                 put(sections, minSection, chunkMinY, x, y, z, Blocks.WATER.defaultBlockState());
                         }
-                        if (ground > 62 && Math.floorMod(wx * 31 + wz * 17, 137) == 0) {
+                        if (!(Math.abs(wx) <= 7 && wz >= -35 && wz <= -19)
+                                && !(Math.abs(wx) <= 2 && wz >= -20 && wz <= -4)
+                                && ground > 62 && Math.floorMod(wx * 31 + wz * 17, 137) == 0) {
                             growTree(sections, minSection, chunkMinY, x, ground + 1, z);
-                        } else if (ground >= 62 && Math.floorMod(wx * 19 + wz * 13, 43) == 0) {
+                        } else if (!(Math.abs(wx) <= 7 && wz >= -35 && wz <= -19)
+                                && !(Math.abs(wx) <= 2 && wz >= -20 && wz <= -4)
+                                && ground >= 62 && Math.floorMod(wx * 19 + wz * 13, 43) == 0) {
                             put(sections, minSection, chunkMinY, x, ground + 1, z, Blocks.SHORT_GRASS.defaultBlockState());
                         }
                     }
                 }
+                buildLobbyArchitecture(sections, minSection, chunkMinY, cx, cz);
                 ChunkPos pos = new ChunkPos(cx, cz);
                 LevelChunk chunk = new LevelChunk(world, pos, UpgradeData.EMPTY,
                         new LevelChunkTicks(), new LevelChunkTicks(), 0L, sections, null, null);
@@ -251,6 +258,63 @@ public final class VantaLobbyWorld {
         for (int pass = 0; world.getLightEngine().hasLightWork() && pass < 64; pass++) {
             world.getLightEngine().runLightUpdates();
         }
+    }
+
+    private static void buildLobbyArchitecture(LevelChunkSection[] sections, int minSection,
+                                                int minY, int chunkX, int chunkZ) {
+        // A broad stone forecourt gives the scene a deliberate architectural focal point.
+        for (int x = -7; x <= 7; x++) {
+            for (int z = -35; z <= -19; z++) {
+                putWorld(sections, minSection, minY, chunkX, chunkZ, x, 63, z,
+                        Math.abs(x) == 7 || z == -35 || z == -19
+                                ? Blocks.POLISHED_ANDESITE.defaultBlockState()
+                                : Blocks.STONE_BRICKS.defaultBlockState());
+            }
+        }
+
+        // A covered timber pavilion, with a layered roof and warm hanging lanterns.
+        for (int y = 64; y <= 70; y++) {
+            putWorld(sections, minSection, minY, chunkX, chunkZ, -6, y, -32, Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState());
+            putWorld(sections, minSection, minY, chunkX, chunkZ, 6, y, -32, Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState());
+            putWorld(sections, minSection, minY, chunkX, chunkZ, -6, y, -22, Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState());
+            putWorld(sections, minSection, minY, chunkX, chunkZ, 6, y, -22, Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState());
+        }
+        for (int x = -6; x <= 6; x++) {
+            putWorld(sections, minSection, minY, chunkX, chunkZ, x, 70, -32, Blocks.DARK_OAK_LOG.defaultBlockState());
+            putWorld(sections, minSection, minY, chunkX, chunkZ, x, 70, -22, Blocks.DARK_OAK_LOG.defaultBlockState());
+        }
+        for (int z = -32; z <= -22; z++) {
+            putWorld(sections, minSection, minY, chunkX, chunkZ, -6, 70, z, Blocks.DARK_OAK_LOG.defaultBlockState());
+            putWorld(sections, minSection, minY, chunkX, chunkZ, 6, 70, z, Blocks.DARK_OAK_LOG.defaultBlockState());
+        }
+        for (int x = -7; x <= 7; x++) {
+            for (int z = -33; z <= -21; z++) {
+                putWorld(sections, minSection, minY, chunkX, chunkZ, x, 71, z, Blocks.DARK_OAK_PLANKS.defaultBlockState());
+                if (Math.abs(x) == 7 || z == -33 || z == -21) {
+                    putWorld(sections, minSection, minY, chunkX, chunkZ, x, 72, z, Blocks.DARK_OAK_SLAB.defaultBlockState());
+                }
+            }
+        }
+        for (int x : new int[]{-5, 5}) {
+            for (int z : new int[]{-31, -23}) {
+                putWorld(sections, minSection, minY, chunkX, chunkZ, x, 69, z, Blocks.LANTERN.defaultBlockState());
+            }
+        }
+
+        // A centered approach connects the player position to the pavilion.
+        for (int z = -20; z <= -4; z++) {
+            for (int x = -1; x <= 1; x++) {
+                putWorld(sections, minSection, minY, chunkX, chunkZ, x, 63, z,
+                        x == 0 ? Blocks.POLISHED_ANDESITE.defaultBlockState()
+                                : Blocks.STONE_BRICKS.defaultBlockState());
+            }
+        }
+    }
+
+    private static void putWorld(LevelChunkSection[] sections, int minSection, int minY,
+                                 int chunkX, int chunkZ, int x, int y, int z, BlockState state) {
+        if (Math.floorDiv(x, 16) != chunkX || Math.floorDiv(z, 16) != chunkZ) return;
+        put(sections, minSection, minY, Math.floorMod(x, 16), y, Math.floorMod(z, 16), state);
     }
 
     private static int terrainHeight(int x, int z) {
