@@ -75,6 +75,7 @@ public final class VantaLobbyWorld {
     private static MultiPlayerGameMode gameMode;
     private static LocalPlayer cameraRig;
     private static boolean active;
+    private static long nextStartAttemptNanos;
     private static boolean terrainRendered;
     private static boolean swapped;
     private static ClientLevel previousLevel;
@@ -145,11 +146,19 @@ public final class VantaLobbyWorld {
     }
 
     public static void start() {
-        if (active || Minecraft.getInstance().level != null) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (active || mc.level != null) return;
+        long now = System.nanoTime();
+        if (now < nextStartAttemptNanos) return;
+        // TitleScreen.init can run while Minecraft is still transitioning out of
+        // startup/world teardown. Retry from the render loop rather than making
+        // successful lobby creation depend on that single lifecycle callback.
+        nextStartAttemptNanos = now + 2_000_000_000L;
         try {
             build();
             terrainRendered = false;
             active = true;
+            nextStartAttemptNanos = 0L;
         } catch (Throwable error) {
             destroy();
             java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.SEVERE, "Unable to create the Vanta title world", error);
@@ -538,6 +547,7 @@ public final class VantaLobbyWorld {
     private static void destroy() {
         Minecraft mc = Minecraft.getInstance();
         active = false;
+        nextStartAttemptNanos = 0L;
         if (level != null) {
             try {
                 mc.levelRenderer.setLevel(mc.level);
