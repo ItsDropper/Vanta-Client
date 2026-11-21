@@ -284,7 +284,6 @@ public final class VantaLobbyWorld {
         // Chunk packet injection bypasses the normal network chunk-ready path. Recreate
         // the section view only after the generated chunks exist so every render section
         // starts dirty against real chunk data instead of an empty cache snapshot.
-        int configuredRenderDistance = mc.options.getEffectiveRenderDistance();
         mc.options.setServerRenderDistance(VIEW_DISTANCE);
         try {
             mc.levelRenderer.setLevel(level);
