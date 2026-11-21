@@ -3,9 +3,11 @@ package name.vantaclient.client.gui.lobby;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import name.vantaclient.mixin.CameraAccessor;
+import name.vantaclient.mixin.AbstractClientPlayerAccessor;
 import name.vantaclient.mixin.ConnectionAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.multiplayer.CommonListenerCookie;
 import net.minecraft.client.multiplayer.LevelLoadTracker;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
@@ -229,8 +231,13 @@ public final class VantaLobbyWorld {
         Minecraft mc = Minecraft.getInstance();
         if (!isActive() || mc.level != level || !swapped || cameraRig == null) return;
         VantaLobbyCamera camera = VantaLobbyScene.camera();
-        ((CameraAccessor) mc.gameRenderer.getMainCamera()).vanta$setRotation(
-                180.0f + camera.subjectYaw(), camera.subjectPitch());
+        CameraAccessor cameraAccessor = (CameraAccessor) mc.gameRenderer.getMainCamera();
+        // Keep the avatar in the world while framing it with an independent, elevated
+        // camera transform. Third-person mode enables the player renderer; the explicit
+        // camera position avoids the vanilla fixed-distance third-person composition.
+        cameraAccessor.vanta$setPosition(0.5, 68.0, 2.5);
+        cameraAccessor.vanta$setRotation(
+                180.0f + camera.sceneYaw(), 25.0f + camera.scenePitch());
     }
 
     public static void endFrame() {
@@ -334,6 +341,8 @@ public final class VantaLobbyWorld {
         level.setTimeFromServer(0L, 6000L, false);
         gameMode = new MultiPlayerGameMode(mc, listener);
         cameraRig = gameMode.createPlayer(level, new StatsCounter(), new ClientRecipeBook());
+        ((AbstractClientPlayerAccessor) cameraRig).vanta$setPlayerInfo(
+                new PlayerInfo(mc.getGameProfile(), false));
         cameraRig.noPhysics = true;
         cameraRig.setNoGravity(true);
         cameraRig.snapTo(0.5, 64.0, -5.5, 180.0f, 4.0f);
