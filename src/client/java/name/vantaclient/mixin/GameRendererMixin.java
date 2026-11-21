@@ -33,7 +33,6 @@ public class GameRendererMixin {
 
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void dropperutils$beginWorldRender(CallbackInfo ci) {
-        VantaLobbyWorld.applyCameraRotation();
         ClientPerformanceMetrics.beginWorldRender();
     }
 
