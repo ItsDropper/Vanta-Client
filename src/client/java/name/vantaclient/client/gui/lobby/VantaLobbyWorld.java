@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.ticks.LevelChunkTicks;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -273,6 +274,10 @@ public final class VantaLobbyWorld {
                     ChunkPos loadedPos = new ChunkPos(cx, cz);
                     Minecraft.getInstance().levelRenderer.onChunkReadyToRender(loaded.getPos());
                     world.getLightEngine().setLightEnabled(loadedPos, true);
+                    for (int skySection = 5; skySection < world.getLightEngine().getMaxLightSection(); skySection++) {
+                        world.getLightEngine().queueSectionData(LightLayer.SKY,
+                                SectionPos.of(loadedPos, skySection), new DataLayer(15));
+                    }
                     for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
                         world.getLightEngine().updateSectionStatus(
                                 SectionPos.of(loadedPos, minSection + sectionIndex), sections[sectionIndex].hasOnlyAir());
