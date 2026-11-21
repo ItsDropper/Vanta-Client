@@ -5,6 +5,8 @@ import dev.itsdropper.vantaloader.api.EventBus;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.util.ClientPerformanceMetrics;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
+import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.init.FeatureKeybinds;
 
@@ -24,6 +26,9 @@ public final class VantaLoaderEvents {
                 return;
             }
             Minecraft client = (Minecraft) event.client();
+            if (client.screen instanceof TitleScreen && client.level == null) {
+                VantaLobbyWorld.start();
+            }
             ClientTickHandler.tick(client);
             VantaRemoteSessionManager.tick(client);
             ClientPerformanceMetrics.endClientTick();
