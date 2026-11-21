@@ -52,6 +52,9 @@ import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.stats.StatsCounter;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.world.entity.player.PlayerSkin;
+import net.minecraft.util.Util;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import java.util.List;
@@ -368,7 +371,7 @@ public final class VantaLobbyWorld {
         // does this with a RemotePlayer subclass and an explicit SkinManager lookup;
         // a LocalPlayer is the wrong entity to use as the lobby's visible model.
         GameProfile profile = mc.getGameProfile();
-        Supplier<PlayerSkin> skinLookup = mc.getSkinManager().createLookup(profile, false);
+        Supplier<PlayerSkin> skinLookup = () -> VantaLobbySkin.get(mc, profile);
         avatar = new VantaLobbyAvatar(level, profile, skinLookup);
         avatar.noPhysics = true;
         avatar.setNoGravity(true);
@@ -653,6 +656,86 @@ public final class VantaLobbyWorld {
         gameMode = null;
         cameraRig = null;
         avatar = null;
+    }
+
+    /**
+     * Resolves the authenticated account texture property before creating the skin lookup.
+     * Minecraft's launch GameProfile can occasionally be missing textures; PolyPlus
+     * handles that by fetching the signed profile separately and retrying asynchronously.
+     */
+    private static final class VantaLobbySkin {
+        private static final long[] RETRY_MILLIS = {5_000L, 30_000L, 120_000L, 600_000L};
+        private static GameProfile resolvedProfile;
+        private static UUID pendingId;
+        private static boolean fetching;
+        private static int attempt;
+        private static long retryAt;
+        private static GameProfile lookupProfile;
+        private static Supplier<PlayerSkin> lookup;
+
+        private static PlayerSkin get(Minecraft mc, GameProfile launchProfile) {
+            UUID id = launchProfile.getId();
+            GameProfile profile;
+            synchronized (VantaLobbySkin.class) {
+                if (resolvedProfile != null && resolvedProfile.getId().equals(id)) {
+                    profile = resolvedProfile;
+                } else if (launchProfile.getProperties().containsKey("textures")) {
+                    resolvedProfile = launchProfile;
+                    profile = launchProfile;
+                } else {
+                    requestProfile(mc, id);
+                    profile = launchProfile;
+                }
+
+                if (lookup == null || lookupProfile != profile) {
+                    lookupProfile = profile;
+                    lookup = mc.getSkinManager().createLookup(profile, false);
+                }
+                return lookup.get();
+            }
+        }
+
+        private static void requestProfile(Minecraft mc, UUID id) {
+            long now = System.currentTimeMillis();
+            if (!id.equals(pendingId)) {
+                pendingId = id;
+                attempt = 0;
+                retryAt = 0L;
+                fetching = false;
+                resolvedProfile = null;
+                lookupProfile = null;
+                lookup = null;
+            }
+            if (fetching || now < retryAt) return;
+            fetching = true;
+
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    var result = mc.services().sessionService().fetchProfile(id, true);
+                    return result == null ? null : result.profile();
+                } catch (Throwable failure) {
+                    java.util.logging.Logger.getLogger("VantaClient").log(
+                            java.util.logging.Level.FINE,
+                            "Could not resolve the authenticated lobby skin profile", failure);
+                    return null;
+                }
+            }, Util.nonCriticalIoPool()).thenAccept(profile -> {
+                synchronized (VantaLobbySkin.class) {
+                    if (!id.equals(pendingId)) return;
+                    fetching = false;
+                    if (profile != null && id.equals(profile.getId())
+                            && profile.getProperties().containsKey("textures")) {
+                        resolvedProfile = profile;
+                        lookupProfile = null;
+                        lookup = null;
+                    } else {
+                        long delay = RETRY_MILLIS[Math.min(attempt, RETRY_MILLIS.length - 1)];
+                        attempt++;
+                        retryAt = System.currentTimeMillis() + delay;
+                    }
+                }
+            });
+        }
     }
 
     /** Visible avatar with the same explicit account-skin lookup used by PolyPlus. */
