@@ -126,6 +126,11 @@ public final class VantaUiRuntime {
         return invalidationRevision.get();
     }
 
+    /** Monotonic layout invalidation revision, including externally observed state writes. */
+    public long layoutInvalidationRevision() {
+        return layoutInvalidationRevision.get();
+    }
+
     /** True when a state write or handled interaction occurred after the last render. */
     public boolean isRenderDirty() {
         return renderedRevision != invalidationRevision.get();
