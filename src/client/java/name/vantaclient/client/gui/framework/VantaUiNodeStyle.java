@@ -10,9 +10,9 @@ final class VantaUiNodeStyle {
     static void draw(VantaUiNode node, GuiGraphics graphics, VantaUiTheme theme) {
         int background = node.backgroundColor();
         int radius = node.cornerRadius() >= 0 ? node.cornerRadius()
-                : background == VantaUiTheme.PANEL ? 18
-                : background == VantaUiTheme.PANEL_RAISED ? 13
-                : background == VantaUiTheme.TOOLTIP_SURFACE ? 10
+                : background == VantaUiTheme.PANEL ? VantaUiTheme.RADIUS_PANEL
+                : background == VantaUiTheme.PANEL_RAISED ? VantaUiTheme.RADIUS_LARGE
+                : background == VantaUiTheme.TOOLTIP_SURFACE ? VantaUiTheme.RADIUS_MEDIUM
                 : VantaUiTheme.RADIUS_MEDIUM;
 
         if (background != 0) {
