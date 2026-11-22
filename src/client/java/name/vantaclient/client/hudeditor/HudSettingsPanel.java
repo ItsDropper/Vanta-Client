@@ -175,7 +175,8 @@ public final class HudSettingsPanel {
                             Integer.parseInt(value.substring(0, value.indexOf(' ')));
                     VantaClientPreferences.save();
                 }));
-        panel.add(VantaUiNode.button("Done", HudSettingsPanel::close)
+        panel.add(VantaComponents.actionButton("Done", null,
+                VantaComponents.ButtonVariant.PRIMARY, HudSettingsPanel::close)
                 .height(30));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
