@@ -212,20 +212,8 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void verifyGroundFireInLobby(ClientGameTestContext context) {
-        for (String name : new String[]{
-                "net.fabricmc.fabric.api.client.model.loading.v1.WrapperBlockStateModel",
-                "net.fabricmc.fabric.api.client.model.loading.v1.ModelModifier",
-                "net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin",
-                "net.fabricmc.fabric.api.client.model.loading.v1.BlockStateResolver",
-                "net.fabricmc.fabric.api.renderer.v1.model.FabricBlockStateModel",
-                "net.fabricmc.fabric.api.renderer.v1.mesh.QuadEmitter",
-                "net.fabricmc.fabric.api.renderer.v1.mesh.MutableQuadView",
-                "net.fabricmc.fabric.api.renderer.v1.mesh.QuadView",
-                "net.minecraft.client.renderer.block.model.BlockStateModel"}) {
-            dumpClass(name);
-        }
         context.waitTicks(20);
-        int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
+        int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get() + name.vantaclient.client.feature.GroundFireModel.EMITS.get();
         System.out.println("[ground-fire] scaled fire blocks during lobby chunk compile: " + scaled
                 + " tesselateCalls=" + GroundFireHeightFeature.TESSELATE_CALLS.get() + " fireSeen=" + GroundFireHeightFeature.FIRE_SEEN.get() + " active=" + GroundFireHeightFeature.isActive()
                 + " scale=" + GroundFireHeightFeature.getHeightScale());

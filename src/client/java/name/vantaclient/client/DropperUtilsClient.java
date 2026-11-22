@@ -34,5 +34,6 @@ public class DropperUtilsClient implements ClientModInitializer {
 		HudRegistration.register();
 		FarTerrainRenderer.register();
 		Events.register();
+		name.vantaclient.client.feature.GroundFireModel.register();
 	}
 }
