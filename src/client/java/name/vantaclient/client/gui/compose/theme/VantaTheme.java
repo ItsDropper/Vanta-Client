@@ -72,7 +72,9 @@ public record VantaTheme(
             int panelAlpha, int elevatedAlpha, int cardAlpha, int fieldAlpha, int popoverAlpha,
             int edge, int highlight, int shadow, int scrimTop, int scrimBottom,
             int shadowAlpha, int highlightAlpha, int borderAlpha,
-            int hoverAlpha, int selectedAlpha, int focusAlpha, int disabledAlpha,
+            int hoverAlpha, int hoverOutlineAlpha, int controlHoverAlpha,
+            int controlFocusAlpha, int controlFocusIndicatorAlpha,
+            int selectedAlpha, int focusAlpha, int disabledAlpha,
             float disabledSurfaceFactor
     ) {
         public Glass {
@@ -85,6 +87,10 @@ public record VantaTheme(
             requireAlpha(highlightAlpha);
             requireAlpha(borderAlpha);
             requireAlpha(hoverAlpha);
+            requireAlpha(hoverOutlineAlpha);
+            requireAlpha(controlHoverAlpha);
+            requireAlpha(controlFocusAlpha);
+            requireAlpha(controlFocusIndicatorAlpha);
             requireAlpha(selectedAlpha);
             requireAlpha(focusAlpha);
             requireAlpha(disabledAlpha);
