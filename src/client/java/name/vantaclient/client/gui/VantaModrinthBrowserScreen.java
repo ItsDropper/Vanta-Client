@@ -114,8 +114,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
                     + ClientPlatform.minecraftVersion(),
                     VantaUiTheme.TEXT_MUTED));
         }
-        header.add(VantaUiNode.button("Back", VantaUiNode.Icon.OVERVIEW,
-                this::onClose).size(82, 30));
+        header.add(VantaComponents.actionButton("Back", VantaUiNode.Icon.OVERVIEW,
+                VantaComponents.ButtonVariant.SECONDARY, this::onClose).size(82, 30));
         root.add(header);
 
         if (!installedView) {
@@ -128,8 +128,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
                     () -> searchQuery,
                     value -> searchQuery = value,
                     100).flex(1).minSize(54, 30));
-            search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::search).size(100, 30).enabled(!busy));
+            search.add(VantaComponents.actionButton("Search", VantaUiNode.Icon.SEARCH,
+                    VantaComponents.ButtonVariant.PRIMARY, this::search).size(100, 30).enabled(!busy));
             if (!compact) search.add(VantaUiNode.button("Clear", () -> {
                 if (busy) return;
                 searchQuery = "";
