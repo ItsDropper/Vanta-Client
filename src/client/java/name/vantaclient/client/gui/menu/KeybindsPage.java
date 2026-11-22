@@ -205,7 +205,7 @@ public final class KeybindsPage {
             int ky = y + 4 + Math.round(key.y() * unit);
             int kw = Math.round(key.w() * unit) - gap;
             int kh = Math.round(unit) - gap;
-            paintKey(g, font, kx, ky, kw, kh, key.label(), usersOf(index, key.bindingName()), selected == key.code(), 9);
+            paintKey(g, font, kx, ky, kw, kh, key.label(), usersOf(index, key.bindingName()), selected == key.code(), 3);
         }
         int mx = x + keyboardWidth + 34;
         int my = y + 12;
@@ -218,11 +218,11 @@ public final class KeybindsPage {
         int buttonHeight = bodyHeight / 2 - 6;
         int half = bodyWidth / 2;
         paintKey(g, font, mx + 5, my + 5, half - 7, buttonHeight, "L",
-                usersOf(index, LEFT_MOUSE_BINDING), selected == MOUSE_BASE, 14);
+                usersOf(index, LEFT_MOUSE_BINDING), selected == MOUSE_BASE, 5);
         paintKey(g, font, mx + half + 2, my + 5, half - 7, buttonHeight, "R",
-                usersOf(index, RIGHT_MOUSE_BINDING), selected == MOUSE_BASE - 1, 14);
+                usersOf(index, RIGHT_MOUSE_BINDING), selected == MOUSE_BASE - 1, 5);
         paintKey(g, font, mx + half - 8, my + 5 + buttonHeight / 4, 16, buttonHeight / 2, "",
-                usersOf(index, MIDDLE_MOUSE_BINDING), selected == MOUSE_BASE - 2, 6);
+                usersOf(index, MIDDLE_MOUSE_BINDING), selected == MOUSE_BASE - 2, 3);
     }
 
     private static void paintKey(GuiGraphics g, Font font, int x, int y, int w, int h, String label,
