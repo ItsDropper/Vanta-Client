@@ -251,6 +251,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         navigation.add(VantaUiNode.button("Prefs",
                 () -> navigate(Route.of(Page.PREFERENCES))).flex(1).height(34)
                 .selected(route.page() == Page.PREFERENCES));
+        navigation.add(VantaUiNode.button("HUD",
+                () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
+                .flex(1).height(34));
         return navigation;
     }
 
