@@ -86,7 +86,7 @@ public final class VantaComponents {
         return VantaUiNode.row(0, 7).height(22)
                 .align(VantaUiNode.Alignment.CENTER)
                 .background(background).radius(VantaUiTheme.RADIUS_PILL)
-                .add(VantaUiNode.text(label == null ? "" : label, foreground));
+                .add(VantaUiNode.label(label == null ? "" : label, foreground));
     }
 
     /** Standard action button variants; action ownership remains with the caller. */
@@ -135,7 +135,7 @@ public final class VantaComponents {
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
         String resolvedTitle = Objects.requireNonNull(title, "title");
         if (!containsVisibleLabel(control, resolvedTitle)) {
-            labels.add(VantaUiNode.text(resolvedTitle));
+            labels.add(VantaUiNode.label(resolvedTitle, VantaUiTheme.TEXT_PRIMARY));
         }
         if (hasDescription) {
             labels.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED, 2));
@@ -180,7 +180,7 @@ public final class VantaComponents {
         VantaUiNode row = VantaUiNode.row(10, 10)
                 .height(48).align(VantaUiNode.Alignment.CENTER);
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(Objects.requireNonNull(title, "title")));
+        labels.add(VantaUiNode.label(Objects.requireNonNull(title, "title"), VantaUiTheme.TEXT_PRIMARY));
         if (detail != null && !detail.isBlank()) {
             labels.add(VantaUiNode.text(detail, VantaUiTheme.TEXT_MUTED));
         }
@@ -202,7 +202,7 @@ public final class VantaComponents {
         row.add(VantaUiNode.icon(Objects.requireNonNull(icon, "icon")).size(18, 18)
                 .iconColor(VantaClientAccent.current()));
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(Objects.requireNonNull(title, "title")));
+        labels.add(VantaUiNode.label(Objects.requireNonNull(title, "title"), VantaUiTheme.TEXT_PRIMARY));
         labels.add(VantaUiNode.text(detail == null ? "" : detail, VantaUiTheme.TEXT_MUTED));
         row.add(labels);
         row.add(actionButton("Open", null, ButtonVariant.SECONDARY,
