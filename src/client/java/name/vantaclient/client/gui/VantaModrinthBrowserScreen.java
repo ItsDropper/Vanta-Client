@@ -105,9 +105,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, 0)
                 .height(compact ? 30 : 50)
                 .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode identity = VantaUiNode.column(2, 0).flex(1);
-        identity.add(VantaUiNode.eyebrow("VANTA CLIENT / LIBRARY"));
-        identity.add(VantaUiNode.title("Modrinth"));
+        VantaUiNode identity = VantaComponents.sectionHeader(
+                "VANTA CLIENT / LIBRARY", "Modrinth", null).flex(1);
         header.add(identity);
         if (VantaUiRuntime.designWidth(width, height) >= WIDE_LAYOUT_THRESHOLD) {
             header.add(VantaUiNode.text("Minecraft "
