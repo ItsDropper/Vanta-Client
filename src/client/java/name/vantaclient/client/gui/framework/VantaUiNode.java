@@ -501,9 +501,21 @@ public final class VantaUiNode {
                 graphics.enableScissor(clipX, clipY, clipRight, clipBottom);
             }
             try {
-                for (VantaUiNode child : children) {
-                    if (scrollable && !intersectsScrollViewport(child)) continue;
-                    child.render(graphics, font, theme, mouseX, mouseY);
+                if (scrollable) {
+                    int start = visibleChildStart();
+                    int end = visibleChildEnd(start);
+                    int left = x + padding;
+                    int right = x + width - padding;
+                    for (int i = start; i < end; i++) {
+                        VantaUiNode child = children.get(i);
+                        if (child.x + child.width > left && child.x < right) {
+                            child.render(graphics, font, theme, mouseX, mouseY);
+                        }
+                    }
+                } else {
+                    for (VantaUiNode child : children) {
+                        child.render(graphics, font, theme, mouseX, mouseY);
+                    }
                 }
             } finally {
                 if (clipChildren || scrollable) graphics.disableScissor();
@@ -1172,10 +1184,54 @@ public final class VantaUiNode {
             caretTicks = 0;
             caretVisible = true;
         }
-        for (VantaUiNode child : children) {
-            if (scrollable && !intersectsScrollViewport(child)) continue;
-            child.tick();
+        if (scrollable) {
+            int start = visibleChildStart();
+            int end = visibleChildEnd(start);
+            int left = x + padding;
+            int right = x + width - padding;
+            for (int i = start; i < end; i++) {
+                VantaUiNode child = children.get(i);
+                if (child.x + child.width > left && child.x < right) child.tick();
+            }
+        } else {
+            for (VantaUiNode child : children) child.tick();
         }
+    }
+
+    /**
+     * Scrollable page children are laid out in vertical order. Find the contiguous
+     * vertical range intersecting the viewport with binary search instead of testing
+     * every row during render, animation, ticking and pointer hit-testing.
+     */
+    private int firstVisibleChildIndex(int viewportTop) {
+        int low = 0;
+        int high = children.size();
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            VantaUiNode child = children.get(middle);
+            if (child.y + child.height <= viewportTop) low = middle + 1;
+            else high = middle;
+        }
+        return low;
+    }
+
+    private int visibleChildEndIndex(int viewportBottom, int start) {
+        int low = start;
+        int high = children.size();
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            if (children.get(middle).y < viewportBottom) low = middle + 1;
+            else high = middle;
+        }
+        return low;
+    }
+
+    private int visibleChildStart() {
+        return firstVisibleChildIndex(y + padding);
+    }
+
+    private int visibleChildEnd(int start) {
+        return visibleChildEndIndex(y + height - padding, start);
     }
 
     void animate(boolean animationsEnabled, float hoverFactor, float toggleFactor,
@@ -1201,9 +1257,21 @@ public final class VantaUiNode {
                 if (Math.abs(target - animatedToggle) < 0.002f) animatedToggle = target;
             }
         }
-        for (VantaUiNode child : children) {
-            if (scrollable && !intersectsScrollViewport(child)) continue;
-            child.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
+        if (scrollable) {
+            int start = visibleChildStart();
+            int end = visibleChildEnd(start);
+            int left = x + padding;
+            int right = x + width - padding;
+            for (int i = start; i < end; i++) {
+                VantaUiNode child = children.get(i);
+                if (child.x + child.width > left && child.x < right) {
+                    child.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
+                }
+            }
+        } else {
+            for (VantaUiNode child : children) {
+                child.animate(animationsEnabled, hoverFactor, toggleFactor, deltaSeconds);
+            }
         }
     }
 
@@ -1231,11 +1299,20 @@ public final class VantaUiNode {
         if (kind == Kind.CONTAINER && !containsClip(mouseX, mouseY)) {
             return isInteractive() && enabled ? this : null;
         }
-        for (int i = children.size() - 1; i >= 0; i--) {
-            VantaUiNode child = children.get(i);
-            if (scrollable && !intersectsScrollViewport(child)) continue;
-            VantaUiNode hit = child.hitTest(mouseX, mouseY);
-            if (hit != null) return hit;
+        if (scrollable) {
+            int start = visibleChildStart();
+            int end = visibleChildEnd(start);
+            for (int i = end - 1; i >= start; i--) {
+                VantaUiNode child = children.get(i);
+                if (child.x + child.width <= x + padding || child.x >= x + width - padding) continue;
+                VantaUiNode hit = child.hitTest(mouseX, mouseY);
+                if (hit != null) return hit;
+            }
+        } else {
+            for (int i = children.size() - 1; i >= 0; i--) {
+                VantaUiNode hit = children.get(i).hitTest(mouseX, mouseY);
+                if (hit != null) return hit;
+            }
         }
         if (isInteractive() && enabled) return this;
         return null;
