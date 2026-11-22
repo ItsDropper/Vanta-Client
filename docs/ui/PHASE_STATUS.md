@@ -15,6 +15,16 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - The shared runtime changes automatically cover settings, integration settings, installed-mod library, Modrinth browser, world sharing and the HUD editor's retained toolbar/inspector. Title-screen, pause-menu, loading, notification and in-game HUD rendering remain specialized where they need Minecraft-native content, but continue using the shared `VantaUiTheme` drawing primitives. The obsolete `ClickGuiScreen` redirects to the active installed-mod library and is not a separate live UI implementation.
 
 
+
+## Phase 2 — reusable component library (2026-11-22)
+
+- Expanded `VantaComponents` into a shared retained component library: bordered material panels, dividers, semantic status badges, button variants, section headers, setting rows, empty states and status rows. Existing module-card and workspace-row factories now use the same panel/button primitives.
+- Added state-bound dropdown construction alongside the existing toggle, slider and text-field factories. Bound controls continue to use caller-owned `VantaState`; runtime subscriptions own invalidation and cleanup.
+- Exposed the shared component vocabulary through `VantaCompose` so screen code does not need to depend on internal renderer details.
+- Migrated the integration settings, installed-mod library, Modrinth browser, world-sharing screen and HUD editor/inspector to shared panels, separators and empty-state components. This preserves their existing data flows, screen navigation and Minecraft `GuiGraphics` rendering backend.
+- Added client GameTests for panel/badge semantics, setting-row and empty-state composition, and state-bound dropdown values.
+- The title/pause shell, loading and notifications, and in-game HUD remain specialized render paths; they share the theme/render primitives rather than being forced into retained components where their Minecraft-native lifecycle is different.
+
 ## Foundation
 
 <badge>Implemented; interaction coverage still expanding</badge>
