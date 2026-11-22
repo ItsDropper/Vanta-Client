@@ -105,7 +105,8 @@ public final class VantaComponents {
                     .border(VantaUiTheme.BUTTON_OUTLINE);
             case QUIET -> node.background(0);
             case DANGER -> node.background(VantaUiTheme.withAlpha(VantaUiTheme.STATUS_DANGER, 46))
-                    .border(VantaUiTheme.STATUS_DANGER);
+                    .border(VantaUiTheme.STATUS_DANGER)
+                    .buttonForeground(VantaUiTheme.STATUS_DANGER);
         }
         return node;
     }
