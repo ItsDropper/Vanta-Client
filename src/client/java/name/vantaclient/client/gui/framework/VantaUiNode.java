@@ -465,7 +465,11 @@ public final class VantaUiNode implements VantaUiComponent {
         if (kind == Kind.TEXT_FIELD && accessibleLabel.isBlank()) accessibleLabel = placeholder;
         String value = switch (kind) {
             case TOGGLE -> Boolean.toString(toggleValue != null && toggleValue.getAsBoolean());
-            case SLIDER -> formatValue(sliderValue == null ? sliderMinimum : sliderValue.getAsDouble());
+            case SLIDER -> {
+                double slider = sliderValue == null ? sliderMinimum : sliderValue.getAsDouble();
+                if (!Double.isFinite(slider)) slider = sliderMinimum;
+                yield formatValue(clamp(slider, sliderMinimum, sliderMaximum));
+            }
             case DROPDOWN -> dropdownValue == null ? "" : safeValue(dropdownValue.get());
             case TEXT_FIELD -> currentInput();
             case PROGRESS -> label;
