@@ -141,6 +141,7 @@ public final class VantaUiRuntime {
             pendingFocusReveal = null;
             lastWidth = -1;
             layout(font, screenWidth, screenHeight);
+            layoutChanged = true;
         }
         long now = System.nanoTime();
         float deltaSeconds = VantaUiMotion.frameDeltaSeconds(lastFrameNanos, now);
