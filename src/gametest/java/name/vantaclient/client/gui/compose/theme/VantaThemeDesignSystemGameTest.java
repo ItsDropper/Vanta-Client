@@ -64,7 +64,9 @@ public final class VantaThemeDesignSystemGameTest implements FabricClientGameTes
                         && glass.borderAlpha() > 0 && glass.hoverAlpha() > 0
                         && glass.selectedAlpha() > glass.hoverAlpha()
                         && glass.focusAlpha() >= glass.selectedAlpha()
-                        && glass.disabledAlpha() < glass.borderAlpha(),
+                        && glass.disabledAlpha() < glass.borderAlpha()
+                        && glass.disabledSurfaceFactor() > 0.0f
+                        && glass.disabledSurfaceFactor() < 1.0f,
                 "Glass materials must define distinct shadow, hover, selection, focus and disabled states.");
     }
 
