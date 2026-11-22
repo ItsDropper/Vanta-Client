@@ -14,6 +14,7 @@ import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.ClickRateTracker;
 import name.vantaclient.client.hud.PingHudElement;
 import name.vantaclient.client.feature.HudEditorFeature;
+import name.vantaclient.client.feature.GroundFireHeightFeature;
 import name.vantaclient.client.hudeditor.HudElement;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.config.DropperUtilsConfig;
@@ -83,6 +84,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
         verifyRelayEndpointValidation(context);
+        verifyGroundFireHeightTransform(context);
         verifyLobbyCamera(context);
         verifyFocusController(context);
         verifyPointerCapture(context);
@@ -178,6 +180,31 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+
+
+    private static void verifyGroundFireHeightTransform(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            com.mojang.blaze3d.vertex.PoseStack stack =
+                    new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(3.0f, 5.0f, 7.0f);
+
+            var original = stack.last();
+            var scaled = GroundFireHeightFeature.scaleQuadPose(original, 0.5f);
+            Vector3f base = scaled.pose().transformPosition(0.0f, 0.0f, 0.0f, new Vector3f());
+            Vector3f top = scaled.pose().transformPosition(0.0f, 1.0f, 0.0f, new Vector3f());
+            Vector3f originalTop = original.pose().transformPosition(0.0f, 1.0f, 0.0f, new Vector3f());
+
+            if (Math.abs(base.x - 3.0f) > 0.0001f
+                    || Math.abs(base.y - 5.0f) > 0.0001f
+                    || Math.abs(base.z - 7.0f) > 0.0001f
+                    || Math.abs(top.y - 5.5f) > 0.0001f
+                    || Math.abs(originalTop.y - 6.0f) > 0.0001f) {
+                throw new AssertionError("Ground fire scaling must shorten each quad from its block-local base "
+                        + "without mutating the shared pose. base=" + base + ", top=" + top
+                        + ", originalTop=" + originalTop);
+            }
+        });
+    }
 
     private static void verifyLobbyCamera(ClientGameTestContext context) {
         context.runOnClient(client -> {
