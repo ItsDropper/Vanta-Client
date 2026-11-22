@@ -50,6 +50,16 @@ public final class VantaUiFoundationGameTest implements FabricClientGameTest {
         runtime.dispose();
         require(enabled.subscriberCount() == 0,
                 "Disposing a runtime must release all state subscriptions.");
+
+        VantaState<String> query = new VantaState<>("before");
+        VantaUiNode textField = VantaUiNode.textField("Search", query::get, query::set, 64)
+                .observeState(query, true);
+        VantaUiRuntime layoutRuntime = new VantaUiRuntime(textField);
+        long layoutBefore = layoutRuntime.layoutInvalidationRevision();
+        query.set("after");
+        require(layoutRuntime.layoutInvalidationRevision() > layoutBefore,
+                "Layout-affecting state writes must request a new layout pass.");
+        layoutRuntime.dispose();
     }
 
     private static void require(boolean condition, String message) {
