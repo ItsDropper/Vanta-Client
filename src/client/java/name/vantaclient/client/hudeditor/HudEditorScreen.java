@@ -85,7 +85,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaComponents.actionButton("Done", null,
                 VantaComponents.ButtonVariant.PRIMARY, this::onClose)
-                .size(compact ? 56 : 82, compact ? 26 : 32))
+                .size(compact ? 56 : 82, compact ? 26 : 32)
                 .tooltip("Finish editing the HUD"));
         root.add(toolbar);
         toolbarRuntime = new VantaUiRuntime(root);
