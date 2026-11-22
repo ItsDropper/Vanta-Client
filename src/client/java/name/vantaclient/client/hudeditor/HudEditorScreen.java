@@ -2,6 +2,7 @@ package name.vantaclient.client.hudeditor;
 
 import name.vantaclient.client.gui.VantaText;
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -50,9 +51,9 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
 
         VantaUiNode root = VantaUiNode.row(0, 0).height(toolbarHeight)
                 .align(VantaUiNode.Alignment.START);
-        VantaUiNode toolbar = VantaUiNode.row(compact ? 8 : 12, compact ? 8 : 14)
+        VantaUiNode toolbar = VantaComponents.panel(VantaComponents.Surface.POPOVER,
+                compact ? 8 : 12, compact ? 8 : 14)
                 .height(toolbarHeight).flex(1)
-                .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "vanta", "textures/gui/title/mark_small.png"))
