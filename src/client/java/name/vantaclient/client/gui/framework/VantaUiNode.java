@@ -105,6 +105,14 @@ public final class VantaUiNode {
     private boolean focused;
     int scrollOffset;
     int contentHeight;
+    private int[] layoutPrimarySizes = new int[0];
+
+    int[] layoutPrimarySizes(int requiredSize) {
+        if (layoutPrimarySizes.length < requiredSize) {
+            layoutPrimarySizes = new int[requiredSize];
+        }
+        return layoutPrimarySizes;
+    }
     private int scrollDragPointerOffset;
 
     int x;

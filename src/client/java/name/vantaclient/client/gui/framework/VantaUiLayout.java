@@ -129,7 +129,7 @@ final class VantaUiLayout {
 
         int availablePrimary = Math.max(0,
                 (node.direction == VantaUiNode.Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
-        int[] primarySizes = new int[node.children.size()];
+        int[] primarySizes = node.layoutPrimarySizes(node.children.size());
         int measuredContent = childGap;
         for (int i = 0; i < node.children.size(); i++) {
             VantaUiNode child = node.children.get(i);
