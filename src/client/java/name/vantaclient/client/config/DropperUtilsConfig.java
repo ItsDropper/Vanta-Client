@@ -14,7 +14,7 @@ public class DropperUtilsConfig {
         return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
     }
 
-    public int configVersion = 23;
+    public int configVersion = 24;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -87,7 +87,6 @@ public class DropperUtilsConfig {
     public int anchorScanInterval = 40;
     public int anchorScanRange = 3;
     public float zoomScrollStrength = 0.65f;
-    public float motionBlurIntensity = 1.0f;
     public boolean lowFireHideOverlay = false;
     public boolean noExplosionParticles = true;
     public boolean noExplosionSmoke = true;
@@ -192,6 +191,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 21) migrateV21();
                 if (INSTANCE.configVersion < 22) migrateV22();
                 if (INSTANCE.configVersion < 23) migrateV23();
+                if (INSTANCE.configVersion < 24) migrateV24();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -366,6 +366,14 @@ public class DropperUtilsConfig {
         // to vanilla even when the feature was enabled.
         INSTANCE.groundFireHeight = 0.5f;
         INSTANCE.configVersion = 23;
+        save();
+    }
+
+    private static void migrateV24() {
+        System.out.println("[DropperUtils] Migrating config v23 -> v24");
+        // Motion blur now uses its full fixed blend intensity. Saving the new
+        // schema drops the legacy motionBlurIntensity property from old configs.
+        INSTANCE.configVersion = 24;
         save();
     }
 
