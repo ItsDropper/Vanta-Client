@@ -210,8 +210,14 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             int veil = veilAlpha();
             if (veil <= 0) return;
             int color = MenuTheme.alpha(0xFF0A0D14, veil);
-            VantaUiTheme.fillSquircleSides(g, x + sidebar + 1, y + 84, w - sidebar - 1, h - 84, 18,
-                    color, color, false, true);
+            int veilLeft = compact ? x : x + sidebar + 1;
+            int veilTop = compact ? y + 106 : y + 84;
+            int veilWidth = Math.max(0, w - (veilLeft - x));
+            int veilHeight = Math.max(0, h - (veilTop - y));
+            if (veilWidth > 0 && veilHeight > 0) {
+                VantaUiTheme.fillSquircleSides(g, veilLeft, veilTop, veilWidth, veilHeight, 18,
+                        color, color, false, true);
+            }
         }));
         return shell;
     }
