@@ -57,7 +57,7 @@ public final class VantaComponents {
             case COLUMN -> VantaUiNode.column(gap, padding);
             case STACK -> VantaUiNode.stack(padding).gap(gap);
         };
-        return node.background(background).radius(VantaUiTheme.RADIUS_LARGE)
+        return node.background(background).radius(VantaUiTheme.RADIUS_PANEL)
                 .border(VantaUiTheme.BORDER_SUBTLE);
     }
 
@@ -85,7 +85,7 @@ public final class VantaComponents {
         };
         return VantaUiNode.row(0, 7).height(22)
                 .align(VantaUiNode.Alignment.CENTER)
-                .background(background).radius(VantaUiTheme.RADIUS_SMALL)
+                .background(background).radius(VantaUiTheme.RADIUS_PILL)
                 .add(VantaUiNode.text(label == null ? "" : label, foreground));
     }
 
@@ -98,7 +98,9 @@ public final class VantaComponents {
                 .height(VantaUiTheme.CONTROL_HEIGHT)
                 .radius(VantaUiTheme.RADIUS_MEDIUM);
         switch (variant) {
-            case PRIMARY -> node.background(VantaClientAccent.current());
+            case PRIMARY -> node.background(VantaClientAccent.current())
+                    .buttonForeground(name.vantaclient.client.gui.compose.theme.VantaThemeFactory
+                            .create().palette().accentForeground());
             case SECONDARY -> node.background(VantaUiTheme.SURFACE)
                     .border(VantaUiTheme.BUTTON_OUTLINE);
             case QUIET -> node.background(0);
