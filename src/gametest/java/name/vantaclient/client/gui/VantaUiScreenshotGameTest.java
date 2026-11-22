@@ -194,11 +194,11 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             Vector3f top = scaled.pose().transformPosition(0.0f, 1.0f, 0.0f, new Vector3f());
             Vector3f originalTop = original.pose().transformPosition(0.0f, 1.0f, 0.0f, new Vector3f());
 
-            if (Math.abs(base.x - 3.0f) > 0.0001f
-                    || Math.abs(base.y - 5.0f) > 0.0001f
-                    || Math.abs(base.z - 7.0f) > 0.0001f
-                    || Math.abs(top.y - 5.5f) > 0.0001f
-                    || Math.abs(originalTop.y - 6.0f) > 0.0001f) {
+            if (Math.abs(base.x() - 3.0f) > 0.0001f
+                    || Math.abs(base.y() - 5.0f) > 0.0001f
+                    || Math.abs(base.z() - 7.0f) > 0.0001f
+                    || Math.abs(top.y() - 5.5f) > 0.0001f
+                    || Math.abs(originalTop.y() - 6.0f) > 0.0001f) {
                 throw new AssertionError("Ground fire scaling must shorten each quad from its block-local base "
                         + "without mutating the shared pose. base=" + base + ", top=" + top
                         + ", originalTop=" + originalTop);
