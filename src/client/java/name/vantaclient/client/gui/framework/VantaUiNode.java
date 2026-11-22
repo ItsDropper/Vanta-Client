@@ -644,9 +644,13 @@ public final class VantaUiNode implements VantaUiComponent {
                             VantaUiTheme.SURFACE_SELECTED);
                     graphics.fill(x, y + 5, x + 2, y + height - 5, accent);
                 } else if (over || focused) {
-                    VantaUiTheme.fillSquircle(graphics, x, y, width, height, VantaUiTheme.RADIUS_MEDIUM,
-                            VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
-                                    Math.round(focused ? 220.0f : 165.0f + 35.0f * hoverAmount)));
+                    int hoverSurface = buttonForeground != 0
+                            ? VantaUiTheme.withAlpha(VantaUiTheme.WHITE,
+                                    Math.round(focused ? 34.0f : 18.0f + 10.0f * hoverAmount))
+                            : VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
+                                    Math.round(focused ? 220.0f : 165.0f + 35.0f * hoverAmount));
+                    VantaUiTheme.fillSquircle(graphics, x, y, width, height,
+                            VantaUiTheme.RADIUS_MEDIUM, hoverSurface);
                 }
                 if (focused) {
                     VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
