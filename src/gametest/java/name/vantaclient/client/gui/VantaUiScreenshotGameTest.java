@@ -501,9 +501,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
         }
         if (name.vantaclient.client.gui.menu.ModsPage.columnsFor(900) != 4
-                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(819) != 3
-                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(600) != 3
-                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(599) != 2) {
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(759) != 3
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(520) != 3
+                || name.vantaclient.client.gui.menu.ModsPage.columnsFor(519) != 2) {
             throw new AssertionError("Mod grid breakpoints must select two, three or four columns deterministically.");
         }
         context.runOnClient(client -> {
