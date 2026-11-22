@@ -54,6 +54,8 @@ public final class VantaClientPreferences {
         }
     }
 
+    public static final String DEFAULT_REMOTE_RELAY_ENDPOINT = "https://vanta-relay.hugohakonen.workers.dev";
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static Path file() {
         return ClientPlatform.configDirectory().resolve("vanta-client.json");
@@ -69,8 +71,8 @@ public final class VantaClientPreferences {
     public int hudGridSize = 16;
     public double uiScale = 1.0;
     public double panelOpacity = 0.85;
-    /** User-owned HTTPS origin for remote world sharing; authentication tokens are never persisted. */
-    public String remoteRelayEndpoint = "";
+    /** Configured HTTPS origin for remote world sharing; authentication tokens are never persisted. */
+    public String remoteRelayEndpoint = DEFAULT_REMOTE_RELAY_ENDPOINT;
     /** Restrict WebRTC ICE to TURN relay candidates to avoid exposing the peer's home IP. */
     public boolean remoteMaximumIpPrivacy = false;
     /** Approved Minecraft profile UUIDs, keyed by the normalized save-root path. */
@@ -117,8 +119,10 @@ public final class VantaClientPreferences {
         if (instance.titleStyle == null) instance.titleStyle = TitleStyle.LOBBY;
         if (instance.titleTab == null || !(instance.titleTab.equals("SINGLEPLAYER") || instance.titleTab.equals("MULTIPLAYER"))) instance.titleTab = "SINGLEPLAYER";
         if (instance.lastServerIp == null || instance.lastServerIp.length() > 256) instance.lastServerIp = "";
-        if (instance.remoteRelayEndpoint == null || instance.remoteRelayEndpoint.length() > 256) {
-            instance.remoteRelayEndpoint = "";
+        if (instance.remoteRelayEndpoint == null || instance.remoteRelayEndpoint.isBlank()
+                || instance.remoteRelayEndpoint.length() > 256) {
+            // Migrate existing installations that previously had no default relay configured.
+            instance.remoteRelayEndpoint = DEFAULT_REMOTE_RELAY_ENDPOINT;
         } else {
             instance.remoteRelayEndpoint = instance.remoteRelayEndpoint.trim();
         }
