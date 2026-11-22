@@ -185,6 +185,14 @@ public final class VantaUiNode implements VantaUiComponent {
         return node;
     }
 
+    public static VantaUiNode label(String value, int color) {
+        VantaUiNode node = text(value, color);
+        node.textFont = VantaTypography.font(VantaTypography.Role.LABEL);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.LABEL);
+        node.boldText = true;
+        return node;
+    }
+
     public static VantaUiNode title(String value) {
         VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
         node.textFont = VantaTypography.font(VantaTypography.Role.TITLE);
