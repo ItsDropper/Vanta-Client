@@ -113,6 +113,7 @@ public final class VantaUiRuntime {
     public void invalidateLayout() {
         layoutInvalidationRevision.incrementAndGet();
         lastWidth = -1;
+        invalidateRender();
     }
 
     /** Marks the component tree's visual output stale after an external state change. */
@@ -128,6 +129,16 @@ public final class VantaUiRuntime {
     /** True when a state write or handled interaction occurred after the last render. */
     public boolean isRenderDirty() {
         return renderedRevision != invalidationRevision.get();
+    }
+
+    /** Read-only semantic root shared by every retained-mode screen. */
+    public VantaUiComponent componentTree() {
+        return root;
+    }
+
+    /** Currently focused component, if any, for narration and accessibility adapters. */
+    public VantaUiComponent focusedComponent() {
+        return interactions.focused();
     }
 
     public void layout(Font font, int screenWidth, int screenHeight) {
@@ -270,6 +281,7 @@ public final class VantaUiRuntime {
                     mouseY, logicalViewportWidth(), logicalViewportHeight());
             popupTarget.selectDropdownOption(option);
             lastWidth = -1;
+            invalidateRender();
             return true;
         }
 
@@ -278,6 +290,7 @@ public final class VantaUiRuntime {
             if (root.closeDropdownsExcept(null)) lastWidth = -1;
             setFocused(null);
             interactions.captureScrollbar(scrollTarget);
+            invalidateRender();
             return true;
         }
 
@@ -285,7 +298,10 @@ public final class VantaUiRuntime {
         boolean dropdownClosed = root.closeDropdownsExcept(target);
         setFocused(target);
         if (target == null) {
-            if (dropdownClosed) lastWidth = -1;
+            if (dropdownClosed) {
+                lastWidth = -1;
+                invalidateRender();
+            }
             return dropdownClosed;
         }
         target.click(mouseX, mouseY, button, font);
@@ -316,7 +332,9 @@ public final class VantaUiRuntime {
 
     public boolean mouseReleased(int button) {
         if (button != 0) return false;
-        return interactions.releasePointer(button);
+        boolean handled = interactions.releasePointer(button);
+        if (handled) invalidateRender();
+        return handled;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
@@ -325,7 +343,10 @@ public final class VantaUiRuntime {
         double logicalMouseX = (mouseX - offsetX) / uiScale;
         double logicalMouseY = (mouseY - offsetY) / uiScale;
         if (root.scrollDropdownAt(logicalMouseX, logicalMouseY, amount,
-                logicalViewportWidth(), logicalViewportHeight())) return true;
+                logicalViewportWidth(), logicalViewportHeight())) {
+            invalidateRender();
+            return true;
+        }
         boolean popupClosed = root.closeDropdownsExcept(null);
         boolean handled = root.scrollAt(logicalMouseX, logicalMouseY, amount);
         if (handled || popupClosed) {
@@ -339,12 +360,14 @@ public final class VantaUiRuntime {
         if (keyCode == 258) {
             if (root.closeDropdownsExcept(null)) lastWidth = -1;
             cycleFocus(shiftDown ? -1 : 1);
+            invalidateRender();
             return true;
         }
         VantaUiNode focused = interactions.focused();
         if (focused == null) return false;
         if (keyCode == 256 && focused.closeDropdown()) {
             lastWidth = -1;
+            invalidateRender();
             return true;
         }
         if (focused.editKey(keyCode)) {
@@ -402,6 +425,7 @@ public final class VantaUiRuntime {
     private void setFocused(VantaUiNode node) {
         pendingFocusReveal = null;
         interactions.focus(node);
+        invalidateRender();
     }
 
     private void cycleFocus(int direction) {
