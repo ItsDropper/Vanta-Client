@@ -51,7 +51,8 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
         heading.add(VantaUiNode.eyebrow("VANTA INTEGRATION"));
         heading.add(VantaUiNode.title(descriptor.displayName()));
         header.add(heading);
-        header.add(VantaUiNode.button("BACK", this::onClose).height(30));
+        header.add(VantaComponents.actionButton("BACK", null,
+                VantaComponents.ButtonVariant.SECONDARY, this::onClose).height(30));
         root.add(header);
 
         VantaUiNode content = VantaComponents.panel(VantaComponents.Surface.PANEL,
@@ -137,7 +138,8 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
             row.add(control.flex(1));
             if (setting.type() != SettingDefinition.Type.ENUM
                     || !setting.options().isEmpty()) {
-                row.add(VantaUiNode.button("Reset", VantaUiNode.Icon.RESET,
+                row.add(VantaComponents.actionButton("Reset", VantaUiNode.Icon.RESET,
+                        VantaComponents.ButtonVariant.QUIET,
                         () -> writeValue(setting, setting.defaultValue())).size(76, 28)
                         .tooltip("Restore the default value"));
             }
