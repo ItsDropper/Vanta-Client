@@ -26,7 +26,7 @@ public final class FarViewController {
     private FarViewController() {}
 
     public static void tick(Minecraft client) {
-        if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null) {
+        if (!FarViewFeature.isRenderingEnabled() || client.player == null || client.level == null) {
             // Restore the user's options when leaving a world, not only when manually disabling FarView.
             disable();
             return;
@@ -110,7 +110,7 @@ public final class FarViewController {
 
     public static void applyCurrentProfile() {
         Minecraft client = Minecraft.getInstance();
-        if (client.level != null && FarViewFeature.INSTANCE.isEnabled()) {
+        if (client.level != null && FarViewFeature.isRenderingEnabled()) {
             captureOriginalOptions(client);
             appliedQuality = null;
             applyProfile(client);
