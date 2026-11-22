@@ -29,7 +29,7 @@ The visual system is resolved as an immutable `VantaTheme` snapshot by
 Use `VantaTypography.Role` rather than choosing a font resource ad hoc. The roles map to
 the bundled `vanta:brand`, `vanta:heading`, `vanta:title`, `vanta:ui`,
 `vanta:medium` and `vanta:caption` providers. `VantaUiNode.display()`,
-`heading()`, `title()` and `eyebrow()` preserve that hierarchy and use matching
+`heading()`, `title()`, `label()` and `eyebrow()` preserve that hierarchy and use matching
 line-height tokens.
 
 Primary action buttons compute a monochrome foreground from the active accent's relative
