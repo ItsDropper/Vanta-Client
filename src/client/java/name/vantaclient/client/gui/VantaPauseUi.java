@@ -52,6 +52,8 @@ public final class VantaPauseUi implements Renderable {
     private final String subtitle;
     private int colX, colY, colW, headerH;
     private int dividerY;
+    private int lastLayoutWidth = -1;
+    private int lastLayoutHeight = -1;
     private float scale = 1.0f;
     private long lastNanos = System.nanoTime();
     private float intro;
@@ -103,7 +105,10 @@ public final class VantaPauseUi implements Renderable {
         headerH = s(78);
         int exitH = entries.size() > 1 ? rowH : 0;
         int total = headerH + primaryH + gap + middle * rowH + (entries.size() > 1 ? s(16) + exitH : 0);
-        colY = Math.max(s(12), Math.min(Math.max(0, screen.height - total), (screen.height - total) / 2));
+        int maximumTop = Math.max(0, screen.height - total - s(14));
+        colY = Math.min(maximumTop, Math.max(s(12), (screen.height - total) / 2));
+        lastLayoutWidth = screen.width;
+        lastLayoutHeight = screen.height;
         int y = colY + headerH;
         for (int i = 0; i < entries.size(); i++) {
             Entry entry = entries.get(i);
@@ -135,7 +140,7 @@ public final class VantaPauseUi implements Renderable {
         lastNanos = now;
         float blend = 1.0f - (float) Math.exp(-dt * 16.0f);
         intro += (1.0f - intro) * (1.0f - (float) Math.exp(-dt * 10.0f));
-        if (colX + colW + Math.max(s(48), screen.width / 14) != screen.width) layout();
+        if (lastLayoutWidth != screen.width || lastLayoutHeight != screen.height) layout();
         int accent = THEME.accent();
         float a = intro;
         int slide = Math.round((1.0f - a) * s(14));

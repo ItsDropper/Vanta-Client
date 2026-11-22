@@ -176,24 +176,34 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     @Override
     public int contentWidth() {
-        return Math.max(240, shellWidth() - sidebarWidth() - 1 - 48);
+        boolean compact = compactLayout();
+        return Math.max(compact ? 120 : 240,
+                shellWidth() - (compact ? 48 : sidebarWidth() + 49));
     }
 
     private VantaUiNode buildRoot() {
+        boolean compact = compactLayout();
         int sidebar = sidebarWidth();
         VantaUiNode shell = VantaUiNode.stack(0);
         shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
             // Soft drop shadow, glass body lit from above, a darker sidebar half and a hairline edge.
             MenuTheme.fill(g, x - 3, y + 4, w + 6, h + 4, 22, 0x1E000000);
             MenuTheme.gradient(g, x, y, w, h, 18, MenuTheme.panel(), MenuTheme.panelBottom());
-            VantaUiTheme.fillSquircleSides(g, x, y, sidebar, h, 18, MenuTheme.SIDEBAR,
-                    MenuTheme.SIDEBAR, true, false);
+            if (!compact) {
+                VantaUiTheme.fillSquircleSides(g, x, y, sidebar, h, 18, MenuTheme.SIDEBAR,
+                        MenuTheme.SIDEBAR, true, false);
+            }
             MenuTheme.outline(g, x, y, w, h, 18, 0x38FFFFFF);
         }));
-        VantaUiNode body = VantaUiNode.row(0, 0);
-        body.add(buildSidebar());
-        body.add(VantaUiNode.spacer(1).width(1).background(MenuTheme.LINE_SOFT).radius(0));
-        body.add(buildContent());
+        VantaUiNode body = compact ? VantaUiNode.column(8, 8) : VantaUiNode.row(0, 0);
+        if (compact) {
+            body.add(buildCompactNavigation());
+            body.add(buildContent());
+        } else {
+            body.add(buildSidebar());
+            body.add(VantaUiNode.spacer(1).width(1).background(MenuTheme.LINE_SOFT).radius(0));
+            body.add(buildContent());
+        }
         shell.add(body);
         // Brief veil over the page area after navigating, easing the new page in.
         shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
@@ -215,6 +225,27 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }
         float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
         return Math.round(150.0f * (1.0f - eased));
+    }
+
+    private VantaUiNode buildCompactNavigation() {
+        VantaUiNode navigation = VantaUiNode.row(5, 6).height(40)
+                .padding(2).background(MenuTheme.SIDEBAR);
+        navigation.add(VantaUiNode.button("Mods",
+                () -> navigate(Route.of(Page.MODS))).flex(1).height(34)
+                .selected(route.page() == Page.MODS || route.page() == Page.MOD));
+        navigation.add(VantaUiNode.button("Profiles",
+                () -> navigate(Route.of(Page.PROFILES))).flex(1).height(34)
+                .selected(route.page() == Page.PROFILES));
+        navigation.add(VantaUiNode.button("Keys",
+                () -> navigate(Route.of(Page.KEYBINDS))).flex(1).height(34)
+                .selected(route.page() == Page.KEYBINDS));
+        navigation.add(VantaUiNode.button("Themes",
+                () -> navigate(Route.of(Page.THEMES))).flex(1).height(34)
+                .selected(route.page() == Page.THEMES));
+        navigation.add(VantaUiNode.button("Prefs",
+                () -> navigate(Route.of(Page.PREFERENCES))).flex(1).height(34)
+                .selected(route.page() == Page.PREFERENCES));
+        return navigation;
     }
 
     private VantaUiNode buildSidebar() {
@@ -271,7 +302,9 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
 
     private VantaUiNode buildContent() {
         VantaUiNode content = VantaUiNode.column(0, 0).flex(1);
-        VantaUiNode bar = VantaUiNode.row(10, 22).height(84).align(VantaUiNode.Alignment.CENTER);
+        boolean compact = compactLayout();
+        VantaUiNode bar = VantaUiNode.row(compact ? 6 : 10, compact ? 8 : 22)
+                .height(compact ? 58 : 84).align(VantaUiNode.Alignment.CENTER);
         bar.add(MenuComponents.iconButton(Icon.ARROW_LEFT, "Back", !backStack.isEmpty(), this::goBack));
         bar.add(MenuComponents.iconButton(Icon.ARROW_RIGHT, "Forward", !forwardStack.isEmpty(), this::goForward));
         String pageTitle = title();
@@ -294,15 +327,15 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
                         }));
             }
         }
-        bar.add(buildSearch());
+        bar.add(buildSearch(compact));
         bar.add(MenuComponents.iconButton(Icon.CLOSE, "Close", true, this::onClose));
         content.add(bar);
         content.add(buildBody());
         return content;
     }
 
-    private VantaUiNode buildSearch() {
-        VantaUiNode box = VantaUiNode.row(0, 0).width(320).height(44)
+    private VantaUiNode buildSearch(boolean compact) {
+        VantaUiNode box = VantaUiNode.row(0, 0).width(compact ? 170 : 320).height(compact ? 38 : 44)
                 .background(MenuTheme.FIELD).radius(13).border(MenuTheme.alpha(MenuTheme.accent(), 230));
         box.add(VantaUiNode.canvas((g, f, x, y, w, h, st) ->
                 name.vantaclient.client.gui.menu.MenuIcons.draw(g, Icon.SEARCH, x + 12, y + (h - 18) / 2, 18,
@@ -312,7 +345,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
             refocusSearch = true;
             if (route.page() != Page.MODS) navigate(Route.of(Page.MODS));
             else rebuildUi();
-        }, 40).menuStyle().height(44).flex(1);
+        }, 40).menuStyle().height(compact ? 38 : 44).flex(1);
         box.add(searchNode);
         return box;
     }
