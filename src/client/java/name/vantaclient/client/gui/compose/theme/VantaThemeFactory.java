@@ -64,7 +64,7 @@ public final class VantaThemeFactory {
                     Math.round(0xD0 * opacity),
                     0xFF91A9C6, 0xFFFFFFFF, 0xFF030811,
                     0x68050B15, 0x78070D17,
-                    0x25, 0x22, 0x42, 0x0C, 0x16, 0xF0, 0x68
+                    0x25, 0x22, 0x42, 0x0C, 0x16, 0xF0, 0x24, 0.68f
             );
             VantaTheme.Motion motion = new VantaTheme.Motion(
                     16.0f, 22.0f, 14.0f, animations
