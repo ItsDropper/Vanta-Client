@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class LoopbackTcpBridge implements AutoCloseable {
     public static final int MAX_CONNECTION_LIMIT = 64;
-    private static final int COPY_BUFFER_BYTES = 16 * 1024;
+    private static final int COPY_BUFFER_BYTES = 64 * 1024;
 
     /** A single bidirectional, ordered byte stream supplied by the transport layer. */
     public interface DuplexConnection extends AutoCloseable {
@@ -254,7 +254,6 @@ public final class LoopbackTcpBridge implements AutoCloseable {
                 int read;
                 while ((read = source.read(buffer)) != -1) {
                     destination.write(buffer, 0, read);
-                    destination.flush();
                 }
                 shutdownDestination.run();
             } catch (IOException | RuntimeException exception) {
