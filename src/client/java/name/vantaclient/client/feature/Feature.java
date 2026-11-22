@@ -4,7 +4,7 @@ public abstract class Feature {
 
     private final String name;
     private final String description;
-    private boolean enabled;
+    private volatile boolean enabled;
     private final Category category;
 
     public Feature(
