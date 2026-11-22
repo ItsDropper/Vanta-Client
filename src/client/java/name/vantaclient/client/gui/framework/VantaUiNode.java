@@ -2,6 +2,7 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.theme.VantaTheme;
 import name.vantaclient.client.gui.compose.typography.VantaTypography;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
