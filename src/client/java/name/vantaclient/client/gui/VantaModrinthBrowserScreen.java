@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import com.mojang.blaze3d.platform.NativeImage;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
@@ -171,10 +172,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         }
         body.add(sidebar);
 
-        VantaUiNode main = VantaUiNode.column(compact ? 4 : 8, compact ? 4 : 10)
-                .flex(1)
-                .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                .padding(compact ? 5 : 14);
+        VantaUiNode main = VantaComponents.panel(VantaComponents.Surface.ELEVATED,
+                compact ? 4 : 8, compact ? 5 : 14).flex(1);
         VantaUiNode heading = VantaUiNode.row(8, 0)
                 .height(compact ? 16 : 24)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -188,11 +187,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
             main.add(VantaUiNode.progressIndicator("Working…").height(30));
         }
 
-        VantaUiNode cards = VantaUiNode.column(compact ? 4 : 8, compact ? 4 : 8)
-                .flex(1)
-                .background(VantaUiTheme.INPUT_SURFACE)
-                .padding(compact ? 4 : 8)
-                .scrollable();
+        VantaUiNode cards = VantaComponents.panel(VantaComponents.Surface.FIELD,
+                compact ? 4 : 8, compact ? 4 : 8).flex(1).scrollable();
         if (busy && visibleCount() == 0) {
             VantaUiNode loading = VantaUiNode.column(8, 16)
                     .height(132)
@@ -204,14 +200,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
                     VantaUiTheme.TEXT_MUTED));
             cards.add(loading);
         } else if (visibleCount() == 0) {
-            VantaUiNode empty = VantaUiNode.column(8, 16)
-                    .height(140)
-                    .background(VantaUiTheme.PANEL_RAISED)
-                    .align(VantaUiNode.Alignment.CENTER);
-            empty.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW));
-            empty.add(VantaUiNode.title(emptyTitle()));
-            empty.add(VantaUiNode.paragraph(emptyDescription(), VantaUiTheme.TEXT_MUTED, 2));
-            cards.add(empty);
+            cards.add(VantaComponents.emptyState(VantaUiNode.Icon.OVERVIEW,
+                    emptyTitle(), emptyDescription(), null, null).height(140));
         } else {
             addVisibleCards(cards);
         }
