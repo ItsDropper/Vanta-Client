@@ -232,8 +232,10 @@ public final class KeybindsPage {
             MenuTheme.fill(g, x, y, w, h, radius, MenuTheme.alpha(state, 64));
             MenuTheme.outline(g, x, y, w, h, radius, MenuTheme.alpha(state, 235));
         } else {
+            // The spacing between keycaps already separates them visually. A second
+            // four-edge outline on every unbound key adds hundreds of GUI fill
+            // submissions per frame without communicating any additional state.
             MenuTheme.fill(g, x, y, w, h, radius, 0x7A141926);
-            MenuTheme.outline(g, x, y, w, h, radius, 0x30FFFFFF);
         }
         if (selected) {
             MenuTheme.outline(g, x - 2, y - 2, w + 4, h + 4, radius + 2, 0xFFFFFFFF);
