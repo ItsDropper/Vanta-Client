@@ -165,7 +165,7 @@ public final class ModCatalog {
         for (ExperimentalModHotLoader.AvailableMod mod : mods) {
             String iconPath = mod.iconPath();
             if (iconPath == null || iconPath.isBlank() || iconPath.startsWith("/")
-                    || iconPath.contains("..") || iconPath.contains("\\\\")) continue;
+                    || iconPath.contains("..") || iconPath.contains("\\")) continue;
             try (JarFile jar = new JarFile(mod.path().toFile())) {
                 var entry = jar.getJarEntry(iconPath);
                 if (entry == null || entry.getSize() <= 0 || entry.getSize() > 1024 * 1024) continue;
