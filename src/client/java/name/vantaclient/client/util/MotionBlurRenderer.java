@@ -106,7 +106,7 @@ public final class MotionBlurRenderer {
             }
             previousFrameNanos = now;
 
-            writeBlend(frameRetention, clamp(config.motionBlurIntensity, 0.0f, 1.0f));
+            writeBlend(frameRetention);
             chain.process(mainTarget, allocator);
             historyPrimed = true;
         } catch (Throwable error) {
@@ -173,11 +173,11 @@ public final class MotionBlurRenderer {
         }
     }
 
-    private static void writeBlend(float retention, float intensity) {
+    private static void writeBlend(float retention) {
         if (blendFactorUbo == null) return;
         try (GpuBuffer.MappedView view =
                      RenderSystem.getDevice().createCommandEncoder().mapBuffer(blendFactorUbo, false, true)) {
-            Std140Builder.intoBuffer(view.data()).putVec4(retention, intensity, 0.0f, 0.0f);
+            Std140Builder.intoBuffer(view.data()).putVec4(retention, 0.0f, 0.0f, 0.0f);
         }
     }
 
