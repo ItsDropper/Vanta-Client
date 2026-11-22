@@ -634,11 +634,14 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         if (theme.spacing().xs() != 4 || theme.spacing().xxl() != 24
                 || theme.spacing().controlHeight() <= 0
                 || theme.motion().hoverRate() <= 0.0f
-                || theme.glass().popoverAlpha() <= theme.glass().cardAlpha()) {
-            throw new AssertionError("VantaCompose token groups must expose coherent layout, motion and glass values.");
+                || theme.glass().popoverAlpha() <= theme.glass().cardAlpha()
+                || theme.typography().displaySize() < theme.typography().headingSize()
+                || theme.palette().success() == theme.palette().danger()) {
+            throw new AssertionError("VantaCompose token groups must expose coherent layout, typography, palette, motion and glass values.");
         }
         try {
-            new VantaTheme(null, theme.spacing(), theme.glass(), theme.motion(), theme.blurStrategy());
+            new VantaTheme(null, theme.spacing(), theme.typography(), theme.glass(),
+                    theme.motion(), theme.blurStrategy());
             throw new AssertionError("A theme with a missing token group must be rejected.");
         } catch (IllegalArgumentException expected) {
             // Invalid theme snapshots must fail at construction, not during rendering.
