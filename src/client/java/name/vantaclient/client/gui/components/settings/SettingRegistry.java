@@ -108,14 +108,6 @@ public final class SettingRegistry {
             settings.add(new SliderSetting("Frame Persistence", 0.0, 0.95, "",
                     () -> (double) MotionBlurFeature.getStrength(),
                     value -> MotionBlurFeature.setStrength(value.floatValue())));
-            settings.add(new SliderSetting("Blur Intensity", 0.0, 1.0, "%",
-                    () -> (double) (DropperUtilsConfig.get().motionBlurIntensity * 100.0f),
-                    value -> {
-                        DropperUtilsConfig.get().motionBlurIntensity =
-                                Math.max(0.0f, Math.min(1.0f, value.floatValue() / 100.0f));
-                        DropperUtilsConfig.save();
-                        name.vantaclient.client.util.MotionBlurRenderer.reset();
-                    }));
         }
 
         if (feature == LowFireFeature.INSTANCE) {
