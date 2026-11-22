@@ -39,8 +39,8 @@ jobs:
         run: |
           shopt -s nullglob
           artifacts=(build/libs/dropperutils-*-*-${{ matrix.platform }}.jar)
-          test "\${#artifacts[@]}" -eq 1
-          artifact="\${artifacts[0]}"
+          test "${#artifacts[@]}" -eq 1
+          artifact="${artifacts[0]}"
           native_jars="$(jar tf "$artifact" | grep -E '^META-INF/jars/.*-(windows|macos|linux)-(x86_64|aarch64|aarch32)\.jar$' || true)"
           printf '%s\n' "$native_jars"
           test "$(printf '%s\n' "$native_jars" | grep -c .)" -eq 1
