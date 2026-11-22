@@ -293,7 +293,8 @@ public final class KeybindsPage {
     }
 
     private static void addSection(VantaUiNode page, MenuHost host, Font font, String title, boolean vanta,
-                                   Set<KeyMapping> vantaMappings, Set<KeyMapping> conflicts,\n                                   Map<String, List<KeyMapping>> index) {
+                                   Set<KeyMapping> vantaMappings, Set<KeyMapping> conflicts,
+                                   Map<String, List<KeyMapping>> index) {
         List<KeyMapping> mappings = host.minecraft().options.keyMappings;
         List<VantaUiNode> rows = new ArrayList<>();
         for (KeyMapping mapping : mappings) {
@@ -304,7 +305,8 @@ public final class KeybindsPage {
         for (VantaUiNode row : rows) page.add(row);
     }
 
-    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping, Set<KeyMapping> conflicts,\n                                   Map<String, List<KeyMapping>> index) {
+    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping, Set<KeyMapping> conflicts,
+                                   Map<String, List<KeyMapping>> index) {
         VantaUiNode control = VantaUiNode.row(8, 0).height(32);
         boolean conflict = conflicts.contains(mapping);
         control.add(keyButton(host, mapping, conflict).flex(1));
