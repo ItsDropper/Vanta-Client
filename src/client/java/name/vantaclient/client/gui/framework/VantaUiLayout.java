@@ -166,7 +166,10 @@ final class VantaUiLayout {
         int measuredContent = childGap;
         for (int i = 0; i < node.children.size(); i++) {
             VantaUiNode child = node.children.get(i);
-            if (!child.visible) continue;
+            if (!child.visible) {
+                primarySizes[i] = 0;
+                continue;
+            }
             int primary = child.flex > 0.0f && totalFlex > 0.0f
                     ? Math.round(availablePrimary * child.flex / totalFlex)
                     : node.direction == VantaUiNode.Direction.COLUMN ? intrinsicHeight(child, font) : intrinsicWidth(child, font);
@@ -252,6 +255,10 @@ final class VantaUiLayout {
                 arrange(child, cursor, childY, childWidth, childHeight, font, true);
                 cursor += childWidth + node.gap + distributedGap;
             }
+        }
+        if (node.direction == VantaUiNode.Direction.COLUMN && node.scrollable) {
+            int laidOutContentHeight = Math.max(0, cursor - node.gap - innerY + node.scrollOffset);
+            node.contentHeight = Math.max(node.contentHeight, laidOutContentHeight);
         }
     }
 
