@@ -112,11 +112,14 @@ public final class VantaComponents {
                 .height(hasDescription ? 58 : 42)
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(Objects.requireNonNull(title, "title")));
+        String resolvedTitle = Objects.requireNonNull(title, "title");
+        if (!resolvedTitle.equals(control.semantics().label())) {
+            labels.add(VantaUiNode.text(resolvedTitle));
+        }
         if (hasDescription) {
             labels.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED, 2));
         }
-        row.add(labels);
+        if (!labels.children().isEmpty()) row.add(labels);
         row.add(controlWidth > 0 ? control.width(controlWidth) : control);
         return row;
     }
