@@ -16,6 +16,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -85,6 +86,8 @@ public final class VantaUiNode implements VantaUiComponent {
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
     private boolean boldText;
     private int buttonForeground;
+    private IntSupplier buttonForegroundSupplier;
+    private IntSupplier backgroundSupplier;
     private int background;
     int preferredWidth = -1;
     int preferredHeight = -1;
@@ -387,7 +390,16 @@ public final class VantaUiNode implements VantaUiComponent {
         return this;
     }
 
-    public VantaUiNode background(int color) { background = color; return this; }
+    public VantaUiNode background(int color) {
+        background = color;
+        backgroundSupplier = null;
+        return this;
+    }
+    /** Theme-bound surface color resolved when the node is painted. */
+    public VantaUiNode background(IntSupplier color) {
+        backgroundSupplier = color;
+        return this;
+    }
     /** Corner radius used by this node's own background and border. */
     public VantaUiNode radius(int value) { cornerRadius = Math.max(0, value); return this; }
     /** One-pixel outline drawn over the background with the node's corner radius. */
@@ -440,7 +452,16 @@ public final class VantaUiNode implements VantaUiComponent {
     }
     public VantaUiNode tooltip(String value) { tooltip = value == null ? "" : value; return this; }
     public VantaUiNode textColor(int color) { textColor = color; return this; }
-    public VantaUiNode buttonForeground(int color) { buttonForeground = color; return this; }
+    public VantaUiNode buttonForeground(int color) {
+        buttonForeground = color;
+        buttonForegroundSupplier = null;
+        return this;
+    }
+    /** Theme-bound foreground paired with a dynamic action surface. */
+    public VantaUiNode buttonForeground(IntSupplier color) {
+        buttonForegroundSupplier = color;
+        return this;
+    }
     public VantaUiNode enabled(boolean value) { enabled = value; return this; }
     public VantaUiNode selected(boolean value) { selected = value; return this; }
     public VantaUiNode visible(boolean value) { visible = value; return this; }
@@ -460,7 +481,7 @@ public final class VantaUiNode implements VantaUiComponent {
     public boolean isEnabled() { return enabled; }
     boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
-    int backgroundColor() { return background; }
+    int backgroundColor() { return backgroundSupplier == null ? background : backgroundSupplier.getAsInt(); }
     int borderColor() { return borderColor; }
     int cornerRadius() { return cornerRadius; }
     boolean isSelected() { return selected; }
@@ -597,6 +618,8 @@ public final class VantaUiNode implements VantaUiComponent {
         boolean over = contains(mouseX, mouseY);
         int accent = theme.accent();
         VantaTheme.Glass stateTokens = theme.composeTheme().glass();
+        int resolvedButtonForeground = buttonForegroundSupplier == null
+                ? buttonForeground : buttonForegroundSupplier.getAsInt();
         switch (kind) {
             case TEXT -> {
                 if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
@@ -654,7 +677,7 @@ public final class VantaUiNode implements VantaUiComponent {
                             VantaUiTheme.SURFACE_SELECTED);
                     graphics.fill(x, y + 5, x + 2, y + height - 5, accent);
                 } else if (over || focused) {
-                    int hoverSurface = buttonForeground != 0
+                    int hoverSurface = resolvedButtonForeground != 0
                             ? VantaUiTheme.withAlpha(VantaUiTheme.WHITE,
                                     Math.round(focused ? stateTokens.controlFocusAlpha()
                                     : stateTokens.controlHoverAlpha() + 35.0f * hoverAmount))
