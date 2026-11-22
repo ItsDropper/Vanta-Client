@@ -37,7 +37,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 ## Phase 4 — responsive screen redesign and overflow prevention (2026-11-22)
 
-<badge color="warning">Implementation pushed; Phase 4 build and screenshot verification pending</badge>
+<badge color="success">Phase 4 build and 80-image screenshot workflow passed</badge>
 
 - The primary settings shell switches from its desktop sidebar to a compact five-destination navigation row when the physical viewport is constrained. The page header and search field reduce their footprint with the shell, while page content receives the actual remaining width.
 - The retained runtime exposes a pure viewport calculation that separates Minecraft GUI coordinates, preferred UI scale, full-window zoom and design-space bounds. Its viewport regression matrix covers GUI scales 1–8, six common framebuffer sizes, three preferred scales and three zoom levels.
@@ -46,6 +46,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 - The title screen derives one shared scale from both viewport dimensions, keeping its left cards, play card, top controls and popovers inside the available screen width. The pause menu computes its vertical fit from the number of registered vanilla/modded actions, then scales and centers the complete stack; the account label is omitted or truncated when the top bar cannot safely contain it.
 - Notification toasts cap their visible stack to the available vertical space and keep their card bounds inside narrow screens.
 - Added layout-allocation GameTests for proportional shrink, exact-fit preservation, zero-width and one-pixel viewports. Existing title, settings, installed-mod, Modrinth, HUD-editor and world-sharing screenshot coverage remains the visual regression suite.
+- Verified on commit `f1a5261`: [seven-platform build](https://github.com/ItsDropper/Vanta-Client/actions/runs/45071991490) and [80-image Minecraft screenshot workflow](https://github.com/ItsDropper/Vanta-Client/actions/runs/45071991460) both passed.
 
 ## Foundation
 
@@ -81,9 +82,9 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 ## Automated visual verification
 
-<badge color="warning">Phase 3 CI status recorded separately; Phase 4 verification pending</badge>
+<badge color="success">Phase 3 and Phase 4 verification passed</badge>
 
-Phase 2 commit `65215cc` passed its [Gradle build](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740468) and [80-image screenshot workflow](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740527). Phase 3 changes are pushed; the Phase 4 commit adds a separate build and screenshot run.
+Phase 2 commit `65215cc` passed its [Gradle build](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740468) and [80-image screenshot workflow](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740527). Phase 3 build run [45069533919](https://github.com/ItsDropper/Vanta-Client/actions/runs/45069533919) passed; Phase 4 verification is recorded above.
 
 The baseline commit `5beed53` passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the original 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)). Subsequent implementation batches also passed both workflows:
 
