@@ -4,7 +4,7 @@ on: [pull_request, push]
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build \${{ matrix.platform }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -30,40 +30,26 @@ jobs:
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
       - name: build
-        run: ./gradlew build -Pwebrtc_platform=${{ matrix.platform }}
+        run: ./gradlew build -Pwebrtc_platform=\${{ matrix.platform }}
       - name: build VantaLoader artifact
         if: matrix.platform == 'linux-x86_64'
-        run: ./gradlew vantaLoaderJar -Pwebrtc_platform=${{ matrix.platform }}
+        run: ./gradlew vantaLoaderJar -Pwebrtc_platform=\${{ matrix.platform }}
       - name: verify exactly one WebRTC native platform is bundled
         shell: bash
         run: |
           shopt -s nullglob
-          artifacts=(build/libs/dropperutils-*-*-${{ matrix.platform }}.jar)
-          test "${#artifacts[@]}" -eq 1
-          artifact="${artifacts[0]}"
-          native_jars="$(jar tf "$artifact" | grep -E '^META-INF/jars/.*-(windows|macos|linux)-(x86_64|aarch64|aarch32)\.jar
-      - name: upload platform mod
-        uses: actions/upload-artifact@v7
-        with:
-          name: Vanta-Client-${{ matrix.platform }}
-          path: build/libs/dropperutils-*-1.21.11-${{ matrix.platform }}.jar
-          if-no-files-found: error
-      - name: upload VantaLoader artifact
-        if: matrix.platform == 'linux-x86_64'
-        uses: actions/upload-artifact@v7
-        with:
-          name: VantaLoader-compatible-artifact
-          path: build/libs/*-vantaloader.jar
-          if-no-files-found: error
- || true)"
+          artifacts=(build/libs/dropperutils-*-*-\${{ matrix.platform }}.jar)
+          test "\${#artifacts[@]}" -eq 1
+          artifact="\${artifacts[0]}"
+          native_jars="$(jar tf "$artifact" | grep -E '^META-INF/jars/.*-(windows|macos|linux)-(x86_64|aarch64|aarch32)\.jar$' || true)"
           printf '%s\n' "$native_jars"
           test "$(printf '%s\n' "$native_jars" | grep -c .)" -eq 1
-          [[ "$native_jars" == *"-${{ matrix.platform }}.jar"* ]]
+          [[ "$native_jars" == *"-\${{ matrix.platform }}.jar"* ]]
       - name: upload platform mod
         uses: actions/upload-artifact@v7
         with:
-          name: Vanta-Client-${{ matrix.platform }}
-          path: build/libs/dropperutils-*-1.21.11-${{ matrix.platform }}.jar
+          name: Vanta-Client-\${{ matrix.platform }}
+          path: build/libs/dropperutils-*-*-\${{ matrix.platform }}.jar
           if-no-files-found: error
       - name: upload VantaLoader artifact
         if: matrix.platform == 'linux-x86_64'
