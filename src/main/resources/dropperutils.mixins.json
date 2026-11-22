@@ -21,6 +21,7 @@
     "GroundFireHeightMixin",
     "AnchorInteractionMixin",
     "AnchorBlockUpdateMixin",
+    "CrystalOptimizerMixin",
     "LightTextureMixin",
     "AbstractButtonMixin",
     "TitleScreenMixin",

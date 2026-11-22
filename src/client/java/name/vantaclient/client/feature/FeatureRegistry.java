@@ -15,6 +15,7 @@ public class FeatureRegistry {
             ArmorHudFeature.INSTANCE,
             SaturationFeature.INSTANCE,
             AnchorOptimizerFeature.INSTANCE,
+            CrystalOptimizerFeature.INSTANCE,
             DebugHudFeature.INSTANCE,
             NoExplosionEffectsFeature.INSTANCE,
             LowFireFeature.INSTANCE,

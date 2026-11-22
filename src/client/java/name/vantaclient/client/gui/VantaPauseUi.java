@@ -24,7 +24,7 @@ import java.util.WeakHashMap;
  * everything between sits in a two-column grid.
  */
 public final class VantaPauseUi implements Renderable {
-    private static final Identifier MARK = Identifier.fromNamespaceAndPath("vanta", "textures/gui/title/mark.png");
+    private static final Identifier MARK = Identifier.fromNamespaceAndPath("vanta", "textures/gui/title/mark_small.png");
     private static final VantaUiTheme THEME = new VantaUiTheme();
     private static final Set<Object> OWNED = Collections.newSetFromMap(new WeakHashMap<>());
 
@@ -147,7 +147,7 @@ public final class VantaPauseUi implements Renderable {
         // Brand and player, top bar.
         int margin = s(28);
         int mark = s(24);
-        g.blit(RenderPipelines.GUI_TEXTURED, MARK, margin, s(20), 0.0f, 0.0f, mark, mark, 256, 256, 256, 256,
+        g.blit(RenderPipelines.GUI_TEXTURED, MARK, margin, s(20), 0.0f, 0.0f, mark, mark, 96, 96, 96, 96,
                 VantaText.withAlpha(0xFFFFFFFF, a));
         VantaText.draw(g, "Vanta", margin + mark + s(10), s(20) + mark / 2.0f, s(17), VantaText.withAlpha(0xFFFFFFFF, a), Weight.BOLD);
         String name = Minecraft.getInstance().getUser().getName();

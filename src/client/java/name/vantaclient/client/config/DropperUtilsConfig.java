@@ -24,6 +24,7 @@ public class DropperUtilsConfig {
     public boolean motionBlur = false;
     public boolean smoothZoom = true;
     public boolean anchorOptimizer = false;
+    public boolean crystalOptimizer = false;
     public boolean debugHud = false;
     public boolean noExplosionEffects = false;
     public boolean lowFire = false;

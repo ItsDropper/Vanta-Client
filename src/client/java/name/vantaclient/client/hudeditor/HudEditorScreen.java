@@ -55,7 +55,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "vanta", "textures/gui/title/mark.png"))
+                "vanta", "textures/gui/title/mark_small.png"))
                 .size(compact ? 20 : 26, compact ? 20 : 26));
         VantaUiNode labels = VantaUiNode.column(2, 0);
         labels.add(VantaUiNode.title("HUD editor"));

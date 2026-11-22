@@ -14,7 +14,7 @@ public final class MenuComponents {
     private MenuComponents() {}
 
     public static final Identifier LOGO =
-            Identifier.fromNamespaceAndPath("dropperutils", "textures/gui/vanta_logo_transparent.png");
+            Identifier.fromNamespaceAndPath("vanta", "textures/gui/title/mark_small.png");
 
     private static final int CARD_BORDER = 0x26FFFFFF;
     private static final int CARD_BORDER_HOVER = 0x47FFFFFF;
@@ -63,7 +63,7 @@ public final class MenuComponents {
 
     public static VantaUiNode brand() {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
-            int logoW = 38;
+            int logoW = 28;
             int logoH = 28;
             int vantaWidth = MenuTheme.width(font, "VANTA", MenuTheme.FONT_HEADING);
             int clientWidth = MenuTheme.width(font, "CLIENT", MenuTheme.FONT_SMALL);
@@ -71,7 +71,7 @@ public final class MenuComponents {
             int left = x + Math.max(0, (w - total) / 2);
             int cy = y + h / 2;
             g.blit(RenderPipelines.GUI_TEXTURED, LOGO, left, cy - logoH / 2, 0.0f, 0.0f, logoW, logoH,
-                    962, 702, 962, 702);
+                    96, 96, 96, 96);
             MenuTheme.text(g, font, "VANTA", left + logoW + 10, cy, MenuTheme.TEXT, MenuTheme.FONT_HEADING);
             // Same baseline as VANTA: cap centre of the 11px label sits 5 units below the heading's.
             MenuTheme.text(g, font, "CLIENT", left + logoW + 16 + vantaWidth, cy + 5,

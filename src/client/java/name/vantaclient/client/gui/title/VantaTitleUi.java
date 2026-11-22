@@ -59,7 +59,7 @@ public final class VantaTitleUi {
     private static final String DISCORD_INVITE = "https://discord.gg/yG2CdjxYj";
     private static final FontDescription REGULAR = font("ui");
     private static final FontDescription MEDIUM = font("medium");
-    private static final Identifier MARK = tex("mark");
+    private static final Identifier MARK = tex("mark_small");
     private static final Identifier ICON_CHAT = tex("chat");
     private static final Identifier ICON_BELL = tex("bell");
     private static final Identifier ICON_GRID = tex("grid");
@@ -596,7 +596,7 @@ public final class VantaTitleUi {
         int cy = s(20) + s(17);
         int mark = s(26);
         g.blit(RenderPipelines.GUI_TEXTURED, MARK, x, cy - mark / 2, 0.0f, 0.0f, mark, mark,
-                256, 256, 256, 256, alpha(0xFFFFFFFF, intro));
+                96, 96, 96, 96, alpha(0xFFFFFFFF, intro));
         text(g, "Vanta", x + mark + s(10), cy, 18, alpha(TEXT_BRIGHT, intro), true);
 
         for (AbstractButton button : new AbstractButton[]{tabPlay, tabRealms, tabOptions}) {
@@ -647,7 +647,7 @@ public final class VantaTitleUi {
         } else {
             tint = alpha(button.active ? mix(0xFFC3CCDA, TEXT_BRIGHT, hover) : 0xFF4B5563, intro);
         }
-        int tex = icon == MARK ? 256 : 64;
+        int tex = icon == MARK ? 96 : 64;
         g.blit(RenderPipelines.GUI_TEXTURED, icon, x + (size - glyph) / 2, y + (size - glyph) / 2,
                 0.0f, 0.0f, glyph, glyph, tex, tex, tex, tex, tint);
         if (badge > 0 && !open) {
