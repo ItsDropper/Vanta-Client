@@ -171,8 +171,8 @@ public final class KeybindsPage {
         if (selected != GLFW.GLFW_KEY_UNKNOWN) {
             addSelection(scroll, host, font, index, conflicts, selected);
         }
-        addSection(scroll, host, font, "VANTA", true, vantaMappings, conflicts);
-        addSection(scroll, host, font, "MINECRAFT", false, vantaMappings, conflicts);
+        addSection(scroll, host, font, "VANTA", true, vantaMappings, conflicts, index);
+        addSection(scroll, host, font, "MINECRAFT", false, vantaMappings, conflicts, index);
         return scroll;
     }
 
@@ -289,22 +289,22 @@ public final class KeybindsPage {
                     ModSettingsPage.descriptionWidth(host, 1)));
             return;
         }
-        for (KeyMapping mapping : users) page.add(row(host, font, mapping, conflicts));
+        for (KeyMapping mapping : users) page.add(row(host, font, mapping, conflicts, index));
     }
 
     private static void addSection(VantaUiNode page, MenuHost host, Font font, String title, boolean vanta,
-                                   Set<KeyMapping> vantaMappings, Set<KeyMapping> conflicts) {
+                                   Set<KeyMapping> vantaMappings, Set<KeyMapping> conflicts,\n                                   Map<String, List<KeyMapping>> index) {
         List<KeyMapping> mappings = host.minecraft().options.keyMappings;
         List<VantaUiNode> rows = new ArrayList<>();
         for (KeyMapping mapping : mappings) {
-            if (vantaMappings.contains(mapping) == vanta) rows.add(row(host, font, mapping, conflicts));
+            if (vantaMappings.contains(mapping) == vanta) rows.add(row(host, font, mapping, conflicts, index));
         }
         if (rows.isEmpty()) return;
         page.add(MenuComponents.sectionTitle(title));
         for (VantaUiNode row : rows) page.add(row);
     }
 
-    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping, Set<KeyMapping> conflicts) {
+    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping, Set<KeyMapping> conflicts,\n                                   Map<String, List<KeyMapping>> index) {
         VantaUiNode control = VantaUiNode.row(8, 0).height(32);
         boolean conflict = conflicts.contains(mapping);
         control.add(keyButton(host, mapping, conflict).flex(1));
@@ -312,7 +312,7 @@ public final class KeybindsPage {
                 () -> host.resetKey(mapping)).size(32, 32));
         String detail = null;
         if (conflict) {
-            List<KeyMapping> users = bindingIndex(host).get(mapping.saveString());
+            List<KeyMapping> users = index.get(mapping.saveString());
             if (users != null) {
                 for (KeyMapping other : users) {
                     if (other != mapping) {
