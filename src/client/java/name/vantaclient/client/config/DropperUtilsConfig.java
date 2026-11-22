@@ -14,7 +14,7 @@ public class DropperUtilsConfig {
         return ClientPlatform.configDirectory().resolve("dropperutils.json").toFile();
     }
 
-    public int configVersion = 22;
+    public int configVersion = 23;
 
     public boolean armorHud = false;
     public boolean totemCounter = false;
@@ -81,7 +81,7 @@ public class DropperUtilsConfig {
     public float motionBlurSensitivity = 1.0f;
     public float lowFireHeight = 0.5f;
     /** Vertical scale applied to placed fire and soul-fire block geometry when Ground Fire Height is enabled. */
-    public float groundFireHeight = 1.0f;
+    public float groundFireHeight = 0.5f;
     public float fullbrightBrightness = 100.0f;
     public float fullbrightMinimum = 0.0f;
     public int anchorScanInterval = 40;
@@ -191,6 +191,7 @@ public class DropperUtilsConfig {
                 if (INSTANCE.configVersion < 20) migrateV20();
                 if (INSTANCE.configVersion < 21) migrateV21();
                 if (INSTANCE.configVersion < 22) migrateV22();
+                if (INSTANCE.configVersion < 23) migrateV23();
                 fixBrokenHudPositions();
                 sanitizeHudConfiguration();
             } else {
@@ -356,6 +357,15 @@ public class DropperUtilsConfig {
         INSTANCE.groundFireHeightEnabled = false;
         INSTANCE.groundFireHeight = 1.0f;
         INSTANCE.configVersion = 22;
+        save();
+    }
+
+    private static void migrateV23() {
+        System.out.println("[DropperUtils] Migrating config v22 -> v23");
+        // Ground-fire height had shipped at 100%, which is visually identical
+        // to vanilla even when the feature was enabled.
+        INSTANCE.groundFireHeight = 0.5f;
+        INSTANCE.configVersion = 23;
         save();
     }
 
