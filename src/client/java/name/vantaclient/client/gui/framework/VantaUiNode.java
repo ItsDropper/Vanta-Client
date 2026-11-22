@@ -194,7 +194,7 @@ public final class VantaUiNode implements VantaUiComponent {
     public static VantaUiNode heading(String value) {
         VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
         node.textFont = VantaTypography.font(VantaTypography.Role.HEADING);
-        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.DISPLAY);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.HEADING);
         node.boldText = true;
         return node;
     }
