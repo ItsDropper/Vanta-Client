@@ -5,10 +5,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.GameType;
 
 /**
- * First-stage world sharing through Minecraft's existing integrated-server LAN support.
- *
- * This deliberately does not implement Internet invitations or expose a public address.
- * Remote peer hosting requires a separate authenticated signalling and transport layer.
+ * Publishes the active singleplayer world through Minecraft's integrated-server LAN support.
  */
 public final class VantaLanHostingService {
     public enum State {
@@ -18,15 +15,18 @@ public final class VantaLanHostingService {
         FAILED
     }
 
-    public record Status(State state, int port) {}
+    public record Status(State state, int port, String detail) {
+        public Status(State state, int port) {
+            this(state, port, "");
+        }
+    }
 
     private VantaLanHostingService() {}
 
     public static Status status() {
         MinecraftServer server = currentServer();
         if (server == null) return new Status(State.NO_WORLD, -1);
-        if (!server.isPublished()) return new Status(State.NOT_HOSTED, -1);
-        return new Status(State.HOSTED, server.getPort());
+        return publishedStatus(server);
     }
 
     /**
@@ -36,22 +36,49 @@ public final class VantaLanHostingService {
      */
     public static Status start(GameType gameType, boolean allowCommands) {
         MinecraftServer server = currentServer();
-        if (server == null) return new Status(State.NO_WORLD, -1);
-        if (server.isPublished()) return new Status(State.HOSTED, server.getPort());
-        if (gameType == null) return new Status(State.FAILED, -1);
+        if (server == null) return new Status(State.NO_WORLD, -1, "Open a singleplayer world first.");
+        if (server.isPublished()) return publishedStatus(server);
+        if (gameType == null) {
+            return new Status(State.FAILED, -1, "Select a valid game mode before opening the world to LAN.");
+        }
 
         try {
-            if (!server.publishServer(gameType, allowCommands, 0) || !server.isPublished()) {
-                return new Status(State.FAILED, -1);
+            if (!server.publishServer(gameType, allowCommands, 0)) {
+                return new Status(State.FAILED, -1,
+                        "Minecraft refused to publish the integrated server to LAN.");
             }
-            int port = server.getPort();
-            return port > 0 && port <= 65_535
-                    ? new Status(State.HOSTED, port)
-                    : new Status(State.FAILED, -1);
+            if (!server.isPublished()) {
+                return new Status(State.FAILED, -1,
+                        "Minecraft reported that LAN publishing succeeded, but the integrated server is not published.");
+            }
+            return publishedStatus(server);
         } catch (RuntimeException exception) {
-            System.err.println("[Vanta Client] Could not open the integrated server to LAN: "
-                    + exception.getMessage());
-            return new Status(State.FAILED, -1);
+            String message = exception.getMessage();
+            System.err.println("[Vanta Client] Could not open the integrated server to LAN: " + message);
+            return new Status(State.FAILED, -1,
+                    "Could not open the integrated server to LAN"
+                            + (message == null || message.isBlank() ? "." : ": " + message));
+        }
+    }
+
+    private static Status publishedStatus(MinecraftServer server) {
+        if (!server.isPublished()) {
+            return new Status(State.NOT_HOSTED, -1, "The integrated server is not open to LAN.");
+        }
+
+        try {
+            int port = server.getPort();
+            if (port < 1 || port > 65_535) {
+                return new Status(State.FAILED, -1,
+                        "Minecraft reports the world as open to LAN, but returned an invalid LAN port ("
+                                + port + "). Close and reopen the world to LAN, then try again.");
+            }
+            return new Status(State.HOSTED, port, "LAN hosting is active on port " + port + ".");
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage();
+            return new Status(State.FAILED, -1,
+                    "Minecraft reports the world as open to LAN, but its LAN port could not be read"
+                            + (message == null || message.isBlank() ? "." : ": " + message));
         }
     }
 
