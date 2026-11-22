@@ -105,36 +105,36 @@ tasks.matching { it.name == "remapSourcesJar" }.configureEach {
 	dependsOn(resolveVantaLoaderRuntime)
 }
 
-	// WebRTC data transport. Native binaries are platform-specific, so each
-	// distributable embeds only the classifier selected for that target platform.
-	// CI builds one artifact per supported desktop OS/architecture.
-	def webrtcVersion = project.webrtc_java_version
-	def supportedWebRtcPlatforms = [
-		"windows-x86_64", "windows-aarch64",
-		"macos-x86_64", "macos-aarch64",
-		"linux-x86_64", "linux-aarch64", "linux-aarch32"
-	] as Set
+// WebRTC data transport. Native binaries are platform-specific, so each
+// distributable embeds only the classifier selected for that target platform.
+// CI builds one artifact per supported desktop OS/architecture.
+def webrtcVersion = project.webrtc_java_version
+def supportedWebRtcPlatforms = [
+	"windows-x86_64", "windows-aarch64",
+	"macos-x86_64", "macos-aarch64",
+	"linux-x86_64", "linux-aarch64", "linux-aarch32"
+] as Set
 
-	def detectedWebRtcOs = System.getProperty("os.name").toLowerCase(Locale.ROOT)
-	def detectedWebRtcArch = System.getProperty("os.arch").toLowerCase(Locale.ROOT)
-	def detectedWebRtcPlatformOs = detectedWebRtcOs.contains("win") ? "windows"
-		: detectedWebRtcOs.contains("mac") || detectedWebRtcOs.contains("darwin") ? "macos"
-		: detectedWebRtcOs.contains("linux") ? "linux"
-		: null
-	def detectedWebRtcPlatformArch = detectedWebRtcArch in ["amd64", "x86_64"] ? "x86_64"
-		: detectedWebRtcArch in ["aarch64", "arm64"] ? "aarch64"
-		: detectedWebRtcArch in ["arm", "arm32", "armv7", "armv7l"] ? "aarch32"
-		: null
-	def detectedWebRtcPlatform = detectedWebRtcPlatformOs && detectedWebRtcPlatformArch
-		? "${detectedWebRtcPlatformOs}-${detectedWebRtcPlatformArch}"
-		: null
-	def webrtcPlatform = (findProperty("webrtc_platform") ?: detectedWebRtcPlatform)?.toString()
-	if (!supportedWebRtcPlatforms.contains(webrtcPlatform)) {
-		throw new GradleException(
-			"Unsupported WebRTC target '${webrtcPlatform}'. Set -Pwebrtc_platform to one of: " +
-				supportedWebRtcPlatforms.sort().join(", ")
-		)
-	}
+def detectedWebRtcOs = System.getProperty("os.name").toLowerCase(Locale.ROOT)
+def detectedWebRtcArch = System.getProperty("os.arch").toLowerCase(Locale.ROOT)
+def detectedWebRtcPlatformOs = detectedWebRtcOs.contains("win") ? "windows"
+	: detectedWebRtcOs.contains("mac") || detectedWebRtcOs.contains("darwin") ? "macos"
+	: detectedWebRtcOs.contains("linux") ? "linux"
+	: null
+def detectedWebRtcPlatformArch = detectedWebRtcArch in ["amd64", "x86_64"] ? "x86_64"
+	: detectedWebRtcArch in ["aarch64", "arm64"] ? "aarch64"
+	: detectedWebRtcArch in ["arm", "arm32", "armv7", "armv7l"] ? "aarch32"
+	: null
+def detectedWebRtcPlatform = detectedWebRtcPlatformOs && detectedWebRtcPlatformArch
+	? "${detectedWebRtcPlatformOs}-${detectedWebRtcPlatformArch}"
+	: null
+def webrtcPlatform = (findProperty("webrtc_platform") ?: detectedWebRtcPlatform)?.toString()
+if (!supportedWebRtcPlatforms.contains(webrtcPlatform)) {
+	throw new GradleException(
+		"Unsupported WebRTC target '${webrtcPlatform}'. Set -Pwebrtc_platform to one of: " +
+			supportedWebRtcPlatforms.sort().join(", ")
+	)
+}
 
 
 dependencies {
