@@ -98,9 +98,8 @@ public final class VantaComponents {
                 .height(VantaUiTheme.CONTROL_HEIGHT)
                 .radius(VantaUiTheme.RADIUS_MEDIUM);
         switch (variant) {
-            case PRIMARY -> node.background(VantaClientAccent.current())
-                    .buttonForeground(name.vantaclient.client.gui.compose.theme.VantaThemeFactory
-                            .create().palette().accentForeground());
+            case PRIMARY -> node.background(VantaClientAccent::current)
+                    .buttonForeground(VantaClientAccent::foreground);
             case SECONDARY -> node.background(VantaUiTheme.SURFACE)
                     .border(VantaUiTheme.BUTTON_OUTLINE);
             case QUIET -> node.background(0);
@@ -213,6 +212,11 @@ public final class VantaComponents {
     private static final class VantaClientAccent {
         private static int current() {
             return name.vantaclient.client.config.VantaClientPreferences.get().accent.color();
+        }
+
+        private static int foreground() {
+            return name.vantaclient.client.gui.compose.theme.VantaThemeFactory.create()
+                    .palette().accentForeground();
         }
     }
 
