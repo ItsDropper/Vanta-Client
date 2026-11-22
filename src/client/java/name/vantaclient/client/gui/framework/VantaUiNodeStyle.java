@@ -18,9 +18,14 @@ final class VantaUiNodeStyle {
         if (background != 0) {
             VantaCompose.Material material = materialFor(background);
             if (material == null) {
+                int fill = VantaUiTheme.applyPanelOpacity(background);
+                if (!node.isEnabled()) {
+                    int alpha = (fill >>> 24) & 0xFF;
+                    fill = VantaUiTheme.withAlpha(fill, Math.round(
+                            alpha * theme.composeTheme().glass().disabledSurfaceFactor()));
+                }
                 VantaUiTheme.fillSquircle(graphics, node.x(), node.y(),
-                        node.width(), node.height(), radius,
-                        VantaUiTheme.applyPanelOpacity(background));
+                        node.width(), node.height(), radius, fill);
             } else {
                 VantaCompose.drawSurface(graphics, theme.composeTheme(), material,
                         stateFor(node, background), node.x(), node.y(),
