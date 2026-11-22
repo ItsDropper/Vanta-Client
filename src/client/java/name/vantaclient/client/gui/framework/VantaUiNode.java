@@ -85,6 +85,7 @@ public final class VantaUiNode implements VantaUiComponent {
     private int inputCursor;
     private int textColor = VantaUiTheme.TEXT_PRIMARY;
     private boolean boldText;
+    private int buttonForeground;
     private int background;
     int preferredWidth = -1;
     int preferredHeight = -1;
@@ -187,12 +188,14 @@ public final class VantaUiNode implements VantaUiComponent {
 
     public static VantaUiNode title(String value) {
         VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
-        node.textFont = TITLE_FONT; node.preferredHeight = 22; node.boldText = true; return node;
+        node.textFont = VantaTypography.font(VantaTypography.Role.TITLE);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.TITLE);
+        node.boldText = true; return node;
     }
     public static VantaUiNode eyebrow(String value) {
         VantaUiNode node = text(sentenceCaseCaption(value), VantaUiTheme.TEXT_MUTED);
-        node.textFont = CAPTION_FONT;
-        node.preferredHeight = 13;
+        node.textFont = VantaTypography.font(VantaTypography.Role.CAPTION);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.CAPTION);
         return node;
     }
 
@@ -245,7 +248,7 @@ public final class VantaUiNode implements VantaUiComponent {
     public static VantaUiNode paragraph(String value, int color, int maximumLines) {
         VantaUiNode node = text(value, color);
         node.textMaximumLines = Math.max(1, maximumLines);
-        node.preferredHeight = node.textMaximumLines * 14;
+        node.preferredHeight = node.textMaximumLines * VantaTypography.lineHeight(VantaTypography.Role.BODY);
         return node;
     }
 
@@ -414,6 +417,7 @@ public final class VantaUiNode implements VantaUiComponent {
     }
     public VantaUiNode tooltip(String value) { tooltip = value == null ? "" : value; return this; }
     public VantaUiNode textColor(int color) { textColor = color; return this; }
+    public VantaUiNode buttonForeground(int color) { buttonForeground = color; return this; }
     public VantaUiNode enabled(boolean value) { enabled = value; return this; }
     public VantaUiNode selected(boolean value) { selected = value; return this; }
     public VantaUiNode visible(boolean value) { visible = value; return this; }
@@ -573,7 +577,8 @@ public final class VantaUiNode implements VantaUiComponent {
             case TEXT -> {
                 if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
                     for (int i = 0; i < cachedTextLines.size(); i++)
-                        graphics.drawString(font, styledText(cachedTextLines.get(i), textFont), x, y + i * 14, textColor);
+                        graphics.drawString(font, styledText(cachedTextLines.get(i), textFont), x,
+                                y + i * VantaTypography.lineHeight(VantaTypography.Role.BODY), textColor);
                 } else {
                     int menuSize = menuFontSize(textFont);
                     int textY = menuSize > 0
@@ -645,6 +650,7 @@ public final class VantaUiNode implements VantaUiComponent {
                 int textX = icon == null
                         ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
                 int color = !enabled ? VantaUiTheme.TEXT_MUTED
+                        : buttonForeground != 0 ? buttonForeground
                         : selected || over || focused ? VantaUiTheme.TEXT_PRIMARY
                         : VantaUiTheme.TEXT_SECONDARY;
                 graphics.drawString(font, styledText(shownLabel, UI_FONT, true), textX,
