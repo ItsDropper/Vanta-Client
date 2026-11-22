@@ -68,9 +68,7 @@ public abstract class GroundFireHeightMixin {
         if (scale == null) return;
 
         PoseStack.Pose originalPose = args.get(0);
-        PoseStack.Pose scaledPose = originalPose.copy();
-        scaledPose.scale(1.0f, scale, 1.0f);
-        args.set(0, scaledPose);
+        args.set(0, GroundFireHeightFeature.scaleQuadPose(originalPose, scale));
     }
 
     @Inject(method = "tesselateBlock", at = @At("RETURN"))
