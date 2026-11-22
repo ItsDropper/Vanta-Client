@@ -52,7 +52,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         VantaUiNode root = VantaUiNode.row(0, 0).height(toolbarHeight)
                 .align(VantaUiNode.Alignment.START);
         VantaUiNode toolbar = VantaComponents.panel(VantaComponents.Surface.POPOVER,
-                compact ? 8 : 12, compact ? 8 : 14)
+                VantaUiNode.Direction.ROW, compact ? 8 : 12, compact ? 8 : 14)
                 .height(toolbarHeight).flex(1)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
