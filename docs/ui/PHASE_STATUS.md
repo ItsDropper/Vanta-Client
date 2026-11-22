@@ -69,7 +69,9 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 ## Automated visual verification
 
-<badge color="success">Latest screenshot workflow passed</badge>
+<badge color="warning">Phase 3 build and screenshot verification pending</badge>
+
+Phase 2 commit `65215cc` passed its [Gradle build](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740468) and [80-image screenshot workflow](https://github.com/ItsDropper/Vanta-Client/actions/runs/45066740527). Phase 3 changes are pushed; their current build and screenshot runs are still queued.
 
 The baseline commit `5beed53` passed both the Gradle build (run [41716076962](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716076962)) and the original 36-image Minecraft screenshot workflow (run [41716077221](https://github.com/ItsDropper/Vanta-Client/actions/runs/41716077221)). Subsequent implementation batches also passed both workflows:
 
