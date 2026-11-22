@@ -1,6 +1,7 @@
 package name.vantaclient.client.feature;
 
 import name.vantaclient.client.config.DropperUtilsConfig;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -23,6 +24,16 @@ public final class GroundFireHeightFeature extends Feature {
 
     public static float getHeightScale() {
         return heightScale;
+    }
+
+    /**
+     * Creates a per-quad pose with its vertical axis scaled around the block's
+     * local origin. The caller's pose is never mutated.
+     */
+    public static PoseStack.Pose scaleQuadPose(PoseStack.Pose original, float scale) {
+        PoseStack.Pose scaled = original.copy();
+        scaled.scale(1.0f, scale, 1.0f);
+        return scaled;
     }
 
     private static float normalizeHeightScale(float value) {
