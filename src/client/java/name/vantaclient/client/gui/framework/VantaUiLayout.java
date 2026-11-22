@@ -2,8 +2,6 @@ package name.vantaclient.client.gui.framework;
 
 import net.minecraft.client.gui.Font;
 import name.vantaclient.client.gui.compose.typography.VantaTypography;
-import java.util.ArrayList;
-import java.util.List;
 
 /** Owns intrinsic measurement and retained-tree placement, independent of rendering and input. */
 final class VantaUiLayout {
@@ -84,11 +82,11 @@ final class VantaUiLayout {
         }
 
         if (node.kind != VantaUiNode.Kind.CONTAINER) return;
-        List<VantaUiNode> layoutChildren = new ArrayList<>();
+        int visibleCount = 0;
         for (VantaUiNode child : node.children) {
-            if (child.visible) layoutChildren.add(child);
+            if (child.visible) visibleCount++;
         }
-        if (layoutChildren.isEmpty()) {
+        if (visibleCount == 0) {
             node.contentHeight = 0;
             node.scrollOffset = 0;
             return;
@@ -100,7 +98,8 @@ final class VantaUiLayout {
         int innerHeight = Math.max(0, node.height - node.padding * 2);
 
         if (node.direction == VantaUiNode.Direction.STACK) {
-            for (VantaUiNode child : layoutChildren) {
+            for (VantaUiNode child : node.children) {
+                if (!child.visible) continue;
                 VantaUiNode.Alignment effectiveAlignment = effectiveAlignment(node, child);
                 int requestedWidth = child.preferredWidth >= 0
                         ? child.preferredWidth
@@ -118,10 +117,11 @@ final class VantaUiLayout {
             return;
         }
 
-        int childGap = node.gap * Math.max(0, layoutChildren.size() - 1);
+        int childGap = node.gap * Math.max(0, visibleCount - 1);
         float totalFlex = 0.0f;
         int fixedPrimary = 0;
-        for (VantaUiNode child : layoutChildren) {
+        for (VantaUiNode child : node.children) {
+            if (!child.visible) continue;
             if (child.flex > 0.0f) totalFlex += child.flex;
             else fixedPrimary += node.direction == VantaUiNode.Direction.COLUMN
                     ? intrinsicHeight(child, font) : intrinsicWidth(child, font);
@@ -129,10 +129,11 @@ final class VantaUiLayout {
 
         int availablePrimary = Math.max(0,
                 (node.direction == VantaUiNode.Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
-        int[] primarySizes = new int[layoutChildren.size()];
+        int[] primarySizes = new int[node.children.size()];
         int measuredContent = childGap;
-        for (int i = 0; i < layoutChildren.size(); i++) {
-            VantaUiNode child = layoutChildren.get(i);
+        for (int i = 0; i < node.children.size(); i++) {
+            VantaUiNode child = node.children.get(i);
+            if (!child.visible) continue;
             int primary = child.flex > 0.0f && totalFlex > 0.0f
                     ? Math.round(availablePrimary * child.flex / totalFlex)
                     : node.direction == VantaUiNode.Direction.COLUMN ? intrinsicHeight(child, font) : intrinsicWidth(child, font);
@@ -149,7 +150,7 @@ final class VantaUiLayout {
                 case CENTER -> leadingSpace = freeSpace / 2;
                 case END -> leadingSpace = freeSpace;
                 case SPACE_BETWEEN -> {
-                    if (layoutChildren.size() > 1) distributedGap = freeSpace / (layoutChildren.size() - 1);
+                    if (visibleCount > 1) distributedGap = freeSpace / (visibleCount - 1);
                 }
                 case START -> { }
             }
@@ -166,8 +167,9 @@ final class VantaUiLayout {
         int cursor = node.direction == VantaUiNode.Direction.COLUMN
                 ? innerY + leadingSpace - (node.scrollable ? node.scrollOffset : 0)
                 : innerX + leadingSpace;
-        for (int i = 0; i < layoutChildren.size(); i++) {
-            VantaUiNode child = layoutChildren.get(i);
+        for (int i = 0; i < node.children.size(); i++) {
+            VantaUiNode child = node.children.get(i);
+            if (!child.visible) continue;
             int primary = primarySizes[i];
 
             if (node.direction == VantaUiNode.Direction.COLUMN) {
