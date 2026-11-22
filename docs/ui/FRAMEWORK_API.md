@@ -114,7 +114,7 @@ The runtime owns focus, slider pointer capture, hover, dropdown-open state and f
 
 The runtime automatically remeasures when screen dimensions change. It also invalidates for internal interactions that change component geometry, such as scrolling. Opening a dropdown does not change the control's measured height or reflow its parent.
 
-Call \`runtime.invalidateLayout()\` after a screen changes a node's visibility, child list or size-affecting state. The node tree does not currently subscribe to arbitrary observable state changes and cannot infer those mutations.
+Call `runtime.invalidateLayout()` after a screen changes a node's visibility, child list or size-affecting state. Components created through the state-bound `VantaComponents` factories register their `VantaState` bindings with the runtime; paint-only writes invalidate rendering, while explicitly layout-affecting bindings request remeasurement. Arbitrary external mutations still require explicit invalidation.
 
 If the screen replaces the entire composition, dispose the old runtime and create a new one.
 
