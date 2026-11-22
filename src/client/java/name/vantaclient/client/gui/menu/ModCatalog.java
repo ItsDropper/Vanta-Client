@@ -42,9 +42,12 @@ import java.util.jar.JarFile;
 public final class ModCatalog {
     /** A registered mod icon and its pixel size, needed to blit the whole image. */
     public record IconTexture(Identifier id, int width, int height) {}
+    private record DecodedIcon(String modId, NativeImage image, int width, int height) {}
 
     private final Minecraft minecraft;
     private final Map<String, IconTexture> icons = new HashMap<>();
+    private Map<String, byte[]> iconBytes = Map.of();
+    private int iconLoadGeneration;
     private List<ExperimentalModHotLoader.AvailableMod> installed = List.of();
     private List<ModEntry> entries;
     private Map<String, ModEntry> entriesById;
@@ -84,7 +87,8 @@ public final class ModCatalog {
         CompletableFuture.supplyAsync(() -> {
             List<ExperimentalModHotLoader.AvailableMod> mods = ExperimentalModHotLoader.getAvailableMods();
             Map<String, Object> factories = ModConfigDiscovery.discover();
-            return new Object[] {mods, factories};
+            Map<String, byte[]> iconData = readIconBytes(mods);
+            return new Object[] {mods, factories, iconData};
         }).whenComplete((result, error) -> minecraft.execute(() -> {
             scanning = false;
             if (released) return;
@@ -95,6 +99,9 @@ public final class ModCatalog {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> factories = (Map<String, Object>) result[1];
                 installed = List.copyOf(mods);
+                @SuppressWarnings("unchecked")
+                Map<String, byte[]> loadedIcons = (Map<String, byte[]>) result[2];
+                iconBytes = Map.copyOf(loadedIcons);
                 setEntries(buildEntries(installed, factories));
                 reloadIcons();
             } else if (error != null) {
@@ -113,57 +120,99 @@ public final class ModCatalog {
     /** Re-registers icons after a child screen released the GPU textures. */
     public void restoreIcons() {
         released = false;
-        if (icons.isEmpty() && !installed.isEmpty()) reloadIcons();
+        if (icons.isEmpty() && !iconBytes.isEmpty()) reloadIcons();
     }
 
     private void releaseIcons() {
+        iconLoadGeneration++;
         for (IconTexture icon : icons.values()) {
             minecraft.getTextureManager().release(icon.id());
         }
         icons.clear();
     }
 
+    /**
+     * Reads PNG payloads and decodes them away from the render thread. Only texture
+     * registration is dispatched back to Minecraft's client thread.
+     */
     private void reloadIcons() {
         releaseIcons();
-        for (ExperimentalModHotLoader.AvailableMod mod : installed) {
-            loadIcon(mod.id(), mod.path(), mod.iconPath());
-        }
+        if (iconBytes.isEmpty() || released) return;
+        int generation = iconLoadGeneration;
+        Map<String, byte[]> source = iconBytes;
+        CompletableFuture.supplyAsync(() -> decodeIcons(source)).thenAccept(decoded ->
+                minecraft.execute(() -> {
+                    if (released || generation != iconLoadGeneration) {
+                        closeDecodedIcons(decoded);
+                        return;
+                    }
+                    for (DecodedIcon icon : decoded) {
+                        try {
+                            Identifier texture = Identifier.fromNamespaceAndPath(
+                                    "vantaclient", "menu_icons/" + icon.modId());
+                            minecraft.getTextureManager().register(texture,
+                                    new DynamicTexture(() -> "Vanta menu icon " + icon.modId(), icon.image()));
+                            icons.put(icon.modId(), new IconTexture(texture, icon.width(), icon.height()));
+                        } catch (Exception | LinkageError error) {
+                            icon.image().close();
+                        }
+                    }
+                }));
     }
 
-    private void loadIcon(String modId, Path jarPath, String iconPath) {
-        if (iconPath == null || iconPath.isBlank() || iconPath.startsWith("/")
-                || iconPath.contains("..") || iconPath.contains("\\")) return;
-        try (JarFile jar = new JarFile(jarPath.toFile())) {
-            var entry = jar.getJarEntry(iconPath);
-            if (entry == null || entry.getSize() <= 0 || entry.getSize() > 1024 * 1024) return;
-            byte[] bytes;
-            try (InputStream input = jar.getInputStream(entry)) {
-                bytes = input.readNBytes(1024 * 1024 + 1);
+    private static Map<String, byte[]> readIconBytes(List<ExperimentalModHotLoader.AvailableMod> mods) {
+        Map<String, byte[]> result = new HashMap<>();
+        for (ExperimentalModHotLoader.AvailableMod mod : mods) {
+            String iconPath = mod.iconPath();
+            if (iconPath == null || iconPath.isBlank() || iconPath.startsWith("/")
+                    || iconPath.contains("..") || iconPath.contains("\\\\")) continue;
+            try (JarFile jar = new JarFile(mod.path().toFile())) {
+                var entry = jar.getJarEntry(iconPath);
+                if (entry == null || entry.getSize() <= 0 || entry.getSize() > 1024 * 1024) continue;
+                byte[] bytes;
+                try (InputStream input = jar.getInputStream(entry)) {
+                    bytes = input.readNBytes(1024 * 1024 + 1);
+                }
+                if (bytes.length < 24 || bytes.length > 1024 * 1024
+                        || bytes[0] != (byte) 0x89 || bytes[1] != 0x50
+                        || bytes[2] != 0x4E || bytes[3] != 0x47
+                        || bytes[4] != 0x0D || bytes[5] != 0x0A
+                        || bytes[6] != 0x1A || bytes[7] != 0x0A) continue;
+                int width = ((bytes[16] & 0xFF) << 24) | ((bytes[17] & 0xFF) << 16)
+                        | ((bytes[18] & 0xFF) << 8) | (bytes[19] & 0xFF);
+                int height = ((bytes[20] & 0xFF) << 24) | ((bytes[21] & 0xFF) << 16)
+                        | ((bytes[22] & 0xFF) << 8) | (bytes[23] & 0xFF);
+                if (width > 0 && height > 0 && width <= 512 && height <= 512) {
+                    result.put(mod.id(), bytes);
+                }
+            } catch (Exception ignored) {
+                // Missing or malformed optional icons use the mod's initial instead.
             }
-            if (bytes.length < 24 || bytes.length > 1024 * 1024
-                    || bytes[0] != (byte) 0x89 || bytes[1] != 0x50
-                    || bytes[2] != 0x4E || bytes[3] != 0x47
-                    || bytes[4] != 0x0D || bytes[5] != 0x0A
-                    || bytes[6] != 0x1A || bytes[7] != 0x0A) return;
-            int declaredWidth = ((bytes[16] & 0xFF) << 24) | ((bytes[17] & 0xFF) << 16)
-                    | ((bytes[18] & 0xFF) << 8) | (bytes[19] & 0xFF);
-            int declaredHeight = ((bytes[20] & 0xFF) << 24) | ((bytes[21] & 0xFF) << 16)
-                    | ((bytes[22] & 0xFF) << 8) | (bytes[23] & 0xFF);
-            if (declaredWidth <= 0 || declaredHeight <= 0 || declaredWidth > 512 || declaredHeight > 512) return;
-            NativeImage image = NativeImage.read(new ByteArrayInputStream(bytes));
-            int width = image.getWidth();
-            int height = image.getHeight();
-            if (width > 512 || height > 512 || width <= 0 || height <= 0) {
-                image.close();
-                return;
-            }
-            Identifier texture = Identifier.fromNamespaceAndPath("vantaclient", "menu_icons/" + modId);
-            minecraft.getTextureManager().register(texture,
-                    new DynamicTexture(() -> "Vanta menu icon " + modId, image));
-            icons.put(modId, new IconTexture(texture, width, height));
-        } catch (Exception | LinkageError ignored) {
-            // Missing, malformed or oversized optional icons fall back to the mod's initial.
         }
+        return result;
+    }
+
+    private static List<DecodedIcon> decodeIcons(Map<String, byte[]> source) {
+        List<DecodedIcon> result = new ArrayList<>(source.size());
+        for (Map.Entry<String, byte[]> entry : source.entrySet()) {
+            try {
+                NativeImage image = NativeImage.read(new ByteArrayInputStream(entry.getValue()));
+                int width = image.getWidth();
+                int height = image.getHeight();
+                if (width > 0 && height > 0 && width <= 512 && height <= 512) {
+                    result.add(new DecodedIcon(entry.getKey(), image, width, height));
+                } else {
+                    image.close();
+                }
+            } catch (Exception | LinkageError ignored) {
+                // Invalid optional icon; keep the text fallback.
+            }
+        }
+        return result;
+    }
+
+    private static void closeDecodedIcons(List<DecodedIcon> decoded) {
+        for (DecodedIcon icon : decoded) icon.image().close();
     }
 
     // ---- entry construction ------------------------------------------------------------------
