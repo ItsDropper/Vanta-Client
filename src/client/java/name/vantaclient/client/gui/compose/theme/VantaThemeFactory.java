@@ -55,7 +55,7 @@ public final class VantaThemeFactory {
                     VantaUiTheme.CONTROL_HEIGHT, VantaUiTheme.ROW_HEIGHT
             );
             VantaTheme.Typography typography = new VantaTheme.Typography(
-                    26, 26, 15, 13, 13, 12, 22, 14, 12
+                    28, 26, 15, 13, 13, 12, 34, 30, 22, 14, 12
             );
             VantaTheme.Glass glass = new VantaTheme.Glass(
                     0xFF101B2A, 0xFF17263A, 0xFF111F31, 0xFF0B1522, 0xFF0A1420,
