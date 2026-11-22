@@ -156,9 +156,13 @@ public final class FarTerrainRenderer {
     }
 
     public static void tick(Minecraft client) {
-        if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null
+        if (!FarViewFeature.isRenderingEnabled() || client.player == null || client.level == null
                 || !client.hasSingleplayerServer()) {
-            clearWorld();
+            if (activeLevel != null || snapshotLevel != null || snapshotStore != null
+                    || !MESHES.isEmpty() || !DESIRED.isEmpty() || !VOXEL_MESHES.isEmpty()
+                    || !VOXEL_PENDING.isEmpty() || !COMPLETED.isEmpty() || !PENDING.isEmpty()) {
+                disable();
+            }
             return;
         }
 
@@ -244,9 +248,13 @@ public final class FarTerrainRenderer {
 
     private static void loadNearestSnapshots(FarTerrainSnapshotStore store, int centerChunkX, int centerChunkZ) {
         if (store == null) return;
+        long expectedRevision = revision;
         store.loadNearest(centerChunkX, centerChunkZ, MAX_CAPTURED_CHUNKS, snapshot -> {
-            if (snapshotStore != store) return;
+            if (!FarViewFeature.isRenderingEnabled()
+                    || snapshotStore != store || revision != expectedRevision) return;
             addChunkSnapshotIfAbsent(snapshot);
+            if (!FarViewFeature.isRenderingEnabled()
+                    || snapshotStore != store || revision != expectedRevision) return;
             long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
             if (CHUNK_SNAPSHOTS.get(key) == snapshot) {
                 queueVoxelMesh(snapshot);
@@ -259,7 +267,7 @@ public final class FarTerrainRenderer {
         // Chunk lifecycle events fire regardless of feature state. Do not snapshot,
         // compress, cache, or queue voxel meshes when FarView is disabled: ordinary
         // player movement would otherwise run the entire ingestion pipeline.
-        if (!FarViewFeature.INSTANCE.isEnabled()) return;
+        if (!FarViewFeature.isRenderingEnabled()) return;
 
         FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
         addChunkSnapshot(snapshot);
@@ -279,6 +287,7 @@ public final class FarTerrainRenderer {
     }
 
     private static void queueVoxelMesh(FarTerrainChunkSnapshot snapshot) {
+        if (!FarViewFeature.isRenderingEnabled()) return;
         long chunkKey = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
         long expectedRevision = revision;
         VoxelWorkKey workKey = new VoxelWorkKey(chunkKey, expectedRevision);
@@ -296,11 +305,11 @@ public final class FarTerrainRenderer {
         try {
             VOXEL_WORKER.execute(() -> {
                 try {
-                    if (expectedRevision != revision) return;
+                    if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
                     FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot, adjacentSnapshots);
-                    if (expectedRevision != revision) return;
+                    if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
                     synchronized (VOXEL_MESH_LOCK) {
-                        if (expectedRevision != revision) return;
+                        if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
                         if (mesh == null) {
                             VOXEL_EMPTY.add(chunkKey);
                             return;
@@ -829,7 +838,7 @@ public final class FarTerrainRenderer {
 
     private static void render(WorldRenderContext context) {
         Minecraft client = Minecraft.getInstance();
-        if (!FarViewFeature.INSTANCE.isEnabled() || client.player == null || client.level == null
+        if (!FarViewFeature.isRenderingEnabled() || client.player == null || client.level == null
                 || !client.hasSingleplayerServer() || activeLevel == null
                 || (orderedTiles.isEmpty() && VOXEL_MESHES.isEmpty())) return;
 
@@ -1310,10 +1319,25 @@ public final class FarTerrainRenderer {
         return dx * dx + dz * dz;
     }
 
+    /**
+     * Immediately disables FarView and invalidates every in-flight renderer/cache operation.
+     * Persisted snapshots remain on disk and are loaded again only after explicit re-enable.
+     */
+    public static void disable() {
+        clearWorld();
+        snapshotStore = null;
+        snapshotLevel = null;
+        snapshotClientLevel = null;
+        lastSnapshotQueryChunkX = Integer.MIN_VALUE;
+        lastSnapshotQueryChunkZ = Integer.MIN_VALUE;
+        synchronized (SNAPSHOT_CACHE_LOCK) {
+            CHUNK_SNAPSHOTS.clear();
+            CHUNK_SNAPSHOT_ORDER.clear();
+            cachedSnapshotBytes = 0L;
+        }
+    }
+
     private static void clearWorld() {
-        if (activeLevel == null && MESHES.isEmpty() && DESIRED.isEmpty()
-                && VOXEL_MESHES.isEmpty() && VOXEL_EMPTY.isEmpty()
-                && VOXEL_PENDING.isEmpty()) return;
         activeLevel = null;
         revision++;
         lastWorkerError = "";
@@ -1382,7 +1406,7 @@ public final class FarTerrainRenderer {
     }
 
     public static String getStatusLine() {
-        if (!FarViewFeature.INSTANCE.isEnabled()) return "Far terrain renderer is disabled";
+        if (!FarViewFeature.isRenderingEnabled()) return "Far terrain renderer is disabled";
         if (activeLevel == null) return "Far terrain LOD is available in singleplayer worlds";
         String suffix = lastWorkerError.isBlank() ? "" : " | worker warning: " + lastWorkerError;
         return "LOD tiles: " + MESHES.size() + "/" + DESIRED.size()
