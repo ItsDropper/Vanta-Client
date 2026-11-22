@@ -15,7 +15,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Ordered, backpressured byte-stream adapter over the relay's binary WebSocket messages.
@@ -25,12 +27,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class WebSocketDuplexConnection implements LoopbackTcpBridge.DuplexConnection {
     private static final int MAX_MESSAGE_BYTES = 16 * 1024;
     private static final int MAX_QUEUED_MESSAGES = 128;
+    private static final int MAX_PENDING_SENDS = 16;
     private static final Duration SEND_TIMEOUT = Duration.ofSeconds(10);
 
     private final WebSocket socket;
     private final BlockingQueue<ReadEvent> incoming = new ArrayBlockingQueue<>(MAX_QUEUED_MESSAGES);
     private final AtomicBoolean outputClosed = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
+    private final Semaphore sendSlots = new Semaphore(MAX_PENDING_SENDS);
+    private final Object sendLock = new Object();
+    private final AtomicReference<IOException> sendFailure = new AtomicReference<>();
+    private CompletableFuture<WebSocket> sendTail = CompletableFuture.completedFuture(null);
     private final InputStream inputStream = new RemoteInputStream();
     private final OutputStream outputStream = new RemoteOutputStream();
     private byte[] assemblingBinary;
@@ -166,6 +173,7 @@ public final class WebSocketDuplexConnection implements LoopbackTcpBridge.Duplex
     @Override
     public void shutdownOutput() throws IOException {
         if (!outputClosed.compareAndSet(false, true)) return;
+        awaitPendingBinarySends();
         sendText("VANTA_EOF");
     }
 
@@ -181,17 +189,71 @@ public final class WebSocketDuplexConnection implements LoopbackTcpBridge.Duplex
         }
     }
 
+    /**
+     * Queues bounded, ordered WebSocket writes instead of waiting for every 16 KiB
+     * message before the tunnel can read and forward the next one. This keeps the
+     * fallback transport pipelined while limiting unsent gameplay data to 256 KiB.
+     */
     private void sendBinary(byte[] bytes, int offset, int length) throws IOException {
-        if (closed.get() || outputClosed.get()) throw new IOException("Relay stream output is closed.");
-        byte[] copy = java.util.Arrays.copyOfRange(bytes, offset, offset + length);
+        ensureOutputOpen();
         try {
-            socket.sendBinary(ByteBuffer.wrap(copy), true).get(SEND_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+            sendSlots.acquire();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IOException("Relay write was interrupted.", exception);
-        } catch (ExecutionException | TimeoutException exception) {
-            throw new IOException("Could not write to the relay stream.", exception);
         }
+
+        boolean queued = false;
+        try {
+            ensureOutputOpen();
+            byte[] copy = java.util.Arrays.copyOfRange(bytes, offset, offset + length);
+            synchronized (sendLock) {
+                IOException failure = sendFailure.get();
+                if (failure != null) throw failure;
+                CompletableFuture<WebSocket> next = sendTail.thenCompose(
+                        ignored -> socket.sendBinary(ByteBuffer.wrap(copy), true));
+                sendTail = next;
+                next.whenComplete((ignored, error) -> {
+                    if (error != null) {
+                        Throwable cause = error instanceof java.util.concurrent.CompletionException
+                                && error.getCause() != null ? error.getCause() : error;
+                        sendFailure.compareAndSet(null,
+                                new IOException("Could not write to the relay stream.", cause));
+                    }
+                    sendSlots.release();
+                });
+                queued = true;
+            }
+        } finally {
+            if (!queued) sendSlots.release();
+        }
+    }
+
+    private void ensureOutputOpen() throws IOException {
+        IOException failure = sendFailure.get();
+        if (failure != null) throw failure;
+        if (closed.get() || outputClosed.get()) {
+            throw new IOException("Relay stream output is closed.");
+        }
+    }
+
+    private void awaitPendingBinarySends() throws IOException {
+        CompletableFuture<WebSocket> pending;
+        synchronized (sendLock) {
+            pending = sendTail;
+        }
+        try {
+            pending.get(SEND_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Waiting for queued relay writes was interrupted.", exception);
+        } catch (ExecutionException | TimeoutException exception) {
+            Throwable cause = exception instanceof ExecutionException && exception.getCause() != null
+                    ? exception.getCause() : exception;
+            throw new IOException("Could not finish queued relay writes.", cause);
+        }
+        IOException failure = sendFailure.get();
+        if (failure != null) throw failure;
     }
 
     private void sendText(String value) throws IOException {
