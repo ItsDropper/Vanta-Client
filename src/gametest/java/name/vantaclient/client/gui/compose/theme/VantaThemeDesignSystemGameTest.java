@@ -62,6 +62,9 @@ public final class VantaThemeDesignSystemGameTest implements FabricClientGameTes
         VantaTheme.Glass glass = VantaThemeFactory.create().glass();
         require(glass.shadowAlpha() > 0 && glass.highlightAlpha() > 0
                         && glass.borderAlpha() > 0 && glass.hoverAlpha() > 0
+                        && glass.hoverOutlineAlpha() > glass.hoverAlpha()
+                        && glass.controlFocusAlpha() > glass.controlHoverAlpha()
+                        && glass.controlFocusIndicatorAlpha() > 0
                         && glass.selectedAlpha() > glass.hoverAlpha()
                         && glass.focusAlpha() >= glass.selectedAlpha()
                         && glass.disabledAlpha() < glass.borderAlpha()
