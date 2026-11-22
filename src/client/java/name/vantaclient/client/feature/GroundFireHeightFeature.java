@@ -17,6 +17,9 @@ public final class GroundFireHeightFeature extends Feature {
     /** Number of fire blocks whose geometry was scaled; used by the in-world game test. */
     public static final java.util.concurrent.atomic.AtomicInteger SCALED_BLOCKS = new java.util.concurrent.atomic.AtomicInteger();
 
+    public static final java.util.concurrent.atomic.AtomicInteger TESSELATE_CALLS = new java.util.concurrent.atomic.AtomicInteger();
+    public static final java.util.concurrent.atomic.AtomicInteger FIRE_SEEN = new java.util.concurrent.atomic.AtomicInteger();
+
     private GroundFireHeightFeature() {
         super("Ground Fire Height", "Adjusts the height of placed fire and soul fire blocks in the world.", Category.VISUAL);
     }

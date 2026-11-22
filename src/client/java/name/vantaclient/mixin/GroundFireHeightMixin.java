@@ -45,6 +45,8 @@ public abstract class GroundFireHeightMixin {
             CallbackInfo ci
     ) {
         vanta$scaled.remove();
+        GroundFireHeightFeature.TESSELATE_CALLS.incrementAndGet();
+        if (vanta$isFire(state)) GroundFireHeightFeature.FIRE_SEEN.incrementAndGet();
         if (GroundFireHeightFeature.isActive() && !parts.isEmpty() && vanta$isFire(state)) {
             float scale = GroundFireHeightFeature.getHeightScale();
             if (Float.isFinite(scale) && Math.abs(scale - 1.0f) > 0.0001f) {

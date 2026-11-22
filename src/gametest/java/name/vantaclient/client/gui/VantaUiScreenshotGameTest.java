@@ -193,7 +193,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitTicks(20);
         int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
         System.out.println("[ground-fire] scaled fire blocks during lobby chunk compile: " + scaled
-                + " active=" + GroundFireHeightFeature.isActive()
+                + " tesselateCalls=" + GroundFireHeightFeature.TESSELATE_CALLS.get() + " fireSeen=" + GroundFireHeightFeature.FIRE_SEEN.get() + " active=" + GroundFireHeightFeature.isActive()
                 + " scale=" + GroundFireHeightFeature.getHeightScale());
         context.runOnClient(client -> GroundFireHeightFeature.INSTANCE.setEnabled(false));
         if (scaled <= 0) {
