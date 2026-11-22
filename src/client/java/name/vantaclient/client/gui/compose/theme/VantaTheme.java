@@ -72,7 +72,8 @@ public record VantaTheme(
             int panelAlpha, int elevatedAlpha, int cardAlpha, int fieldAlpha, int popoverAlpha,
             int edge, int highlight, int shadow, int scrimTop, int scrimBottom,
             int shadowAlpha, int highlightAlpha, int borderAlpha,
-            int hoverAlpha, int selectedAlpha, int focusAlpha, int disabledAlpha
+            int hoverAlpha, int selectedAlpha, int focusAlpha, int disabledAlpha,
+            float disabledSurfaceFactor
     ) {
         public Glass {
             requireAlpha(panelAlpha);
@@ -87,6 +88,10 @@ public record VantaTheme(
             requireAlpha(selectedAlpha);
             requireAlpha(focusAlpha);
             requireAlpha(disabledAlpha);
+            if (!Float.isFinite(disabledSurfaceFactor)
+                    || disabledSurfaceFactor < 0.0f || disabledSurfaceFactor > 1.0f) {
+                throw new IllegalArgumentException("Disabled surface factor must be between zero and one.");
+            }
         }
 
         private static void requireAlpha(int alpha) {
