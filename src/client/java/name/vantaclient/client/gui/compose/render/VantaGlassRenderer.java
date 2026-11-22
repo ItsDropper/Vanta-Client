@@ -55,7 +55,9 @@ public final class VantaGlassRenderer {
             case FIELD -> glass.fieldAlpha();
             case POPOVER -> glass.popoverAlpha();
         };
-        if (state == VantaCompose.State.DISABLED) alpha = Math.round(alpha * 0.68f);
+        if (state == VantaCompose.State.DISABLED) {
+            alpha = Math.round(alpha * glass.disabledSurfaceFactor());
+        }
 
         int safeRadius = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
         if (material == VantaCompose.Material.PANEL || material == VantaCompose.Material.ELEVATED
