@@ -118,21 +118,43 @@ dependencies {
 	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
 	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
-	// WebRTC data transport. Package every desktop native classifier so the same
-	// published mod works on Windows, macOS and Linux regardless of CI host OS.
+	// WebRTC data transport. Native binaries are platform-specific, so each
+	// distributable embeds only the classifier selected for that target platform.
+	// CI builds one artifact per supported desktop OS/architecture.
 	def webrtcVersion = project.webrtc_java_version
-	def webrtcNativeClassifiers = [
+	def supportedWebRtcPlatforms = [
 		"windows-x86_64", "windows-aarch64",
 		"macos-x86_64", "macos-aarch64",
 		"linux-x86_64", "linux-aarch64", "linux-aarch32"
-	]
+	] as Set
+
+	def detectedWebRtcOs = System.getProperty("os.name").toLowerCase(Locale.ROOT)
+	def detectedWebRtcArch = System.getProperty("os.arch").toLowerCase(Locale.ROOT)
+	def detectedWebRtcPlatformOs = detectedWebRtcOs.contains("win") ? "windows"
+		: detectedWebRtcOs.contains("mac") || detectedWebRtcOs.contains("darwin") ? "macos"
+		: detectedWebRtcOs.contains("linux") ? "linux"
+		: null
+	def detectedWebRtcPlatformArch = detectedWebRtcArch in ["amd64", "x86_64"] ? "x86_64"
+		: detectedWebRtcArch in ["aarch64", "arm64"] ? "aarch64"
+		: detectedWebRtcArch in ["arm", "arm32", "armv7", "armv7l"] ? "aarch32"
+		: null
+	def detectedWebRtcPlatform = detectedWebRtcPlatformOs && detectedWebRtcPlatformArch
+		? "${detectedWebRtcPlatformOs}-${detectedWebRtcPlatformArch}"
+		: null
+	def webrtcPlatform = (findProperty("webrtc_platform") ?: detectedWebRtcPlatform)?.toString()
+	if (!supportedWebRtcPlatforms.contains(webrtcPlatform)) {
+		throw new GradleException(
+			"Unsupported WebRTC target '${webrtcPlatform}'. Set -Pwebrtc_platform to one of: " +
+				supportedWebRtcPlatforms.sort().join(", ")
+		)
+	}
+
 	implementation "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
 	include "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
-	webrtcNativeClassifiers.each { classifier ->
-		def artifact = "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}:${classifier}"
-		implementation artifact
-		include artifact
-	}
+
+	def webrtcNativeArtifact = "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}:${webrtcPlatform}"
+	implementation webrtcNativeArtifact
+	include webrtcNativeArtifact
 
 	// The production client-test launcher needs Fabric API in its runtime installation.
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
@@ -143,7 +165,7 @@ base {
 }
 
 tasks.named("remapJar") {
-	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}.jar"
+	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}-${webrtcPlatform}.jar"
 }
 
 // VantaLoader uses official Mojang names at runtime, so it must receive the
