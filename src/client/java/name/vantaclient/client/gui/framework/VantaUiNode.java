@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  * This is intentionally not a recreation of Compose. It provides the layout,
  * clipping and interaction primitives currently needed by Vanta screens.
  */
-public final class VantaUiNode {
+public final class VantaUiNode implements VantaUiComponent {
     public enum Kind { CONTAINER, TEXT, ICON, IMAGE, SPACER, BUTTON, TOGGLE, SLIDER, DROPDOWN, TEXT_FIELD, PROGRESS, CANVAS }
     public enum Icon { BRAND, OVERVIEW, VISUALS, CONTROLS, DISPLAY, KEYBOARD, SEARCH, CROSSHAIR, HUD, SPARK, RESET, COMBAT, MISC }
     public enum Direction { ROW, COLUMN, STACK }
@@ -141,6 +141,7 @@ public final class VantaUiNode {
     private Supplier<String> dropdownValue;
     private Consumer<String> dropdownSetter;
     private List<String> dropdownOptions = List.of();
+    private List<StateBinding> observedStates;
     private boolean dropdownOpen;
     private int dropdownHighlight;
     private int dropdownScrollOffset;
@@ -432,6 +433,80 @@ public final class VantaUiNode {
     public boolean isEnabled() { return enabled; }
     boolean isDropdownOpen() { return kind == Kind.DROPDOWN && dropdownOpen; }
 
+    int backgroundColor() { return background; }
+    int borderColor() { return borderColor; }
+    int cornerRadius() { return cornerRadius; }
+    boolean isSelected() { return selected; }
+    boolean isHovered() { return hovered; }
+    boolean isFocused() { return focused; }
+
+    @Override
+    public VantaUiComponent.Bounds bounds() {
+        return new VantaUiComponent.Bounds(x, y, width, height);
+    }
+
+    @Override
+    public VantaUiComponent.Semantics semantics() {
+        VantaUiComponent.Role role = switch (kind) {
+            case CONTAINER -> VantaUiComponent.Role.GROUP;
+            case TEXT -> VantaUiComponent.Role.LABEL;
+            case ICON, IMAGE -> VantaUiComponent.Role.IMAGE;
+            case SPACER -> VantaUiComponent.Role.PRESENTATION;
+            case BUTTON -> VantaUiComponent.Role.BUTTON;
+            case TOGGLE -> VantaUiComponent.Role.SWITCH;
+            case SLIDER -> VantaUiComponent.Role.SLIDER;
+            case DROPDOWN -> VantaUiComponent.Role.COMBO_BOX;
+            case TEXT_FIELD -> VantaUiComponent.Role.TEXT_FIELD;
+            case PROGRESS -> VantaUiComponent.Role.PROGRESS;
+            case CANVAS -> VantaUiComponent.Role.CUSTOM;
+        };
+        String accessibleLabel = label;
+        if (kind == Kind.TEXT) accessibleLabel = currentText();
+        if (kind == Kind.TEXT_FIELD && accessibleLabel.isBlank()) accessibleLabel = placeholder;
+        String value = switch (kind) {
+            case TOGGLE -> Boolean.toString(toggleValue != null && toggleValue.getAsBoolean());
+            case SLIDER -> formatValue(sliderValue == null ? sliderMinimum : sliderValue.getAsDouble());
+            case DROPDOWN -> dropdownValue == null ? "" : safeValue(dropdownValue.get());
+            case TEXT_FIELD -> currentInput();
+            case PROGRESS -> label;
+            default -> "";
+        };
+        return new VantaUiComponent.Semantics(role, accessibleLabel, value, tooltip,
+                enabled, selected, focused);
+    }
+
+    @Override
+    public List<? extends VantaUiComponent> children() {
+        return List.copyOf(children);
+    }
+
+    /** Registers externally-owned state so the owning runtime can invalidate on writes. */
+    public VantaUiNode observeState(VantaState<?> state, boolean affectsLayout) {
+        if (state == null) throw new IllegalArgumentException("Observed UI state cannot be null.");
+        if (observedStates == null) observedStates = new ArrayList<>();
+        for (StateBinding binding : observedStates) {
+            if (binding.state() == state) {
+                if (affectsLayout && !binding.affectsLayout()) {
+                    observedStates.set(observedStates.indexOf(binding), new StateBinding(state, true));
+                }
+                return this;
+            }
+        }
+        observedStates.add(new StateBinding(state, affectsLayout));
+        return this;
+    }
+
+    void collectStateBindings(List<StateBinding> destination) {
+        if (observedStates != null) destination.addAll(observedStates);
+        for (VantaUiNode child : children) child.collectStateBindings(destination);
+    }
+
+    private static String safeValue(String value) {
+        return value == null ? "" : value;
+    }
+
+    record StateBinding(VantaState<?> state, boolean affectsLayout) {}
+
     int intrinsicWidth(Font font) { return VantaUiLayout.intrinsicWidth(this, font); }
 
     int intrinsicHeight(Font font) { return VantaUiLayout.intrinsicHeight(this, font); }
@@ -454,43 +529,7 @@ public final class VantaUiNode {
                 int mouseX, int mouseY) {
         if (!visible || width <= 0 || height <= 0) return;
 
-        if (background != 0) {
-            VantaCompose.Material material = switch (background) {
-                case VantaUiTheme.PANEL -> VantaCompose.Material.PANEL;
-                case VantaUiTheme.PANEL_RAISED -> VantaCompose.Material.ELEVATED;
-                case VantaUiTheme.SURFACE, VantaUiTheme.SURFACE_HOVER,
-                        VantaUiTheme.SURFACE_SELECTED -> VantaCompose.Material.CARD;
-                case VantaUiTheme.INPUT_SURFACE, VantaUiTheme.INPUT_FOCUS_SURFACE ->
-                        VantaCompose.Material.FIELD;
-                case VantaUiTheme.TOOLTIP_SURFACE -> VantaCompose.Material.POPOVER;
-                default -> null;
-            };
-            int radius = cornerRadius >= 0 ? cornerRadius
-                    : background == VantaUiTheme.PANEL ? 18
-                    : background == VantaUiTheme.PANEL_RAISED ? 13
-                    : background == VantaUiTheme.TOOLTIP_SURFACE ? 10
-                    : VantaUiTheme.RADIUS_MEDIUM;
-            if (material != null) {
-                VantaCompose.State surfaceState = !enabled
-                        ? VantaCompose.State.DISABLED
-                        : selected || background == VantaUiTheme.SURFACE_SELECTED
-                        ? VantaCompose.State.SELECTED
-                        : focused || background == VantaUiTheme.INPUT_FOCUS_SURFACE
-                        ? VantaCompose.State.FOCUSED
-                        : hovered || background == VantaUiTheme.SURFACE_HOVER
-                        ? VantaCompose.State.HOVERED
-                        : VantaCompose.State.NORMAL;
-                VantaCompose.drawSurface(graphics, theme.composeTheme(), material,
-                        surfaceState, x, y, width, height, radius);
-            } else {
-                VantaUiTheme.fillSquircle(graphics, x, y, width, height, radius,
-                        VantaUiTheme.applyPanelOpacity(background));
-            }
-        }
-        if (borderColor != 0) {
-            VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
-                    cornerRadius >= 0 ? cornerRadius : VantaUiTheme.RADIUS_MEDIUM, borderColor);
-        }
+        VantaUiNodeStyle.draw(this, graphics, theme);
 
         if (kind == Kind.CONTAINER) {
             if (clipChildren || scrollable) {
