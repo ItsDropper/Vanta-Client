@@ -189,7 +189,21 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
      * The title lobby is a real ClientLevel compiled by the same chunk renderer as a joined world and it
      * contains two fire braziers, so it proves the fire hook runs without needing a slow world load in CI.
      */
+    private static void dumpClass(String name) {
+        try {
+            Class<?> type = Class.forName(name);
+            for (var method : type.getDeclaredMethods()) {
+                System.out.println("[ground-fire-api] " + name + "#" + method);
+            }
+        } catch (Throwable error) {
+            System.out.println("[ground-fire-api] " + name + " unavailable: " + error);
+        }
+    }
+
     private static void verifyGroundFireInLobby(ClientGameTestContext context) {
+        dumpClass("net.minecraft.client.renderer.block.ModelBlockRenderer");
+        dumpClass("net.minecraft.client.renderer.block.BlockRenderDispatcher");
+        dumpClass("net.minecraft.client.renderer.chunk.SectionCompiler");
         context.waitTicks(20);
         int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
         System.out.println("[ground-fire] scaled fire blocks during lobby chunk compile: " + scaled
