@@ -14,6 +14,44 @@ import java.util.Map;
 /** Shared typography and text-layout primitives for the retained Vanta UI. */
 public final class VantaTypography {
     private static final Identifier DEFAULT_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
+
+    private static final Identifier DISPLAY_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
+    private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
+    private static final Identifier LABEL_FONT = Identifier.fromNamespaceAndPath("vanta", "medium");
+    private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
+
+    public enum Role { DISPLAY, HEADING, TITLE, BODY, LABEL, CAPTION }
+
+    /** Resolves the shared type scale from the same cached snapshot used by rendering. */
+    public static int size(Role role) {
+        var scale = name.vantaclient.client.gui.compose.theme.VantaThemeFactory.create().typography();
+        return switch (role) {
+            case DISPLAY -> scale.displaySize();
+            case HEADING -> scale.headingSize();
+            case TITLE -> scale.titleSize();
+            case BODY -> scale.bodySize();
+            case LABEL -> scale.labelSize();
+            case CAPTION -> scale.captionSize();
+        };
+    }
+
+    public static int lineHeight(Role role) {
+        var scale = name.vantaclient.client.gui.compose.theme.VantaThemeFactory.create().typography();
+        return switch (role) {
+            case DISPLAY, HEADING, TITLE -> scale.titleLineHeight();
+            case BODY, LABEL -> scale.bodyLineHeight();
+            case CAPTION -> scale.captionLineHeight();
+        };
+    }
+
+    public static Identifier font(Role role) {
+        return switch (role) {
+            case DISPLAY, HEADING, TITLE -> TITLE_FONT;
+            case BODY -> DEFAULT_FONT;
+            case LABEL -> LABEL_FONT;
+            case CAPTION -> CAPTION_FONT;
+        };
+    }
     private static final int CACHE_LIMIT = 4096;
 
     private record StyledKey(String value, Identifier font, boolean bold) {}
