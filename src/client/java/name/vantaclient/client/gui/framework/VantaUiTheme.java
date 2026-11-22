@@ -103,6 +103,9 @@ public final class VantaUiTheme {
     public static final int RADIUS_SMALL = 4;
     public static final int RADIUS_MEDIUM = 7;
     public static final int RADIUS_LARGE = 10;
+    public static final int RADIUS_PANEL = 14;
+    public static final int RADIUS_PILL = 11;
+    public static final int FOCUS_RING_WIDTH = 2;
 
     public static final int TEXT_LINE_HEIGHT = 11;
     public static final int CARET_BLINK_TICKS = 10;
