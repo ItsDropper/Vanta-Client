@@ -2,6 +2,7 @@ package name.vantaclient.client.hudeditor;
 
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.hud.ArmorHudElement;
@@ -79,11 +80,8 @@ public final class HudSettingsPanel {
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
 
-        VantaUiNode panel = VantaUiNode.column(10, 14)
-                .width(panelWidth)
-                .height(panelHeight)
-                .background(VantaUiTheme.TOOLTIP_SURFACE)
-                .scrollable();
+        VantaUiNode panel = VantaComponents.panel(VantaComponents.Surface.POPOVER, 10, 14)
+                .width(panelWidth).height(panelHeight).scrollable();
 
         VantaUiNode header = VantaUiNode.row(8, 0)
                 .height(38)
@@ -98,7 +96,7 @@ public final class HudSettingsPanel {
         panel.add(header);
         panel.add(VantaUiNode.paragraph("Changes apply immediately to the selected HUD element.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
-        panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        panel.add(VantaComponents.divider());
 
         panel.add(VantaUiNode.text("Scale and position", VantaUiTheme.TEXT_MUTED));
         panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
@@ -127,7 +125,7 @@ public final class HudSettingsPanel {
                     VantaUiTheme.TEXT_MUTED));
         }
 
-        panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        panel.add(VantaComponents.divider());
         panel.add(VantaUiNode.text("Background", VantaUiTheme.TEXT_MUTED));
         panel.add(VantaUiNode.toggle("Show dark background",
                 () -> selected != null && VantaClientPreferences.get()
@@ -155,7 +153,7 @@ public final class HudSettingsPanel {
                 "Connected hitboxes merge into one continuous panel. Background opacity is 80%.",
                 VantaUiTheme.TEXT_MUTED, 2));
 
-        panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        panel.add(VantaComponents.divider());
         panel.add(VantaUiNode.text("Grid and snapping", VantaUiTheme.TEXT_MUTED));
         panel.add(VantaUiNode.toggle("Snap to grid",
                 () -> VantaClientPreferences.get().hudSnapToGrid,
