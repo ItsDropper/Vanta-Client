@@ -70,7 +70,12 @@ public final class VantaTitleUi {
     private static final Identifier SCRIM_BOTTOM = tex("scrim_bottom");
     private static final Identifier SCRIM_TOP = tex("scrim_top");
 
-    private static final int TEXT_DIM = 0xFF8D99AD;
+    private static final Map<String, Integer> WIDTHS = new HashMap<>();
+    private static final Map<String, Component> MEDIUM_COMPONENTS = new HashMap<>();
+    private static final Map<String, Component> REGULAR_COMPONENTS = new HashMap<>();
+    private static final VantaUiTheme THEME = new VantaUiTheme();
+
+    private static final int TEXT_DIM = 0xFFA3AFC3;
     private static final int TEXT_BRIGHT = 0xFFFFFFFF;
     private static final int CARD = 0xE60C121C;
     private static final int CARD_EDGE = 0x24FFFFFF;
@@ -117,6 +122,8 @@ public final class VantaTitleUi {
     private float popupProgress;
     private long lastFrame = System.nanoTime();
     private float u;
+    private int msFps = -1;
+    private String msText = "";
     private int panelX, panelY, panelW, panelH;
     private int cardX, cardY, cardW, cardH;
     private int leftX, leftW, accountY, statsY, linksY, accountH, statsH, linksH;
@@ -358,7 +365,7 @@ public final class VantaTitleUi {
             tabsWidth += textWidth(items.get(button).label, 15, true) + s(20) + tabGap;
         }
         tabsWidth -= tabGap;
-        int tx = (w - tabsWidth) / 2;
+        int tx = margin + s(26) + s(10) + textWidth("Vanta", 18, true) + s(34);
         for (AbstractButton button : tabs) {
             if (button == null) continue;
             int bw = textWidth(items.get(button).label, 15, true) + s(20);
@@ -368,16 +375,23 @@ public final class VantaTitleUi {
 
         // Bottom-left cards.
         leftX = margin;
-        leftW = s(292);
+        leftW = s(320);
         linksH = s(42);
         statsH = s(46);
         accountH = s(64);
         linksY = bottom - linksH;
         statsY = linksY - s(8) - statsH;
         accountY = statsY - s(8) - accountH;
-        int linkWidth = (leftW - s(12)) / Math.max(1, links.size());
-        for (int i = 0; i < links.size(); i++) {
-            bounds(links.get(i), leftX + s(6) + i * linkWidth, linksY + s(4), linkWidth, linksH - s(8));
+        int labelTotal = 0;
+        for (AbstractButton link : links) labelTotal += textWidth(items.get(link).label, 12, false);
+        int hit = s(16);
+        int free = Math.max(0, leftW - labelTotal - hit * links.size());
+        int slot = free / Math.max(1, links.size());
+        int lx = leftX;
+        for (AbstractButton link : links) {
+            int bw = textWidth(items.get(link).label, 12, false) + hit + slot;
+            bounds(link, lx, linksY + s(4), bw, linksH - s(8));
+            lx += bw;
         }
 
         // Play card, bottom right.
@@ -554,7 +568,7 @@ public final class VantaTitleUi {
         int h = screen.height;
         long elapsed = VantaLobbyScene.elapsedMillis();
         float intro = ease(clamp01(elapsed / 520.0f));
-        int accent = new VantaUiTheme().accent();
+        int accent = THEME.accent();
 
         for (Map.Entry<AbstractButton, Item> entry : items.entrySet()) {
             AbstractButton button = entry.getKey();
@@ -591,7 +605,7 @@ public final class VantaTitleUi {
             if (button == null) continue;
             Item item = items.get(button);
             boolean home = button == tabPlay;
-            int color = home ? TEXT_BRIGHT : mix(0xFF9AA6B8, TEXT_BRIGHT, item.hover);
+            int color = home ? TEXT_BRIGHT : mix(0xFFC3CDDC, TEXT_BRIGHT, item.hover);
             text(g, item.label, button.getX() + s(10), button.getY() + button.getHeight() / 2, 15,
                     alpha(color, intro), true);
             if (home) {
@@ -674,7 +688,11 @@ public final class VantaTitleUi {
         int fpsColor = fps >= 60 ? GOOD : fps >= 30 ? WARN : BAD;
         VantaUiTheme.fillSquircle(g, leftX + s(18), y + statsH / 2 - dot / 2, dot, dot, dot / 2, alpha(fpsColor, a));
         text(g, fps + " FPS", leftX + s(36), y + statsH / 2, 14, alpha(TEXT_BRIGHT, a), true);
-        String ms = fps > 0 ? String.format(Locale.ROOT, "%.1f ms", 1000.0f / fps) : "-- ms";
+        if (fps != msFps) {
+            msFps = fps;
+            msText = fps > 0 ? String.format(Locale.ROOT, "%.1f ms", 1000.0f / fps) : "-- ms";
+        }
+        String ms = msText;
         text(g, ms, leftX + leftW - s(18) - textWidth(ms, 13, false), y + statsH / 2, 13, alpha(TEXT_DIM, a), false);
 
         // Links.
@@ -682,7 +700,7 @@ public final class VantaTitleUi {
         card(g, leftX, y, leftW, linksH, s(16), a);
         for (AbstractButton button : links) {
             Item item = items.get(button);
-            int color = mix(0xFF8D99AD, TEXT_BRIGHT, item.hover);
+            int color = mix(0xFFB4BFD1, TEXT_BRIGHT, item.hover);
             String label = item.label;
             int tw = textWidth(label, 12, false);
             text(g, label, button.getX() + (button.getWidth() - tw) / 2.0f,
@@ -845,8 +863,8 @@ public final class VantaTitleUi {
     private void renderFooter(GuiGraphics g, float intro) {
         String legal = "Copyright Mojang AB. Do not distribute!";
         int lw = textWidth(legal, 10, false);
-        text(g, legal, screen.width - s(28) - lw, screen.height - s(22), 10, alpha(0xFF4C566A, intro), false);
-        text(g, "Vanta Client", s(28), screen.height - s(22), 10, alpha(0xFF4C566A, intro), false);
+        text(g, legal, screen.width - s(28) - lw, screen.height - s(22), 10, alpha(0xFF8A96AB, intro), false);
+        text(g, "Vanta Client", s(28), screen.height - s(22), 10, alpha(0xFF8A96AB, intro), false);
     }
 
     private void renderPopup(GuiGraphics g, int accent) {
@@ -923,7 +941,7 @@ public final class VantaTitleUi {
                       boolean medium) {
         if ((color >>> 24) == 0) return;
         float f = size * u / 13.0f;
-        Component component = Component.literal(value).withStyle(st -> st.withFont(medium ? MEDIUM : REGULAR));
+        Component component = component(value, medium);
         g.pose().pushMatrix();
         g.pose().translate(x, centerY);
         g.pose().scale(f, f);
@@ -932,8 +950,26 @@ public final class VantaTitleUi {
     }
 
     private int textWidth(String value, float size, boolean medium) {
-        Component component = Component.literal(value).withStyle(st -> st.withFont(medium ? MEDIUM : REGULAR));
-        return Math.round(mc.font.width(component) * size * u / 13.0f);
+        String key = (medium ? 'm' : 'r') + value;
+        Integer base = WIDTHS.get(key);
+        if (base == null) {
+            base = mc.font.width(component(value, medium));
+            if (WIDTHS.size() > 512) WIDTHS.clear();
+            WIDTHS.put(key, base);
+        }
+        return Math.round(base * size * u / 13.0f);
+    }
+
+    /** Styled components are immutable and reused every frame instead of being rebuilt per draw. */
+    private static Component component(String value, boolean medium) {
+        Map<String, Component> cache = medium ? MEDIUM_COMPONENTS : REGULAR_COMPONENTS;
+        Component component = cache.get(value);
+        if (component == null) {
+            component = Component.literal(value).withStyle(st -> st.withFont(medium ? MEDIUM : REGULAR));
+            if (cache.size() > 512) cache.clear();
+            cache.put(value, component);
+        }
+        return component;
     }
 
     private String fit(String value, float size, boolean medium, int maxWidth) {

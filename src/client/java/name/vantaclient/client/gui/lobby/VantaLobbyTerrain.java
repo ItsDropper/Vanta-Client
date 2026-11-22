@@ -288,7 +288,7 @@ final class VantaLobbyTerrain {
     // ------------------------------------------------------------------ vegetation
 
     private static boolean freeForPlants(int x, int z) {
-        boolean sightline = Math.abs(x) <= 6 && z >= -14 && z <= 18;
+        boolean sightline = Math.abs(x) <= 13 && z >= -14 && z <= 26;
         return !sightline && !inPlazaZone(x, z) && !inPavilionZone(x, z) && pathDistance(x, z) > 2.6;
     }
 
