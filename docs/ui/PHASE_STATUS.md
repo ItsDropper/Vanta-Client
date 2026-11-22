@@ -28,7 +28,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 ## Phase 3 — visual design system (2026-11-22)
 
 - Expanded the immutable `VantaTheme` snapshot into complete semantic groups: palette roles, spacing/shape, typography, glass materials and motion.
-- Added semantic info/success/warning/danger and focus/selection palette tokens. Accent foreground is selected using relative luminance rather than assuming white text works on every user accent; all four shipped accents are checked against the WCAG AA 4.5:1 normal-text target.
+- Added semantic info/success/warning/danger and focus/selection palette tokens. Accent foreground is selected using relative luminance rather than assuming white text works on every user accent; all four shipped accents are checked against the WCAG AA 4.5:1 normal-text target. Primary action surface and foreground suppliers resolve the active accent live without rebuilding the screen tree.
 - Defined display, heading, title, body, label and caption roles and mapped them to the bundled Vanta font providers. Retained text nodes now use shared typography line-height tokens; label, heading and display primitives are available for deliberate hierarchy and are used by shared badges, setting rows and status rows.
 - Standardized panel/pill radii and focus-ring width. Shared component panels, badges and action buttons consume those shape tokens.
 - Moved glass shadow, highlight, border, hover, selected, focused and disabled alpha values into the immutable theme. The Minecraft-native renderer now reads those values instead of embedding state-alpha literals.
