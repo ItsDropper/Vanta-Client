@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.setting.SettingDefinition;
 import name.vantaclient.client.gui.framework.VantaUiNode;
@@ -53,8 +54,8 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
         header.add(VantaUiNode.button("BACK", this::onClose).height(30));
         root.add(header);
 
-        VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 18)
-                .flex(1).background(VantaUiTheme.PANEL).scrollable();
+        VantaUiNode content = VantaComponents.panel(VantaComponents.Surface.PANEL,
+                12, compact ? 12 : 18).flex(1).scrollable();
         content.add(VantaUiNode.eyebrow(descriptor.id()
                 + (descriptor.version().isBlank() ? "" : " / " + descriptor.version())));
         if (!descriptor.description().isBlank()) {
@@ -65,8 +66,7 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
             content.add(VantaUiNode.text("This integration does not expose configurable settings.",
                     VantaUiTheme.TEXT_MUTED));
         } else {
-            VantaUiNode settings = VantaUiNode.column(9, 12)
-                    .background(VantaUiTheme.PANEL_RAISED);
+            VantaUiNode settings = VantaComponents.panel(VantaComponents.Surface.ELEVATED, 9, 12);
             for (SettingDefinition<?> definition : descriptor.settings()) {
                 addSetting(settings, definition);
             }
@@ -146,7 +146,7 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
         if (description != null && !description.isBlank()) {
             panel.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED, 2));
         }
-        panel.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        panel.add(VantaComponents.divider());
     }
 
     private Object readValue(SettingDefinition<?> setting) {
