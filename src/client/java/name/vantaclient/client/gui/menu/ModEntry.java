@@ -31,6 +31,9 @@ public final class ModEntry {
     private final Object configFactory;
     private final Path jar;
     private final String iconPath;
+    private final String searchName;
+    private final String searchId;
+    private final String searchDescription;
 
     ModEntry(String id, String name, String description, String version, Group group,
              Feature feature, ModDescriptor descriptor, Object configFactory,
@@ -45,6 +48,9 @@ public final class ModEntry {
         this.configFactory = configFactory;
         this.jar = jar;
         this.iconPath = iconPath;
+        this.searchName = this.name.toLowerCase(Locale.ROOT);
+        this.searchId = id.toLowerCase(Locale.ROOT);
+        this.searchDescription = this.description.toLowerCase(Locale.ROOT);
     }
 
     public String id() { return id; }
@@ -75,10 +81,12 @@ public final class ModEntry {
     public boolean hasOwnConfigScreen() { return configFactory != null; }
 
     public boolean matches(String query) {
-        if (query == null || query.isBlank()) return true;
-        String needle = query.trim().toLowerCase(Locale.ROOT);
-        return name.toLowerCase(Locale.ROOT).contains(needle)
-                || id.toLowerCase(Locale.ROOT).contains(needle)
-                || description.toLowerCase(Locale.ROOT).contains(needle);
+        return matchesNormalized(query == null ? "" : query.trim().toLowerCase(Locale.ROOT));
+    }
+
+    /** Matches a query already normalized once by the caller for a whole catalog pass. */
+    public boolean matchesNormalized(String needle) {
+        return needle == null || needle.isEmpty()
+                || searchName.contains(needle) || searchId.contains(needle) || searchDescription.contains(needle);
     }
 }

@@ -49,12 +49,14 @@ public final class ModsPage {
         VantaUiNode page = VantaUiNode.column(0, 0).flex(1);
         addFilterRows(page, host, state, preferences);
 
+        String query = host.search();
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
         List<ModEntry> visible = new ArrayList<>();
         for (ModEntry entry : catalog.entries()) {
             boolean inFilter = state.favoritesOnly
                     ? favorites.contains(entry.id())
                     : state.group == null || entry.group() == state.group;
-            if (inFilter && entry.matches(host.search())) visible.add(entry);
+            if (inFilter && entry.matchesNormalized(normalizedQuery)) visible.add(entry);
         }
 
         VantaUiNode scroll = VantaUiNode.column(16, 24).flex(1).scrollable();
