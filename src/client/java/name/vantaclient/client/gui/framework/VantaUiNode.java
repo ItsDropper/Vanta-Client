@@ -880,6 +880,7 @@ public final class VantaUiNode implements VantaUiComponent {
             case "medium" -> 13;
             case "small" -> 11;
             case "heading" -> 26;
+            case "brand" -> 28;
             default -> -1;
         };
     }
