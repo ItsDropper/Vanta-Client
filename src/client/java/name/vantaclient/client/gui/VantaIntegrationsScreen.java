@@ -123,15 +123,16 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
                 ? selectedModTitle() : "Installed mods"));
         header.add(identity.flex(1));
         if (!compact) {
-            header.add(VantaUiNode.button("Modrinth", VantaUiNode.Icon.SEARCH,
-                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this)))
-                    .size(112, 32));
-            header.add(VantaUiNode.button("HUD editor", VantaUiNode.Icon.HUD,
+            header.add(VantaComponents.actionButton("Modrinth", VantaUiNode.Icon.SEARCH,
+                    VantaComponents.ButtonVariant.SECONDARY,
+                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this))).size(112, 32));
+            header.add(VantaComponents.actionButton("HUD editor", VantaUiNode.Icon.HUD,
+                    VantaComponents.ButtonVariant.SECONDARY,
                     () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
                     .size(104, 32));
-            header.add(VantaUiNode.button("Settings", VantaUiNode.Icon.DISPLAY,
-                    () -> minecraft.setScreen(new VantaSettingsScreen(this)))
-                    .size(92, 32));
+            header.add(VantaComponents.actionButton("Settings", VantaUiNode.Icon.DISPLAY,
+                    VantaComponents.ButtonVariant.SECONDARY,
+                    () -> minecraft.setScreen(new VantaSettingsScreen(this))).size(92, 32));
         }
         header.add(VantaUiNode.button(compact ? "×" : "Close", this::onClose)
                 .size(compact ? 28 : 62, 30));
