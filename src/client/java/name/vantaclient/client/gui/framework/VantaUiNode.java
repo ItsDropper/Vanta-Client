@@ -703,7 +703,7 @@ public final class VantaUiNode implements VantaUiComponent {
                 int textX = icon == null
                         ? x + Math.max(8, (width - textWidth(font, shownLabel, UI_FONT)) / 2) : labelX;
                 int color = !enabled ? VantaUiTheme.TEXT_MUTED
-                        : buttonForeground != 0 ? buttonForeground
+                        : resolvedButtonForeground != 0 ? resolvedButtonForeground
                         : selected || over || focused ? VantaUiTheme.TEXT_PRIMARY
                         : VantaUiTheme.TEXT_SECONDARY;
                 graphics.drawString(font, styledText(shownLabel, UI_FONT, true), textX,
