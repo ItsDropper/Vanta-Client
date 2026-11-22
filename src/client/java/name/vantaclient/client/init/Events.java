@@ -20,6 +20,7 @@ public final class Events {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.screen instanceof TitleScreen && client.level == null) {
                 VantaLobbyWorld.start();
+                VantaLobbyWorld.tick();
             }
         });
         ClientTickEvents.START_CLIENT_TICK.register(

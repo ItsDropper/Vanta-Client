@@ -197,6 +197,33 @@ public final class VantaLobbyWorld {
         }
     }
 
+    /**
+     * Advances the title world's per-tick systems (light texture, environment attributes, block
+     * entities, world time) the way a joined world does. Without it the first frames of a fresh
+     * client render with uninitialised sky and light state.
+     */
+    public static void tick() {
+        Minecraft mc = Minecraft.getInstance();
+        if (!active || level == null || swapped || mc.level != null || !(mc.screen instanceof TitleScreen)) return;
+        beginFrame();
+        if (!swapped) return;
+        try {
+            mc.gameRenderer.tick();
+            level.tickBlockEntities();
+            level.tick(() -> true);
+        } catch (Throwable error) {
+            if (!tickFailureLogged) {
+                tickFailureLogged = true;
+                java.util.logging.Logger.getLogger("VantaClient").log(java.util.logging.Level.WARNING,
+                        "Vanta title world tick failed", error);
+            }
+        } finally {
+            restore();
+        }
+    }
+
+    private static boolean tickFailureLogged;
+
     public static void stop() {
         restore();
         nextStartAttemptNanos = 0L;

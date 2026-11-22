@@ -28,6 +28,7 @@ public final class VantaLoaderEvents {
             Minecraft client = (Minecraft) event.client();
             if (client.screen instanceof TitleScreen && client.level == null) {
                 VantaLobbyWorld.start();
+                VantaLobbyWorld.tick();
             }
             ClientTickHandler.tick(client);
             VantaRemoteSessionManager.tick(client);
