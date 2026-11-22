@@ -56,7 +56,9 @@ public final class WebRtcPeerSession implements LoopbackTcpBridge.DuplexConnecti
     private static final int FRAME_FIN = 2;
     private static final int MAX_PAYLOAD_BYTES = 16 * 1024;
     private static final int MAX_QUEUED_FRAMES = 256;
-    private static final long MAX_BUFFERED_BYTES = 1024L * 1024L;
+    // Keep interactive packets from sitting behind a megabyte of queued world/chunk data.
+    // The tunnel thread blocks here; Minecraft's render and tick threads never do.
+    private static final long MAX_BUFFERED_BYTES = 256L * 1024L;
     private static final Duration SIGNAL_READY_TIMEOUT = Duration.ofSeconds(25);
     private static final Duration DESCRIPTION_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration PEER_TIMEOUT = Duration.ofSeconds(75);
