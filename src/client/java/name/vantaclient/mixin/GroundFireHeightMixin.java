@@ -12,7 +12,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -20,12 +19,10 @@ import java.util.List;
 /**
  * Scales only the baked quads belonging to placed fire blocks.
  *
- * ModelBlockRenderer builds chunk geometry on worker threads. Applying a scale
- * to its shared PoseStack at method entry is easy to accidentally couple to
- * unrelated block transforms. Instead, capture the current fire scale while a
- * fire block is tessellated, then replace the pose passed to VertexConsumer's
- * array-based putBulkData overload. ModelBlockRenderer funnels both ambient-
- * occlusion and flat block quads through this exact submission call.
+ * ModelBlockRenderer builds chunk geometry on worker threads. For a fire block the
+ * pose stack is pushed and scaled vertically on entry to tesselateBlock and popped on
+ * every return, so no other block sees the transform. This only touches the public
+ * entry point; the private quad-submission methods changed in 1.21.9+ and are not hooked.
  *
  * Flame particles and the first-person fire overlay use separate render paths
  * and are deliberately untouched.
@@ -33,7 +30,7 @@ import java.util.List;
 @Mixin(ModelBlockRenderer.class)
 public abstract class GroundFireHeightMixin {
     @Unique
-    private static final ThreadLocal<Float> vanta$activeFireScale = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> vanta$scaled = new ThreadLocal<>();
 
     @Inject(method = "tesselateBlock", at = @At("HEAD"))
     private void vanta$beginGroundFireScale(
@@ -47,28 +44,17 @@ public abstract class GroundFireHeightMixin {
             int overlayCoords,
             CallbackInfo ci
     ) {
-        vanta$activeFireScale.remove();
+        vanta$scaled.remove();
         if (GroundFireHeightFeature.isActive() && !parts.isEmpty() && vanta$isFire(state)) {
             float scale = GroundFireHeightFeature.getHeightScale();
             if (Float.isFinite(scale) && Math.abs(scale - 1.0f) > 0.0001f) {
-                vanta$activeFireScale.set(scale);
+                // Scoped to this one block: pushed here, popped at RETURN. The scale is applied
+                // around the block's local origin so the flames stay anchored to the ground.
+                poseStack.pushPose();
+                poseStack.scale(1.0f, scale, 1.0f);
+                vanta$scaled.set(Boolean.TRUE);
             }
         }
-    }
-
-    @ModifyArg(
-            method = "putQuadData",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;putBulkData(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/minecraft/client/renderer/block/model/BakedQuad;[FFFF[II)V"
-            ),
-            index = 0,
-            require = 1
-    )
-    private PoseStack.Pose vanta$scaleGroundFireQuad(PoseStack.Pose originalPose) {
-        Float scale = vanta$activeFireScale.get();
-        if (scale == null) return originalPose;
-        return GroundFireHeightFeature.scaleQuadPose(originalPose, scale);
     }
 
     @Inject(method = "tesselateBlock", at = @At("RETURN"))
@@ -83,7 +69,10 @@ public abstract class GroundFireHeightMixin {
             int overlayCoords,
             CallbackInfo ci
     ) {
-        vanta$activeFireScale.remove();
+        if (vanta$scaled.get() != null) {
+            vanta$scaled.remove();
+            poseStack.popPose();
+        }
     }
 
     @Unique
