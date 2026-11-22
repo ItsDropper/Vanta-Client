@@ -82,7 +82,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
         heading.add(VantaUiNode.title("World sharing"));
         header.add(heading);
         header.add(VantaUiNode.spacer(1).flex(1));
-        header.add(VantaUiNode.button("Back", this::onClose).height(30)
+        header.add(VantaComponents.actionButton("Back", null,
+                VantaComponents.ButtonVariant.SECONDARY, this::onClose).height(30)
                 .tooltip("Return to the previous screen"));
         root.add(header);
 
@@ -128,16 +129,15 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
 
         if (session.hostActive()) {
             content.add(VantaComponents.divider());
-            content.add(VantaUiNode.row(8, 0).height(22)
-                    .add(VantaUiNode.eyebrow("Remote invite active"))
-                    .add(VantaUiNode.spacer(1).flex(1))
-                    .add(VantaUiNode.text(session.connectedGuests() + " connected",
-                            VantaUiTheme.TEXT_SECONDARY)));
+            content.add(VantaComponents.statusRow("Remote invite active",
+                    "The host is managing guest requests.",
+                    session.connectedGuests() + " connected", VantaComponents.Tone.SUCCESS));
             content.add(VantaUiNode.row(8, 0)
                     .height(36)
                     .align(VantaUiNode.Alignment.CENTER)
                     .add(VantaUiNode.title(session.roomCode()).flex(1))
-                    .add(VantaUiNode.button("Copy invite",
+                     .add(VantaComponents.actionButton("Copy invite", null,
+                            VantaComponents.ButtonVariant.SECONDARY,
                             () -> Minecraft.getInstance().keyboardHandler.setClipboard(session.roomCode()))
                             .size(104, 30)));
             if (session.roomExpiresAt() != null) {
@@ -162,10 +162,12 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
                                 : claimedProfile + " · unverified; approval required",
                         VantaUiTheme.TEXT_MUTED));
                 request.add(guestInfo);
-                request.add(VantaUiNode.button("Approve",
+                request.add(VantaComponents.actionButton("Approve", null,
+                        VantaComponents.ButtonVariant.PRIMARY,
                         () -> VantaRemoteSessionManager.approveGuest(guest.requestId()))
                         .size(76, 30).enabled(!guest.approving()));
-                request.add(VantaUiNode.button("Reject",
+                request.add(VantaComponents.actionButton("Reject", null,
+                        VantaComponents.ButtonVariant.DANGER,
                         () -> VantaRemoteSessionManager.rejectGuest(guest.requestId()))
                         .size(64, 30).enabled(!guest.approving()));
                 content.add(request);
@@ -180,7 +182,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
                 active.add(VantaUiNode.text(guest.identityVerified()
                                 ? "Account key verified" : "Awaiting account key",
                         VantaUiTheme.TEXT_MUTED));
-                active.add(VantaUiNode.button("Kick",
+                active.add(VantaComponents.actionButton("Kick", null,
+                        VantaComponents.ButtonVariant.DANGER,
                         () -> VantaRemoteSessionManager.kickGuest(guest.requestId()))
                         .size(62, 30));
                 content.add(active);
