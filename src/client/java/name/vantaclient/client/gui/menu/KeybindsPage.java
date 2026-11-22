@@ -22,9 +22,16 @@ import java.util.Set;
 public final class KeybindsPage {
     private KeybindsPage() {}
 
-    private record Key(int code, String label, float x, float y, float w) {}
+    private record Key(int code, String label, float x, float y, float w, String bindingName) {
+        private Key(int code, String label, float x, float y, float w) {
+            this(code, label, x, y, w, keyFor(code).getName());
+        }
+    }
 
     private static final int MOUSE_BASE = -100;
+    private static final String LEFT_MOUSE_BINDING = keyFor(MOUSE_BASE).getName();
+    private static final String RIGHT_MOUSE_BINDING = keyFor(MOUSE_BASE - 1).getName();
+    private static final String MIDDLE_MOUSE_BINDING = keyFor(MOUSE_BASE - 2).getName();
     private static final List<Key> KEYS = buildLayout();
     private static final float LAYOUT_WIDTH = 15.0f;
     private static final float LAYOUT_HEIGHT = 6.6f;
@@ -98,7 +105,11 @@ public final class KeybindsPage {
 
     /** All mappings currently bound to {@code code}. */
     private static List<KeyMapping> usersOf(Map<String, List<KeyMapping>> byBinding, int code) {
-        List<KeyMapping> users = byBinding.get(keyFor(code).getName());
+        return usersOf(byBinding, keyFor(code).getName());
+    }
+
+    private static List<KeyMapping> usersOf(Map<String, List<KeyMapping>> byBinding, String bindingName) {
+        List<KeyMapping> users = byBinding.get(bindingName);
         return users == null ? List.of() : users;
     }
 
@@ -194,7 +205,7 @@ public final class KeybindsPage {
             int ky = y + 4 + Math.round(key.y() * unit);
             int kw = Math.round(key.w() * unit) - gap;
             int kh = Math.round(unit) - gap;
-            paintKey(g, font, kx, ky, kw, kh, key.label(), usersOf(index, key.code()), selected == key.code(), 9);
+            paintKey(g, font, kx, ky, kw, kh, key.label(), usersOf(index, key.bindingName()), selected == key.code(), 9);
         }
         int mx = x + keyboardWidth + 34;
         int my = y + 12;
@@ -207,11 +218,11 @@ public final class KeybindsPage {
         int buttonHeight = bodyHeight / 2 - 6;
         int half = bodyWidth / 2;
         paintKey(g, font, mx + 5, my + 5, half - 7, buttonHeight, "L",
-                usersOf(index, MOUSE_BASE), selected == MOUSE_BASE, 14);
+                usersOf(index, LEFT_MOUSE_BINDING), selected == MOUSE_BASE, 14);
         paintKey(g, font, mx + half + 2, my + 5, half - 7, buttonHeight, "R",
-                usersOf(index, MOUSE_BASE - 1), selected == MOUSE_BASE - 1, 14);
+                usersOf(index, RIGHT_MOUSE_BINDING), selected == MOUSE_BASE - 1, 14);
         paintKey(g, font, mx + half - 8, my + 5 + buttonHeight / 4, 16, buttonHeight / 2, "",
-                usersOf(index, MOUSE_BASE - 2), selected == MOUSE_BASE - 2, 6);
+                usersOf(index, MIDDLE_MOUSE_BINDING), selected == MOUSE_BASE - 2, 6);
     }
 
     private static void paintKey(GuiGraphics g, Font font, int x, int y, int w, int h, String label,

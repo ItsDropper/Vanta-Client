@@ -47,12 +47,13 @@ public final class ModCatalog {
     private final Map<String, IconTexture> icons = new HashMap<>();
     private List<ExperimentalModHotLoader.AvailableMod> installed = List.of();
     private List<ModEntry> entries;
+    private Map<String, ModEntry> entriesById;
     private boolean scanning;
     private boolean released;
 
     public ModCatalog(Minecraft minecraft) {
         this.minecraft = minecraft;
-        this.entries = buildEntries(List.of(), Map.of());
+        setEntries(buildEntries(List.of(), Map.of()));
     }
 
     public List<ModEntry> entries() { return entries; }
@@ -62,18 +63,21 @@ public final class ModCatalog {
     public IconTexture icon(String modId) { return icons.get(modId); }
 
     public ModEntry find(String id) {
-        if (id == null) return null;
-        for (ModEntry entry : entries) {
-            if (entry.id().equals(id)) return entry;
-        }
-        return null;
+        return id == null ? null : entriesById.get(id);
+    }
+
+    private void setEntries(List<ModEntry> nextEntries) {
+        Map<String, ModEntry> index = new HashMap<>(nextEntries.size());
+        for (ModEntry entry : nextEntries) index.putIfAbsent(entry.id(), entry);
+        entries = nextEntries;
+        entriesById = Map.copyOf(index);
     }
 
     /** Rescans the mods folder asynchronously and calls {@code onChanged} on the client thread. */
     public void refresh(Runnable onChanged) {
         if (scanning || released) return;
         if (!ClientPlatform.isFabric()) {
-            entries = buildEntries(List.of(), Map.of());
+            setEntries(buildEntries(List.of(), Map.of()));
             return;
         }
         scanning = true;
@@ -91,7 +95,7 @@ public final class ModCatalog {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> factories = (Map<String, Object>) result[1];
                 installed = List.copyOf(mods);
-                entries = buildEntries(installed, factories);
+                setEntries(buildEntries(installed, factories));
                 reloadIcons();
             } else if (error != null) {
                 System.err.println("[Vanta Client] Could not scan the mods folder: " + error.getMessage());
@@ -177,7 +181,7 @@ public final class ModCatalog {
         for (ModDescriptor descriptor : VantaClientApi.getRegisteredMods()) {
             descriptors.put(descriptor.id(), descriptor);
         }
-        List<String> listed = new ArrayList<>();
+        java.util.Set<String> listed = new java.util.HashSet<>();
         for (ExperimentalModHotLoader.AvailableMod mod : installedMods) {
             ModDescriptor descriptor = descriptors.get(mod.id());
             String description = descriptor == null ? "" : descriptor.description();
