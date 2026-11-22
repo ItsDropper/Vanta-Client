@@ -5,12 +5,21 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import name.vantaclient.client.gui.compose.interaction.VantaInteractionController;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
 /** Owns one screen's retained node tree, focus, pointer capture and layout bounds. */
 public final class VantaUiRuntime {
     private final VantaUiNode root;
     private final VantaUiTheme theme = new VantaUiTheme();
 
     private final VantaInteractionController interactions;
+    private final List<AutoCloseable> stateSubscriptions = new ArrayList<>();
+    private final AtomicLong invalidationRevision = new AtomicLong();
+    private final AtomicLong layoutInvalidationRevision = new AtomicLong();
+    private long appliedLayoutInvalidationRevision;
+    private volatile long renderedRevision = -1L;
     private VantaUiNode hovered;
     private VantaUiNode pendingFocusReveal;
     private int lastHitTestX = Integer.MIN_VALUE;
@@ -35,6 +44,14 @@ public final class VantaUiRuntime {
         if (root == null) throw new IllegalArgumentException("Root node cannot be null.");
         this.root = root;
         this.interactions = new VantaInteractionController(root);
+        List<VantaUiNode.StateBinding> bindings = new ArrayList<>();
+        root.collectStateBindings(bindings);
+        for (VantaUiNode.StateBinding binding : bindings) {
+            stateSubscriptions.add(binding.state().subscribe(ignored -> {
+                invalidateRender();
+                if (binding.affectsLayout()) layoutInvalidationRevision.incrementAndGet();
+            }));
+        }
     }
 
     /** Sets the user's preferred physical UI scale, independent of Minecraft's GUI scale. */
@@ -94,10 +111,31 @@ public final class VantaUiRuntime {
 
     /** Marks measurements and placement dirty after content or size constraints change. */
     public void invalidateLayout() {
+        layoutInvalidationRevision.incrementAndGet();
         lastWidth = -1;
     }
 
+    /** Marks the component tree's visual output stale after an external state change. */
+    public void invalidateRender() {
+        invalidationRevision.incrementAndGet();
+    }
+
+    /** Monotonic revision used by screen hosts and tests to observe UI state changes. */
+    public long invalidationRevision() {
+        return invalidationRevision.get();
+    }
+
+    /** True when a state write or handled interaction occurred after the last render. */
+    public boolean isRenderDirty() {
+        return renderedRevision != invalidationRevision.get();
+    }
+
     public void layout(Font font, int screenWidth, int screenHeight) {
+        long requestedLayoutRevision = layoutInvalidationRevision.get();
+        if (requestedLayoutRevision != appliedLayoutInvalidationRevision) {
+            lastWidth = -1;
+            appliedLayoutInvalidationRevision = requestedLayoutRevision;
+        }
         // Screen dimensions are already divided by Minecraft's GUI scale.
         // Compensate here so a 16px design control remains 16 physical pixels
         // at GUI scales 1–4 instead of growing with the vanilla coordinate scale.
@@ -130,6 +168,7 @@ public final class VantaUiRuntime {
 
     public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight,
                        int mouseX, int mouseY) {
+        long frameRevision = invalidationRevision.get();
         int previousWidth = lastWidth;
         int previousHeight = lastHeight;
         float previousScale = uiScale;
@@ -186,6 +225,7 @@ public final class VantaUiRuntime {
         averageUiRenderNanos = averageUiRenderNanos == 0L
                 ? lastUiRenderNanos
                 : averageUiRenderNanos + (lastUiRenderNanos - averageUiRenderNanos) / 8L;
+        renderedRevision = frameRevision;
     }
 
     /** Last CPU-side UI command submission duration; excludes GPU completion. */
@@ -249,6 +289,7 @@ public final class VantaUiRuntime {
             return dropdownClosed;
         }
         target.click(mouseX, mouseY, button, font);
+        invalidateRender();
         if (target.kind() == VantaUiNode.Kind.SLIDER) interactions.captureSlider(target);
 
         int layoutWidth = lastWidth;
@@ -269,6 +310,7 @@ public final class VantaUiRuntime {
         double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
         if (!interactions.dragPointer(mouseX, mouseY, offsetX, offsetY, uiScale)) return false;
         lastWidth = -1;
+        invalidateRender();
         return true;
     }
 
@@ -286,7 +328,10 @@ public final class VantaUiRuntime {
                 logicalViewportWidth(), logicalViewportHeight())) return true;
         boolean popupClosed = root.closeDropdownsExcept(null);
         boolean handled = root.scrollAt(logicalMouseX, logicalMouseY, amount);
-        if (handled || popupClosed) lastWidth = -1;
+        if (handled || popupClosed) {
+            lastWidth = -1;
+            invalidateRender();
+        }
         return handled || popupClosed;
     }
 
@@ -302,7 +347,10 @@ public final class VantaUiRuntime {
             lastWidth = -1;
             return true;
         }
-        if (focused.editKey(keyCode)) return true;
+        if (focused.editKey(keyCode)) {
+            invalidateRender();
+            return true;
+        }
 
         switch (keyCode) {
             case 257, 32 -> focused.activate();
@@ -310,6 +358,7 @@ public final class VantaUiRuntime {
             case 262, 264 -> focused.adjust(1);
             default -> { return false; }
         }
+        invalidateRender();
         if (focused.kind() == VantaUiNode.Kind.DROPDOWN) {
             lastWidth = -1;
             if (focused.isDropdownOpen()) pendingFocusReveal = focused;
@@ -319,11 +368,21 @@ public final class VantaUiRuntime {
 
     public boolean charTyped(int codepoint) {
         VantaUiNode focused = interactions.focused();
-        return focused != null && focused.charTyped(codepoint);
+        boolean handled = focused != null && focused.charTyped(codepoint);
+        if (handled) invalidateRender();
+        return handled;
     }
 
     public void dispose() {
         interactions.clear();
+        for (AutoCloseable subscription : stateSubscriptions) {
+            try {
+                subscription.close();
+            } catch (Exception ignored) {
+                // A failed listener removal must not prevent the rest of screen teardown.
+            }
+        }
+        stateSubscriptions.clear();
         hovered = null;
         pendingFocusReveal = null;
         lastHitTestX = Integer.MIN_VALUE;
