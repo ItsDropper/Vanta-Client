@@ -32,8 +32,9 @@ the bundled `vanta:brand`, `vanta:heading`, `vanta:title`, `vanta:ui`,
 `heading()`, `title()`, `label()` and `eyebrow()` preserve that hierarchy and use matching
 line-height tokens.
 
-Primary action buttons compute a monochrome foreground from the active accent's relative
-luminance. The four shipped accent presets are regression-tested to meet WCAG AA's 4.5:1
+Primary action buttons resolve both their background and monochrome foreground from the live
+Appearance accent, so changing accents does not require rebuilding the retained tree. The foreground
+is selected from the active accent's relative luminance. The four shipped accent presets are regression-tested to meet WCAG AA's 4.5:1
 normal-text contrast target. Add new accent presets only with a passing contrast test.
 
 The Minecraft `GuiGraphics` backend remains the renderer. The design system defines
