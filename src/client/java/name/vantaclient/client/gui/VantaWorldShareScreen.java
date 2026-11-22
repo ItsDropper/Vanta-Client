@@ -77,9 +77,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
                 .height(compact ? 52 : 54)
                 .background(VantaUiTheme.PANEL)
                 .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode heading = VantaUiNode.column(2, 0);
-        heading.add(VantaUiNode.eyebrow("Vanta / multiplayer"));
-        heading.add(VantaUiNode.title("World sharing"));
+        VantaUiNode heading = VantaComponents.sectionHeader(
+                "Vanta / multiplayer", "World sharing", null);
         header.add(heading);
         header.add(VantaUiNode.spacer(1).flex(1));
         header.add(VantaComponents.actionButton("Back", null,
