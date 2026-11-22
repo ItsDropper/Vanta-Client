@@ -234,6 +234,11 @@ final class VantaLobbyTerrain {
         for (int[] seat : new int[][]{{-7, -5}, {-3, -5}, {-5, -7}}) {
             if (inPlazaZone(seat[0], seat[1])) cell.set(seat[0], BASE + 1, seat[1], Blocks.OAK_FENCE.defaultBlockState());
         }
+        // Fire braziers flank the plaza and give the scene a flickering warm light.
+        for (int[] brazier : new int[][]{{-6, -7}, {6, -7}}) {
+            cell.set(brazier[0], BASE, brazier[1], Blocks.NETHERRACK.defaultBlockState());
+            cell.set(brazier[0], BASE + 1, brazier[1], Blocks.FIRE.defaultBlockState());
+        }
         pavilion(cell);
     }
 

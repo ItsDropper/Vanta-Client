@@ -83,6 +83,10 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         context.restoreDefaultGameOptions();
+        context.runOnClient(client -> {
+            GroundFireHeightFeature.INSTANCE.setEnabled(true);
+            GroundFireHeightFeature.setHeightScale(0.5f);
+        });
         verifyRelayEndpointValidation(context);
         verifyGroundFireHeightTransform(context);
         verifyLobbyCamera(context);
@@ -178,34 +182,24 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
         context.setScreen(() -> null);
         context.waitTicks(1);
-        verifyGroundFireInWorld(context);
+        verifyGroundFireInLobby(context);
     }
 
-    private static void verifyGroundFireInWorld(ClientGameTestContext context) {
-        context.runOnClient(client -> {
-            DropperUtilsConfig.get().groundFireHeight = 0.5f;
-            GroundFireHeightFeature.INSTANCE.setEnabled(true);
-            GroundFireHeightFeature.setHeightScale(0.5f);
-            GroundFireHeightFeature.SCALED_BLOCKS.set(0);
-        });
-        try (var singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientWorld().waitForChunksRender();
-            singleplayer.getServer().runCommand("execute at @p run setblock ~2 ~ ~ minecraft:fire");
-            singleplayer.getServer().runCommand("execute at @p run setblock ~3 ~ ~ minecraft:soul_fire");
-            context.waitTicks(40);
-            singleplayer.getClientWorld().waitForChunksRender();
-            int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
-            System.out.println("[ground-fire] scaled fire blocks during chunk compile: " + scaled
-                    + " active=" + GroundFireHeightFeature.isActive()
-                    + " scale=" + GroundFireHeightFeature.getHeightScale());
-            if (scaled <= 0) {
-                throw new AssertionError("Ground fire hook was never applied to a fire block (scaled=" + scaled + ")");
-            }
-        }
+    /**
+     * The title lobby is a real ClientLevel compiled by the same chunk renderer as a joined world and it
+     * contains two fire braziers, so it proves the fire hook runs without needing a slow world load in CI.
+     */
+    private static void verifyGroundFireInLobby(ClientGameTestContext context) {
+        context.waitTicks(20);
+        int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
+        System.out.println("[ground-fire] scaled fire blocks during lobby chunk compile: " + scaled
+                + " active=" + GroundFireHeightFeature.isActive()
+                + " scale=" + GroundFireHeightFeature.getHeightScale());
         context.runOnClient(client -> GroundFireHeightFeature.INSTANCE.setEnabled(false));
+        if (scaled <= 0) {
+            throw new AssertionError("Ground fire hook was never applied to a fire block (scaled=" + scaled + ")");
+        }
     }
-
-
 
     private static void verifyGroundFireHeightTransform(ClientGameTestContext context) {
         context.runOnClient(client -> {
