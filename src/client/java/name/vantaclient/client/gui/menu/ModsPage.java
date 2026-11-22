@@ -34,8 +34,8 @@ public final class ModsPage {
 
     /** Number of card columns for a page body of the given width. */
     public static int columnsFor(int contentWidth) {
-        if (contentWidth >= 820) return 4;
-        if (contentWidth >= 600) return 3;
+        if (contentWidth >= 760) return 4;
+        if (contentWidth >= 520) return 3;
         return 2;
     }
 

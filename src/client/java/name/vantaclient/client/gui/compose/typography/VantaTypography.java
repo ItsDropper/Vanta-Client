@@ -21,6 +21,13 @@ public final class VantaTypography {
     private static final Identifier LABEL_FONT = Identifier.fromNamespaceAndPath("vanta", "medium");
     private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
 
+    private static volatile float deviceScale = 1.0f;
+
+    /** Device pixels per layout unit of the surface currently being drawn (selects the font raster). */
+    public static void setDeviceScale(float value) {
+        if (Float.isFinite(value) && value > 0.0f) deviceScale = value;
+    }
+
     public enum Role { DISPLAY, HEADING, TITLE, BODY, LABEL, CAPTION }
 
     /** Resolves the shared type scale from the same cached snapshot used by rendering. */
@@ -86,7 +93,8 @@ public final class VantaTypography {
 
     public static Component styledText(String value, Identifier fontId, boolean bold) {
         String normalized = value == null ? "" : value;
-        Identifier resolvedFont = fontId == null ? DEFAULT_FONT : fontId;
+        Identifier resolvedFont = name.vantaclient.client.gui.VantaFonts.variant(
+                fontId == null ? DEFAULT_FONT : fontId, deviceScale);
         StyledKey key = new StyledKey(normalized, resolvedFont, bold);
         synchronized (STYLED) {
             Component cached = STYLED.get(key);

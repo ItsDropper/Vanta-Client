@@ -589,7 +589,10 @@ public final class VantaUiNode implements VantaUiComponent {
                 int clipY = y + (scrollable ? padding : 0);
                 int clipRight = x + width - (scrollable ? padding : 0);
                 int clipBottom = y + height - (scrollable ? padding : 0);
-                graphics.enableScissor(clipX, clipY, clipRight, clipBottom);
+                // Overscan sideways so borders and focus rings on the outermost children survive
+                // the scissor's device-pixel rounding at fractional UI scales.
+                int bleed = scrollable ? Math.min(3, padding) : 0;
+                graphics.enableScissor(clipX - bleed, clipY, clipRight + bleed, clipBottom);
             }
             try {
                 if (scrollable) {

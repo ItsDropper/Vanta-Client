@@ -17,23 +17,29 @@ public final class VantaText {
     public enum Weight {
         REGULAR("ui"), MEDIUM("medium"), BOLD("bold");
 
-        private final FontDescription font;
-        final Map<String, Component> components = new HashMap<>();
+        private final Identifier id;
+        final Map<String, Component>[] components;
         final Map<String, Integer> widths = new HashMap<>();
 
+        @SuppressWarnings("unchecked")
         Weight(String name) {
-            this.font = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", name));
+            this.id = Identifier.fromNamespaceAndPath("vanta", name);
+            this.components = new Map[5];
+            for (int i = 0; i < components.length; i++) components[i] = new HashMap<>();
         }
     }
 
     private VantaText() {}
 
-    private static Component component(String value, Weight weight) {
-        Component component = weight.components.get(value);
+    private static Component component(String value, Weight weight, float devicePerUnit) {
+        int index = VantaFonts.densityIndex(devicePerUnit);
+        Map<String, Component> cache = weight.components[index];
+        Component component = cache.get(value);
         if (component == null) {
-            component = Component.literal(value).withStyle(style -> style.withFont(weight.font));
-            if (weight.components.size() > 512) weight.components.clear();
-            weight.components.put(value, component);
+            FontDescription font = new FontDescription.Resource(VantaFonts.variant(weight.id, devicePerUnit));
+            component = Component.literal(value).withStyle(style -> style.withFont(font));
+            if (cache.size() > 512) cache.clear();
+            cache.put(value, component);
         }
         return component;
     }
@@ -41,7 +47,7 @@ public final class VantaText {
     public static int width(String value, float size, Weight weight) {
         Integer base = weight.widths.get(value);
         if (base == null) {
-            base = Minecraft.getInstance().font.width(component(value, weight));
+            base = Minecraft.getInstance().font.width(component(value, weight, 4.0f));
             if (weight.widths.size() > 512) weight.widths.clear();
             weight.widths.put(value, base);
         }
@@ -52,11 +58,18 @@ public final class VantaText {
     public static void draw(GuiGraphics g, String value, float x, float centerY, float size, int color, Weight weight) {
         if ((color >>> 24) == 0 || value.isEmpty()) return;
         float scale = size / 13.0f;
-        g.pose().pushMatrix();
-        g.pose().translate(x, centerY);
-        g.pose().scale(scale, scale);
-        g.drawString(Minecraft.getInstance().font, component(value, weight), 0, -2, color, false);
-        g.pose().popMatrix();
+        float gui = (float) Minecraft.getInstance().getWindow().getGuiScale();
+        var pose = g.pose();
+        float poseScale = (float) Math.hypot(pose.m00(), pose.m01());
+        if (poseScale <= 0.0001f) poseScale = 1.0f;
+        // Snap the origin to whole device pixels so glyph quads never straddle pixel centres.
+        float snappedX = (Math.round((pose.m00() * x + pose.m20()) * gui) / gui - pose.m20()) / pose.m00();
+        float snappedY = (Math.round((pose.m11() * centerY + pose.m21()) * gui) / gui - pose.m21()) / pose.m11();
+        pose.pushMatrix();
+        pose.translate(Float.isFinite(snappedX) ? snappedX : x, Float.isFinite(snappedY) ? snappedY : centerY);
+        pose.scale(scale, scale);
+        g.drawString(Minecraft.getInstance().font, component(value, weight, gui * poseScale * scale), 0, -2, color, false);
+        pose.popMatrix();
     }
 
     public static void drawCentered(GuiGraphics g, String value, float centerX, float centerY, float size, int color, Weight weight) {

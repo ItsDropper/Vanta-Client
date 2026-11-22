@@ -12,7 +12,7 @@ import net.minecraft.resources.Identifier;
  * in whole GUI pixels. Straight spans are plain rectangles.
  */
 public final class VantaShapes {
-    private static final int[] LEVELS = {16, 32, 64, 128};
+    private static final int[] LEVELS = {4, 8, 16, 32, 64, 128};
     private static final int[] RING_DENOMINATORS = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 24, 32};
     private static final Identifier[] FILL = new Identifier[LEVELS.length];
     private static final Identifier[][] RING = new Identifier[LEVELS.length][RING_DENOMINATORS.length];

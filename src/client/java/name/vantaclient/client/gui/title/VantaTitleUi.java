@@ -29,6 +29,7 @@ import net.minecraft.client.multiplayer.ServerStatusPinger;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import name.vantaclient.client.gui.VantaText;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.network.EventLoopGroupHolder;
@@ -934,24 +935,12 @@ public final class VantaTitleUi {
     private void text(GuiGraphics g, String value, float x, float centerY, float size, int color,
                       boolean medium) {
         if ((color >>> 24) == 0) return;
-        float f = size * u / 13.0f;
-        Component component = component(value, medium);
-        g.pose().pushMatrix();
-        g.pose().translate(x, centerY);
-        g.pose().scale(f, f);
-        g.drawString(mc.font, component, 0, -2, color, false);
-        g.pose().popMatrix();
+        VantaText.draw(g, value, x, centerY, size * u, color,
+                medium ? VantaText.Weight.MEDIUM : VantaText.Weight.REGULAR);
     }
 
     private int textWidth(String value, float size, boolean medium) {
-        String key = (medium ? 'm' : 'r') + value;
-        Integer base = WIDTHS.get(key);
-        if (base == null) {
-            base = mc.font.width(component(value, medium));
-            if (WIDTHS.size() > 512) WIDTHS.clear();
-            WIDTHS.put(key, base);
-        }
-        return Math.round(base * size * u / 13.0f);
+        return VantaText.width(value, size * u, medium ? VantaText.Weight.MEDIUM : VantaText.Weight.REGULAR);
     }
 
     /** Styled components are immutable and reused every frame instead of being rebuilt per draw. */

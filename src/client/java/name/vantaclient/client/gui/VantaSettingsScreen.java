@@ -43,8 +43,8 @@ import java.util.List;
  */
 public final class VantaSettingsScreen extends Screen implements VantaCompose.Screen, MenuHost {
     /** Design size of the shell in layout units; the zoom maps it onto the window. */
-    private static final int MAX_WIDTH = 1400;
-    private static final int MAX_HEIGHT = 780;
+    private static final int MAX_WIDTH = 1120;
+    private static final int MAX_HEIGHT = 640;
 
     private final Screen parent;
     private VantaUiRuntime runtime;

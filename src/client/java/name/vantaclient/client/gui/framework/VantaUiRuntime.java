@@ -199,6 +199,8 @@ public final class VantaUiRuntime {
             uiScale = viewport.effectiveScale();
             lastWidth = -1;
         }
+        name.vantaclient.client.gui.compose.typography.VantaTypography.setDeviceScale(
+                viewport.effectiveScale() * minecraftGuiScale());
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
         lastWidth = screenWidth;
         lastHeight = screenHeight;

@@ -1,0 +1,14 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "vanta:poppins_medium.ttf",
+      "shift": [
+        0,
+        0
+      ],
+      "size": 28,
+      "oversample": 3
+    }
+  ]
+}

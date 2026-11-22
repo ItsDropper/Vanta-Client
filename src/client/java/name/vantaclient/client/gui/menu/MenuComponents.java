@@ -214,8 +214,9 @@ public final class MenuComponents {
             return;
         }
         int accent = MenuTheme.accent();
-        MenuTheme.fill(g, x, y, size, size, 3, MenuTheme.alpha(accent, 46));
-        MenuTheme.outline(g, x, y, size, size, 3, MenuTheme.alpha(accent, 90));
+        int tile = Math.max(6, size / 4);
+        MenuTheme.fill(g, x, y, size, size, tile, MenuTheme.alpha(accent, 38));
+        MenuTheme.outline(g, x, y, size, size, tile, MenuTheme.alpha(accent, 84));
         if (entry.isBuiltIn()) {
             int iconSize = size / 2;
             MenuIcons.draw(g, iconFor(entry.group()), x + (size - iconSize) / 2, y + (size - iconSize) / 2,
@@ -230,25 +231,31 @@ public final class MenuComponents {
                                       Supplier<Boolean> favorite, Runnable open) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
-            MenuTheme.gradient(g, x, y, w, h, 2,
-                    MenuTheme.mix(0xA6161B27, 0xB41B2130, st.hover()), MenuTheme.mix(0x9C0F131C, 0xB4121722, st.hover()));
-            MenuTheme.outline(g, x, y, w, h, 2, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
-            if (entry.configurableInVanta()) MenuTheme.dot(g, x + w - 20, y + 20, 16, MenuTheme.alpha(accent, 48));
-            MenuTheme.dot(g, x + w - 20, y + 20, 8, entry.configurableInVanta() ? accent : MenuTheme.NEUTRAL_DOT);
+            float hover = st.hover();
+            MenuTheme.fill(g, x, y, w, h, 16, MenuTheme.mix(0x8C141926, 0xB41B2231, hover));
+            MenuTheme.outline(g, x, y, w, h, 16, MenuTheme.mix(0x22FFFFFF, MenuTheme.alpha(accent, 200), hover));
             if (Boolean.TRUE.equals(favorite.get())) {
-                MenuIcons.draw(g, Icon.STAR_FILLED, x + 12, y + 10, 16, 0xFFF2C14E);
+                MenuIcons.draw(g, Icon.STAR_FILLED, x + w - 28, y + 12, 16, 0xFFF2C14E);
             }
-            int art = 64;
-            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 30, art);
-            int buttonHeight = 36;
-            int bx = x + 14;
-            int by = y + h - 14 - buttonHeight;
-            int bw = w - 28;
-            MenuTheme.fill(g, bx, by + 2, bw, buttonHeight, 2, 0x40000000);
-            MenuTheme.accentFill(g, bx, by, bw, buttonHeight, 2, st.hover());
-            MenuTheme.textCentered(g, font, MenuTheme.fit(font, entry.name(), bw - 20, MenuTheme.FONT_MEDIUM),
-                    bx + bw / 2, by + buttonHeight / 2, 0xFFFFFFFF, MenuTheme.FONT_MEDIUM);
-            focusRing(g, st, x, y, w, h, 14);
+            int art = 60;
+            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 22, art);
+            String name = MenuTheme.fit(font, entry.name(), w - 28, MenuTheme.FONT_MEDIUM);
+            MenuTheme.textCentered(g, font, name, x + w / 2, y + 22 + art + 22, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            // Status chip: tells at a glance whether Vanta can configure this mod.
+            boolean configurable = entry.configurableInVanta();
+            String status = configurable ? "Configure" : entry.hasOwnConfigScreen() ? "Own settings" : "No options";
+            int chipW = MenuTheme.width(font, status, MenuTheme.FONT_SMALL) + 22;
+            int chipH = 22;
+            int chipX = x + (w - chipW) / 2;
+            int chipY = y + h - 14 - chipH;
+            if (configurable) {
+                MenuTheme.fill(g, chipX, chipY, chipW, chipH, 11, MenuTheme.alpha(accent, 40 + Math.round(60 * hover)));
+            } else {
+                MenuTheme.fill(g, chipX, chipY, chipW, chipH, 11, 0x1FFFFFFF);
+            }
+            MenuTheme.textCentered(g, font, status, x + w / 2, chipY + chipH / 2,
+                    configurable ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.35f) : MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+            focusRing(g, st, x, y, w, h, 16);
         }).height(176).tooltip(entry.configurableInVanta()
                 ? "Settings available in Vanta"
                 : entry.hasOwnConfigScreen() ? "Opens the mod's own settings" : "No settings Vanta can edit")
@@ -259,9 +266,8 @@ public final class MenuComponents {
                                      Supplier<Boolean> favorite, Runnable open) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             int accent = MenuTheme.accent();
-            MenuTheme.gradient(g, x, y, w, h, 2,
-                    MenuTheme.mix(0xA6161B27, 0xB41B2130, st.hover()), MenuTheme.mix(0x9C0F131C, 0xB4121722, st.hover()));
-            MenuTheme.outline(g, x, y, w, h, 2, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
+            MenuTheme.fill(g, x, y, w, h, 14, MenuTheme.mix(0x8C141926, 0xB41B2231, st.hover()));
+            MenuTheme.outline(g, x, y, w, h, 14, MenuTheme.mix(0x22FFFFFF, MenuTheme.alpha(accent, 200), st.hover()));
             drawModArt(g, font, entry, icon.get(), x + 12, y + (h - 36) / 2, 36);
             int nameX = x + 62;
             MenuTheme.text(g, font, MenuTheme.fit(font, entry.name(), w - 300, MenuTheme.FONT_MEDIUM),
@@ -278,7 +284,7 @@ public final class MenuComponents {
             int bh = 34;
             int bx = x + w - bw - 14;
             int by = y + (h - bh) / 2;
-            MenuTheme.accentFill(g, bx, by, bw, bh, 2, st.hover());
+            MenuTheme.accentFill(g, bx, by, bw, bh, 11, st.hover());
             MenuTheme.textCentered(g, font, entry.configurableInVanta() ? "Configure" : "Open",
                     bx + bw / 2, by + bh / 2, 0xFFFFFFFF, MenuTheme.FONT_MEDIUM);
             focusRing(g, st, x, y, w, h, 12);

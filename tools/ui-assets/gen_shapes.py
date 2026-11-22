@@ -10,7 +10,7 @@ from PIL import Image
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "src", "client", "resources",
                    "assets", "vanta", "textures", "gui", "shape")
-LEVELS = [16, 32, 64, 128]
+LEVELS = [4, 8, 16, 32, 64, 128]
 RING_DENOMINATORS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 24, 32]
 SS = 8  # supersampling per axis
 
