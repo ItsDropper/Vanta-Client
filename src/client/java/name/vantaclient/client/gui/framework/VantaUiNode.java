@@ -587,6 +587,7 @@ public final class VantaUiNode implements VantaUiComponent {
 
         boolean over = contains(mouseX, mouseY);
         int accent = theme.accent();
+        VantaTheme.Glass stateTokens = theme.composeTheme().glass();
         switch (kind) {
             case TEXT -> {
                 if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
@@ -646,15 +647,17 @@ public final class VantaUiNode implements VantaUiComponent {
                 } else if (over || focused) {
                     int hoverSurface = buttonForeground != 0
                             ? VantaUiTheme.withAlpha(VantaUiTheme.WHITE,
-                                    Math.round(focused ? 34.0f : 18.0f + 10.0f * hoverAmount))
+                                    Math.round(focused ? stateTokens.controlFocusAlpha()
+                                    : stateTokens.controlHoverAlpha() + 35.0f * hoverAmount))
                             : VantaUiTheme.withAlpha(VantaUiTheme.SURFACE_HOVER,
-                                    Math.round(focused ? 220.0f : 165.0f + 35.0f * hoverAmount));
+                                    Math.round(focused ? stateTokens.controlFocusAlpha()
+                                    : stateTokens.controlHoverAlpha() + 35.0f * hoverAmount));
                     VantaUiTheme.fillSquircle(graphics, x, y, width, height,
                             VantaUiTheme.RADIUS_MEDIUM, hoverSurface);
                 }
                 if (focused) {
                     VantaUiTheme.outlineSquircle(graphics, x, y, width, height,
-                            VantaUiTheme.RADIUS_MEDIUM, VantaUiTheme.withAlpha(accent, 235));
+                            VantaUiTheme.RADIUS_MEDIUM, VantaUiTheme.withAlpha(accent, stateTokens.focusAlpha()));
                 }
                 int labelX = x, labelWidth = width;
                 if (icon != null) {
@@ -692,7 +695,7 @@ public final class VantaUiNode implements VantaUiComponent {
                 int knobX = trackX + 3 + Math.round(19.0f * animatedToggle);
                 VantaUiTheme.fillSquircle(graphics, knobX, trackY + 3, 13, 12, 6, VantaUiTheme.WHITE);
                 if (focused) VantaUiTheme.fillSquircle(graphics, trackX, y + height - 2, 38, 2, 1,
-                        VantaUiTheme.withAlpha(accent, 180));
+                        VantaUiTheme.withAlpha(accent, stateTokens.controlFocusIndicatorAlpha()));
             }
             case SLIDER -> {
                 if (menuStyle) {
