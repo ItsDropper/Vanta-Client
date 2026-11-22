@@ -82,16 +82,6 @@ final class VantaUiLayout {
         }
 
         if (node.kind != VantaUiNode.Kind.CONTAINER) return;
-        int visibleCount = 0;
-        for (VantaUiNode child : node.children) {
-            if (child.visible) visibleCount++;
-        }
-        if (visibleCount == 0) {
-            node.contentHeight = 0;
-            node.scrollOffset = 0;
-            return;
-        }
-
         int innerX = node.x + node.padding;
         int innerY = node.y + node.padding;
         int innerWidth = Math.max(0, node.width - node.padding * 2);
@@ -117,15 +107,23 @@ final class VantaUiLayout {
             return;
         }
 
-        int childGap = node.gap * Math.max(0, visibleCount - 1);
+        int visibleCount = 0;
         float totalFlex = 0.0f;
         int fixedPrimary = 0;
         for (VantaUiNode child : node.children) {
             if (!child.visible) continue;
+            visibleCount++;
             if (child.flex > 0.0f) totalFlex += child.flex;
             else fixedPrimary += node.direction == VantaUiNode.Direction.COLUMN
                     ? intrinsicHeight(child, font) : intrinsicWidth(child, font);
         }
+        if (visibleCount == 0) {
+            node.contentHeight = 0;
+            node.scrollOffset = 0;
+            return;
+        }
+
+        int childGap = node.gap * (visibleCount - 1);
 
         int availablePrimary = Math.max(0,
                 (node.direction == VantaUiNode.Direction.COLUMN ? innerHeight : innerWidth) - childGap - fixedPrimary);
