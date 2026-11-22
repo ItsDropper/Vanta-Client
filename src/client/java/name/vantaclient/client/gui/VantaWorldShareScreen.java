@@ -220,7 +220,9 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
 
         if (lanStatus.state() == VantaLanHostingService.State.FAILED) {
             content.add(VantaUiNode.paragraph(
-                    "Minecraft could not open a local listener. Remote hosting cannot continue until the integrated server is published.",
+                    lanStatus.detail().isBlank()
+                            ? "Minecraft could not open a local listener. Remote hosting cannot continue until the integrated server is published."
+                            : lanStatus.detail(),
                     VantaUiTheme.TEXT_MUTED, 3));
         }
     }
@@ -272,7 +274,9 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
             lanStatus = VantaLanHostingService.start(selectedGameType, allowCommands);
             localStatus = lanStatus.state() == VantaLanHostingService.State.HOSTED
                     ? "Local hosting is active. You can now create a remote invite."
-                    : "Could not open the local integrated server.";
+                    : lanStatus.detail().isBlank()
+                            ? "Could not open the local integrated server."
+                            : lanStatus.detail();
         }
         rebuildUi();
     }
@@ -293,7 +297,9 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
             lanStatus = VantaLanHostingService.start(selectedGameType, allowCommands);
         }
         if (lanStatus.state() != VantaLanHostingService.State.HOSTED) {
-            localStatus = "Minecraft could not open the integrated server to LAN.";
+            localStatus = lanStatus.detail().isBlank()
+                    ? "Minecraft could not open the integrated server to LAN."
+                    : lanStatus.detail();
             rebuildUi();
             return;
         }
