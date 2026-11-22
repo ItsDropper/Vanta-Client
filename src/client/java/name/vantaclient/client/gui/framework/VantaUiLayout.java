@@ -88,6 +88,10 @@ final class VantaUiLayout {
         int innerHeight = Math.max(0, node.height - node.padding * 2);
 
         if (node.direction == VantaUiNode.Direction.STACK) {
+            // Stack containers do not participate in flow scrolling. Clear values left
+            // by a previous layout if this node changed direction or its children changed.
+            node.contentHeight = 0;
+            node.scrollOffset = 0;
             for (VantaUiNode child : node.children) {
                 if (!child.visible) continue;
                 VantaUiNode.Alignment effectiveAlignment = effectiveAlignment(node, child);
