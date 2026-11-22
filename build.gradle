@@ -105,19 +105,6 @@ tasks.matching { it.name == "remapSourcesJar" }.configureEach {
 	dependsOn(resolveVantaLoaderRuntime)
 }
 
-dependencies {
-	compileOnly files(vantaLoaderApiFile)
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
-	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-
 	// WebRTC data transport. Native binaries are platform-specific, so each
 	// distributable embeds only the classifier selected for that target platform.
 	// CI builds one artifact per supported desktop OS/architecture.
@@ -148,6 +135,20 @@ dependencies {
 				supportedWebRtcPlatforms.sort().join(", ")
 		)
 	}
+
+
+dependencies {
+	compileOnly files(vantaLoaderApiFile)
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API. This is technically optional, but you probably want it anyway.
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Optional compile-time integration; Mod Menu is not bundled or required at runtime.
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
 	implementation "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
 	include "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
