@@ -11,7 +11,6 @@ public final class VantaLoadingScreen {
     private static final VantaUiTheme THEME = new VantaUiTheme();
     private static float shown;
     private static long lastNanos;
-    private static long fadeStarted;
 
     private VantaLoadingScreen() {}
 
@@ -25,11 +24,15 @@ public final class VantaLoadingScreen {
         lastNanos = now;
 
         boolean fading = fadeOutStart >= 0;
-        if (fading && fadeStarted == 0) fadeStarted = now;
-        float fade = fading ? 1.0f - Math.max(0.0f, Math.min(1.0f, (now - fadeStarted) / 1_000_000_000.0f)) : 1.0f;
+        // Vanilla holds its own screen fully opaque for one second after loading finishes and only then
+        // fades it over the next second. The fade has to follow the same clock (Util.getMillis is
+        // System.nanoTime in milliseconds), otherwise the Mojang logo shows through while ours fades.
+        float elapsed = fading ? (System.nanoTime() / 1_000_000L - fadeOutStart) / 1000.0f : -1.0f;
+        float fade = elapsed >= 1.0f ? 1.0f - Math.max(0.0f, Math.min(1.0f, elapsed - 1.0f)) : 1.0f;
         if (fade <= 0.0f) return;
 
         float target = fading ? 1.0f : Math.max(0.0f, Math.min(1.0f, progress));
+        if (!fading && target < shown) shown = target; // a new reload started a fresh overlay
         shown += (Math.max(shown, target) - shown) * (1.0f - (float) Math.exp(-dt * 7.0f));
 
         int w = g.guiWidth(), h = g.guiHeight();

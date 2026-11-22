@@ -28,9 +28,8 @@ public final class VantaPauseUi implements Renderable {
     private static final VantaUiTheme THEME = new VantaUiTheme();
     private static final Set<Object> OWNED = Collections.newSetFromMap(new WeakHashMap<>());
 
-    private static final int CARD = 0xE60A1018;
-    private static final int CARD_EDGE = 0x2EFFFFFF;
-    private static final int DANGER = 0xFFEF5D6B;
+    private static final Identifier SCRIM_RIGHT = Identifier.fromNamespaceAndPath("vanta", "textures/gui/title/scrim_right.png");
+    private static final Identifier SCRIM_TOP = Identifier.fromNamespaceAndPath("vanta", "textures/gui/title/scrim_top.png");
 
     private enum Kind { PRIMARY, NORMAL, DANGER }
 
@@ -51,15 +50,17 @@ public final class VantaPauseUi implements Renderable {
     private final List<Entry> entries = new ArrayList<>();
     private final String title;
     private final String subtitle;
-    private int cardX, cardY, cardW, cardH;
+    private int colX, colY, colW, headerH;
+    private int dividerY;
     private float scale = 1.0f;
     private long lastNanos = System.nanoTime();
     private float intro;
 
     private VantaPauseUi(Screen screen, List<AbstractButton> buttons, String subtitle) {
         this.screen = screen;
-        this.title = "Game menu";
-        this.subtitle = subtitle;
+        this.title = subtitle.isEmpty() ? "Game menu" : subtitle;
+        this.subtitle = Minecraft.getInstance().getSingleplayerServer() != null ? "Singleplayer"
+                : Minecraft.getInstance().getCurrentServer() != null ? Minecraft.getInstance().getCurrentServer().ip : "";
         for (int i = 0; i < buttons.size(); i++) {
             AbstractButton button = buttons.get(i);
             Kind kind = i == 0 ? Kind.PRIMARY : (i == buttons.size() - 1 && buttons.size() > 1 ? Kind.DANGER : Kind.NORMAL);
@@ -85,38 +86,33 @@ public final class VantaPauseUi implements Renderable {
         return Math.round(value * scale);
     }
 
+    /**
+     * One column on the right over a darkened world: eyebrow, world name, the primary "back to game"
+     * action, a quiet list of rows and the exit at the bottom, separated by a divider.
+     */
     private void layout() {
-        scale = Math.max(0.55f, Math.min(1.0f, Math.min(screen.height / 330.0f, screen.width / 340.0f)));
-        cardW = s(312);
-        int pad = s(16);
-        int headerH = s(64);
-        int primaryH = s(40), rowH = s(34), exitH = s(38), gap = s(8);
+        scale = Math.max(0.6f, Math.min(1.0f, Math.min(screen.height / 360.0f, screen.width / 560.0f)));
+        colW = Math.min(s(360), screen.width - s(48));
+        colX = screen.width - colW - Math.max(s(48), screen.width / 14);
+        int primaryH = s(46), rowH = s(40), gap = s(10);
+        headerH = s(78);
         int middle = Math.max(0, entries.size() - 2);
-        int rows = (middle + 1) / 2;
-        cardH = pad + headerH + (entries.isEmpty() ? 0 : primaryH)
-                + (rows > 0 ? gap + rows * rowH + (rows - 1) * gap : 0)
-                + (entries.size() > 1 ? gap + s(6) + exitH : 0) + pad;
-        cardX = (screen.width - cardW) / 2;
-        cardY = Math.max(s(8), (screen.height - cardH) / 2);
-
-        int innerW = cardW - pad * 2;
-        int y = cardY + pad + headerH;
+        int exitH = entries.size() > 1 ? rowH : 0;
+        int total = headerH + primaryH + gap + middle * rowH + (entries.size() > 1 ? s(16) + exitH : 0);
+        colY = Math.max(s(56), (screen.height - total) / 2);
+        int y = colY + headerH;
         for (int i = 0; i < entries.size(); i++) {
             Entry entry = entries.get(i);
-            AbstractButton b = entry.button;
             if (entry.kind == Kind.PRIMARY) {
-                place(b, cardX + pad, y, innerW, primaryH);
-                y += primaryH;
+                place(entry.button, colX, y, colW, primaryH);
+                y += primaryH + gap;
             } else if (entry.kind == Kind.DANGER) {
-                y += gap + s(6);
-                place(b, cardX + pad, y, innerW, exitH);
+                dividerY = y + s(7);
+                y += s(16);
+                place(entry.button, colX, y, colW, exitH);
             } else {
-                int index = i - 1;
-                int column = index % 2;
-                if (column == 0) y += gap;
-                int colW = (innerW - gap) / 2;
-                place(b, cardX + pad + column * (colW + gap), y, column == 0 && i == entries.size() - 2 ? innerW : colW, rowH);
-                if (column == 1 || i == entries.size() - 2) y += rowH;
+                place(entry.button, colX, y, colW, rowH);
+                y += rowH;
             }
         }
     }
@@ -134,26 +130,39 @@ public final class VantaPauseUi implements Renderable {
         float dt = Math.min(0.1f, (now - lastNanos) / 1_000_000_000.0f);
         lastNanos = now;
         float blend = 1.0f - (float) Math.exp(-dt * 16.0f);
-        intro += (1.0f - intro) * (1.0f - (float) Math.exp(-dt * 12.0f));
-        if (cardX != (screen.width - cardW) / 2) layout();
+        intro += (1.0f - intro) * (1.0f - (float) Math.exp(-dt * 10.0f));
+        if (colX + colW + Math.max(s(48), screen.width / 14) != screen.width) layout();
         int accent = THEME.accent();
         float a = intro;
-        int slide = Math.round((1.0f - a) * s(10));
+        int slide = Math.round((1.0f - a) * s(14));
+        int w = screen.width, h = screen.height;
 
-        int x = cardX, y = cardY + slide;
-        VantaUiTheme.fillSquircle(g, x, y, cardW, cardH, s(20), VantaText.withAlpha(CARD, a));
-        VantaUiTheme.outlineSquircle(g, x, y, cardW, cardH, s(20), VantaText.withAlpha(CARD_EDGE, a));
+        // Darkening from the right keeps the column readable while the world stays visible on the left.
+        int shadeW = Math.min(w, Math.round(w * 0.62f));
+        g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_RIGHT, w - shadeW, 0, 0.0f, 0.0f, shadeW, h, 256, 4, 256, 4,
+                VantaText.withAlpha(0xFFFFFFFF, a));
+        g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_TOP, 0, 0, 0.0f, 0.0f, w, Math.min(h, s(120)), 4, 256, 4, 256,
+                VantaText.withAlpha(0xFFFFFFFF, a * 0.9f));
 
-        int pad = s(16);
-        int mark = s(30);
-        g.blit(RenderPipelines.GUI_TEXTURED, MARK, x + pad, y + pad + s(4), 0.0f, 0.0f, mark, mark,
-                256, 256, 256, 256, VantaText.withAlpha(0xFFFFFFFF, a));
-        int textX = x + pad + mark + s(12);
-        VantaText.draw(g, title, textX, y + pad + s(13), s(17), VantaText.withAlpha(0xFFFFFFFF, a), Weight.BOLD);
+        // Brand and player, top bar.
+        int margin = s(28);
+        int mark = s(24);
+        g.blit(RenderPipelines.GUI_TEXTURED, MARK, margin, s(20), 0.0f, 0.0f, mark, mark, 256, 256, 256, 256,
+                VantaText.withAlpha(0xFFFFFFFF, a));
+        VantaText.draw(g, "Vanta", margin + mark + s(10), s(20) + mark / 2.0f, s(17), VantaText.withAlpha(0xFFFFFFFF, a), Weight.BOLD);
+        String name = Minecraft.getInstance().getUser().getName();
+        VantaText.draw(g, name, w - margin - VantaText.width(name, s(13), Weight.MEDIUM), s(20) + mark / 2.0f, s(13),
+                VantaText.withAlpha(0xFFC3CDDC, a), Weight.MEDIUM);
+
+        int x = colX, y = colY + slide;
+        VantaText.draw(g, "Paused", x, y + s(8), s(12), VantaText.withAlpha(accent, a), Weight.MEDIUM);
+        VantaText.draw(g, VantaText.fit(title, s(24), Weight.BOLD, colW), x, y + s(34), s(24),
+                VantaText.withAlpha(0xFFFFFFFF, a), Weight.BOLD);
         if (!subtitle.isEmpty()) {
-            VantaText.draw(g, VantaText.fit(subtitle, s(12), Weight.REGULAR, cardW - pad * 2 - mark - s(12)),
-                    textX, y + pad + s(33), s(12), VantaText.withAlpha(0xFFA3AFC3, a), Weight.REGULAR);
+            VantaText.draw(g, VantaText.fit(subtitle, s(12), Weight.REGULAR, colW), x, y + s(58), s(12),
+                    VantaText.withAlpha(0xFFA3AFC3, a), Weight.REGULAR);
         }
+        if (entries.size() > 1) g.fill(x, dividerY + slide, x + colW, dividerY + slide + 1, VantaText.withAlpha(0x26FFFFFF, a));
 
         for (Entry entry : entries) {
             AbstractButton b = entry.button;
@@ -161,31 +170,27 @@ public final class VantaPauseUi implements Renderable {
             entry.hover += (target - entry.hover) * blend;
             if (Math.abs(target - entry.hover) < 0.01f) entry.hover = target;
             int bx = b.getX(), by = b.getY() + slide, bw = b.getWidth(), bh = b.getHeight();
-            int fill;
             int text;
-            switch (entry.kind) {
-                case PRIMARY -> {
-                    fill = VantaText.mix(accent, 0xFFFFFFFF, 0.14f * entry.hover);
-                    text = 0xFFFFFFFF;
+            if (entry.kind == Kind.PRIMARY) {
+                int fill = VantaText.mix(accent, 0xFFFFFFFF, 0.14f * entry.hover);
+                VantaUiTheme.fillSquircle(g, bx, by, bw, bh, s(14), VantaText.withAlpha(fill, a));
+                text = 0xFFFFFFFF;
+                VantaText.drawCentered(g, VantaText.fit(entry.label, s(15), Weight.BOLD, bw - s(16)), bx + bw / 2.0f,
+                        by + bh / 2.0f, s(15), VantaText.withAlpha(text, a), Weight.BOLD);
+            } else {
+                boolean danger = entry.kind == Kind.DANGER;
+                if (entry.hover > 0.0f) {
+                    int tint = danger ? 0x30EF5D6B : 0x1CFFFFFF;
+                    VantaUiTheme.fillSquircle(g, bx, by + s(2), bw, bh - s(4), s(11),
+                            VantaText.withAlpha(tint, a * entry.hover));
                 }
-                case DANGER -> {
-                    fill = VantaText.mix(0x1AEF5D6B, 0x40EF5D6B, entry.hover);
-                    text = VantaText.mix(0xFFE6A3AA, 0xFFFFFFFF, entry.hover);
-                }
-                default -> {
-                    fill = VantaText.mix(0x14FFFFFF, 0x2AFFFFFF, entry.hover);
-                    text = VantaText.mix(0xFFC3CDDC, 0xFFFFFFFF, entry.hover);
-                }
+                text = danger ? VantaText.mix(0xFFE6A3AA, 0xFFFF8F9A, entry.hover)
+                        : VantaText.mix(0xFFB9C4D6, 0xFFFFFFFF, entry.hover);
+                if (!b.active) text = VantaText.withAlpha(text, 0.4f);
+                int inset = s(14) + Math.round(s(4) * entry.hover);
+                VantaText.draw(g, VantaText.fit(entry.label, s(14), Weight.MEDIUM, bw - inset - s(14)), bx + inset,
+                        by + bh / 2.0f, s(14), VantaText.withAlpha(text, a), Weight.MEDIUM);
             }
-            if (!b.active) {
-                fill = VantaText.withAlpha(fill, 0.5f);
-                text = VantaText.withAlpha(text, 0.45f);
-            }
-            VantaUiTheme.fillSquircle(g, bx, by, bw, bh, s(12), VantaText.withAlpha(fill, a));
-            float size = entry.kind == Kind.PRIMARY ? s(15) : s(13);
-            String label = VantaText.fit(entry.label, size, Weight.MEDIUM, bw - s(16));
-            VantaText.drawCentered(g, label, bx + bw / 2.0f, by + bh / 2.0f, size,
-                    VantaText.withAlpha(text, a), Weight.MEDIUM);
             if (b.isFocused()) {
                 VantaUiTheme.outlineSquircle(g, bx - 1, by - 1, bw + 2, bh + 2, s(13),
                         VantaText.withAlpha(0xFFFFFFFF, 0.85f * a), 1);

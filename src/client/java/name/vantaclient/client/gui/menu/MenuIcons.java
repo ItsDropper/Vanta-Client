@@ -17,8 +17,49 @@ public final class MenuIcons {
         GRID, LIST, MOUSE, CHECK, SLIDERS, EDIT_HUD, TRASH, RESET
     }
 
+    // Icons are rasterised into a small coverage buffer with exact sub-pixel anti-aliasing and then
+    // emitted as runs of equal alpha, so strokes stay smooth at every GUI scale instead of stepping.
+    private static final int MAX_CANVAS = 72;
+    private static final float[] COVERAGE = new float[MAX_CANVAS * MAX_CANVAS];
+    private static int originX, originY, canvasSize;
+
     public static void draw(GuiGraphics g, Icon icon, int x, int y, int size, int color) {
-        if (g == null || icon == null || size <= 0) return;
+        if (g == null || icon == null || size <= 0 || (color >>> 24) == 0) return;
+        canvasSize = Math.min(MAX_CANVAS, size + 4);
+        originX = x - 2;
+        originY = y - 2;
+        java.util.Arrays.fill(COVERAGE, 0, canvasSize * canvasSize, 0.0f);
+        drawShapes(g, icon, x, y, size, color);
+        flush(g, color);
+    }
+
+    private static void flush(GuiGraphics g, int color) {
+        int baseAlpha = color >>> 24;
+        int rgb = color & 0x00FFFFFF;
+        for (int row = 0; row < canvasSize; row++) {
+            int col = 0;
+            while (col < canvasSize) {
+                int alpha = Math.round(COVERAGE[row * canvasSize + col] * baseAlpha);
+                if (alpha < 2) {
+                    col++;
+                    continue;
+                }
+                int end = col + 1;
+                while (end < canvasSize && Math.round(COVERAGE[row * canvasSize + end] * baseAlpha) == alpha) end++;
+                g.fill(originX + col, originY + row, originX + end, originY + row + 1, (alpha << 24) | rgb);
+                col = end;
+            }
+        }
+    }
+
+    private static void cover(int px, int py, float amount) {
+        int cx = px - originX, cy = py - originY;
+        if (cx < 0 || cy < 0 || cx >= canvasSize || cy >= canvasSize) return;
+        int index = cy * canvasSize + cx;
+        if (amount > COVERAGE[index]) COVERAGE[index] = Math.min(1.0f, amount);
+    }
+
+    private static void drawShapes(GuiGraphics g, Icon icon, int x, int y, int size, int color) {
         float u = size / 16.0f;
         float t = Math.max(1.0f, u * 1.35f);
         switch (icon) {
@@ -184,20 +225,23 @@ public final class MenuIcons {
 
     // ---- primitives -------------------------------------------------------------------------
 
-    private static void plot(GuiGraphics g, float px, float py, int color, float thickness) {
-        int size = Math.max(1, Math.round(thickness));
-        int left = Math.round(px - thickness / 2.0f);
-        int top = Math.round(py - thickness / 2.0f);
-        g.fill(left, top, left + size, top + size, color);
-    }
-
     private static void line(GuiGraphics g, float x1, float y1, float x2, float y2,
                              int color, float thickness) {
-        float length = (float) Math.hypot(x2 - x1, y2 - y1);
-        int steps = Math.max(1, (int) Math.ceil(length * 1.5f));
-        for (int i = 0; i <= steps; i++) {
-            float amount = i / (float) steps;
-            plot(g, x1 + (x2 - x1) * amount, y1 + (y2 - y1) * amount, color, thickness);
+        float half = thickness / 2.0f;
+        int minX = (int) Math.floor(Math.min(x1, x2) - half - 1);
+        int maxX = (int) Math.ceil(Math.max(x1, x2) + half + 1);
+        int minY = (int) Math.floor(Math.min(y1, y2) - half - 1);
+        int maxY = (int) Math.ceil(Math.max(y1, y2) + half + 1);
+        float dx = x2 - x1, dy = y2 - y1;
+        float lengthSq = dx * dx + dy * dy;
+        for (int py = minY; py <= maxY; py++) {
+            for (int px = minX; px <= maxX; px++) {
+                float cx = px + 0.5f, cy = py + 0.5f;
+                float t = lengthSq == 0 ? 0 : Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / lengthSq));
+                float distance = (float) Math.hypot(cx - (x1 + dx * t), cy - (y1 + dy * t));
+                float amount = half + 0.5f - distance;
+                if (amount > 0) cover(px, py, Math.min(1.0f, amount));
+            }
         }
     }
 
@@ -210,11 +254,13 @@ public final class MenuIcons {
 
     private static void arc(GuiGraphics g, float cx, float cy, float radius,
                             int fromDegrees, int toDegrees, int color, float thickness) {
+        int step = radius > 6 ? 6 : 10;
         float previousX = cx + (float) Math.cos(Math.toRadians(fromDegrees)) * radius;
         float previousY = cy + (float) Math.sin(Math.toRadians(fromDegrees)) * radius;
-        for (int angle = fromDegrees + 10; angle <= toDegrees; angle += 10) {
-            float nextX = cx + (float) Math.cos(Math.toRadians(angle)) * radius;
-            float nextY = cy + (float) Math.sin(Math.toRadians(angle)) * radius;
+        for (int angle = fromDegrees + step; angle < toDegrees + step; angle += step) {
+            int clamped = Math.min(angle, toDegrees);
+            float nextX = cx + (float) Math.cos(Math.toRadians(clamped)) * radius;
+            float nextY = cy + (float) Math.sin(Math.toRadians(clamped)) * radius;
             line(g, previousX, previousY, nextX, nextY, color, thickness);
             previousX = nextX;
             previousY = nextY;
@@ -226,12 +272,13 @@ public final class MenuIcons {
     }
 
     private static void disc(GuiGraphics g, float cx, float cy, float radius, int color) {
-        int r = Math.max(1, Math.round(radius));
-        int icx = Math.round(cx);
-        int icy = Math.round(cy);
-        for (int row = -r; row <= r; row++) {
-            int half = (int) Math.round(Math.sqrt(Math.max(0.0, (double) r * r - (double) row * row)));
-            g.fill(icx - half, icy + row, icx + half + 1, icy + row + 1, color);
+        int minX = (int) Math.floor(cx - radius - 1), maxX = (int) Math.ceil(cx + radius + 1);
+        int minY = (int) Math.floor(cy - radius - 1), maxY = (int) Math.ceil(cy + radius + 1);
+        for (int py = minY; py <= maxY; py++) {
+            for (int px = minX; px <= maxX; px++) {
+                float amount = radius + 0.5f - (float) Math.hypot(px + 0.5f - cx, py + 0.5f - cy);
+                if (amount > 0) cover(px, py, Math.min(1.0f, amount));
+            }
         }
     }
 
@@ -251,28 +298,32 @@ public final class MenuIcons {
             py[i] = cy + (float) Math.sin(angle) * radius;
         }
         if (filled) {
-            int top = Math.round(cy - 6.6f * u);
-            int bottom = Math.round(cy + 6.0f * u);
+            // Even-odd fill with 4x4 sub-samples per pixel for smooth edges.
+            int top = (int) Math.floor(cy - 7), bottom = (int) Math.ceil(cy + 7);
+            int left = (int) Math.floor(cx - 7 * u), right = (int) Math.ceil(cx + 7 * u);
             for (int row = top; row <= bottom; row++) {
-                float minX = Float.MAX_VALUE;
-                float maxX = -Float.MAX_VALUE;
-                for (int i = 0; i < 10; i++) {
-                    int j = (i + 1) % 10;
-                    float y1 = py[i];
-                    float y2 = py[j];
-                    if ((row + 0.5f >= Math.min(y1, y2)) && (row + 0.5f <= Math.max(y1, y2)) && y1 != y2) {
-                        float amount = (row + 0.5f - y1) / (y2 - y1);
-                        float crossing = px[i] + (px[j] - px[i]) * amount;
-                        minX = Math.min(minX, crossing);
-                        maxX = Math.max(maxX, crossing);
+                for (int col = left; col <= right; col++) {
+                    int hits = 0;
+                    for (int sy = 0; sy < 4; sy++) {
+                        for (int sx = 0; sx < 4; sx++) {
+                            if (insideStar(px, py, col + (sx + 0.5f) / 4.0f, row + (sy + 0.5f) / 4.0f)) hits++;
+                        }
                     }
+                    if (hits > 0) cover(col, row, hits / 16.0f);
                 }
-                if (minX <= maxX) g.fill(Math.round(minX), row, Math.round(maxX) + 1, row + 1, color);
             }
         }
         for (int i = 0; i < 10; i++) {
             int j = (i + 1) % 10;
             line(g, px[i], py[i], px[j], py[j], color, t);
         }
+    }
+
+    private static boolean insideStar(float[] px, float[] py, float x, float y) {
+        boolean inside = false;
+        for (int i = 0, j = 9; i < 10; j = i++) {
+            if ((py[i] > y) != (py[j] > y) && x < (px[j] - px[i]) * (y - py[i]) / (py[j] - py[i]) + px[i]) inside = !inside;
+        }
+        return inside;
     }
 }
