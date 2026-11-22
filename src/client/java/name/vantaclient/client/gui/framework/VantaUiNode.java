@@ -601,14 +601,14 @@ public final class VantaUiNode implements VantaUiComponent {
             case TEXT -> {
                 if (textMaximumLines > 1 && !cachedTextLines.isEmpty()) {
                     for (int i = 0; i < cachedTextLines.size(); i++)
-                        graphics.drawString(font, styledText(cachedTextLines.get(i), textFont), x,
+                        graphics.drawString(font, styledText(cachedTextLines.get(i), textFont, boldText), x,
                                 y + i * VantaTypography.lineHeight(VantaTypography.Role.BODY), textColor);
                 } else {
                     int menuSize = menuFontSize(textFont);
                     int textY = menuSize > 0
                             ? y + height / 2 - 7 + Math.round(menuSize * 0.35f)
                             : y + Math.max(0, (height - VantaUiTheme.TEXT_LINE_HEIGHT) / 2);
-                    graphics.drawString(font, styledText(currentText(), textFont), x, textY, textColor);
+                    graphics.drawString(font, styledText(currentText(), textFont, boldText), x, textY, textColor);
                 }
             }
             case ICON -> drawIcon(graphics, icon, x, y, width, height, textColor);
