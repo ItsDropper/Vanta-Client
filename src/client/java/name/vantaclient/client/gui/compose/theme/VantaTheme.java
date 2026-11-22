@@ -50,13 +50,15 @@ public record VantaTheme(
     /** Named text hierarchy and line metrics shared by retained text primitives. */
     public record Typography(
             int displaySize, int headingSize, int titleSize, int bodySize,
-            int labelSize, int captionSize, int titleLineHeight,
-            int bodyLineHeight, int captionLineHeight
+            int labelSize, int captionSize, int displayLineHeight,
+            int headingLineHeight, int titleLineHeight, int bodyLineHeight,
+            int captionLineHeight
     ) {
         public Typography {
             if (displaySize < headingSize || headingSize < titleSize
                     || titleSize < bodySize || bodySize < labelSize
                     || labelSize < captionSize || captionSize <= 0
+                    || displayLineHeight < displaySize || headingLineHeight < headingSize
                     || titleLineHeight < titleSize || bodyLineHeight < bodySize
                     || captionLineHeight < captionSize) {
                 throw new IllegalArgumentException("Vanta typography tokens must form a valid type scale.");
