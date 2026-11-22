@@ -13,6 +13,8 @@ public final class VantaUiRuntime {
     private final VantaInteractionController interactions;
     private VantaUiNode hovered;
     private VantaUiNode pendingFocusReveal;
+    private int lastHitTestX = Integer.MIN_VALUE;
+    private int lastHitTestY = Integer.MIN_VALUE;
     private int lastWidth = -1;
     private int lastHeight = -1;
     private int viewportWidth = -1;
@@ -128,7 +130,12 @@ public final class VantaUiRuntime {
 
     public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight,
                        int mouseX, int mouseY) {
+        int previousWidth = lastWidth;
+        int previousHeight = lastHeight;
+        float previousScale = uiScale;
         layout(font, screenWidth, screenHeight);
+        boolean layoutChanged = previousWidth != lastWidth || previousHeight != lastHeight
+                || Float.compare(previousScale, uiScale) != 0;
         if (pendingFocusReveal != null) {
             root.revealDescendant(pendingFocusReveal, pendingFocusReveal.height());
             pendingFocusReveal = null;
@@ -147,9 +154,13 @@ public final class VantaUiRuntime {
 
         // Only the previous hover target can be hovered. Clearing the entire retained
         // tree every frame was redundant O(n) traversal on large mods/keybind pages.
-        if (hovered != null) hovered.setHovered(false);
-        hovered = root.hitTest(logicalMouseX, logicalMouseY);
-        if (hovered != null) hovered.setHovered(true);
+        if (layoutChanged || logicalMouseX != lastHitTestX || logicalMouseY != lastHitTestY) {
+            if (hovered != null) hovered.setHovered(false);
+            hovered = root.hitTest(logicalMouseX, logicalMouseY);
+            if (hovered != null) hovered.setHovered(true);
+            lastHitTestX = logicalMouseX;
+            lastHitTestY = logicalMouseY;
+        }
         boolean animationsEnabled = theme.animationsEnabled();
         float hoverFactor = VantaUiMotion.interpolationFactor(
                 VantaUiTheme.HOVER_RATE, deltaSeconds, animationsEnabled);
@@ -314,6 +325,8 @@ public final class VantaUiRuntime {
         interactions.clear();
         hovered = null;
         pendingFocusReveal = null;
+        lastHitTestX = Integer.MIN_VALUE;
+        lastHitTestY = Integer.MIN_VALUE;
         root.closeDropdownsExcept(null);
         root.clearHover();
         lastFrameNanos = 0L;
