@@ -29,6 +29,7 @@ public final class VantaLoaderEvents {
             if (client.screen instanceof TitleScreen && client.level == null) {
                 VantaLobbyWorld.start();
                 VantaLobbyWorld.tick();
+                name.vantaclient.client.gui.title.VantaTitleUi.tick();
             }
             ClientTickHandler.tick(client);
             VantaRemoteSessionManager.tick(client);

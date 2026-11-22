@@ -242,6 +242,7 @@ public abstract class TitleScreenMixin {
 
     @Inject(method = "removed", at = @At("HEAD"))
     private void vanta$releaseLobbyWorld(CallbackInfo ci) {
+        if (vanta$ui != null) vanta$ui.dispose();
         VantaLobbyWorld.stop();
     }
 

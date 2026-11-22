@@ -18,17 +18,28 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.ConnectScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
+import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.multiplayer.ServerStatusPinger;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.network.EventLoopGroupHolder;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.PlayerSkin;
+import net.minecraft.world.level.storage.LevelSummary;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -37,12 +48,12 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * The Vanta title screen: a quiet left-aligned menu over the live lobby world.
+ * The Vanta title screen, painted over the live lobby world.
  *
- * Every interactive element is a real widget (so focus, keyboard and click handling stay
- * vanilla); the widgets draw nothing themselves and this class paints them. Vanilla's own
- * Singleplayer, Multiplayer, Realms, Options and Quit buttons are reused, so their actions
- * and availability checks are unchanged.
+ * Layout: a slim top bar (brand, tabs, actions), account / performance / link cards bottom left,
+ * and a play card bottom right that launches real worlds and servers. Every interactive element
+ * is a real widget, so focus, keyboard and click handling stay vanilla; the widgets draw nothing
+ * themselves and this class paints them. Vanilla's Realms, Options and Quit buttons are reused.
  */
 public final class VantaTitleUi {
     private static final String DISCORD_INVITE = "https://discord.gg/yG2CdjxYj";
@@ -54,18 +65,37 @@ public final class VantaTitleUi {
     private static final Identifier ICON_GRID = tex("grid");
     private static final Identifier ICON_CHEVRON = tex("chevron");
     private static final Identifier ICON_CHECK = tex("check");
+    private static final Identifier ICON_CLOSE = tex("close");
     private static final Identifier SCRIM_LEFT = tex("scrim_left");
     private static final Identifier SCRIM_BOTTOM = tex("scrim_bottom");
     private static final Identifier SCRIM_TOP = tex("scrim_top");
 
-    private static final int TEXT_DIM = 0xFF9AA6B8;
+    private static final int TEXT_DIM = 0xFF8D99AD;
     private static final int TEXT_BRIGHT = 0xFFFFFFFF;
+    private static final int CARD = 0xE60C121C;
+    private static final int CARD_EDGE = 0x24FFFFFF;
     private static final int PANEL = 0xF2101621;
     private static final int PANEL_EDGE = 0x2EFFFFFF;
+    private static final int GOOD = 0xFF45D6A0;
+    private static final int BAD = 0xFFEF5D6B;
+    private static final int WARN = 0xFFF2B84B;
 
+    // ---- shared, screen-independent data (survives resizes and re-opening the title screen)
     private static Boolean modMenuPresent;
     private static UUID cachedProfileId;
     private static Supplier<PlayerSkin> cachedSkin;
+    private static VantaTitleUi current;
+    private static List<LevelSummary> worlds;
+    private static long worldsLoadedAt;
+    private static boolean worldsLoading;
+    private static ServerStatusPinger pinger;
+    private static final Map<String, ServerData> PING_CACHE = new HashMap<>();
+    private static final Map<String, Long> PING_STARTED = new HashMap<>();
+
+    private enum Tab { SINGLEPLAYER, MULTIPLAYER }
+
+    /** One selectable thing in the play card: a world or a server. */
+    private record Entry(String title, String key, LevelSummary world, ServerData server) {}
 
     private static final class Item {
         final String label;
@@ -76,23 +106,24 @@ public final class VantaTitleUi {
     private final Minecraft mc = Minecraft.getInstance();
     private final Screen screen;
     private final Map<AbstractButton, Item> items = new IdentityHashMap<>();
-    private final List<AbstractButton> nav = new ArrayList<>();
     private final List<AbstractButton> links = new ArrayList<>();
     private final AbstractButton[] styleItems = new AbstractButton[3];
-    private AbstractButton discord;
-    private AbstractButton bell;
-    private AbstractButton modMenu;
-    private AbstractButton vantaMenu;
-    private AbstractButton styleToggle;
-    private AbstractButton clear;
-    private AbstractButton scrim;
-    private int primaryCount;
+    private final AbstractButton[] recent = new AbstractButton[3];
+    private AbstractButton tabPlay, tabRealms, tabOptions, quit;
+    private AbstractButton discord, bell, modMenu, vantaMenu, styleToggle, clear, scrim;
+    private AbstractButton segSingle, segMulti, play, all;
     private boolean notificationsOpen;
     private boolean styleOpen;
     private float popupProgress;
     private long lastFrame = System.nanoTime();
     private float u;
     private int panelX, panelY, panelW, panelH;
+    private int cardX, cardY, cardW, cardH;
+    private int leftX, leftW, accountY, statsY, linksY, accountH, statsH, linksH;
+    private Tab tab;
+    private int selected;
+    private float segSlide;
+    private List<Entry> entries = List.of();
 
     public VantaTitleUi(Screen screen) {
         this.screen = screen;
@@ -101,47 +132,36 @@ public final class VantaTitleUi {
     // ------------------------------------------------------------------ construction
 
     public void init(ScreenAccessor accessor) {
+        current = this;
         u = Math.max(0.8f, Math.min(2.0f, screen.height / 420.0f));
-        AbstractButton singleplayer = null, multiplayer = null, realms = null, options = null, quit = null;
+        AbstractButton realmsButton = null, optionsButton = null, quitButton = null;
         List<AbstractButton> extra = new ArrayList<>();
         for (GuiEventListener child : new ArrayList<>(screen.children())) {
             if (!(child instanceof AbstractButton button)) continue;
             String label = button.getMessage().getString();
             String key = label.toLowerCase(Locale.ROOT);
-            if (key.contains("language") || key.contains("accessibility")
-                    || key.startsWith("copyright")) {
-                button.visible = false;
-                button.active = false;
-            } else if (key.contains("singleplayer") || key.contains("single player")) {
-                singleplayer = button;
-            } else if (key.contains("multiplayer")) {
-                multiplayer = button;
+            if (key.contains("language") || key.contains("accessibility") || key.startsWith("copyright")
+                    || key.contains("singleplayer") || key.contains("single player")
+                    || key.contains("multiplayer")) {
+                hide(button);
             } else if (key.contains("realms")) {
-                realms = button;
+                realmsButton = button;
             } else if (key.startsWith("options")) {
-                options = button;
+                optionsButton = button;
             } else if (key.startsWith("quit")) {
-                quit = button;
+                quitButton = button;
             } else if (!label.isBlank()) {
                 extra.add(button);
             }
         }
         // Vanilla buttons draw nothing in this style; their labels are painted by render().
-        AbstractButton[] order = {singleplayer, multiplayer, realms, options, quit};
-        primaryCount = (singleplayer != null ? 1 : 0) + (multiplayer != null ? 1 : 0) + (realms != null ? 1 : 0);
-        for (AbstractButton button : order) {
-            if (button == null) continue;
-            String label = trimLabel(button.getMessage().getString());
-            items.put(button, new Item(label));
-            button.setMessage(Component.empty());
-            nav.add(button);
-        }
-        // Mod Menu and other mods place their own buttons here; keep them reachable as quiet links.
+        tabRealms = adopt(realmsButton, "Realms");
+        tabOptions = adopt(optionsButton, "Options");
+        quit = adopt(quitButton, "Quit");
         for (AbstractButton button : extra) {
             String label = trimLabel(button.getMessage().getString());
             if (label.equalsIgnoreCase("mods")) {
-                button.visible = false;
-                button.active = false;
+                hide(button);
                 continue;
             }
             items.put(button, new Item(label));
@@ -149,30 +169,55 @@ public final class VantaTitleUi {
             links.add(button);
         }
 
-        links.add(add(accessor, "Share", () -> mc.setScreen(new VantaWorldShareScreen(screen))));
-        links.add(add(accessor, "Language", () -> mc.setScreen(new LanguageSelectScreen(
-                screen, mc.options, mc.getLanguageManager()))));
-        links.add(add(accessor, "Accessibility", () -> mc.setScreen(
-                new AccessibilityOptionsScreen(screen, mc.options))));
-        links.add(add(accessor, "Credits", () -> mc.setScreen(new CreditsAndAttributionScreen(screen))));
-
-        discord = add(accessor, "Discord", () -> openInvite());
+        tabPlay = add(accessor, "Play", this::closePopups);
+        discord = add(accessor, "Discord", this::openInvite);
         bell = add(accessor, "Notifications", this::toggleNotifications);
         modMenu = add(accessor, "Mods", this::openModMenu);
         modMenu.active = modMenuPresent();
         vantaMenu = add(accessor, "Vanta menu", () -> mc.setScreen(new VantaSettingsScreen(screen)));
         styleToggle = add(accessor, "Menu style", this::toggleStyle);
 
+        links.add(0, add(accessor, "Share", () -> mc.setScreen(new VantaWorldShareScreen(screen))));
+        links.add(1, add(accessor, "Language", () -> mc.setScreen(new LanguageSelectScreen(
+                screen, mc.options, mc.getLanguageManager()))));
+        links.add(2, add(accessor, "Accessibility", () -> mc.setScreen(
+                new AccessibilityOptionsScreen(screen, mc.options))));
+        links.add(3, add(accessor, "Credits", () -> mc.setScreen(new CreditsAndAttributionScreen(screen))));
+
+        segSingle = add(accessor, "Singleplayer", () -> switchTab(Tab.SINGLEPLAYER));
+        segMulti = add(accessor, "Multiplayer", () -> switchTab(Tab.MULTIPLAYER));
+        play = add(accessor, "Play", this::launch);
+        for (int i = 0; i < recent.length; i++) {
+            int index = i;
+            recent[i] = add(accessor, "Recent", () -> select(index));
+        }
+        all = add(accessor, "All", this::openAll);
+
         TitleStyle[] styles = TitleStyle.values();
         for (int i = 0; i < styles.length; i++) {
             TitleStyle style = styles[i];
             styleItems[i] = add(accessor, style.label(), () -> chooseStyle(style));
         }
-        clear = add(accessor, "Clear", () -> {
-            VantaNotificationManager.clearHistory();
-        });
+        clear = add(accessor, "Clear", VantaNotificationManager::clearHistory);
         scrim = add(accessor, "", this::closePopups);
+
+        tab = "MULTIPLAYER".equals(VantaClientPreferences.get().titleTab) ? Tab.MULTIPLAYER : Tab.SINGLEPLAYER;
+        segSlide = tab == Tab.MULTIPLAYER ? 1.0f : 0.0f;
+        loadWorlds();
+        refreshEntries();
         layout();
+    }
+
+    private static void hide(AbstractButton button) {
+        button.visible = false;
+        button.active = false;
+    }
+
+    private AbstractButton adopt(AbstractButton button, String label) {
+        if (button == null) return null;
+        items.put(button, new Item(label));
+        button.setMessage(Component.empty());
+        return button;
     }
 
     private AbstractButton add(ScreenAccessor accessor, String label, Runnable action) {
@@ -188,6 +233,96 @@ public final class VantaTitleUi {
         return value.endsWith("...") ? value.substring(0, value.length() - 3) : value;
     }
 
+    // ------------------------------------------------------------------ data
+
+    private void loadWorlds() {
+        long now = System.currentTimeMillis();
+        if (worldsLoading || (worlds != null && now - worldsLoadedAt < 5000L)) return;
+        worldsLoading = true;
+        try {
+            var source = mc.getLevelSource();
+            var candidates = source.findLevelCandidates();
+            source.loadLevelSummaries(candidates).whenCompleteAsync((summaries, error) -> {
+                worldsLoading = false;
+                worldsLoadedAt = System.currentTimeMillis();
+                if (error != null || summaries == null) {
+                    worlds = List.of();
+                } else {
+                    List<LevelSummary> sorted = new ArrayList<>(summaries);
+                    sorted.sort(Comparator.comparingLong(LevelSummary::getLastPlayed).reversed());
+                    worlds = sorted;
+                }
+                if (current != null) current.onDataChanged();
+            }, mc);
+        } catch (Exception error) {
+            worldsLoading = false;
+            worlds = List.of();
+        }
+    }
+
+    private void onDataChanged() {
+        refreshEntries();
+        layout();
+    }
+
+    private void refreshEntries() {
+        List<Entry> result = new ArrayList<>();
+        if (tab == Tab.SINGLEPLAYER) {
+            if (worlds != null) {
+                for (LevelSummary world : worlds) {
+                    result.add(new Entry(world.getLevelName(), world.getLevelId(), world, null));
+                }
+            }
+        } else {
+            try {
+                ServerList list = new ServerList(mc);
+                list.load();
+                String preferred = VantaClientPreferences.get().lastServerIp;
+                List<ServerData> servers = new ArrayList<>();
+                for (int i = 0; i < list.size(); i++) servers.add(list.get(i));
+                servers.sort(Comparator.comparing((ServerData d) -> !d.ip.equalsIgnoreCase(preferred)));
+                if (pinger == null) pinger = new ServerStatusPinger();
+                int pinged = 0;
+                for (ServerData data : servers) {
+                    String key = data.ip.toLowerCase(Locale.ROOT);
+                    ServerData shown = PING_CACHE.get(key);
+                    long started = PING_STARTED.getOrDefault(key, 0L);
+                    if (shown == null || System.currentTimeMillis() - started > 60_000L) {
+                        shown = data;
+                        PING_CACHE.put(key, data);
+                        PING_STARTED.put(key, System.currentTimeMillis());
+                        if (pinged++ < 4) ping(data);
+                    }
+                    result.add(new Entry(shown.name, key, null, shown));
+                }
+            } catch (RuntimeException error) {
+                // an unreadable server list simply leaves the card empty
+            }
+        }
+        entries = result;
+        if (selected >= entries.size()) selected = 0;
+    }
+
+    private void ping(ServerData data) {
+        try {
+            pinger.pingServer(data, () -> {}, () -> {},
+                    EventLoopGroupHolder.remote(mc.options.useNativeTransport()));
+        } catch (Exception error) {
+            data.setState(ServerData.State.UNREACHABLE);
+        }
+    }
+
+    /** Called from the client tick while the title screen is showing. */
+    public static void tick() {
+        if (current != null && pinger != null && Minecraft.getInstance().screen == current.screen) {
+            pinger.tick();
+        }
+    }
+
+    public void dispose() {
+        if (current == this) current = null;
+    }
+
     // ------------------------------------------------------------------ layout
 
     private int s(float value) {
@@ -197,43 +332,77 @@ public final class VantaTitleUi {
     private void layout() {
         int w = screen.width;
         int h = screen.height;
+        int margin = s(28);
+        int bottom = h - s(42);
 
-        // Navigation, left aligned and vertically centred slightly above the middle.
-        int rowH = s(40);
-        int groupGap = s(14);
-        int total = nav.size() * rowH + (nav.size() > primaryCount ? groupGap : 0);
-        int left = Math.max(s(46), Math.round(w * 0.065f));
-        int y = Math.round(h * 0.5f - total / 2.0f);
-        for (int i = 0; i < nav.size(); i++) {
-            if (i == primaryCount) y += groupGap;
-            bounds(nav.get(i), left - s(18), y, s(300), rowH);
-            y += rowH;
-        }
-
-        // Top-right icon row.
+        // Top bar.
         int icon = s(34);
         int gap = s(8);
-        int margin = s(30);
-        int top = s(24);
-        AbstractButton[] row = {discord, bell, modMenu, vantaMenu, styleToggle};
+        int top = s(20);
         int x = w - margin - icon;
-        for (int i = row.length - 1; i >= 0; i--) {
-            bounds(row[i], x, top, icon, icon);
+        if (quit != null) {
+            bounds(quit, x, top, icon, icon);
+            x -= icon + gap + s(10);
+        }
+        AbstractButton[] row = {styleToggle, vantaMenu, modMenu, bell, discord};
+        for (AbstractButton button : row) {
+            bounds(button, x, top, icon, icon);
             x -= icon + gap;
         }
-
-        // Bottom-right quiet links, right to left.
-        int linkX = w - margin;
-        int linkY = h - s(30);
-        for (int i = links.size() - 1; i >= 0; i--) {
-            AbstractButton button = links.get(i);
-            int tw = textWidth(items.get(button).label, 12, false) + s(8);
-            bounds(button, linkX - tw, linkY - s(10), tw, s(24));
-            linkX -= tw + s(10);
+        int tabsY = top;
+        AbstractButton[] tabs = {tabPlay, tabRealms, tabOptions};
+        int tabsWidth = 0;
+        int tabGap = s(26);
+        for (AbstractButton button : tabs) {
+            if (button == null) continue;
+            tabsWidth += textWidth(items.get(button).label, 15, true) + s(20) + tabGap;
+        }
+        tabsWidth -= tabGap;
+        int tx = (w - tabsWidth) / 2;
+        for (AbstractButton button : tabs) {
+            if (button == null) continue;
+            int bw = textWidth(items.get(button).label, 15, true) + s(20);
+            bounds(button, tx, tabsY, bw, icon);
+            tx += bw + tabGap;
         }
 
+        // Bottom-left cards.
+        leftX = margin;
+        leftW = s(292);
+        linksH = s(42);
+        statsH = s(46);
+        accountH = s(64);
+        linksY = bottom - linksH;
+        statsY = linksY - s(8) - statsH;
+        accountY = statsY - s(8) - accountH;
+        int linkWidth = (leftW - s(12)) / Math.max(1, links.size());
+        for (int i = 0; i < links.size(); i++) {
+            bounds(links.get(i), leftX + s(6) + i * linkWidth, linksY + s(4), linkWidth, linksH - s(8));
+        }
+
+        // Play card, bottom right.
+        cardW = s(304);
+        cardH = s(302);
+        cardX = w - margin - cardW;
+        cardY = bottom - cardH;
+        int pad = s(14);
+        int innerW = cardW - pad * 2;
+        bounds(segSingle, cardX + pad + s(3), cardY + pad + s(3), innerW / 2 - s(3), s(34));
+        bounds(segMulti, cardX + pad + innerW / 2, cardY + pad + s(3), innerW / 2 - s(3), s(34));
+        int bodyY = cardY + pad + s(40) + s(16);
+        int playY = bodyY + s(66) + s(18);
+        bounds(play, cardX + pad, playY, innerW, s(48));
+        int recentY = playY + s(48) + s(16);
+        int tile = s(34);
+        for (int i = 0; i < recent.length; i++) {
+            bounds(recent[i], cardX + pad + s(56) + i * (tile + s(8)), recentY, tile, tile);
+            recent[i].visible = i < entries.size();
+            recent[i].active = recent[i].visible;
+        }
+        bounds(all, cardX + cardW - pad - s(78), recentY + s(1), s(78), s(32));
+        all.visible = true;
+
         // Popups hang under the icon row, right aligned with the last icon.
-        int right = w - margin;
         panelY = top + icon + s(10);
         if (styleOpen) {
             panelW = s(196);
@@ -243,7 +412,7 @@ public final class VantaTitleUi {
             int rows = Math.max(1, Math.min(5, VantaNotificationManager.history().size()));
             panelH = s(46) + (VantaNotificationManager.history().isEmpty() ? s(92) : rows * s(56)) + s(6);
         }
-        panelX = right - panelW;
+        panelX = styleToggle.getX() + styleToggle.getWidth() - panelW;
         for (int i = 0; i < styleItems.length; i++) {
             bounds(styleItems[i], panelX + s(6), panelY + s(6) + i * s(38), panelW - s(12), s(38));
             styleItems[i].visible = styleOpen;
@@ -258,6 +427,7 @@ public final class VantaTitleUi {
     }
 
     private static void bounds(AbstractButton button, int x, int y, int w, int h) {
+        if (button == null) return;
         button.setX(x);
         button.setY(y);
         button.setWidth(w);
@@ -265,6 +435,45 @@ public final class VantaTitleUi {
     }
 
     // ------------------------------------------------------------------ actions
+
+    private void switchTab(Tab next) {
+        if (tab == next) return;
+        tab = next;
+        selected = 0;
+        VantaClientPreferences.get().titleTab = next.name();
+        VantaClientPreferences.save();
+        refreshEntries();
+        layout();
+    }
+
+    private void select(int index) {
+        if (index >= 0 && index < entries.size()) selected = index;
+    }
+
+    private void launch() {
+        if (entries.isEmpty()) {
+            openAll();
+            return;
+        }
+        Entry entry = entries.get(Math.min(selected, entries.size() - 1));
+        if (entry.world() != null) {
+            if (!entry.world().primaryActionActive()) {
+                openAll();
+                return;
+            }
+            mc.createWorldOpenFlows().openWorld(entry.world().getLevelId(),
+                    () -> mc.setScreen(new TitleScreen()));
+        } else if (entry.server() != null) {
+            VantaClientPreferences.get().lastServerIp = entry.server().ip;
+            VantaClientPreferences.save();
+            ConnectScreen.startConnecting(screen, mc, ServerAddress.parseString(entry.server().ip),
+                    entry.server(), false, null);
+        }
+    }
+
+    private void openAll() {
+        mc.setScreen(tab == Tab.SINGLEPLAYER ? new SelectWorldScreen(screen) : new JoinMultiplayerScreen(screen));
+    }
 
     private void openInvite() {
         try {
@@ -338,82 +547,76 @@ public final class VantaTitleUi {
         lastFrame = now;
         float blend = 1.0f - (float) Math.exp(-dt * 16.0f);
         popupProgress += (1.0f - popupProgress) * blend;
-        if (notificationsOpen) layout(); // list length can change while open
+        segSlide += ((tab == Tab.MULTIPLAYER ? 1.0f : 0.0f) - segSlide) * (1.0f - (float) Math.exp(-dt * 20.0f));
+        if (notificationsOpen) layout();
 
         int w = screen.width;
         int h = screen.height;
-        float intro = ease(clamp01(VantaLobbyScene.elapsedMillis() / 520.0f));
+        long elapsed = VantaLobbyScene.elapsedMillis();
+        float intro = ease(clamp01(elapsed / 520.0f));
         int accent = new VantaUiTheme().accent();
 
         for (Map.Entry<AbstractButton, Item> entry : items.entrySet()) {
             AbstractButton button = entry.getKey();
             Item item = entry.getValue();
-            float target = button.active && button.visible && (button.isHoveredOrFocused()) ? 1.0f : 0.0f;
+            float target = button.active && button.visible && button.isHoveredOrFocused() ? 1.0f : 0.0f;
             item.hover += (target - item.hover) * blend;
             if (Math.abs(target - item.hover) < 0.01f) item.hover = target;
         }
 
-        // Edge scrims keep text legible over any lobby scene.
-        g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_LEFT, 0, 0, 0.0f, 0.0f,
-                Math.round(w * 0.62f), h, 256, 4, 256, 4, alpha(0xFFFFFFFF, intro));
-        g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_BOTTOM, 0, h - s(150), 0.0f, 0.0f,
-                w, s(150), 4, 128, 4, 128, alpha(0xFFFFFFFF, intro));
+        // Soft edge shading keeps text legible over any lobby scene without hiding it.
+        g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_BOTTOM, 0, h - s(260), 0.0f, 0.0f,
+                w, s(260), 4, 128, 4, 128, alpha(0xFFFFFFFF, 0.8f * intro));
         g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_TOP, 0, 0, 0.0f, 0.0f,
-                w, s(120), 4, 128, 4, 128, alpha(0xFFFFFFFF, intro));
+                w, s(110), 4, 128, 4, 128, alpha(0xFFFFFFFF, intro));
 
-        renderBrand(g, intro);
-        renderNav(g, intro, accent);
-        renderIcons(g, intro, accent);
-        renderAccount(g, intro);
+        renderTopBar(g, intro, accent);
+        float cards = ease(clamp01((elapsed - 120) / 520.0f));
+        int lift = Math.round((1.0f - cards) * s(16));
+        renderLeftCards(g, cards, lift, accent);
+        renderPlayCard(g, cards, lift, accent);
         renderFooter(g, intro);
         if (styleOpen || notificationsOpen) renderPopup(g, accent);
     }
 
-    private void renderBrand(GuiGraphics g, float intro) {
+    private void renderTopBar(GuiGraphics g, float intro, int accent) {
         int x = s(30);
-        int cy = s(24) + s(17);
+        int cy = s(20) + s(17);
         int mark = s(26);
         g.blit(RenderPipelines.GUI_TEXTURED, MARK, x, cy - mark / 2, 0.0f, 0.0f, mark, mark,
                 256, 256, 256, 256, alpha(0xFFFFFFFF, intro));
-        int tx = x + mark + s(10);
-        text(g, "Vanta", tx, cy, 18, alpha(TEXT_BRIGHT, intro), true);
-        int next = tx + textWidth("Vanta", 18, true) + s(6);
-        text(g, "Client", next, cy, 18, alpha(0xFF7D8AA0, intro), false);
-    }
+        text(g, "Vanta", x + mark + s(10), cy, 18, alpha(TEXT_BRIGHT, intro), true);
 
-    private void renderNav(GuiGraphics g, float intro, int accent) {
-        long elapsed = VantaLobbyScene.elapsedMillis();
-        for (int i = 0; i < nav.size(); i++) {
-            AbstractButton button = nav.get(i);
+        for (AbstractButton button : new AbstractButton[]{tabPlay, tabRealms, tabOptions}) {
+            if (button == null) continue;
             Item item = items.get(button);
-            float t = ease(clamp01((elapsed - 140 - i * 70L) / 420.0f));
-            float hover = item.hover;
-            int cy = button.getY() + button.getHeight() / 2;
-            int baseX = button.getX() + s(18);
-            float slide = (1.0f - t) * -s(18) + hover * s(10);
-            int color = mix(button.active ? 0xFFB3BDCC : 0xFF5F6978, TEXT_BRIGHT, hover);
-            text(g, item.label, baseX + slide, cy, 22, alpha(color, t), true);
-
-            if (hover > 0.01f) {
-                int barH = s(20);
-                int barX = button.getX() + s(4) - Math.round((1.0f - hover) * s(6));
-                VantaUiTheme.fillSquircle(g, barX, cy - barH / 2, Math.max(2, s(3)), barH,
-                        Math.max(1, s(1)), alpha(accent, hover * t));
+            boolean home = button == tabPlay;
+            int color = home ? TEXT_BRIGHT : mix(0xFF9AA6B8, TEXT_BRIGHT, item.hover);
+            text(g, item.label, button.getX() + s(10), button.getY() + button.getHeight() / 2, 15,
+                    alpha(color, intro), true);
+            if (home) {
+                int tw = textWidth(item.label, 15, true);
+                VantaUiTheme.fillSquircle(g, button.getX() + s(10), button.getY() + button.getHeight() - s(2),
+                        tw, Math.max(2, s(2)), 1, alpha(accent, intro));
             }
             if (button.isFocused()) {
-                VantaUiTheme.outlineSquircle(g, button.getX(), button.getY() + s(2),
-                        s(260), button.getHeight() - s(4), s(10), alpha(accent, 0.7f));
+                VantaUiTheme.outlineSquircle(g, button.getX(), button.getY(), button.getWidth(),
+                        button.getHeight(), s(10), alpha(accent, 0.7f));
             }
         }
-    }
 
-    private void renderIcons(GuiGraphics g, float intro, int accent) {
         drawIconButton(g, discord, ICON_CHAT, intro, accent, 0, false);
         drawIconButton(g, bell, ICON_BELL, intro, accent, VantaNotificationManager.unreadCount(),
                 notificationsOpen);
         drawIconButton(g, modMenu, ICON_GRID, intro, accent, 0, false);
         drawIconButton(g, vantaMenu, MARK, intro, accent, 0, false);
         drawIconButton(g, styleToggle, ICON_CHEVRON, intro, accent, 0, styleOpen);
+        if (quit != null) {
+            int sepX = quit.getX() - s(9);
+            g.fill(sepX, quit.getY() + s(7), sepX + 1, quit.getY() + quit.getHeight() - s(7),
+                    alpha(0xFFFFFFFF, 0.12f * intro));
+            drawIconButton(g, quit, ICON_CLOSE, intro, accent, 0, false);
+        }
     }
 
     private void drawIconButton(GuiGraphics g, AbstractButton button, Identifier icon, float intro,
@@ -421,74 +624,229 @@ public final class VantaTitleUi {
         Item item = items.get(button);
         float hover = Math.max(item.hover, open ? 1.0f : 0.0f);
         int x = button.getX(), y = button.getY(), size = button.getWidth();
-        int fill = mix(0x4A0B111B, 0x8C1C2636, hover);
+        int fill = mix(0x520B111B, 0x99202B3D, hover);
         VantaUiTheme.fillSquircle(g, x, y, size, size, s(11), alpha(fill, intro));
         VantaUiTheme.outlineSquircle(g, x, y, size, size, s(11),
-                alpha(open ? accent : 0xFFFFFFFF, (open ? 0.75f : 0.06f + 0.10f * hover) * intro));
+                alpha(open ? accent : 0xFFFFFFFF, (open ? 0.75f : 0.08f + 0.10f * hover) * intro));
         int glyph = s(icon == MARK ? 20 : 22);
         int tint;
         if (icon == MARK) {
-            tint = alpha(0xFFFFFFFF, intro * (0.78f + 0.22f * hover));
+            tint = alpha(0xFFFFFFFF, intro * (0.8f + 0.2f * hover));
         } else {
-            tint = alpha(button.active ? mix(0xFFB9C3D2, TEXT_BRIGHT, hover) : 0xFF4B5563, intro);
+            tint = alpha(button.active ? mix(0xFFC3CCDA, TEXT_BRIGHT, hover) : 0xFF4B5563, intro);
         }
-        g.blit(RenderPipelines.GUI_TEXTURED, icon, x + (size - glyph) / 2,
-                y + (size - glyph) / 2, 0.0f, 0.0f, glyph, glyph,
-                icon == MARK ? 256 : 64, icon == MARK ? 256 : 64,
-                icon == MARK ? 256 : 64, icon == MARK ? 256 : 64, tint);
+        int tex = icon == MARK ? 256 : 64;
+        g.blit(RenderPipelines.GUI_TEXTURED, icon, x + (size - glyph) / 2, y + (size - glyph) / 2,
+                0.0f, 0.0f, glyph, glyph, tex, tex, tex, tex, tint);
         if (badge > 0 && !open) {
             int d = s(9);
-            VantaUiTheme.fillSquircle(g, x + size - d - s(5), y + s(5), d, d, d / 2,
-                    alpha(accent, intro));
+            VantaUiTheme.fillSquircle(g, x + size - d - s(5), y + s(5), d, d, d / 2, alpha(accent, intro));
         }
         if (button.isFocused()) {
-            VantaUiTheme.outlineSquircle(g, x - 1, y - 1, size + 2, size + 2, s(12),
-                    alpha(accent, 0.8f), 1);
+            VantaUiTheme.outlineSquircle(g, x - 1, y - 1, size + 2, size + 2, s(12), alpha(accent, 0.8f), 1);
         }
     }
 
-    private void renderAccount(GuiGraphics g, float intro) {
+    private void card(GuiGraphics g, int x, int y, int w, int h, int radius, float a) {
+        VantaUiTheme.fillSquircle(g, x, y, w, h, radius, alpha(CARD, a));
+        VantaUiTheme.outlineSquircle(g, x, y, w, h, radius, alpha(CARD_EDGE, a));
+    }
+
+    private void renderLeftCards(GuiGraphics g, float a, int lift, int accent) {
+        // Account.
+        int y = accountY + lift;
+        card(g, leftX, y, leftW, accountH, s(16), a);
+        String name = mc.getUser() != null ? mc.getUser().getName() : "";
+        int head = s(40);
+        int hx = leftX + s(12), hy = y + (accountH - head) / 2;
+        drawHead(g, hx, hy, head);
+        if (!name.isBlank()) {
+            text(g, name, hx + head + s(14), y + accountH / 2 - s(9), 15, alpha(TEXT_BRIGHT, a), true);
+            text(g, "Minecraft " + net.minecraft.SharedConstants.getCurrentVersion().id(),
+                    hx + head + s(14), y + accountH / 2 + s(10), 12, alpha(TEXT_DIM, a), false);
+        }
+
+        // Performance.
+        y = statsY + lift;
+        card(g, leftX, y, leftW, statsH, s(16), a);
+        int fps = Math.max(0, mc.getFps());
+        int dot = s(8);
+        int fpsColor = fps >= 60 ? GOOD : fps >= 30 ? WARN : BAD;
+        VantaUiTheme.fillSquircle(g, leftX + s(18), y + statsH / 2 - dot / 2, dot, dot, dot / 2, alpha(fpsColor, a));
+        text(g, fps + " FPS", leftX + s(36), y + statsH / 2, 14, alpha(TEXT_BRIGHT, a), true);
+        String ms = fps > 0 ? String.format(Locale.ROOT, "%.1f ms", 1000.0f / fps) : "-- ms";
+        text(g, ms, leftX + leftW - s(18) - textWidth(ms, 13, false), y + statsH / 2, 13, alpha(TEXT_DIM, a), false);
+
+        // Links.
+        y = linksY + lift;
+        card(g, leftX, y, leftW, linksH, s(16), a);
+        for (AbstractButton button : links) {
+            Item item = items.get(button);
+            int color = mix(0xFF8D99AD, TEXT_BRIGHT, item.hover);
+            String label = item.label;
+            int tw = textWidth(label, 12, false);
+            text(g, label, button.getX() + (button.getWidth() - tw) / 2.0f,
+                    button.getY() + button.getHeight() / 2, 12, alpha(color, a), false);
+            if (item.hover > 0.01f) {
+                VantaUiTheme.fillSquircle(g, button.getX() + (button.getWidth() - tw) / 2, button.getY() + button.getHeight() - s(6),
+                        tw, Math.max(1, s(1)), 0, alpha(accent, item.hover * a));
+            }
+        }
+    }
+
+    private void drawHead(GuiGraphics g, int x, int y, int size) {
         if (mc.getUser() == null) return;
-        String name = mc.getUser().getName();
-        if (name == null || name.isBlank()) return;
-        int head = s(26);
-        int pad = s(6);
-        int nameW = textWidth(name, 14, true);
-        int w = pad + head + s(10) + nameW + s(16);
-        int h = head + pad * 2;
-        int x = s(30);
-        int y = screen.height - s(30) - h;
-        VantaUiTheme.fillSquircle(g, x, y, w, h, s(12), alpha(0xFF0B111B, 0.62f * intro));
-        VantaUiTheme.outlineSquircle(g, x, y, w, h, s(12), alpha(0xFFFFFFFF, 0.07f * intro));
         try {
             UUID id = mc.getUser().getProfileId();
-            if (id != null) {
-                if (!id.equals(cachedProfileId) || cachedSkin == null) {
-                    cachedProfileId = id;
-                    GameProfile profile = mc.getGameProfile() != null
-                            ? mc.getGameProfile() : new GameProfile(id, name);
-                    cachedSkin = mc.getSkinManager().createLookup(profile, false);
-                }
-                PlayerSkin skin = cachedSkin.get();
-                if (skin != null) PlayerFaceRenderer.draw(g, skin, x + pad, y + pad, head);
+            if (id == null) return;
+            if (!id.equals(cachedProfileId) || cachedSkin == null) {
+                cachedProfileId = id;
+                GameProfile profile = mc.getGameProfile() != null
+                        ? mc.getGameProfile() : new GameProfile(id, mc.getUser().getName());
+                cachedSkin = mc.getSkinManager().createLookup(profile, false);
             }
+            PlayerSkin skin = cachedSkin.get();
+            if (skin != null) PlayerFaceRenderer.draw(g, skin, x, y, size);
         } catch (RuntimeException error) {
             cachedSkin = null;
         }
-        text(g, name, x + pad + head + s(10), y + h / 2, 14, alpha(TEXT_BRIGHT, intro), true);
+    }
+
+    private void renderPlayCard(GuiGraphics g, float a, int lift, int accent) {
+        int x = cardX, y = cardY + lift;
+        VantaUiTheme.fillSquircle(g, x, y, cardW, cardH, s(20), alpha(CARD, a));
+        VantaUiTheme.outlineSquircle(g, x, y, cardW, cardH, s(20), alpha(CARD_EDGE, a));
+        int pad = s(14);
+        int innerW = cardW - pad * 2;
+
+        // Segmented control.
+        int segY = y + pad;
+        VantaUiTheme.fillSquircle(g, x + pad, segY, innerW, s(40), s(12), alpha(0xFF05080E, 0.7f * a));
+        int half = innerW / 2;
+        int thumbX = x + pad + s(3) + Math.round(segSlide * half);
+        VantaUiTheme.fillSquircle(g, thumbX, segY + s(3), half - s(3), s(34), s(10), alpha(accent, a));
+        for (AbstractButton seg : new AbstractButton[]{segSingle, segMulti}) {
+            Item item = items.get(seg);
+            boolean active = (seg == segSingle) == (tab == Tab.SINGLEPLAYER);
+            int color = active ? TEXT_BRIGHT : mix(0xFF8D99AD, TEXT_BRIGHT, item.hover);
+            String label = item.label;
+            int tw = textWidth(label, 13, true);
+            text(g, label, seg.getX() + (seg.getWidth() - tw) / 2.0f, seg.getY() + seg.getHeight() / 2,
+                    13, alpha(color, a), true);
+            if (seg.isFocused()) {
+                VantaUiTheme.outlineSquircle(g, seg.getX(), seg.getY(), seg.getWidth(), seg.getHeight(),
+                        s(10), alpha(TEXT_BRIGHT, 0.8f));
+            }
+        }
+
+        // Selected world or server.
+        int bodyY = segY + s(40) + s(16) + 0;
+        int tile = s(66);
+        Entry entry = entries.isEmpty() ? null : entries.get(Math.min(selected, entries.size() - 1));
+        drawTile(g, x + pad, bodyY, tile, entry, a, accent, s(16), true);
+        int tx = x + pad + tile + s(14);
+        int maxW = cardW - pad - (tx - x);
+        if (entry == null) {
+            boolean waiting = tab == Tab.SINGLEPLAYER && worlds == null;
+            text(g, waiting ? "Loading worlds" : tab == Tab.SINGLEPLAYER ? "No worlds yet" : "No servers yet",
+                    tx, bodyY + s(22), 16, alpha(TEXT_BRIGHT, a), true);
+            text(g, tab == Tab.SINGLEPLAYER ? "Create your first one" : "Add a server to play online",
+                    tx, bodyY + s(46), 12, alpha(TEXT_DIM, a), false);
+        } else {
+            text(g, fit(entry.title(), 17, true, maxW), tx, bodyY + s(18), 17, alpha(TEXT_BRIGHT, a), true);
+            renderSubtitle(g, entry, tx, bodyY + s(44), maxW, a);
+        }
+
+        // Play button.
+        Item playItem = items.get(play);
+        int playY = play.getY();
+        int btnColor = mix(accent, 0xFFFFFFFF, 0.14f * playItem.hover);
+        VantaUiTheme.fillSquircle(g, play.getX(), playY, play.getWidth(), play.getHeight(), s(14), alpha(btnColor, a));
+        String label = entries.isEmpty() ? (tab == Tab.SINGLEPLAYER ? "Create world" : "Add server") : "Play";
+        int lw = textWidth(label, 17, true);
+        text(g, label, play.getX() + (play.getWidth() - lw) / 2.0f, playY + play.getHeight() / 2, 17,
+                alpha(TEXT_BRIGHT, a), true);
+        if (play.isFocused()) {
+            VantaUiTheme.outlineSquircle(g, play.getX() - 1, playY - 1, play.getWidth() + 2, play.getHeight() + 2,
+                    s(15), alpha(TEXT_BRIGHT, 0.85f), 1);
+        }
+
+        // Recent row.
+        int rowY = recent[0].getY();
+        text(g, "Recent", x + pad, rowY + s(17), 12, alpha(TEXT_DIM, a), false);
+        for (int i = 0; i < recent.length; i++) {
+            if (!recent[i].visible) continue;
+            Item item = items.get(recent[i]);
+            boolean isSelected = i == Math.min(selected, entries.size() - 1);
+            drawTile(g, recent[i].getX(), rowY, recent[i].getWidth(), entries.get(i), a, accent, s(10), false);
+            VantaUiTheme.outlineSquircle(g, recent[i].getX() - 2, rowY - 2, recent[i].getWidth() + 4,
+                    recent[i].getHeight() + 4, s(12),
+                    alpha(isSelected ? accent : 0xFFFFFFFF, (isSelected ? 0.95f : 0.20f * item.hover) * a), 1);
+        }
+        Item allItem = items.get(all);
+        int count = tab == Tab.SINGLEPLAYER ? (worlds == null ? 0 : worlds.size()) : entries.size();
+        String allLabel = "All " + count;
+        VantaUiTheme.fillSquircle(g, all.getX(), all.getY(), all.getWidth(), all.getHeight(), s(10),
+                alpha(mix(0x33FFFFFF, 0x55FFFFFF, allItem.hover), a));
+        int aw = textWidth(allLabel, 12, true);
+        text(g, allLabel, all.getX() + (all.getWidth() - aw) / 2.0f, all.getY() + all.getHeight() / 2, 12,
+                alpha(TEXT_BRIGHT, a), true);
+    }
+
+    private void renderSubtitle(GuiGraphics g, Entry entry, int x, int y, int maxW, float a) {
+        if (entry.world() != null) {
+            text(g, "Played " + ago(System.currentTimeMillis() - entry.world().getLastPlayed()), x, y, 12,
+                    alpha(TEXT_DIM, a), false);
+            return;
+        }
+        ServerData data = entry.server();
+        ServerData.State state = data.state();
+        int dotColor;
+        String detail;
+        switch (state) {
+            case SUCCESSFUL -> {
+                dotColor = GOOD;
+                String online = data.players != null ? String.format(Locale.ROOT, "%,d online", data.players.online()) : "Online";
+                detail = online + "   " + data.ping + " ms";
+            }
+            case UNREACHABLE -> {
+                dotColor = BAD;
+                detail = "Offline";
+            }
+            case INCOMPATIBLE -> {
+                dotColor = WARN;
+                detail = "Incompatible";
+            }
+            default -> {
+                dotColor = 0xFF6B7789;
+                detail = "Checking";
+            }
+        }
+        int dot = s(8);
+        VantaUiTheme.fillSquircle(g, x, y - dot / 2, dot, dot, dot / 2, alpha(dotColor, a));
+        text(g, fit(detail, 12, false, maxW - dot - s(8)), x + dot + s(8), y, 12, alpha(0xFFC4CCD8, a), false);
+    }
+
+    private void drawTile(GuiGraphics g, int x, int y, int size, Entry entry, float a, int accent, int radius,
+                          boolean large) {
+        int seed = entry == null ? 0 : entry.title().hashCode();
+        float hue = ((seed & 0x7FFFFFFF) % 360) / 360.0f;
+        int base = entry == null ? 0xFF1B2433 : java.awt.Color.HSBtoRGB(hue, 0.42f, 0.62f) | 0xFF000000;
+        int shade = mix(base, 0xFF05080E, 0.45f);
+        VantaUiTheme.fillSquircle(g, x, y, size, size, radius, alpha(shade, a));
+        VantaUiTheme.fillSquircle(g, x + 1, y + 1, size - 2, size - 2, Math.max(1, radius - 1),
+                alpha(mix(base, 0xFF0B111B, 0.35f), a));
+        String letter = entry == null || entry.title().isBlank() ? "+" : entry.title().substring(0, 1).toUpperCase(Locale.ROOT);
+        float fontSize = large ? 26 : 14;
+        int lw = textWidth(letter, fontSize, true);
+        text(g, letter, x + (size - lw) / 2.0f, y + size / 2, fontSize, alpha(TEXT_BRIGHT, a), true);
     }
 
     private void renderFooter(GuiGraphics g, float intro) {
-        for (AbstractButton button : links) {
-            Item item = items.get(button);
-            int color = mix(0xFF7D8AA0, TEXT_BRIGHT, item.hover);
-            text(g, item.label, button.getX() + s(4), button.getY() + button.getHeight() / 2,
-                    12, alpha(color, intro), false);
-        }
-        String version = "Minecraft " + net.minecraft.SharedConstants.getCurrentVersion().id();
-        int vw = textWidth(version, 11, false);
-        text(g, version, (screen.width - vw) / 2.0f, screen.height - s(30) - s(2), 11,
-                alpha(0xFF566174, intro), false);
+        String legal = "Copyright Mojang AB. Do not distribute!";
+        int lw = textWidth(legal, 10, false);
+        text(g, legal, screen.width - s(28) - lw, screen.height - s(22), 10, alpha(0xFF4C566A, intro), false);
+        text(g, "Vanta Client", s(28), screen.height - s(22), 10, alpha(0xFF4C566A, intro), false);
     }
 
     private void renderPopup(GuiGraphics g, int accent) {
@@ -589,9 +947,9 @@ public final class VantaTitleUi {
 
     private static int typeColor(VantaNotificationManager.Type type) {
         return switch (type) {
-            case SUCCESS -> 0xFF45D6A0;
-            case WARNING -> 0xFFF2B84B;
-            case ERROR -> 0xFFEF5D6B;
+            case SUCCESS -> GOOD;
+            case WARNING -> WARN;
+            case ERROR -> BAD;
             default -> 0xFF5B9BFF;
         };
     }
@@ -600,9 +958,11 @@ public final class VantaTitleUi {
         long seconds = Math.max(0, millis / 1000);
         if (seconds < 45) return "now";
         long minutes = seconds / 60;
-        if (minutes < 60) return Math.max(1, minutes) + "m";
+        if (minutes < 60) return Math.max(1, minutes) + "m ago";
         long hours = minutes / 60;
-        return hours < 24 ? hours + "h" : hours / 24 + "d";
+        if (hours < 24) return hours + "h ago";
+        long days = hours / 24;
+        return days == 1 ? "yesterday" : days + " days ago";
     }
 
     private static int alpha(int color, float factor) {

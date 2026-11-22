@@ -21,6 +21,7 @@ public final class Events {
             if (client.screen instanceof TitleScreen && client.level == null) {
                 VantaLobbyWorld.start();
                 VantaLobbyWorld.tick();
+                name.vantaclient.client.gui.title.VantaTitleUi.tick();
             }
         });
         ClientTickEvents.START_CLIENT_TICK.register(

@@ -82,6 +82,10 @@ public final class VantaClientPreferences {
     public boolean modsListView = false;
     /** Which title screen to show; LOBBY is the default Vanta menu. */
     public TitleStyle titleStyle = TitleStyle.LOBBY;
+    /** Last tab of the title screen play card: SINGLEPLAYER or MULTIPLAYER. */
+    public String titleTab = "SINGLEPLAYER";
+    /** Address of the server last joined from the title screen play card. */
+    public String lastServerIp = "";
     public Map<String, HudPosition> vanillaHudPositions = new HashMap<>();
     /** Enabled background keys are stored sparsely; absent keys are disabled. */
     public Map<String, Boolean> hudBackgrounds = new HashMap<>();
@@ -111,6 +115,8 @@ public final class VantaClientPreferences {
         if (instance == null) instance = new VantaClientPreferences();
         if (instance.accent == null) instance.accent = Accent.BLUE;
         if (instance.titleStyle == null) instance.titleStyle = TitleStyle.LOBBY;
+        if (instance.titleTab == null || !(instance.titleTab.equals("SINGLEPLAYER") || instance.titleTab.equals("MULTIPLAYER"))) instance.titleTab = "SINGLEPLAYER";
+        if (instance.lastServerIp == null || instance.lastServerIp.length() > 256) instance.lastServerIp = "";
         if (instance.remoteRelayEndpoint == null || instance.remoteRelayEndpoint.length() > 256) {
             instance.remoteRelayEndpoint = "";
         } else {
