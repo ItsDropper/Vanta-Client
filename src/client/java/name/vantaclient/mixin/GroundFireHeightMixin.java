@@ -12,9 +12,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import java.util.List;
 
@@ -56,19 +55,16 @@ public abstract class GroundFireHeightMixin {
         }
     }
 
-    @ModifyArgs(
+    @ModifyVariable(
             method = "putQuadData",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;putBulkData(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/minecraft/client/renderer/block/model/BakedQuad;[FFFFF[II)V"
-            )
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
     )
-    private void vanta$scaleGroundFireQuad(Args args) {
+    private PoseStack.Pose vanta$scaleGroundFireQuad(PoseStack.Pose originalPose) {
         Float scale = vanta$activeFireScale.get();
-        if (scale == null) return;
-
-        PoseStack.Pose originalPose = args.get(0);
-        args.set(0, GroundFireHeightFeature.scaleQuadPose(originalPose, scale));
+        if (scale == null) return originalPose;
+        return GroundFireHeightFeature.scaleQuadPose(originalPose, scale);
     }
 
     @Inject(method = "tesselateBlock", at = @At("RETURN"))
