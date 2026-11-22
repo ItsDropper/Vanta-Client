@@ -11,6 +11,34 @@ Core classes:
 - \`VantaUiNode\`: retained node tree and component behavior.
 - \`VantaUiRuntime\`: per-screen layout, render, focus and input owner.
 
+## Visual design tokens
+
+The visual system is resolved as an immutable `VantaTheme` snapshot by
+`VantaThemeFactory.create()`. The snapshot groups:
+
+- `Palette`: canvas and text hierarchy, user accent and its computed foreground, borders,
+  focus/selection, and info/success/warning/danger semantic colors.
+- `Spacing`: ordered 4–24 px spacing scale, control/row dimensions and the small-to-panel
+  corner-radius scale.
+- `Typography`: display, heading, title, body, label and caption sizes with independent
+  line heights.
+- `Glass`: panel/elevated/card/field/popover tints and opacity plus shadow, highlight,
+  border, hover, selection, focus and disabled-state alpha.
+- `Motion`: hover/press/selection rates and the existing reduced-motion preference.
+
+Use `VantaTypography.Role` rather than choosing a font resource ad hoc. The roles map to
+the bundled `vanta:brand`, `vanta:heading`, `vanta:title`, `vanta:ui`,
+`vanta:medium` and `vanta:caption` providers. `VantaUiNode.display()`,
+`heading()`, `title()` and `eyebrow()` preserve that hierarchy and use matching
+line-height tokens.
+
+Primary action buttons compute a monochrome foreground from the active accent's relative
+luminance. The four shipped accent presets are regression-tested to meet WCAG AA's 4.5:1
+normal-text contrast target. Add new accent presets only with a passing contrast test.
+
+The Minecraft `GuiGraphics` backend remains the renderer. The design system defines
+appearance and state; it does not require a second graphics API or a shader dependency.
+
 ## Construction
 
 Create a new tree when a screen is initialized. Nodes are retained and should not be reconstructed every frame.
