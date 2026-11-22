@@ -43,7 +43,10 @@ public final class GroundFireHeightFeature extends Feature {
     public static void setHeightScale(float value) {
         float normalized = normalizeHeightScale(value);
         DropperUtilsConfig config = DropperUtilsConfig.get();
-        if (Float.compare(config.groundFireHeight, normalized) == 0) return;
+        if (Float.compare(config.groundFireHeight, normalized) == 0) {
+            heightScale = normalized;
+            return;
+        }
 
         config.groundFireHeight = normalized;
         heightScale = normalized;
