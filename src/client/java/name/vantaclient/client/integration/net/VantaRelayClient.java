@@ -340,8 +340,43 @@ public final class VantaRelayClient {
             Thread.currentThread().interrupt();
             throw new IOException("Relay connection was interrupted.", exception);
         } catch (ExecutionException | TimeoutException | CompletionException exception) {
-            throw new IOException("Could not establish a secure relay connection.", exception);
+            Throwable cause = exception;
+            while (cause.getCause() != null
+                    && (cause instanceof ExecutionException || cause instanceof CompletionException)) {
+                cause = cause.getCause();
+            }
+            throw new IOException("Could not establish a secure relay connection: "
+                    + describeWebSocketFailure(cause), exception);
         }
+    }
+
+    private static String describeWebSocketFailure(Throwable cause) {
+        if (cause instanceof java.net.http.WebSocketHandshakeException handshake) {
+            return "the relay rejected the WebSocket upgrade (HTTP "
+                    + handshake.getResponse().statusCode() + ").";
+        }
+        if (cause instanceof javax.net.ssl.SSLHandshakeException) {
+            return "TLS certificate or handshake validation failed: "
+                    + safeCauseMessage(cause);
+        }
+        if (cause instanceof java.net.http.HttpConnectTimeoutException
+                || cause instanceof java.net.http.HttpTimeoutException
+                || cause instanceof TimeoutException) {
+            return "the relay connection timed out.";
+        }
+        if (cause instanceof java.net.ConnectException) {
+            return "the relay refused the network connection: " + safeCauseMessage(cause);
+        }
+        String type = cause.getClass().getSimpleName();
+        String message = safeCauseMessage(cause);
+        return message.isBlank() ? type + "." : type + ": " + message;
+    }
+
+    private static String safeCauseMessage(Throwable cause) {
+        String message = cause.getMessage();
+        if (message == null) return "";
+        message = message.replaceAll("[\\r\\n\\t]", " ").trim();
+        return message.length() > 140 ? message.substring(0, 140) : message;
     }
 
     private URI webSocketUri(String path) {
