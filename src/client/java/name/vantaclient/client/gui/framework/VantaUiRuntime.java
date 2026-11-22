@@ -221,10 +221,7 @@ public final class VantaUiRuntime {
         float scrollDelta = Math.min(0.05f, (scrollNow - lastScrollNanos) / 1_000_000_000.0f);
         lastScrollNanos = scrollNow;
         float scrollFactor = theme.animationsEnabled() ? 1.0f - (float) Math.exp(-scrollDelta * 18.0f) : 1.0f;
-        if (root.stepScroll(scrollFactor)) {
-            lastWidth = -1;
-            invalidateRender();
-        }
+        advanceScrollAnimations(scrollFactor);
         layout(font, screenWidth, screenHeight);
         boolean layoutChanged = previousWidth != lastWidth || previousHeight != lastHeight
                 || Float.compare(previousScale, uiScale) != 0;
@@ -304,6 +301,26 @@ public final class VantaUiRuntime {
 
     private int logicalViewportHeight() {
         return Math.max(1, Math.round(viewportHeight / uiScale));
+    }
+
+    /**
+     * Advances eased scroll targets by a normalized animation factor. Exposed so
+     * deterministic interaction tests can advance the production animation without
+     * manufacturing a render frame or depending on wall-clock timing.
+     */
+    public boolean advanceScrollAnimations(float factor) {
+        float boundedFactor = Float.isFinite(factor) ? Math.max(0.0f, Math.min(1.0f, factor)) : 1.0f;
+        if (!root.stepScroll(boundedFactor)) return false;
+        lastWidth = -1;
+        invalidateRender();
+        return true;
+    }
+
+    /** Converts retained logical coordinates to the exact screen coordinates accepted by input. */
+    public double[] toScreenCoordinates(double logicalX, double logicalY) {
+        double offsetX = viewportWidth * 0.5 * (1.0 - uiScale);
+        double offsetY = viewportHeight * 0.5 * (1.0 - uiScale);
+        return new double[] {offsetX + logicalX * uiScale, offsetY + logicalY * uiScale};
     }
 
     public void tick() {
