@@ -55,8 +55,6 @@ public final class VantaUiNode implements VantaUiComponent {
     final Direction direction;
     final List<VantaUiNode> children = new ArrayList<>();
     static final Identifier UI_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
-    private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
-    private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
     static final Identifier MENU_FONT = Identifier.fromNamespaceAndPath("vanta", "medium");
 
     String label = "";
@@ -191,6 +189,22 @@ public final class VantaUiNode implements VantaUiComponent {
         node.textFont = VantaTypography.font(VantaTypography.Role.TITLE);
         node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.TITLE);
         node.boldText = true; return node;
+    }
+
+    public static VantaUiNode heading(String value) {
+        VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
+        node.textFont = VantaTypography.font(VantaTypography.Role.HEADING);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.DISPLAY);
+        node.boldText = true;
+        return node;
+    }
+
+    public static VantaUiNode display(String value) {
+        VantaUiNode node = text(value, VantaUiTheme.TEXT_PRIMARY);
+        node.textFont = VantaTypography.font(VantaTypography.Role.DISPLAY);
+        node.preferredHeight = VantaTypography.lineHeight(VantaTypography.Role.DISPLAY);
+        node.boldText = true;
+        return node;
     }
     public static VantaUiNode eyebrow(String value) {
         VantaUiNode node = text(sentenceCaseCaption(value), VantaUiTheme.TEXT_MUTED);
