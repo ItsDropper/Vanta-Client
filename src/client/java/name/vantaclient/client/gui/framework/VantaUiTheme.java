@@ -140,12 +140,16 @@ public final class VantaUiTheme {
     public static void fillSquircle(GuiGraphics graphics, int x, int y, int width,
                                     int height, int radius, int color) {
         if (graphics == null || width <= 0 || height <= 0 || color == 0) return;
-        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
-                Math.min(width / 2, height / 2)));
+        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
         if (r == 0) {
             graphics.fill(x, y, x + width, y + height, color);
             return;
         }
+        if (r >= 2) {
+            VantaShapes.fill(graphics, x, y, width, height, r, color);
+            return;
+        }
+        r = Math.min(r, MAX_CACHED_SQUIRCLE_RADIUS);
         if (height > r * 2) graphics.fill(x, y + r, x + width, y + height - r, color);
         for (int row = 0; row < r; row++) {
             float edge = squircleEdge(r, row);
@@ -175,8 +179,12 @@ public final class VantaUiTheme {
                                          int radius, int top, int bottom,
                                          boolean roundLeft, boolean roundRight) {
         if (graphics == null || width <= 0 || height <= 0) return;
-        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
-                Math.min(width / 2, height / 2)));
+        int r = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
+        if (r >= 2) {
+            VantaShapes.gradient(graphics, x, y, width, height, r, top, bottom, roundLeft, roundRight);
+            return;
+        }
+        r = Math.min(r, MAX_CACHED_SQUIRCLE_RADIUS);
         int midTop = r;
         int midBottom = height - r;
         if (midBottom > midTop) {
@@ -207,7 +215,7 @@ public final class VantaUiTheme {
         }
     }
 
-    private static int blend(int from, int to, float amount) {
+    static int blend(int from, int to, float amount) {
         float t = Math.max(0.0f, Math.min(1.0f, amount));
         int a = Math.round(((from >>> 24) & 255) * (1.0f - t) + ((to >>> 24) & 255) * t);
         int r = Math.round(((from >>> 16) & 255) * (1.0f - t) + ((to >>> 16) & 255) * t);
@@ -226,9 +234,13 @@ public final class VantaUiTheme {
     public static void outlineSquircle(GuiGraphics graphics, int x, int y, int width,
                                        int height, int radius, int color, int thickness) {
         if (graphics == null || width <= 1 || height <= 1 || color == 0 || thickness <= 0) return;
-        int r = Math.max(0, Math.min(Math.min(radius, MAX_CACHED_SQUIRCLE_RADIUS),
-                Math.min(width / 2, height / 2)));
+        int rawRadius = Math.max(0, Math.min(radius, Math.min(width / 2, height / 2)));
         int t = Math.max(1, Math.min(thickness, Math.min(width / 2, height / 2)));
+        if (VantaShapes.canOutline(rawRadius, t)) {
+            VantaShapes.outline(graphics, x, y, width, height, rawRadius, color, t);
+            return;
+        }
+        int r = Math.min(rawRadius, MAX_CACHED_SQUIRCLE_RADIUS);
 
         if (r == 0) {
             graphics.fill(x, y, x + width, y + t, color);

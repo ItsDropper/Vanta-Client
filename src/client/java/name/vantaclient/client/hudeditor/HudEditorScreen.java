@@ -72,7 +72,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                     value -> {
                         VantaClientPreferences.get().hudShowGrid = value;
                         VantaClientPreferences.save();
-                    }).width(92).tooltip("Show or hide the alignment grid")
+                    }).width(compact ? 76 : 92).tooltip("Show or hide the alignment grid")
                     .align(VantaUiNode.Alignment.CENTER));
         }
         toolbar.add(VantaUiNode.toggle("Snap",
@@ -80,7 +80,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 value -> {
                     VantaClientPreferences.get().hudSnapToGrid = value;
                     VantaClientPreferences.save();
-                }).width(84)
+                }).width(compact ? 68 : 84)
                 .tooltip("Snap moved elements to the alignment grid")
                 .align(VantaUiNode.Alignment.CENTER));
         toolbar.add(VantaComponents.actionButton("Done", null,
@@ -137,9 +137,12 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 : new String[]{"Drag to move", "Click to edit", "Esc to exit"};
         float size = 11.5f;
         int gap = 18;
-        int total = 0;
-        for (String hint : hints) total += VantaText.width(hint, size, VantaText.Weight.MEDIUM);
-        total += gap * (hints.length - 1);
+        // Drop the leading hints until the pill fits the screen so it never runs off the edges.
+        int total = hintsWidth(hints, size, gap);
+        while (hints.length > 1 && total + 36 > this.width - 24) {
+            hints = java.util.Arrays.copyOfRange(hints, 1, hints.length);
+            total = hintsWidth(hints, size, gap);
+        }
         int w = total + 36;
         int h = 26;
         int x = (this.width - w) / 2;
@@ -155,6 +158,12 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 tx += gap;
             }
         }
+    }
+
+    private static int hintsWidth(String[] hints, float size, int gap) {
+        int total = 0;
+        for (String hint : hints) total += VantaText.width(hint, size, VantaText.Weight.MEDIUM);
+        return total + gap * (hints.length - 1);
     }
 
     private void drawGrid(GuiGraphics graphics, int spacing, float opacity) {
