@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
@@ -85,11 +86,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
                 .tooltip("Return to the previous screen"));
         root.add(header);
 
-        VantaUiNode content = VantaUiNode.column(compact ? 8 : 16, compact ? 10 : 20)
-                .flex(1)
-                .padding(compact ? 8 : 18)
-                .background(VantaUiTheme.PANEL)
-                .scrollable();
+        VantaUiNode content = VantaComponents.panel(VantaComponents.Surface.PANEL,
+                compact ? 8 : 16, compact ? 10 : 20).flex(1).scrollable();
 
         if (!localStatus.isBlank()) {
             content.add(VantaUiNode.paragraph(localStatus,
@@ -129,7 +127,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
         }
 
         if (session.hostActive()) {
-            content.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+            content.add(VantaComponents.divider());
             content.add(VantaUiNode.row(8, 0).height(22)
                     .add(VantaUiNode.eyebrow("Remote invite active"))
                     .add(VantaUiNode.spacer(1).flex(1))
@@ -228,7 +226,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
     }
 
     private void addGuestSection(VantaUiNode content, boolean compact) {
-        content.add(VantaUiNode.spacer(1).height(1).background(VantaUiTheme.BORDER_SUBTLE));
+        content.add(VantaComponents.divider());
         content.add(VantaUiNode.eyebrow("JOIN A FRIEND"));
         content.add(VantaUiNode.textField("Invite code",
                 () -> inviteCode, value -> inviteCode = value.toUpperCase().replaceAll("[^A-Z2-7]", ""),
