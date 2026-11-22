@@ -114,7 +114,8 @@ public final class VantaComponents {
 
     public static VantaUiNode toggle(String label, VantaState<Boolean> state) {
         Objects.requireNonNull(state, "state");
-        return VantaUiNode.toggle(label, () -> Boolean.TRUE.equals(state.get()), state::set);
+        return VantaUiNode.toggle(label, () -> Boolean.TRUE.equals(state.get()), state::set)
+                .observeState(state, false);
     }
 
     public static VantaUiNode slider(String label, double minimum, double maximum, double step,
@@ -126,13 +127,15 @@ public final class VantaComponents {
         state.update(current -> current == null ? minimum : Math.max(minimum, Math.min(maximum, current)));
         DoubleConsumer setter = value -> state.set(Math.max(minimum, Math.min(maximum, value)));
         return VantaUiNode.slider(label, minimum, maximum, step,
-                () -> { Double current = state.get(); return current == null ? minimum : current; }, setter);
+                () -> { Double current = state.get(); return current == null ? minimum : current; }, setter)
+                .observeState(state, false);
     }
 
     public static VantaUiNode textField(String placeholder, VantaState<String> state,
                                         int maximumLength) {
         Objects.requireNonNull(state, "state");
         return VantaUiNode.textField(placeholder,
-                () -> state.get() == null ? "" : state.get(), state::set, maximumLength);
+                () -> state.get() == null ? "" : state.get(), state::set, maximumLength)
+                .observeState(state, false);
     }
 }
