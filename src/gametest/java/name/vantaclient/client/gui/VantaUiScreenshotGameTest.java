@@ -192,8 +192,19 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static void dumpClass(String name) {
         try {
             Class<?> type = Class.forName(name);
+            System.out.println("[ground-fire-api] CLASS " + type + " super=" + type.getSuperclass()
+                    + " interfaces=" + java.util.Arrays.toString(type.getInterfaces()));
+            for (var constructor : type.getDeclaredConstructors()) {
+                System.out.println("[ground-fire-api] CTOR " + constructor);
+            }
             for (var method : type.getDeclaredMethods()) {
-                System.out.println("[ground-fire-api] " + name + "#" + method);
+                if (!method.isSynthetic()) System.out.println("[ground-fire-api] " + method);
+            }
+            for (Class<?> nested : type.getDeclaredClasses()) {
+                System.out.println("[ground-fire-api] NESTED " + nested);
+                for (var method : nested.getDeclaredMethods()) {
+                    if (!method.isSynthetic()) System.out.println("[ground-fire-api]   " + method);
+                }
             }
         } catch (Throwable error) {
             System.out.println("[ground-fire-api] " + name + " unavailable: " + error);
@@ -201,9 +212,18 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static void verifyGroundFireInLobby(ClientGameTestContext context) {
-        dumpClass("net.minecraft.client.renderer.block.ModelBlockRenderer");
-        dumpClass("net.minecraft.client.renderer.block.BlockRenderDispatcher");
-        dumpClass("net.minecraft.client.renderer.chunk.SectionCompiler");
+        for (String name : new String[]{
+                "net.fabricmc.fabric.api.client.model.loading.v1.WrapperBlockStateModel",
+                "net.fabricmc.fabric.api.client.model.loading.v1.ModelModifier",
+                "net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin",
+                "net.fabricmc.fabric.api.client.model.loading.v1.BlockStateResolver",
+                "net.fabricmc.fabric.api.renderer.v1.model.FabricBlockStateModel",
+                "net.fabricmc.fabric.api.renderer.v1.mesh.QuadEmitter",
+                "net.fabricmc.fabric.api.renderer.v1.mesh.MutableQuadView",
+                "net.fabricmc.fabric.api.renderer.v1.mesh.QuadView",
+                "net.minecraft.client.renderer.block.model.BlockStateModel"}) {
+            dumpClass(name);
+        }
         context.waitTicks(20);
         int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
         System.out.println("[ground-fire] scaled fire blocks during lobby chunk compile: " + scaled
