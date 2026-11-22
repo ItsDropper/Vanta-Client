@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.gui.compose.VantaCompose;
+import name.vantaclient.client.gui.compose.components.VantaComponents;
 import com.mojang.blaze3d.platform.NativeImage;
 import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.VantaClientApi;
@@ -189,10 +190,8 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
             root.add(toolbar);
         }
 
-        VantaUiNode content = VantaUiNode.column(compact ? 6 : 10, compact ? 8 : 14)
-                .flex(1)
-                .background(VantaUiTheme.PANEL)
-                .padding(compact ? 8 : 14);
+        VantaUiNode content = VantaComponents.panel(VantaComponents.Surface.PANEL,
+                compact ? 6 : 10, compact ? 8 : 14).flex(1);
         VantaUiNode heading = VantaUiNode.row(8, 0)
                 .height(compact ? 18 : 24)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -209,29 +208,19 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
                     .height(compact ? 24 : 30));
         }
 
-        VantaUiNode cards = VantaUiNode.column(compact ? 6 : 10, compact ? 6 : 10)
-                .flex(1)
-                .background(VantaUiTheme.INPUT_SURFACE)
-                .padding(compact ? 6 : 10)
-                .scrollable();
+        VantaUiNode cards = VantaComponents.panel(VantaComponents.Surface.FIELD,
+                compact ? 6 : 10, compact ? 6 : 10).flex(1).scrollable();
         if (mods.isEmpty()) {
-            VantaUiNode empty = VantaUiNode.column(8, 12)
-                    .height(compact ? 104 : 140)
-                    .background(VantaUiTheme.PANEL_RAISED)
-                    .align(VantaUiNode.Alignment.CENTER);
-            empty.add(VantaUiNode.icon(modScanInProgress
-                    ? VantaUiNode.Icon.SEARCH : VantaUiNode.Icon.OVERVIEW)
-                    .iconColor(VantaUiTheme.TEXT_MUTED));
-            empty.add(VantaUiNode.title(modScanInProgress
-                    ? "Reading installed mods"
-                    : favoritesOnly ? "No favorite mods yet" : "Your mod library is empty"));
-            empty.add(VantaUiNode.paragraph(modScanInProgress
+            cards.add(VantaComponents.emptyState(
+                    modScanInProgress ? VantaUiNode.Icon.SEARCH : VantaUiNode.Icon.OVERVIEW,
+                    modScanInProgress ? "Reading installed mods"
+                            : favoritesOnly ? "No favorite mods yet" : "Your mod library is empty",
+                    modScanInProgress
                             ? "Checking the mods folder and reading Fabric metadata…"
                             : favoritesOnly
                             ? "Mark a mod with the star to keep it in this list."
                             : "Add Fabric mod JARs to this instance, then refresh the library.",
-                    VantaUiTheme.TEXT_MUTED, 2));
-            cards.add(empty);
+                    null, null).height(compact ? 104 : 140));
         } else {
             addRetainedModCards(cards, mods, compact ? 1 : 3, compact);
         }
