@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -23,9 +23,9 @@ import java.util.List;
  * ModelBlockRenderer builds chunk geometry on worker threads. Applying a scale
  * to its shared PoseStack at method entry is easy to accidentally couple to
  * unrelated block transforms. Instead, capture the current fire scale while a
- * fire block is tessellated, then replace the pose argument at the entry to
- * ModelBlockRenderer.putQuadData. That method is the shared per-quad path for
- * both ambient-occlusion and flat block rendering.
+ * fire block is tessellated, then replace the pose passed to VertexConsumer's
+ * array-based putBulkData overload. ModelBlockRenderer funnels both ambient-
+ * occlusion and flat block quads through this exact submission call.
  *
  * Flame particles and the first-person fire overlay use separate render paths
  * and are deliberately untouched.
@@ -56,11 +56,13 @@ public abstract class GroundFireHeightMixin {
         }
     }
 
-    @ModifyVariable(
+    @ModifyArg(
             method = "putQuadData",
-            at = @At("HEAD"),
-            argsOnly = true,
-            ordinal = 0,
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;putBulkData(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/minecraft/client/renderer/block/model/BakedQuad;[FFFF[II)V"
+            ),
+            index = 0,
             require = 1
     )
     private PoseStack.Pose vanta$scaleGroundFireQuad(PoseStack.Pose originalPose) {
