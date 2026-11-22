@@ -91,7 +91,10 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
                 .background(VantaUiTheme.PANEL)
                 .scrollable();
 
-        addRelaySettings(content, compact);
+        if (!localStatus.isBlank()) {
+            content.add(VantaUiNode.paragraph(localStatus,
+                    VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
+        }
         content.add(VantaUiNode.spacer(1).height(2));
         addHostSection(content, server, compact);
         content.add(VantaUiNode.spacer(1).height(2));
@@ -99,41 +102,6 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
 
         root.add(content);
         return root;
-    }
-
-    private void addRelaySettings(VantaUiNode content, boolean compact) {
-        content.add(VantaUiNode.eyebrow("YOUR RELAY"));
-        content.add(VantaUiNode.paragraph(
-                "Vanta Cloudflare relay is preconfigured. You can replace it with any HTTPS relay you operate or trust.",
-                VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
-        VantaUiNode endpointRow = VantaUiNode.row(8, 0)
-                .height(34)
-                .align(VantaUiNode.Alignment.CENTER);
-        endpointRow.add(VantaUiNode.textField("https://vanta-relay.hugohakonen.workers.dev", 
-                () -> relayEndpoint, value -> relayEndpoint = value, 256)
-                .flex(1).minSize(80, 30));
-        endpointRow.add(VantaUiNode.button("Save", this::saveRelayEndpoint)
-                .size(62, 30));
-        content.add(endpointRow);
-        content.add(VantaUiNode.toggle("Maximum IP privacy (TURN only)",
-                () -> preferences.remoteMaximumIpPrivacy,
-                value -> {
-                    preferences.remoteMaximumIpPrivacy = value;
-                    VantaClientPreferences.save();
-                }).height(34));
-        content.add(VantaUiNode.paragraph(
-                "When enabled, WebRTC uses TURN-only candidates so guests do not learn your home IP. This requires TURN infrastructure; the WebSocket relay remains the fallback.",
-                VantaUiTheme.TEXT_MUTED, compact ? 4 : 2));
-        content.add(VantaUiNode.paragraph(
-                "The relay forwards Minecraft TCP traffic without interpreting packets. Its operator can still see connection metadata and source network addresses.",
-                VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
-        content.add(VantaUiNode.paragraph(
-                "Remote hosting also publishes the world to your local network. Nearby devices may discover and join it through normal Minecraft LAN discovery.",
-                VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
-        if (!localStatus.isBlank()) {
-            content.add(VantaUiNode.paragraph(localStatus,
-                    VantaUiTheme.TEXT_MUTED, compact ? 3 : 2));
-        }
     }
 
     private void addHostSection(VantaUiNode content, MinecraftServer server, boolean compact) {
