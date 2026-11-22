@@ -250,9 +250,11 @@ public final class FarTerrainRenderer {
         if (store == null) return;
         long expectedRevision = revision;
         store.loadNearest(centerChunkX, centerChunkZ, MAX_CAPTURED_CHUNKS, snapshot -> {
-            if (!FarViewFeature.isRenderingEnabled()
-                    || snapshotStore != store || revision != expectedRevision) return;
-            addChunkSnapshotIfAbsent(snapshot);
+            synchronized (SNAPSHOT_CACHE_LOCK) {
+                if (!FarViewFeature.isRenderingEnabled()
+                        || snapshotStore != store || revision != expectedRevision) return;
+                addChunkSnapshotIfAbsent(snapshot);
+            }
             if (!FarViewFeature.isRenderingEnabled()
                     || snapshotStore != store || revision != expectedRevision) return;
             long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
@@ -1324,8 +1326,9 @@ public final class FarTerrainRenderer {
      * Persisted snapshots remain on disk and are loaded again only after explicit re-enable.
      */
     public static void disable() {
-        clearWorld();
+        // Invalidate disk callbacks before touching the in-memory cache.
         snapshotStore = null;
+        clearWorld();
         snapshotLevel = null;
         snapshotClientLevel = null;
         lastSnapshotQueryChunkX = Integer.MIN_VALUE;
