@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Minecraft endpoint. The destination is never supplied by an untrusted peer.
  */
 public final class TcpStreamTunnel implements AutoCloseable {
-    private static final int BUFFER_BYTES = 16 * 1024;
+    private static final int BUFFER_BYTES = 64 * 1024;
     private static final AtomicInteger IDS = new AtomicInteger();
 
     private final Socket localSocket;
@@ -107,7 +107,6 @@ public final class TcpStreamTunnel implements AutoCloseable {
             int read;
             while ((read = source.read(buffer)) != -1) {
                 destination.write(buffer, 0, read);
-                destination.flush();
             }
             shutdownDestination.run();
         } catch (IOException | RuntimeException exception) {
