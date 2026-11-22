@@ -27,8 +27,8 @@ import java.util.function.Consumer;
 /**
  * Client for Vanta's self-hostable HTTPS/WSS room relay.
  *
- * Tokens are deliberately memory-only. The relay endpoint is user-configured;
- * there is no default third-party service or public endpoint baked into the client.
+ * Tokens are deliberately memory-only. The endpoint is supplied by Vanta Client
+ * preferences, which provide a preconfigured default while remaining user-editable.
  */
 public final class VantaRelayClient {
     private static final Gson GSON = new Gson();
