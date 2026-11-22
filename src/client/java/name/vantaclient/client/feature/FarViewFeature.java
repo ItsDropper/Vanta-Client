@@ -11,6 +11,14 @@ public final class FarViewFeature extends Feature {
         super("FarView", "Singleplayer distant terrain with adaptive quadtree LOD, real surface snapshots from explored chunks, procedural terrain fallback with biome-blended materials and directional ridge shadows, persisted sparse 3D voxel octrees, captured voxel ambient occlusion, adjustable sampling, water, shading, tree silhouettes, adaptive background mesh pacing and cache budgets. It does not extend multiplayer chunk delivery.", Category.VISUAL);
     }
 
+    /**
+     * Fail-closed activation gate shared by every FarView runtime entry point.
+     * Both the live feature state and persisted preference must agree that it is enabled.
+     */
+    public static boolean isRenderingEnabled() {
+        return INSTANCE.isEnabled() && DropperUtilsConfig.get().farViewEnabled;
+    }
+
     @Override
     public void onEnable() {
         DropperUtilsConfig.get().farViewEnabled = true;
@@ -22,6 +30,7 @@ public final class FarViewFeature extends Feature {
         DropperUtilsConfig.get().farViewEnabled = false;
         DropperUtilsConfig.save();
         FarViewController.disable();
+        FarTerrainRenderer.disable();
     }
 
     @Override
