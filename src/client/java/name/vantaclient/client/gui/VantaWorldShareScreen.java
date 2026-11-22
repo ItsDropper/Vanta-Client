@@ -32,7 +32,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
             new VantaLanHostingService.Status(VantaLanHostingService.State.NO_WORLD, -1);
     private VantaRemoteSessionManager.Snapshot session = VantaRemoteSessionManager.snapshot();
 
-    private String relayEndpoint = "";
+    private String relayEndpoint = VantaClientPreferences.DEFAULT_REMOTE_RELAY_ENDPOINT;
     private String inviteCode = "";
     private String localStatus = "";
     private GameType selectedGameType = GameType.SURVIVAL;
@@ -104,12 +104,12 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
     private void addRelaySettings(VantaUiNode content, boolean compact) {
         content.add(VantaUiNode.eyebrow("YOUR RELAY"));
         content.add(VantaUiNode.paragraph(
-                "Use a relay you operate or trust. Remote relays must use HTTPS/WSS; no Vanta-operated public relay is configured.",
+                "Vanta Cloudflare relay is preconfigured. You can replace it with any HTTPS relay you operate or trust.",
                 VantaUiTheme.TEXT_SECONDARY, compact ? 3 : 2));
         VantaUiNode endpointRow = VantaUiNode.row(8, 0)
                 .height(34)
                 .align(VantaUiNode.Alignment.CENTER);
-        endpointRow.add(VantaUiNode.textField("https://your-relay.example", 
+        endpointRow.add(VantaUiNode.textField("https://vanta-relay.hugohakonen.workers.dev", 
                 () -> relayEndpoint, value -> relayEndpoint = value, 256)
                 .flex(1).minSize(80, 30));
         endpointRow.add(VantaUiNode.button("Save", this::saveRelayEndpoint)
