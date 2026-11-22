@@ -23,8 +23,9 @@ import java.util.List;
  * ModelBlockRenderer builds chunk geometry on worker threads. Applying a scale
  * to its shared PoseStack at method entry is easy to accidentally couple to
  * unrelated block transforms. Instead, capture the current fire scale while a
- * fire block is tessellated, then give each fire quad its own scaled pose at
- * the exact VertexConsumer submission point.
+ * fire block is tessellated, then replace the pose argument at the entry to
+ * ModelBlockRenderer.putQuadData. That method is the shared per-quad path for
+ * both ambient-occlusion and flat block rendering.
  *
  * Flame particles and the first-person fire overlay use separate render paths
  * and are deliberately untouched.
@@ -59,7 +60,8 @@ public abstract class GroundFireHeightMixin {
             method = "putQuadData",
             at = @At("HEAD"),
             argsOnly = true,
-            ordinal = 0
+            ordinal = 0,
+            require = 1
     )
     private PoseStack.Pose vanta$scaleGroundFireQuad(PoseStack.Pose originalPose) {
         Float scale = vanta$activeFireScale.get();
