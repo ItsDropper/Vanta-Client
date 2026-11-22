@@ -39,7 +39,9 @@ public final class VantaTypography {
     public static int lineHeight(Role role) {
         var scale = name.vantaclient.client.gui.compose.theme.VantaThemeFactory.create().typography();
         return switch (role) {
-            case DISPLAY, HEADING, TITLE -> scale.titleLineHeight();
+            case DISPLAY -> scale.displayLineHeight();
+            case HEADING -> scale.headingLineHeight();
+            case TITLE -> scale.titleLineHeight();
             case BODY, LABEL -> scale.bodyLineHeight();
             case CAPTION -> scale.captionLineHeight();
         };
