@@ -10,4 +10,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface ScreenAccessor {
     @Invoker("addRenderableWidget")
     GuiEventListener vanta$addRenderableWidget(GuiEventListener widget);
+
+    @Invoker("addRenderableOnly")
+    net.minecraft.client.gui.components.Renderable vanta$addRenderableOnly(net.minecraft.client.gui.components.Renderable renderable);
 }

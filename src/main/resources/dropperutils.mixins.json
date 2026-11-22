@@ -26,6 +26,7 @@
     "TitleScreenMixin",
     "PanoramaRendererMixin",
     "PauseScreenMixin",
+    "LoadingOverlayMixin",
     "ScreenMixin",
     "MouseHandlerMixin",
     "ChatComponentMixin",

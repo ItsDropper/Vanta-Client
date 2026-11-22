@@ -1,5 +1,6 @@
 package name.vantaclient.client.hudeditor;
 
+import name.vantaclient.client.gui.VantaText;
 import name.vantaclient.client.gui.compose.VantaCompose;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -54,8 +55,8 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 .background(VantaUiTheme.TOOLTIP_SURFACE)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
-                "dropperutils", "textures/gui/vanta_logo_transparent.png"))
-                .size(compact ? 22 : 30, compact ? 16 : 22));
+                "vanta", "textures/gui/title/mark.png"))
+                .size(compact ? 20 : 26, compact ? 20 : 26));
         VantaUiNode labels = VantaUiNode.column(2, 0);
         labels.add(VantaUiNode.title("HUD editor"));
         if (!compact) {
@@ -130,15 +131,29 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
     }
 
     private void drawInteractionHint(GuiGraphics graphics, Minecraft mc) {
-        String hint = HudSettingsPanel.isOpen()
-                ? "Adjust settings  ·  Drag to reposition  ·  Esc to exit"
-                : "Drag to move  ·  Click to edit  ·  Esc to exit";
-        int width = mc.font.width(hint) + 28;
-        int x = (this.width - width) / 2;
-        int y = this.height - 30;
-        fillRounded(graphics, x, y, width, 22, 9,
-                VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED));
-        graphics.drawCenteredString(mc.font, hint, this.width / 2, y + 7, 0xFFD2D8E2);
+        String[] hints = HudSettingsPanel.isOpen()
+                ? new String[]{"Adjust settings", "Drag to reposition", "Esc to exit"}
+                : new String[]{"Drag to move", "Click to edit", "Esc to exit"};
+        float size = 11.5f;
+        int gap = 18;
+        int total = 0;
+        for (String hint : hints) total += VantaText.width(hint, size, VantaText.Weight.MEDIUM);
+        total += gap * (hints.length - 1);
+        int w = total + 36;
+        int h = 26;
+        int x = (this.width - w) / 2;
+        int y = this.height - h - 14;
+        fillRounded(graphics, x, y, w, h, 13, 0xD60A1018);
+        drawRoundedOutline(graphics, x, y, w, h, 13, 0x2EFFFFFF, 1);
+        int tx = x + 18;
+        for (int i = 0; i < hints.length; i++) {
+            VantaText.draw(graphics, hints[i], tx, y + h / 2.0f, size, 0xFFC3CDDC, VantaText.Weight.MEDIUM);
+            tx += VantaText.width(hints[i], size, VantaText.Weight.MEDIUM);
+            if (i < hints.length - 1) {
+                graphics.fill(tx + gap / 2, y + 8, tx + gap / 2 + 1, y + h - 8, 0x33FFFFFF);
+                tx += gap;
+            }
+        }
     }
 
     private void drawGrid(GuiGraphics graphics, int spacing, float opacity) {
@@ -151,7 +166,21 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         }
     }
 
+    private static String elementName(HudElement element) {
+        return element instanceof VanillaHudElement vanilla
+                ? vanilla.getDisplayName()
+                : switch (element.getClass().getSimpleName()) {
+                    case "ArmorHudElement" -> "Armor";
+                    case "DebugHudElement" -> "Debug";
+                    case "TotemCounterHudElement" -> "Totem counter";
+                    case "PotionEffectsHudElement" -> "Potion effects";
+                    default -> element.getClass().getSimpleName()
+                            .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
+                };
+    }
+
     private void drawElementHitboxes(GuiGraphics graphics, int accent) {
+        HudElement hovered = HudMouseHandler.getHovered();
         for (HudElement element : HudManager.getElements()) {
             // Draw the guide on the exact hit-test/background rectangle. Selection
             // emphasis is a separate outer outline and must not redefine the hitbox.
@@ -160,51 +189,43 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
             int w = Math.max(1, element.getHitboxWidth());
             int h = Math.max(1, element.getHitboxHeight());
             boolean selected = element == HudSettingsPanel.getSelected();
-            int fill = selected ? 0x263F8DFF : 0x182A3A50;
-            int border = selected ? accent : 0xA8798CA8;
-            fillRounded(graphics, x, y, w, h, 5, fill);
-            drawRoundedOutline(graphics, x, y, w, h, 5, border, selected ? 2 : 1);
-            if (!selected) {
-                String name = element instanceof VanillaHudElement vanilla
-                        ? vanilla.getDisplayName()
-                        : element.getClass().getSimpleName()
-                                .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
-                int labelY = Math.max(4, y - 13);
-                graphics.fill(x, labelY, x + Minecraft.getInstance().font.width(name) + 10,
-                        labelY + 11, 0xCC111A27);
-                graphics.drawString(Minecraft.getInstance().font, name, x + 5, labelY + 2,
-                        0xFFDCE6F5, false);
+            boolean hot = selected || element == hovered;
+            fillRounded(graphics, x, y, w, h, 6,
+                    hot ? VantaUiTheme.withAlpha(accent, 0x2E) : 0x12FFFFFF);
+            drawRoundedOutline(graphics, x, y, w, h, 6,
+                    hot ? accent : 0x3DFFFFFF, 1);
+            if (hot) continue;
+            // A quiet in-box name; boxes too small for it stay unlabeled until hovered.
+            String name = elementName(element);
+            int available = w - 12;
+            if (h >= 18 && VantaText.width(name, 10, VantaText.Weight.MEDIUM) <= available) {
+                VantaText.draw(graphics, name, x + 6, y + 9, 10, 0xB8DCE6F5, VantaText.Weight.MEDIUM);
             }
         }
     }
 
     private void drawSelection(GuiGraphics graphics, HudElement element,
                                int accent, float pulse) {
-        int x = element.getHitboxX() - 4;
-        int y = element.getHitboxY() - 4;
-        int w = Math.max(12, element.getHitboxWidth() + 8);
-        int h = Math.max(12, element.getHitboxHeight() + 8);
-        int color = (Math.round(150.0f + 75.0f * pulse) << 24)
+        int x = element.getHitboxX() - 3;
+        int y = element.getHitboxY() - 3;
+        int w = Math.max(12, element.getHitboxWidth() + 6);
+        int h = Math.max(12, element.getHitboxHeight() + 6);
+        int color = (Math.round(120.0f + 100.0f * pulse) << 24)
                 | (accent & 0x00FFFFFF);
-        drawRoundedOutline(graphics, x, y, w, h, 8, color, 2);
+        drawRoundedOutline(graphics, x, y, w, h, 8, color, 1);
     }
 
     private void drawElementTag(GuiGraphics graphics, Minecraft mc,
                                 HudElement element, int accent) {
-        String label = element instanceof VanillaHudElement vanilla
-                ? vanilla.getDisplayName()
-                : switch (element.getClass().getSimpleName()) {
-                    case "ArmorHudElement" -> "Armor HUD";
-                    case "DebugHudElement" -> "Debug HUD";
-                    case "TotemCounterHudElement" -> "Totem counter";
-                    case "PotionEffectsHudElement" -> "Potion effects";
-                    default -> "HUD element";
-                };
-        int tagWidth = mc.font.width(label) + 16;
-        int x = Math.max(8, Math.min(element.getHitboxX(), width - tagWidth - 8));
-        int y = Math.max(76, element.getHitboxY() - 25);
-        fillRounded(graphics, x, y, tagWidth, 18, 7, accent);
-        graphics.drawCenteredString(mc.font, label, x + tagWidth / 2, y + 5, 0xFFFFFFFF);
+        String label = elementName(element);
+        int tagWidth = VantaText.width(label, 11, VantaText.Weight.BOLD) + 18;
+        int x = Math.max(8, Math.min(element.getHitboxX() - 3, width - tagWidth - 8));
+        int toolbarBottom = 68;
+        int y = element.getHitboxY() - 28;
+        if (y < toolbarBottom) y = Math.min(height - 30, element.getHitboxY() + element.getHitboxHeight() + 10);
+        fillRounded(graphics, x, y, tagWidth, 20, 10, accent);
+        VantaText.drawCentered(graphics, label, x + tagWidth / 2.0f, y + 10, 11,
+                0xFFFFFFFF, VantaText.Weight.BOLD);
     }
 
     private static void drawRoundedOutline(GuiGraphics graphics, int x, int y,
