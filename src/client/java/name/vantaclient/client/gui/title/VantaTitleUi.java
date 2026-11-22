@@ -77,8 +77,8 @@ public final class VantaTitleUi {
 
     private static final int TEXT_DIM = 0xFFA3AFC3;
     private static final int TEXT_BRIGHT = 0xFFFFFFFF;
-    private static final int CARD = 0xE60C121C;
-    private static final int CARD_EDGE = 0x24FFFFFF;
+    private static final int CARD = 0xB80A1018;
+    private static final int CARD_EDGE = 0x2EFFFFFF;
     private static final int PANEL = 0xF2101621;
     private static final int PANEL_EDGE = 0x2EFFFFFF;
     private static final int GOOD = 0xFF45D6A0;
@@ -122,11 +122,9 @@ public final class VantaTitleUi {
     private float popupProgress;
     private long lastFrame = System.nanoTime();
     private float u;
-    private int msFps = -1;
-    private String msText = "";
     private int panelX, panelY, panelW, panelH;
     private int cardX, cardY, cardW, cardH;
-    private int leftX, leftW, accountY, statsY, linksY, accountH, statsH, linksH;
+    private int leftX, leftW, accountY, linksY, accountH, linksH;
     private Tab tab;
     private int selected;
     private float segSlide;
@@ -308,6 +306,7 @@ public final class VantaTitleUi {
         }
         entries = result;
         if (selected >= entries.size()) selected = 0;
+        if (scrim != null) layout();
     }
 
     private void ping(ServerData data) {
@@ -377,11 +376,9 @@ public final class VantaTitleUi {
         leftX = margin;
         leftW = s(320);
         linksH = s(42);
-        statsH = s(46);
         accountH = s(64);
         linksY = bottom - linksH;
-        statsY = linksY - s(8) - statsH;
-        accountY = statsY - s(8) - accountH;
+        accountY = linksY - s(8) - accountH;
         int labelTotal = 0;
         for (AbstractButton link : links) labelTotal += textWidth(items.get(link).label, 12, false);
         int hit = s(16);
@@ -396,7 +393,7 @@ public final class VantaTitleUi {
 
         // Play card, bottom right.
         cardW = s(304);
-        cardH = s(302);
+        cardH = entries.isEmpty() ? s(212) : s(302);
         cardX = w - margin - cardW;
         cardY = bottom - cardH;
         int pad = s(14);
@@ -414,7 +411,8 @@ public final class VantaTitleUi {
             recent[i].active = recent[i].visible;
         }
         bounds(all, cardX + cardW - pad - s(78), recentY + s(1), s(78), s(32));
-        all.visible = true;
+        all.visible = !entries.isEmpty();
+        all.active = all.visible;
 
         // Popups hang under the icon row, right aligned with the last icon.
         panelY = top + icon + s(10);
@@ -680,20 +678,15 @@ public final class VantaTitleUi {
                     hx + head + s(14), y + accountH / 2 + s(10), 12, alpha(TEXT_DIM, a), false);
         }
 
-        // Performance.
-        y = statsY + lift;
-        card(g, leftX, y, leftW, statsH, s(16), a);
+        // Performance, kept inside the account card instead of a card of its own.
         int fps = Math.max(0, mc.getFps());
-        int dot = s(8);
+        int dot = s(7);
         int fpsColor = fps >= 60 ? GOOD : fps >= 30 ? WARN : BAD;
-        VantaUiTheme.fillSquircle(g, leftX + s(18), y + statsH / 2 - dot / 2, dot, dot, dot / 2, alpha(fpsColor, a));
-        text(g, fps + " FPS", leftX + s(36), y + statsH / 2, 14, alpha(TEXT_BRIGHT, a), true);
-        if (fps != msFps) {
-            msFps = fps;
-            msText = fps > 0 ? String.format(Locale.ROOT, "%.1f ms", 1000.0f / fps) : "-- ms";
-        }
-        String ms = msText;
-        text(g, ms, leftX + leftW - s(18) - textWidth(ms, 13, false), y + statsH / 2, 13, alpha(TEXT_DIM, a), false);
+        String fpsLabel = fps + " FPS";
+        int fw = textWidth(fpsLabel, 12, true);
+        int fx = leftX + leftW - s(16) - fw;
+        text(g, fpsLabel, fx, y + accountH / 2, 12, alpha(0xFFC4CCD8, a), true);
+        VantaUiTheme.fillSquircle(g, fx - dot - s(8), y + accountH / 2 - dot / 2, dot, dot, dot / 2, alpha(fpsColor, a));
 
         // Links.
         y = linksY + lift;
@@ -789,7 +782,8 @@ public final class VantaTitleUi {
                     s(15), alpha(TEXT_BRIGHT, 0.85f), 1);
         }
 
-        // Recent row.
+        // Recent row, only when there is something to show.
+        if (entries.isEmpty()) return;
         int rowY = recent[0].getY();
         text(g, "Recent", x + pad, rowY + s(17), 12, alpha(TEXT_DIM, a), false);
         for (int i = 0; i < recent.length; i++) {
