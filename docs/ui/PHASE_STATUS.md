@@ -29,7 +29,7 @@ This status distinguishes implemented code, successful CI, screenshot inspection
 
 - Expanded the immutable `VantaTheme` snapshot into complete semantic groups: palette roles, spacing/shape, typography, glass materials and motion.
 - Added semantic info/success/warning/danger and focus/selection palette tokens. Accent foreground is selected using relative luminance rather than assuming white text works on every user accent; all four shipped accents are checked against the WCAG AA 4.5:1 normal-text target.
-- Defined display, heading, title, body, label and caption roles and mapped them to the bundled Vanta font providers. Retained text nodes now use shared typography line-height tokens; heading and display primitives are available for deliberate hierarchy.
+- Defined display, heading, title, body, label and caption roles and mapped them to the bundled Vanta font providers. Retained text nodes now use shared typography line-height tokens; label, heading and display primitives are available for deliberate hierarchy and are used by shared badges, setting rows and status rows.
 - Standardized panel/pill radii and focus-ring width. Shared component panels, badges and action buttons consume those shape tokens.
 - Moved glass shadow, highlight, border, hover, selected, focused and disabled alpha values into the immutable theme. The Minecraft-native renderer now reads those values instead of embedding state-alpha literals.
 - Updated the existing screenshot GameTest's theme-construction assertions and added dedicated token hierarchy, bundled-font mapping, accent contrast and material-state GameTests.
