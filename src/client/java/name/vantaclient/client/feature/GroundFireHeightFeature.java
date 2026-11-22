@@ -5,29 +5,39 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 
-/** Adjusts the vertical geometry of vanilla fire blocks in the world. */
+/** Adjusts the baked world geometry of placed fire and soul-fire blocks. */
 public final class GroundFireHeightFeature extends Feature {
     public static final GroundFireHeightFeature INSTANCE = new GroundFireHeightFeature();
 
+    // Chunk tessellation runs on worker threads; publish both values safely.
+    private static volatile boolean active;
+    private static volatile float heightScale = 1.0f;
+
     private GroundFireHeightFeature() {
-        super("Ground Fire Height", "Adjusts the height of fire and soul fire blocks rendered in the world.", Category.VISUAL);
+        super("Ground Fire Height", "Adjusts the height of placed fire and soul fire blocks in the world.", Category.VISUAL);
+    }
+
+    public static boolean isActive() {
+        return active;
     }
 
     public static float getHeightScale() {
-        float value = DropperUtilsConfig.get().groundFireHeight;
+        return heightScale;
+    }
+
+    private static float normalizeHeightScale(float value) {
         return Float.isFinite(value) ? Math.max(0.25f, Math.min(2.0f, value)) : 1.0f;
     }
 
     public static void setHeightScale(float value) {
-        float normalized = Float.isFinite(value)
-                ? Math.max(0.25f, Math.min(2.0f, value))
-                : 1.0f;
+        float normalized = normalizeHeightScale(value);
         DropperUtilsConfig config = DropperUtilsConfig.get();
         if (Float.compare(config.groundFireHeight, normalized) == 0) return;
 
         config.groundFireHeight = normalized;
+        heightScale = normalized;
         DropperUtilsConfig.save();
-        if (INSTANCE.isEnabled()) {
+        if (active) {
             refreshWorldGeometry();
         }
     }
@@ -44,7 +54,7 @@ public final class GroundFireHeightFeature extends Feature {
         int minY = Math.floorDiv(level.getMinY(), 16);
         int maxY = Math.floorDiv(level.getMaxY() - 1, 16);
 
-        // Mark visible chunk sections for rebuilding so an adjusted baked model appears immediately.
+        // These arguments are section coordinates, not block coordinates.
         minecraft.levelRenderer.setSectionRangeDirty(
                 centerX - renderDistance, minY, centerZ - renderDistance,
                 centerX + renderDistance, maxY, centerZ + renderDistance
@@ -53,13 +63,17 @@ public final class GroundFireHeightFeature extends Feature {
 
     @Override
     public void onEnable() {
-        DropperUtilsConfig.get().groundFireHeightEnabled = true;
+        DropperUtilsConfig config = DropperUtilsConfig.get();
+        heightScale = normalizeHeightScale(config.groundFireHeight);
+        config.groundFireHeightEnabled = true;
+        active = true;
         DropperUtilsConfig.save();
         refreshWorldGeometry();
     }
 
     @Override
     public void onDisable() {
+        active = false;
         DropperUtilsConfig.get().groundFireHeightEnabled = false;
         DropperUtilsConfig.save();
         refreshWorldGeometry();
@@ -67,6 +81,8 @@ public final class GroundFireHeightFeature extends Feature {
 
     @Override
     public void loadConfig() {
-        setEnabled(DropperUtilsConfig.get().groundFireHeightEnabled);
+        DropperUtilsConfig config = DropperUtilsConfig.get();
+        heightScale = normalizeHeightScale(config.groundFireHeight);
+        setEnabled(config.groundFireHeightEnabled);
     }
 }
