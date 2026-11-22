@@ -47,9 +47,8 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
         VantaUiNode header = VantaUiNode.row(10, 12).height(46)
                 .background(VantaUiTheme.PANEL).align(VantaUiNode.Alignment.CENTER);
         header.add(VantaUiNode.icon(VantaUiNode.Icon.OVERVIEW));
-        VantaUiNode heading = VantaUiNode.column(2, 0).flex(1);
-        heading.add(VantaUiNode.eyebrow("VANTA INTEGRATION"));
-        heading.add(VantaUiNode.title(descriptor.displayName()));
+        VantaUiNode heading = VantaComponents.sectionHeader(
+                "VANTA INTEGRATION", descriptor.displayName(), null).flex(1);
         header.add(heading);
         header.add(VantaComponents.actionButton("BACK", null,
                 VantaComponents.ButtonVariant.SECONDARY, this::onClose).height(30));
@@ -134,19 +133,18 @@ public final class VantaIntegrationSettingsScreen extends Screen implements Vant
         }
 
         if (control != null) {
-            VantaUiNode row = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
-            row.add(control.flex(1));
+            VantaUiNode actions = VantaUiNode.row(8, 0).align(VantaUiNode.Alignment.CENTER);
+            actions.add(control.flex(1));
             if (setting.type() != SettingDefinition.Type.ENUM
                     || !setting.options().isEmpty()) {
-                row.add(VantaComponents.actionButton("Reset", VantaUiNode.Icon.RESET,
+                actions.add(VantaComponents.actionButton("Reset", VantaUiNode.Icon.RESET,
                         VantaComponents.ButtonVariant.QUIET,
                         () -> writeValue(setting, setting.defaultValue())).size(76, 28)
                         .tooltip("Restore the default value"));
             }
-            panel.add(row);
-        }
-        if (description != null && !description.isBlank()) {
-            panel.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED, 2));
+            panel.add(VantaComponents.settingRow(setting.name(), description, actions, 0));
+        } else if (description != null && !description.isBlank()) {
+            panel.add(VantaComponents.sectionHeader(null, setting.name(), description));
         }
         panel.add(VantaComponents.divider());
     }
