@@ -1,6 +1,6 @@
 # Vanta UI Framework API
 
-**Status:** initial retained UI API; subject to change while the prototype is being validated.
+**Status:** retained UI API with shared component factories; screen-specific APIs remain subject to change.
 
 ## Package
 
@@ -143,6 +143,46 @@ The prototype exposes a smoothed CPU-side command-submission timer. It measures 
 - Generic modal dialog and color-picker components are not implemented. Progress is currently indeterminate; a determinate transfer bar requires a downloader API that exposes byte progress.
 - The runtime is not a Compose replacement. It does not implement compiler transforms, recomposition effects, coroutine state or general-purpose modifier semantics.
 - No automated layout/input unit test suite has been added; build success only confirms compilation.
+
+
+## Shared component library
+
+Package: `name.vantaclient.client.gui.compose.components.VantaComponents`
+
+Use the shared factories rather than duplicating common node compositions in each screen:
+
+- `panel(Surface, gap, padding)`: bordered, rounded panel using the shared panel/elevated/field/popover materials.
+- `divider()`: one-pixel layout separator.
+- `badge(label, Tone)`: compact neutral, accent, success, warning or danger status.
+- `actionButton(label, icon, ButtonVariant, action)`: primary, secondary, quiet or danger action.
+- `sectionHeader(eyebrow, title, detail)`: consistent section hierarchy.
+- `settingRow(title, description, control, controlWidth)`: label/description plus a caller-owned control.
+- `emptyState(icon, title, description, actionLabel, action)`: empty collection or unavailable-content state.
+- `statusRow(title, detail, status, Tone)`: information row with a semantic status badge.
+- `moduleCard(...)` and `workspaceRow(...)`: reusable domain-neutral library/workspace compositions.
+
+`VantaCompose` exposes stable delegation methods for the shared factories. The component layer only composes retained nodes: it does not own feature state, persistence, network work, screen navigation or modal lifecycle. Use `VantaState` overloads for toggles, sliders, text fields and dropdowns when multiple controls or screen logic share a value. The owning `VantaUiRuntime` manages their subscriptions and disposes them with the screen.
+
+Example:
+
+```java
+VantaUiNode content = VantaComponents.panel(
+        VantaComponents.Surface.PANEL, 8, 12
+);
+content.add(VantaComponents.sectionHeader(
+        "DISPLAY", "Visual settings", "Configure the client presentation."
+));
+content.add(VantaComponents.statusRow(
+        "World connection", "Direct peer connection", "Connected",
+        VantaComponents.Tone.SUCCESS
+));
+content.add(VantaComponents.settingRow(
+        "Show FPS", "Display the current frame rate.",
+        VantaComponents.toggle("Show FPS", showFpsState), 0
+));
+```
+
+All components expose the same `VantaUiComponent` semantic tree as their underlying nodes. Composite components preserve their visible text and interactive descendants for future accessibility adapters.
 
 ## Canvas nodes and the menu skin
 
