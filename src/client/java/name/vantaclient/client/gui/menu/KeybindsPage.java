@@ -112,11 +112,33 @@ public final class KeybindsPage {
     }
 
     public static VantaUiNode keyButton(MenuHost host, KeyMapping mapping) {
+        return keyButton(host, mapping, host.hasConflict(mapping));
+    }
+
+    private static VantaUiNode keyButton(MenuHost host, KeyMapping mapping, boolean conflict) {
         return MenuComponents.valueButton(
                 () -> host.pendingKey() == mapping ? "Press a key…" : mapping.getTranslatedKeyMessage().getString(),
                 () -> host.pendingKey() == mapping,
-                () -> host.hasConflict(mapping),
+                () -> conflict,
                 () -> host.beginKeyCapture(mapping));
+    }
+
+    private static Set<KeyMapping> conflictingMappings(Map<String, List<KeyMapping>> index) {
+        Set<KeyMapping> conflicts = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        for (List<KeyMapping> users : index.values()) {
+            if (users.size() > 1) conflicts.addAll(users);
+        }
+        return conflicts;
+    }
+
+    private static Set<KeyMapping> vantaMappings() {
+        Set<KeyMapping> mappings = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        for (KeyMapping mapping : new KeyMapping[] {Keybinds.guiKey, Keybinds.fullbrightKey, Keybinds.zoomKey,
+                Keybinds.sprintToggleKey, Keybinds.sneakToggleKey}) {
+            if (mapping != null) mappings.add(mapping);
+        }
+        for (FeatureKeybinds.Binding binding : FeatureKeybinds.bindings()) mappings.add(binding.mapping());
+        return mappings;
     }
 
     private static String actionName(KeyMapping mapping) {
@@ -126,6 +148,8 @@ public final class KeybindsPage {
     public static VantaUiNode build(MenuHost host) {
         Font font = host.font();
         Map<String, List<KeyMapping>> index = bindingIndex(host);
+        Set<KeyMapping> conflicts = conflictingMappings(index);
+        Set<KeyMapping> vantaMappings = vantaMappings();
         VantaUiNode scroll = VantaUiNode.column(14, 24).flex(1).scrollable();
 
         int available = Math.max(300, host.contentWidth());
@@ -145,10 +169,10 @@ public final class KeybindsPage {
         scroll.add(legend());
 
         if (selected != GLFW.GLFW_KEY_UNKNOWN) {
-            addSelection(scroll, host, font, index, selected);
+            addSelection(scroll, host, font, index, conflicts, selected);
         }
-        addSection(scroll, host, font, "VANTA", true);
-        addSection(scroll, host, font, "MINECRAFT", false);
+        addSection(scroll, host, font, "VANTA", true, vantaMappings, conflicts);
+        addSection(scroll, host, font, "MINECRAFT", false, vantaMappings, conflicts);
         return scroll;
     }
 
@@ -255,7 +279,7 @@ public final class KeybindsPage {
     // ---- lists -------------------------------------------------------------------------------
 
     private static void addSelection(VantaUiNode page, MenuHost host, Font font,
-                                     Map<String, List<KeyMapping>> index, int selected) {
+                                     Map<String, List<KeyMapping>> index, Set<KeyMapping> conflicts, int selected) {
         List<KeyMapping> users = usersOf(index, selected);
         String keyName = keyFor(selected).getDisplayName().getString();
         page.add(MenuComponents.sectionTitle(("BOUND TO " + keyName).toUpperCase(java.util.Locale.ROOT)));
@@ -265,37 +289,36 @@ public final class KeybindsPage {
                     ModSettingsPage.descriptionWidth(host, 1)));
             return;
         }
-        for (KeyMapping mapping : users) page.add(row(host, font, mapping));
+        for (KeyMapping mapping : users) page.add(row(host, font, mapping, conflicts));
     }
 
-    private static void addSection(VantaUiNode page, MenuHost host, Font font, String title, boolean vanta) {
-        Set<KeyMapping> vantaMappings = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-        for (KeyMapping mapping : new KeyMapping[] {Keybinds.guiKey, Keybinds.fullbrightKey, Keybinds.zoomKey,
-                Keybinds.sprintToggleKey, Keybinds.sneakToggleKey}) {
-            if (mapping != null) vantaMappings.add(mapping);
-        }
-        for (FeatureKeybinds.Binding binding : FeatureKeybinds.bindings()) vantaMappings.add(binding.mapping());
-
+    private static void addSection(VantaUiNode page, MenuHost host, Font font, String title, boolean vanta,
+                                   Set<KeyMapping> vantaMappings, Set<KeyMapping> conflicts) {
+        List<KeyMapping> mappings = host.minecraft().options.keyMappings;
         List<VantaUiNode> rows = new ArrayList<>();
-        for (KeyMapping mapping : host.minecraft().options.keyMappings) {
-            if (vantaMappings.contains(mapping) == vanta) rows.add(row(host, font, mapping));
+        for (KeyMapping mapping : mappings) {
+            if (vantaMappings.contains(mapping) == vanta) rows.add(row(host, font, mapping, conflicts));
         }
         if (rows.isEmpty()) return;
         page.add(MenuComponents.sectionTitle(title));
         for (VantaUiNode row : rows) page.add(row);
     }
 
-    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping) {
+    private static VantaUiNode row(MenuHost host, Font font, KeyMapping mapping, Set<KeyMapping> conflicts) {
         VantaUiNode control = VantaUiNode.row(8, 0).height(32);
-        control.add(keyButton(host, mapping).flex(1));
+        boolean conflict = conflicts.contains(mapping);
+        control.add(keyButton(host, mapping, conflict).flex(1));
         control.add(MenuComponents.iconButton(Icon.RESET, "Reset to default", host.pendingKey() == null,
                 () -> host.resetKey(mapping)).size(32, 32));
         String detail = null;
-        if (host.hasConflict(mapping)) {
-            for (KeyMapping other : host.minecraft().options.keyMappings) {
-                if (other != mapping && !other.isUnbound() && other.saveString().equals(mapping.saveString())) {
-                    detail = "Also used by " + actionName(other);
-                    break;
+        if (conflict) {
+            List<KeyMapping> users = bindingIndex(host).get(mapping.saveString());
+            if (users != null) {
+                for (KeyMapping other : users) {
+                    if (other != mapping) {
+                        detail = "Also used by " + actionName(other);
+                        break;
+                    }
                 }
             }
         }
