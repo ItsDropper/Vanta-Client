@@ -59,8 +59,18 @@ Mod Menu is optional. When installed, Vanta exposes its settings through Mod Men
 
 1. Install Fabric Loader for Minecraft 1.21.11.
 2. Install Fabric API.
-3. Place the Vanta Client JAR in the instance's `.minecraft/mods` directory.
-4. Launch the game and open Vanta Client using its configured GUI key.
+3. Download the Vanta Client JAR matching your operating system and CPU architecture:
+   - Windows x86-64: `windows-x86_64`
+   - Windows ARM64: `windows-aarch64`
+   - macOS Intel: `macos-x86_64`
+   - macOS Apple Silicon: `macos-aarch64`
+   - Linux x86-64: `linux-x86_64`
+   - Linux ARM64: `linux-aarch64`
+   - Linux ARM32: `linux-aarch32`
+4. Place that JAR in the instance's `.minecraft/mods` directory.
+5. Launch the game and open Vanta Client using its configured GUI key.
+
+Each platform build embeds the WebRTC native runtime for that platform only. Do not install multiple platform variants in the same mods directory.
 
 ## Requirements
 
