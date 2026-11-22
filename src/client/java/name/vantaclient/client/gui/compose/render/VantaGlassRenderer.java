@@ -61,7 +61,7 @@ public final class VantaGlassRenderer {
         if (material == VantaCompose.Material.PANEL || material == VantaCompose.Material.ELEVATED
                 || material == VantaCompose.Material.POPOVER) {
             VantaUiTheme.fillSquircle(graphics, x, y + 2, width, height,
-                    safeRadius, VantaUiTheme.withAlpha(glass.shadow(), 0x25));
+                    safeRadius, VantaUiTheme.withAlpha(glass.shadow(), glass.shadowAlpha()));
         }
         VantaUiTheme.fillSquircle(graphics, x, y, width, height, safeRadius,
                 VantaUiTheme.withAlpha(tint, alpha));
@@ -70,29 +70,30 @@ public final class VantaGlassRenderer {
         // layering multiple decorative gradients over every surface.
         if (height > 3 && width > safeRadius * 2) {
             graphics.fill(x + safeRadius, y + 1, x + width - safeRadius, y + 2,
-                    VantaUiTheme.withAlpha(glass.highlight(), 0x22));
+                    VantaUiTheme.withAlpha(glass.highlight(), glass.highlightAlpha()));
         }
 
-        int edgeAlpha = state == VantaCompose.State.DISABLED ? 0x24 : 0x42;
+        int edgeAlpha = state == VantaCompose.State.DISABLED
+                ? glass.disabledAlpha() : glass.borderAlpha();
         VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
                 VantaUiTheme.withAlpha(glass.edge(), edgeAlpha));
 
         if (state == VantaCompose.State.HOVERED) {
             VantaUiTheme.fillSquircle(graphics, x + 1, y + 1, width - 2, height - 2,
-                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.accent(), 0x0C));
+                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.accent(), glass.hoverAlpha()));
             VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
-                    VantaUiTheme.withAlpha(palette.accent(), 0x78));
+                    VantaUiTheme.withAlpha(palette.accent(), glass.focusAlpha() / 2));
         } else if (state == VantaCompose.State.SELECTED) {
             VantaUiTheme.fillSquircle(graphics, x + 1, y + 1, width - 2, height - 2,
-                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.accent(), 0x16));
+                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.accent(), glass.selectedAlpha()));
             VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
-                    VantaUiTheme.withAlpha(palette.accent(), 0xD8));
+                    VantaUiTheme.withAlpha(palette.accent(), glass.focusAlpha()));
             graphics.fill(x + 1, y + Math.min(5, height / 3),
                     x + 3, y + height - Math.min(5, height / 3),
-                    VantaUiTheme.withAlpha(palette.accent(), 0xE8));
+                    VantaUiTheme.withAlpha(palette.accent(), glass.focusAlpha()));
         } else if (state == VantaCompose.State.FOCUSED) {
             VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
-                    VantaUiTheme.withAlpha(palette.accent(), 0xF0), 2);
+                    VantaUiTheme.withAlpha(palette.focus(), glass.focusAlpha()), VantaUiTheme.FOCUS_RING_WIDTH);
         }
     }
 }
