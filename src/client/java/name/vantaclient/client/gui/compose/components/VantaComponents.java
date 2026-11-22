@@ -38,10 +38,27 @@ public final class VantaComponents {
 
     /** Standard bordered panel used for content groups and inspector sections. */
     public static VantaUiNode panel(Surface surface, int gap, int padding) {
-        VantaUiNode node = surface(surface, gap, padding)
-                .radius(VantaUiTheme.RADIUS_LARGE)
+        return panel(surface, VantaUiNode.Direction.COLUMN, gap, padding);
+    }
+
+    /** Bordered panel with an explicit layout direction for toolbars and inline groups. */
+    public static VantaUiNode panel(Surface surface, VantaUiNode.Direction direction,
+                                    int gap, int padding) {
+        Objects.requireNonNull(surface, "surface");
+        Objects.requireNonNull(direction, "direction");
+        int background = switch (surface) {
+            case PANEL -> VantaUiTheme.PANEL;
+            case ELEVATED -> VantaUiTheme.PANEL_RAISED;
+            case FIELD -> VantaUiTheme.INPUT_SURFACE;
+            case POPOVER -> VantaUiTheme.TOOLTIP_SURFACE;
+        };
+        VantaUiNode node = switch (direction) {
+            case ROW -> VantaUiNode.row(gap, padding);
+            case COLUMN -> VantaUiNode.column(gap, padding);
+            case STACK -> VantaUiNode.stack(padding).gap(gap);
+        };
+        return node.background(background).radius(VantaUiTheme.RADIUS_LARGE)
                 .border(VantaUiTheme.BORDER_SUBTLE);
-        return node;
     }
 
     /** One-pixel separator that participates in normal layout. */
