@@ -11,6 +11,7 @@ public final class VantaLoadingScreen {
     private static final VantaUiTheme THEME = new VantaUiTheme();
     private static float shown;
     private static long lastNanos;
+    private static long fadeStarted;
 
     private VantaLoadingScreen() {}
 
@@ -24,7 +25,8 @@ public final class VantaLoadingScreen {
         lastNanos = now;
 
         boolean fading = fadeOutStart >= 0;
-        float fade = fading ? 1.0f - Math.max(0.0f, Math.min(1.0f, (net.minecraft.Util.getMillis() - fadeOutStart) / 1000.0f)) : 1.0f;
+        if (fading && fadeStarted == 0) fadeStarted = now;
+        float fade = fading ? 1.0f - Math.max(0.0f, Math.min(1.0f, (now - fadeStarted) / 1_000_000_000.0f)) : 1.0f;
         if (fade <= 0.0f) return;
 
         float target = fading ? 1.0f : Math.max(0.0f, Math.min(1.0f, progress));
