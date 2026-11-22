@@ -74,6 +74,7 @@ public final class VantaUiRuntime {
     private float zoom = 1.0f;
     private int maxViewportWidth = Integer.MAX_VALUE;
     private int maxViewportHeight = Integer.MAX_VALUE;
+    private long lastScrollNanos = System.nanoTime();
 
     private static final float DESIGN_WIDTH = 640.0f;
     private static final float DESIGN_HEIGHT = 360.0f;
@@ -216,6 +217,14 @@ public final class VantaUiRuntime {
         int previousWidth = lastWidth;
         int previousHeight = lastHeight;
         float previousScale = uiScale;
+        long scrollNow = System.nanoTime();
+        float scrollDelta = Math.min(0.05f, (scrollNow - lastScrollNanos) / 1_000_000_000.0f);
+        lastScrollNanos = scrollNow;
+        float scrollFactor = theme.animationsEnabled() ? 1.0f - (float) Math.exp(-scrollDelta * 18.0f) : 1.0f;
+        if (root.stepScroll(scrollFactor)) {
+            lastWidth = -1;
+            invalidateRender();
+        }
         layout(font, screenWidth, screenHeight);
         boolean layoutChanged = previousWidth != lastWidth || previousHeight != lastHeight
                 || Float.compare(previousScale, uiScale) != 0;

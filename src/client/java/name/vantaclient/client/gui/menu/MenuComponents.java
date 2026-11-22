@@ -201,6 +201,18 @@ public final class MenuComponents {
         };
     }
 
+    /** Each category gets its own hue so the grid reads at a glance instead of as one blue wall. */
+    static int groupTint(ModEntry.Group group) {
+        int base = switch (group) {
+            case PERFORMANCE -> 0xFF3DD68C;
+            case HUD -> 0xFF5B9BFF;
+            case UTILITY -> 0xFFF2A74E;
+            case QUALITY_OF_LIFE -> 0xFFB48CFF;
+            case OTHER -> 0xFF8B94A6;
+        };
+        return MenuTheme.mix(base, MenuTheme.accent(), 0.18f);
+    }
+
     /** Draws a mod's artwork (jar icon, or a tinted tile with the group icon / initial) centred in a square. */
     public static void drawModArt(GuiGraphics g, Font font, ModEntry entry, ModCatalog.IconTexture texture,
                                   int x, int y, int size) {
@@ -213,10 +225,10 @@ public final class MenuComponents {
                     0.0f, 0.0f, drawW, drawH, texture.width(), texture.height(), texture.width(), texture.height());
             return;
         }
-        int accent = MenuTheme.accent();
+        int accent = entry.isBuiltIn() ? groupTint(entry.group()) : MenuTheme.accent();
         int tile = Math.max(6, size / 4);
-        MenuTheme.fill(g, x, y, size, size, tile, MenuTheme.alpha(accent, 38));
-        MenuTheme.outline(g, x, y, size, size, tile, MenuTheme.alpha(accent, 84));
+        MenuTheme.gradient(g, x, y, size, size, tile, MenuTheme.alpha(accent, 58), MenuTheme.alpha(accent, 24));
+        MenuTheme.outline(g, x, y, size, size, tile, MenuTheme.alpha(accent, 96));
         if (entry.isBuiltIn()) {
             int iconSize = size / 2;
             MenuIcons.draw(g, iconFor(entry.group()), x + (size - iconSize) / 2, y + (size - iconSize) / 2,
@@ -237,36 +249,29 @@ public final class MenuComponents {
             if (Boolean.TRUE.equals(favorite.get())) {
                 MenuIcons.draw(g, Icon.STAR_FILLED, x + w - 28, y + 12, 16, 0xFFF2C14E);
             }
-            if (entry.isBuiltIn()) {
-                boolean on = entry.feature().isEnabled();
-                int stateColor = on ? 0xFF3DD68C : 0xFF6F7581;
-                String label = on ? "On" : "Off";
-                int pillW = MenuTheme.width(font, label, MenuTheme.FONT_SMALL) + 28;
-                MenuTheme.fill(g, x + 12, y + 12, pillW, 22, 11, MenuTheme.alpha(stateColor, on ? 34 : 24));
-                MenuTheme.dot(g, x + 12 + 12, y + 23, 7, stateColor);
-                MenuTheme.text(g, font, label, x + 12 + 21, y + 23,
-                        on ? MenuTheme.mix(stateColor, 0xFFFFFFFF, 0.4f) : MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            if (entry.isBuiltIn() && entry.feature().isEnabled()) {
+                MenuTheme.dot(g, x + 20, y + 20, 14, MenuTheme.alpha(0xFF3DD68C, 50));
+                MenuTheme.dot(g, x + 20, y + 20, 7, 0xFF3DD68C);
             }
             int art = 60;
-            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 22, art);
+            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 28, art);
             String name = MenuTheme.fit(font, entry.name(), w - 28, MenuTheme.FONT_MEDIUM);
-            MenuTheme.textCentered(g, font, name, x + w / 2, y + 22 + art + 22, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
-            // Status chip: tells at a glance whether Vanta can configure this mod.
-            boolean configurable = entry.configurableInVanta();
-            String status = configurable ? "Configure" : entry.hasOwnConfigScreen() ? "Own settings" : "No options";
-            int chipW = MenuTheme.width(font, status, MenuTheme.FONT_SMALL) + 22;
-            int chipH = 22;
-            int chipX = x + (w - chipW) / 2;
-            int chipY = y + h - 14 - chipH;
-            if (configurable) {
-                MenuTheme.fill(g, chipX, chipY, chipW, chipH, 11, MenuTheme.alpha(accent, 40 + Math.round(60 * hover)));
-            } else {
-                MenuTheme.fill(g, chipX, chipY, chipW, chipH, 11, 0x1FFFFFFF);
+            MenuTheme.textCentered(g, font, name, x + w / 2, y + 28 + art + 26, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            if (!entry.configurableInVanta()) {
+                String status = entry.hasOwnConfigScreen() ? "Own settings" : "No options";
+                int chipW = MenuTheme.width(font, status, MenuTheme.FONT_SMALL) + 22;
+                int chipX = x + (w - chipW) / 2;
+                int chipY = y + h - 14 - 22;
+                MenuTheme.fill(g, chipX, chipY, chipW, 22, 11, 0x1FFFFFFF);
+                MenuTheme.textCentered(g, font, status, x + w / 2, chipY + 11, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+            } else if (hover > 0.02f) {
+                String go = "Open settings";
+                MenuTheme.textCentered(g, font, go, x + w / 2, y + h - 14 - 11,
+                        MenuTheme.alpha(MenuTheme.mix(MenuTheme.accent(), 0xFFFFFFFF, 0.4f), Math.round(255 * hover)),
+                        MenuTheme.FONT_SMALL);
             }
-            MenuTheme.textCentered(g, font, status, x + w / 2, chipY + chipH / 2,
-                    configurable ? MenuTheme.mix(accent, 0xFFFFFFFF, 0.35f) : MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
             focusRing(g, st, x, y, w, h, 16);
-        }).height(176).tooltip(entry.configurableInVanta()
+        }).height(168).tooltip(entry.configurableInVanta()
                 ? "Settings available in Vanta"
                 : entry.hasOwnConfigScreen() ? "Opens the mod's own settings" : "No settings Vanta can edit")
                 .onClick(open);

@@ -73,7 +73,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
     }
 
     private static final int MAX_WIDTH = 1000;
-    private static final int MAX_HEIGHT = 620;
+    private static final int MAX_HEIGHT = 500;
 
     private float zoom() {
         float guiScale = (float) minecraft.getWindow().getGuiScale();
@@ -129,7 +129,7 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
             body.add(host);
             body.add(guest);
         } else {
-            VantaUiNode row = VantaUiNode.row(16, 0).align(VantaUiNode.Alignment.START);
+            VantaUiNode row = VantaUiNode.row(16, 0);
             row.add(host.flex(1));
             row.add(guest.flex(1));
             body.add(row);
@@ -210,11 +210,11 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
     }
 
     private VantaUiNode primary(String label, Runnable action) {
-        return MenuComponents.button(font, label, null, true, action).height(44);
+        return VantaUiNode.row(0, 0).height(44).add(MenuComponents.button(font, label, null, true, action).flex(1));
     }
 
     private VantaUiNode secondary(String label, Runnable action) {
-        return MenuComponents.button(font, label, null, false, action).height(40);
+        return VantaUiNode.row(0, 0).height(40).add(MenuComponents.button(font, label, null, false, action).flex(1));
     }
 
     private void addHostSection(VantaUiNode content, MinecraftServer server) {
@@ -311,7 +311,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
         } else {
             content.add(primary(lanStatus.state() == VantaLanHostingService.State.HOSTED
                     ? "Create invite code" : "Host this world", this::startRemoteHosting));
-            if (!session.hostStatus().isBlank()) content.add(VantaUiNode.paragraph(session.hostStatus(), MenuTheme.TEXT_MUTED, 2));
+            content.add(VantaUiNode.paragraph("Vanta opens your world to a private relay and gives you a code to share.",
+                    MenuTheme.TEXT_MUTED, 3));
         }
 
         if (lanStatus.state() == VantaLanHostingService.State.FAILED) {
@@ -340,9 +341,8 @@ public final class VantaWorldShareScreen extends Screen implements VantaCompose.
             content.add(secondary("Disconnect", VantaRemoteSessionManager::stopJoining));
         } else {
             content.add(primary("Join world", this::joinRemoteWorld));
-            content.add(VantaUiNode.paragraph(session.guestStatus().isBlank()
-                    ? "Ask your host to open World sharing and send you their invite code."
-                    : session.guestStatus(), MenuTheme.TEXT_MUTED, 3));
+            content.add(VantaUiNode.paragraph("Ask your host to open World sharing and send you their invite code.",
+                    MenuTheme.TEXT_MUTED, 3));
         }
     }
 

@@ -86,7 +86,7 @@ public final class ModsPage {
         } else {
             int columns = columnsFor(host.contentWidth());
             for (int start = 0; start < visible.size(); start += columns) {
-                VantaUiNode row = VantaUiNode.row(16, 0).height(176);
+                VantaUiNode row = VantaUiNode.row(16, 0).height(168);
                 int end = Math.min(visible.size(), start + columns);
                 for (int index = start; index < end; index++) {
                     ModEntry entry = visible.get(index);

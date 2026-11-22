@@ -107,6 +107,8 @@ public final class VantaUiNode implements VantaUiComponent {
     private boolean hovered;
     private boolean focused;
     int scrollOffset;
+    private float scrollTarget = Float.NaN;
+    private float scrollPosition;
     int contentHeight;
     private int[] layoutPrimarySizes = new int[0];
 
@@ -1271,6 +1273,7 @@ public final class VantaUiNode implements VantaUiComponent {
         int trackTravel = scrollViewportHeight() - scrollThumbHeight();
         if (!scrollable || maxScroll <= 0 || trackTravel <= 0) return;
         double normalized = (mouseY - (y + padding) - scrollDragPointerOffset) / trackTravel;
+        scrollTarget = Float.NaN;
         scrollOffset = clamp((int) Math.round(normalized * maxScroll), 0, maxScroll);
     }
 
@@ -1621,6 +1624,7 @@ public final class VantaUiNode implements VantaUiComponent {
             int targetTop = target.y;
             int targetBottom = target.y + requiredHeight;
 
+            scrollTarget = Float.NaN;
             if (targetBottom > viewportBottom) {
                 scrollOffset += targetBottom - viewportBottom;
             }
@@ -1635,6 +1639,27 @@ public final class VantaUiNode implements VantaUiComponent {
         return found;
     }
 
+    /** Advances eased wheel scrolling by {@code factor} (1 snaps); true when any offset changed. */
+    boolean stepScroll(float factor) {
+        boolean moved = false;
+        for (VantaUiNode child : children) moved |= child.stepScroll(factor);
+        if (scrollable && !Float.isNaN(scrollTarget)) {
+            float diff = scrollTarget - scrollPosition;
+            if (factor >= 0.999f || Math.abs(diff) < 0.5f) {
+                scrollPosition = scrollTarget;
+                scrollTarget = Float.NaN;
+            } else {
+                scrollPosition += diff * factor;
+            }
+            int next = Math.round(scrollPosition);
+            if (next != scrollOffset) {
+                scrollOffset = next;
+                moved = true;
+            }
+        }
+        return moved;
+    }
+
     boolean scrollAt(double mouseX, double mouseY, double amount) {
         if (!visible || !enabled || !contains(mouseX, mouseY) || !containsClip(mouseX, mouseY)) return false;
         for (int i = children.size() - 1; i >= 0; i--) {
@@ -1642,7 +1667,10 @@ public final class VantaUiNode implements VantaUiComponent {
         }
         if (scrollable && contentHeight > height - padding * 2) {
             int maxScroll = Math.max(0, contentHeight - (height - padding * 2));
-            scrollOffset = clamp(scrollOffset - (int) Math.round(amount * 22.0), 0, maxScroll);
+            // Wheel notches move a target; stepScroll eases the offset toward it every frame.
+            if (Float.isNaN(scrollTarget)) scrollPosition = scrollOffset;
+            float base = Float.isNaN(scrollTarget) ? scrollOffset : scrollTarget;
+            scrollTarget = (float) clamp(base - amount * 48.0, 0.0, (double) maxScroll);
             return true;
         }
         return false;
