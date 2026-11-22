@@ -6,6 +6,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
+import name.vantaclient.client.gui.compose.typography.VantaTypography;
 import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
 import name.vantaclient.client.gui.lobby.VantaLobbyRenderer;
 import name.vantaclient.client.gui.lobby.VantaLobbyScene;
@@ -29,9 +30,12 @@ import java.util.function.Supplier;
 public final class VantaMenuStyle {
     private static final Identifier VANTA_MARK = Identifier.fromNamespaceAndPath(
             "dropperutils", "textures/gui/vanta_logo_transparent.png");
-    private static final FontDescription BRAND_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "brand"));
-    private static final FontDescription UI_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "ui"));
-    private static final FontDescription CAPTION_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("vanta", "caption"));
+    private static final FontDescription BRAND_FONT = new FontDescription.Resource(
+            VantaTypography.font(VantaTypography.Role.DISPLAY));
+    private static final FontDescription UI_FONT = new FontDescription.Resource(
+            VantaTypography.font(VantaTypography.Role.BODY));
+    private static final FontDescription CAPTION_FONT = new FontDescription.Resource(
+            VantaTypography.font(VantaTypography.Role.CAPTION));
     private static final int MARK_TEXTURE_WIDTH = 962;
     private static final int MARK_TEXTURE_HEIGHT = 702;
 
