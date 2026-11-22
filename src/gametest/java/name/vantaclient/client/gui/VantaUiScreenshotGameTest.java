@@ -178,6 +178,31 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
         context.setScreen(() -> null);
         context.waitTicks(1);
+        verifyGroundFireInWorld(context);
+    }
+
+    private static void verifyGroundFireInWorld(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            DropperUtilsConfig.get().groundFireHeight = 0.5f;
+            GroundFireHeightFeature.INSTANCE.setEnabled(true);
+            GroundFireHeightFeature.setHeightScale(0.5f);
+            GroundFireHeightFeature.SCALED_BLOCKS.set(0);
+        });
+        try (var singleplayer = context.worldBuilder().create()) {
+            singleplayer.getClientWorld().waitForChunksRender();
+            singleplayer.getServer().runCommand("execute at @p run setblock ~2 ~ ~ minecraft:fire");
+            singleplayer.getServer().runCommand("execute at @p run setblock ~3 ~ ~ minecraft:soul_fire");
+            context.waitTicks(40);
+            singleplayer.getClientWorld().waitForChunksRender();
+            int scaled = GroundFireHeightFeature.SCALED_BLOCKS.get();
+            System.out.println("[ground-fire] scaled fire blocks during chunk compile: " + scaled
+                    + " active=" + GroundFireHeightFeature.isActive()
+                    + " scale=" + GroundFireHeightFeature.getHeightScale());
+            if (scaled <= 0) {
+                throw new AssertionError("Ground fire hook was never applied to a fire block (scaled=" + scaled + ")");
+            }
+        }
+        context.runOnClient(client -> GroundFireHeightFeature.INSTANCE.setEnabled(false));
     }
 
 

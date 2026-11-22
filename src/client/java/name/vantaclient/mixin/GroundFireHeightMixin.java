@@ -53,6 +53,7 @@ public abstract class GroundFireHeightMixin {
                 poseStack.pushPose();
                 poseStack.scale(1.0f, scale, 1.0f);
                 vanta$scaled.set(Boolean.TRUE);
+                GroundFireHeightFeature.SCALED_BLOCKS.incrementAndGet();
             }
         }
     }
