@@ -209,6 +209,10 @@ public final class VantaComponents {
             card.add(VantaUiNode.paragraph(description, VantaUiTheme.TEXT_MUTED,
                     compact ? 1 : 2));
         }
+        card.add(VantaUiNode.dynamicText(() -> {
+            String current = status.get();
+            return current == null ? "" : current;
+        }, VantaUiTheme.TEXT_MUTED).height(14));
         card.add(VantaUiNode.spacer(1).flex(1));
         if (configurable) {
             card.add(actionButton("Settings", null, ButtonVariant.SECONDARY,
