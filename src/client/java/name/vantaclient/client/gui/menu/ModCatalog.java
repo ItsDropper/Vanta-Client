@@ -196,7 +196,7 @@ public final class ModCatalog {
                     descriptor.version(), ModEntry.Group.OTHER, null, descriptor,
                     factories.get(descriptor.id()), null, null));
         }
-        result.sort(Comparator.comparing(entry -> entry.name().toLowerCase(Locale.ROOT)));
+        result.sort(Comparator.comparing(ModEntry::normalizedName));
         return List.copyOf(result);
     }
 

@@ -66,6 +66,7 @@ public final class ModEntry {
     public Object configFactory() { return configFactory; }
     public Path jar() { return jar; }
     public String iconPath() { return iconPath; }
+    String normalizedName() { return searchName; }
 
     public boolean isBuiltIn() { return feature != null; }
 
