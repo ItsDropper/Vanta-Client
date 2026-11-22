@@ -71,6 +71,13 @@ public final class ModsPage {
             return page;
         }
 
+        int enabledCount = 0;
+        for (ModEntry entry : visible) if (entry.isBuiltIn() && entry.feature().isEnabled()) enabledCount++;
+        String summary = visible.size() + (visible.size() == 1 ? " mod" : " mods")
+                + (enabledCount > 0 ? "  ·  " + enabledCount + " enabled" : "");
+        scroll.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f, summary, x + 2, y + h / 2,
+                MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL)).height(18));
+
         if (preferences.modsListView) {
             for (ModEntry entry : visible) {
                 scroll.add(MenuComponents.modRow(entry, () -> catalog.icon(entry.id()),
@@ -122,7 +129,7 @@ public final class ModsPage {
             }));
         }
 
-        int available = Math.max(200, host.contentWidth() - 90);
+        int available = Math.max(200, host.contentWidth() - 84);
         List<VantaUiNode> line = new ArrayList<>();
         int used = 0;
         boolean first = true;
@@ -143,7 +150,7 @@ public final class ModsPage {
 
     private static VantaUiNode chipRow(List<VantaUiNode> chips, MenuHost host,
                                        VantaClientPreferences preferences, boolean first, boolean last) {
-        VantaUiNode row = VantaUiNode.row(8, 0).height(first ? 46 : 46).align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode row = VantaUiNode.row(8, 0).height(42).align(VantaUiNode.Alignment.CENTER);
         row.add(VantaUiNode.spacer(1).width(16));
         for (VantaUiNode chip : chips) row.add(chip);
         row.add(VantaUiNode.spacer(1).flex(1));

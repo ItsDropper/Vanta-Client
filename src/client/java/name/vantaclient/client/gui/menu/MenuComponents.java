@@ -100,7 +100,7 @@ public final class MenuComponents {
     // ---- buttons -----------------------------------------------------------------------------
 
     public static int chipWidth(Font font, Icon icon, String label) {
-        return 16 + (icon == null ? 0 : 24) + MenuTheme.width(font, label, MenuTheme.FONT_MEDIUM) + 18;
+        return 14 + (icon == null ? 0 : 22) + MenuTheme.width(font, label, MenuTheme.FONT_MEDIUM) + 14;
     }
 
     public static VantaUiNode chip(Font font, Icon icon, String label, boolean selected, Runnable action) {
@@ -114,14 +114,14 @@ public final class MenuComponents {
                 MenuTheme.outline(g, x, y, w, h, 12, MenuTheme.mix(CARD_BORDER, CARD_BORDER_HOVER, st.hover()));
             }
             int color = selected ? 0xFFFFFFFF : st.hovered() ? MenuTheme.TEXT : 0xFFD0D5DE;
-            int textX = x + 16;
+            int textX = x + 14;
             if (icon != null) {
-                MenuIcons.draw(g, icon, x + 14, y + (h - 16) / 2, 16, color);
-                textX = x + 38;
+                MenuIcons.draw(g, icon, x + 12, y + (h - 16) / 2, 16, color);
+                textX = x + 34;
             }
             MenuTheme.text(g, f, label, textX, y + h / 2, color, MenuTheme.FONT_MEDIUM);
             focusRing(g, st, x, y, w, h, 12);
-        }).size(width, 38).onClick(action);
+        }).size(width, 34).onClick(action);
     }
 
     /** Text button; {@code filled} uses the accent, otherwise a dark outlined style. */
@@ -236,6 +236,16 @@ public final class MenuComponents {
             MenuTheme.outline(g, x, y, w, h, 16, MenuTheme.mix(0x22FFFFFF, MenuTheme.alpha(accent, 200), hover));
             if (Boolean.TRUE.equals(favorite.get())) {
                 MenuIcons.draw(g, Icon.STAR_FILLED, x + w - 28, y + 12, 16, 0xFFF2C14E);
+            }
+            if (entry.isBuiltIn()) {
+                boolean on = entry.feature().isEnabled();
+                int stateColor = on ? 0xFF3DD68C : 0xFF6F7581;
+                String label = on ? "On" : "Off";
+                int pillW = MenuTheme.width(font, label, MenuTheme.FONT_SMALL) + 28;
+                MenuTheme.fill(g, x + 12, y + 12, pillW, 22, 11, MenuTheme.alpha(stateColor, on ? 34 : 24));
+                MenuTheme.dot(g, x + 12 + 12, y + 23, 7, stateColor);
+                MenuTheme.text(g, font, label, x + 12 + 21, y + 23,
+                        on ? MenuTheme.mix(stateColor, 0xFFFFFFFF, 0.4f) : MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
             }
             int art = 60;
             drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 22, art);

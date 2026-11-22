@@ -47,7 +47,7 @@ public final class ModSettingsPage {
         return Math.max(120, host.contentWidth() - controlWidth - 32 - 16 - 24);
     }
 
-    static VantaUiNode toggleControl(java.util.function.BooleanSupplier value, java.util.function.Consumer<Boolean> setter) {
+    public static VantaUiNode toggleControl(java.util.function.BooleanSupplier value, java.util.function.Consumer<Boolean> setter) {
         return VantaUiNode.toggle("", value, setter).menuStyle().height(30);
     }
 
