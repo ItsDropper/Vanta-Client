@@ -15,7 +15,8 @@ import java.util.Map;
 public final class VantaTypography {
     private static final Identifier DEFAULT_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
 
-    private static final Identifier DISPLAY_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
+    private static final Identifier DISPLAY_FONT = Identifier.fromNamespaceAndPath("vanta", "brand");
+    private static final Identifier HEADING_FONT = Identifier.fromNamespaceAndPath("vanta", "heading");
     private static final Identifier TITLE_FONT = Identifier.fromNamespaceAndPath("vanta", "title");
     private static final Identifier LABEL_FONT = Identifier.fromNamespaceAndPath("vanta", "medium");
     private static final Identifier CAPTION_FONT = Identifier.fromNamespaceAndPath("vanta", "caption");
@@ -46,7 +47,9 @@ public final class VantaTypography {
 
     public static Identifier font(Role role) {
         return switch (role) {
-            case DISPLAY, HEADING, TITLE -> TITLE_FONT;
+            case DISPLAY -> DISPLAY_FONT;
+            case HEADING -> HEADING_FONT;
+            case TITLE -> TITLE_FONT;
             case BODY -> DEFAULT_FONT;
             case LABEL -> LABEL_FONT;
             case CAPTION -> CAPTION_FONT;
