@@ -7,42 +7,106 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Shared typography and text-layout primitives for the retained Vanta UI. */
 public final class VantaTypography {
     private static final Identifier DEFAULT_FONT = Identifier.fromNamespaceAndPath("vanta", "ui");
+    private static final int CACHE_LIMIT = 4096;
+
+    private record StyledKey(String value, Identifier font, boolean bold) {}
+    private record WidthKey(Font renderer, String value, Identifier font) {}
+    private record FitKey(Font renderer, String value, int width, Identifier font) {}
+    private record WrapKey(Font renderer, String value, int width, int lines, Identifier font) {}
+
+    private static final Map<StyledKey, Component> STYLED = lruCache();
+    private static final Map<WidthKey, Integer> WIDTHS = lruCache();
+    private static final Map<FitKey, String> FITTED = lruCache();
+    private static final Map<WrapKey, List<String>> WRAPPED = lruCache();
 
     private VantaTypography() {}
+
+    private static <K, V> Map<K, V> lruCache() {
+        return new LinkedHashMap<>(256, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+                return size() > CACHE_LIMIT;
+            }
+        };
+    }
 
     public static Component styledText(String value, Identifier fontId) {
         return styledText(value, fontId, false);
     }
 
     public static Component styledText(String value, Identifier fontId, boolean bold) {
-        Style style = Style.EMPTY.withFont(new FontDescription.Resource(
-                fontId == null ? DEFAULT_FONT : fontId));
+        String normalized = value == null ? "" : value;
+        Identifier resolvedFont = fontId == null ? DEFAULT_FONT : fontId;
+        StyledKey key = new StyledKey(normalized, resolvedFont, bold);
+        synchronized (STYLED) {
+            Component cached = STYLED.get(key);
+            if (cached != null) return cached;
+        }
+        Style style = Style.EMPTY.withFont(new FontDescription.Resource(resolvedFont));
         if (bold) style = style.withBold(true);
-        return Component.literal(value == null ? "" : value).withStyle(style);
+        Component created = Component.literal(normalized).withStyle(style);
+        synchronized (STYLED) {
+            Component raced = STYLED.get(key);
+            if (raced != null) return raced;
+            STYLED.put(key, created);
+        }
+        return created;
     }
 
     public static int textWidth(Font font, String value, Identifier fontId) {
         if (font == null) throw new IllegalArgumentException("Font cannot be null.");
-        return font.width(styledText(value, fontId));
+        String normalized = value == null ? "" : value;
+        Identifier resolvedFont = fontId == null ? DEFAULT_FONT : fontId;
+        WidthKey key = new WidthKey(font, normalized, resolvedFont);
+        synchronized (WIDTHS) {
+            Integer cached = WIDTHS.get(key);
+            if (cached != null) return cached;
+        }
+        int width = font.width(styledText(normalized, resolvedFont));
+        synchronized (WIDTHS) {
+            Integer raced = WIDTHS.get(key);
+            if (raced != null) return raced;
+            WIDTHS.put(key, width);
+        }
+        return width;
     }
 
     /** Returns the longest code-point-safe prefix that fits the given width. */
     public static String fitText(Font font, String value, int maximumWidth, Identifier fontId) {
         if (font == null || value == null || value.isEmpty() || maximumWidth <= 0) return "";
-        if (textWidth(font, value, fontId) <= maximumWidth) return value;
-        int end = value.length();
-        while (end > 0) {
-            end = value.offsetByCodePoints(end, -1);
-            if (textWidth(font, value.substring(0, end), fontId) <= maximumWidth) {
-                return value.substring(0, end);
+        Identifier resolvedFont = fontId == null ? DEFAULT_FONT : fontId;
+        FitKey key = new FitKey(font, value, maximumWidth, resolvedFont);
+        synchronized (FITTED) {
+            String cached = FITTED.get(key);
+            if (cached != null) return cached;
+        }
+        String result;
+        if (textWidth(font, value, resolvedFont) <= maximumWidth) {
+            result = value;
+        } else {
+            int end = value.length();
+            result = "";
+            while (end > 0) {
+                end = value.offsetByCodePoints(end, -1);
+                if (textWidth(font, value.substring(0, end), resolvedFont) <= maximumWidth) {
+                    result = value.substring(0, end);
+                    break;
+                }
             }
         }
-        return "";
+        synchronized (FITTED) {
+            String raced = FITTED.get(key);
+            if (raced != null) return raced;
+            FITTED.put(key, result);
+        }
+        return result;
     }
 
     /** Wraps text into bounded lines, truncating omitted content with an ellipsis. */
@@ -51,6 +115,12 @@ public final class VantaTypography {
         if (font == null) throw new IllegalArgumentException("Font cannot be null.");
         if (value == null || value.isBlank()) return List.of("");
         if (maximumWidth <= 0 || maximumLines <= 0) return List.of("");
+        Identifier resolvedFont = fontId == null ? DEFAULT_FONT : fontId;
+        WrapKey key = new WrapKey(font, value, maximumWidth, maximumLines, resolvedFont);
+        synchronized (WRAPPED) {
+            List<String> cached = WRAPPED.get(key);
+            if (cached != null) return cached;
+        }
 
         List<String> lines = new ArrayList<>();
         StringBuilder line = new StringBuilder();
@@ -59,7 +129,7 @@ public final class VantaTypography {
 
         for (String word : words) {
             String candidate = line.isEmpty() ? word : line + " " + word;
-            if (textWidth(font, candidate, fontId) > maximumWidth && !line.isEmpty()) {
+            if (textWidth(font, candidate, resolvedFont) > maximumWidth && !line.isEmpty()) {
                 lines.add(line.toString());
                 line.setLength(0);
                 if (lines.size() >= maximumLines) {
@@ -69,8 +139,8 @@ public final class VantaTypography {
             }
 
             String visibleWord = word;
-            if (textWidth(font, visibleWord, fontId) > maximumWidth) {
-                visibleWord = fitText(font, visibleWord, maximumWidth, fontId);
+            if (textWidth(font, visibleWord, resolvedFont) > maximumWidth) {
+                visibleWord = fitText(font, visibleWord, maximumWidth, resolvedFont);
                 truncated = true;
             }
             if (!line.isEmpty()) line.append(' ');
@@ -83,13 +153,19 @@ public final class VantaTypography {
             int lastIndex = lines.size() - 1;
             String last = lines.get(lastIndex);
             String ellipsis = "…";
-            while (!last.isEmpty() && textWidth(font, last + ellipsis, fontId) > maximumWidth) {
+            while (!last.isEmpty() && textWidth(font, last + ellipsis, resolvedFont) > maximumWidth) {
                 last = last.substring(0, last.offsetByCodePoints(last.length(), -1));
             }
-            if (textWidth(font, ellipsis, fontId) <= maximumWidth) last += ellipsis;
+            if (textWidth(font, ellipsis, resolvedFont) <= maximumWidth) last += ellipsis;
             lines.set(lastIndex, last);
         }
-        if (lines.isEmpty()) lines.add(fitText(font, value, maximumWidth, fontId));
-        return List.copyOf(lines);
+        if (lines.isEmpty()) lines.add(fitText(font, value, maximumWidth, resolvedFont));
+        List<String> result = List.copyOf(lines);
+        synchronized (WRAPPED) {
+            List<String> raced = WRAPPED.get(key);
+            if (raced != null) return raced;
+            WRAPPED.put(key, result);
+        }
+        return result;
     }
 }
