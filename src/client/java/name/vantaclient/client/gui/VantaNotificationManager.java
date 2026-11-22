@@ -173,9 +173,11 @@ public final class VantaNotificationManager {
 
         Minecraft minecraft = Minecraft.getInstance();
         Font font = minecraft.font;
-        int cardWidth = Math.max(120, Math.min(286, screenWidth - 20));
-        int cardHeight = 44;
-        int baseX = screenWidth - cardWidth - 10;
+        int cardWidth = Math.max(96, Math.min(286, screenWidth - 20));
+        int cardHeight = Math.min(44, Math.max(28, screenHeight - 24));
+        int baseX = Math.max(10, screenWidth - cardWidth - 10);
+        int visibleLimit = Math.max(1, (screenHeight - 24 + 7) / (cardHeight + 7));
+        snapshotSize = Math.min(snapshotSize, visibleLimit);
         long now = System.nanoTime();
 
         for (int index = 0; index < snapshotSize; index++) {

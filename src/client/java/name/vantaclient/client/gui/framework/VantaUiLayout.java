@@ -3,9 +3,35 @@ package name.vantaclient.client.gui.framework;
 import net.minecraft.client.gui.Font;
 import name.vantaclient.client.gui.compose.typography.VantaTypography;
 
+import java.util.Arrays;
+
 /** Owns intrinsic measurement and retained-tree placement, independent of rendering and input. */
 final class VantaUiLayout {
     private VantaUiLayout() {}
+
+    /** Shrinks a flow's primary-axis allocations proportionally when fixed content cannot fit. */
+    static int[] fitPrimarySizes(int[] requested, int available) {
+        int[] fitted = Arrays.copyOf(requested, requested.length);
+        long total = 0L;
+        int lastPositive = -1;
+        for (int i = 0; i < fitted.length; i++) {
+            fitted[i] = Math.max(0, fitted[i]);
+            total += fitted[i];
+            if (fitted[i] > 0) lastPositive = i;
+        }
+        int budget = Math.max(0, available);
+        if (total <= budget || total == 0L) return fitted;
+        float ratio = budget / (float) total;
+        int assigned = 0;
+        for (int i = 0; i < fitted.length; i++) {
+            if (fitted[i] == 0) continue;
+            int size = i == lastPositive ? budget - assigned
+                    : Math.min(budget - assigned, Math.round(fitted[i] * ratio));
+            fitted[i] = Math.max(0, size);
+            assigned += fitted[i];
+        }
+        return fitted;
+    }
 
     static int intrinsicWidth(VantaUiNode node, Font font) {
         if (node.preferredWidth >= 0) return node.constraints.constrainWidth(node.preferredWidth);
@@ -66,10 +92,15 @@ final class VantaUiLayout {
     }
 
     static void arrange(VantaUiNode node, int x, int y, int width, int height, Font font) {
+        arrange(node, x, y, width, height, font, false);
+    }
+
+    private static void arrange(VantaUiNode node, int x, int y, int width, int height,
+                                Font font, boolean boundedByParent) {
         node.x = x;
         node.y = y;
-        node.width = node.constraints.constrainWidth(width);
-        node.height = node.constraints.constrainHeight(height);
+        node.width = boundedByParent ? Math.max(0, width) : node.constraints.constrainWidth(width);
+        node.height = boundedByParent ? Math.max(0, height) : node.constraints.constrainHeight(height);
 
         if (node.kind == VantaUiNode.Kind.TEXT && node.textMaximumLines > 1) {
             String value = node.currentText();
@@ -106,7 +137,7 @@ final class VantaUiLayout {
                 int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
-                arrange(child, childX, childY, childWidth, childHeight, font);
+                arrange(child, childX, childY, childWidth, childHeight, font, true);
             }
             return;
         }
@@ -144,6 +175,17 @@ final class VantaUiLayout {
         }
 
         int availableSize = node.direction == VantaUiNode.Direction.COLUMN ? innerHeight : innerWidth;
+        // Scrollable columns intentionally keep their full content height. All other
+        // flows compress children before placement so controls cannot overlap siblings.
+        if (measuredContent > availableSize
+                && !(node.direction == VantaUiNode.Direction.COLUMN && node.scrollable)) {
+            int[] fitted = fitPrimarySizes(primarySizes, Math.max(0, availableSize - childGap));
+            measuredContent = childGap;
+            for (int i = 0; i < primarySizes.length; i++) {
+                primarySizes[i] = fitted[i];
+                measuredContent += fitted[i];
+            }
+        }
         int freeSpace = Math.max(0, availableSize - measuredContent);
         int leadingSpace = 0;
         int distributedGap = 0;
@@ -183,19 +225,21 @@ final class VantaUiLayout {
                 int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
                 int childY = cursor;
-                if (node.scrollable && (childY + primary <= innerY || childY >= innerY + innerHeight)) {
+                int childHeight = node.scrollable
+                        ? child.constraints.constrainHeight(primary)
+                        : child.constraints.constrainHeight(primary,
+                                Math.max(0, innerY + innerHeight - childY));
+                if (node.scrollable && (childY + childHeight <= innerY || childY >= innerY + innerHeight)) {
                     // Keep the direct child's bounds ordered for binary-search culling,
-                    // but do not recursively measure/arrange its descendants until it
-                    // enters the viewport. Large keybind and mod pages otherwise walk
-                    // every nested control whenever the scroll position changes.
+                    // but do not recursively measure/arrange its descendants until it enters the viewport.
                     child.x = childX;
                     child.y = childY;
                     child.width = childWidth;
-                    child.height = primary;
+                    child.height = childHeight;
                 } else {
-                    arrange(child, childX, childY, childWidth, primary, font);
+                    arrange(child, childX, childY, childWidth, childHeight, font, true);
                 }
-                cursor += primary + node.gap + distributedGap;
+                cursor += childHeight + node.gap + distributedGap;
             } else {
                 VantaUiNode.Alignment effectiveAlignment = effectiveAlignment(node, child);
                 int requestedHeight = child.preferredHeight >= 0 ? child.preferredHeight
@@ -203,8 +247,10 @@ final class VantaUiLayout {
                         : intrinsicHeight(child, font);
                 int childHeight = child.constraints.constrainHeight(requestedHeight, innerHeight);
                 int childY = alignedOffset(innerY, innerHeight, childHeight, effectiveAlignment);
-                arrange(child, cursor, childY, primary, childHeight, font);
-                cursor += primary + node.gap + distributedGap;
+                int childWidth = child.constraints.constrainWidth(primary,
+                        Math.max(0, innerX + innerWidth - cursor));
+                arrange(child, cursor, childY, childWidth, childHeight, font, true);
+                cursor += childWidth + node.gap + distributedGap;
             }
         }
     }

@@ -91,15 +91,19 @@ public final class VantaPauseUi implements Renderable {
      * action, a quiet list of rows and the exit at the bottom, separated by a divider.
      */
     private void layout() {
-        scale = Math.max(0.6f, Math.min(1.0f, Math.min(screen.height / 360.0f, screen.width / 560.0f)));
-        colW = Math.min(s(360), screen.width - s(48));
-        colX = screen.width - colW - Math.max(s(48), screen.width / 14);
+        int middle = Math.max(0, entries.size() - 2);
+        float requestedScale = Math.min(1.0f, Math.min(screen.height / 360.0f, screen.width / 560.0f));
+        int designHeight = 78 + 46 + 10 + middle * 40 + (entries.size() > 1 ? 16 + 40 : 0);
+        float verticalFit = Math.max(0.1f, (screen.height - 24.0f) / Math.max(1.0f, designHeight));
+        scale = Math.max(0.1f, Math.min(requestedScale, verticalFit));
+        colW = Math.max(1, Math.min(s(360), Math.max(1, screen.width - s(24))));
+        int rightInset = Math.max(s(12), screen.width / 14);
+        colX = Math.max(0, screen.width - colW - rightInset);
         int primaryH = s(46), rowH = s(40), gap = s(10);
         headerH = s(78);
-        int middle = Math.max(0, entries.size() - 2);
         int exitH = entries.size() > 1 ? rowH : 0;
         int total = headerH + primaryH + gap + middle * rowH + (entries.size() > 1 ? s(16) + exitH : 0);
-        colY = Math.max(s(56), (screen.height - total) / 2);
+        colY = Math.max(s(12), Math.min(Math.max(0, screen.height - total), (screen.height - total) / 2));
         int y = colY + headerH;
         for (int i = 0; i < entries.size(); i++) {
             Entry entry = entries.get(i);
@@ -151,8 +155,12 @@ public final class VantaPauseUi implements Renderable {
                 VantaText.withAlpha(0xFFFFFFFF, a));
         VantaText.draw(g, "Vanta", margin + mark + s(10), s(20) + mark / 2.0f, s(17), VantaText.withAlpha(0xFFFFFFFF, a), Weight.BOLD);
         String name = Minecraft.getInstance().getUser().getName();
-        VantaText.draw(g, name, w - margin - VantaText.width(name, s(13), Weight.MEDIUM), s(20) + mark / 2.0f, s(13),
-                VantaText.withAlpha(0xFFC3CDDC, a), Weight.MEDIUM);
+        int accountWidth = Math.max(0, w - margin * 2 - s(72));
+        if (accountWidth >= s(28)) {
+            String shownName = VantaText.fit(name, s(13), Weight.MEDIUM, accountWidth);
+            VantaText.draw(g, shownName, w - margin - VantaText.width(shownName, s(13), Weight.MEDIUM),
+                    s(20) + mark / 2.0f, s(13), VantaText.withAlpha(0xFFC3CDDC, a), Weight.MEDIUM);
+        }
 
         int x = colX, y = colY + slide;
         VantaText.draw(g, "Paused", x, y + s(8), s(12), VantaText.withAlpha(accent, a), Weight.MEDIUM);

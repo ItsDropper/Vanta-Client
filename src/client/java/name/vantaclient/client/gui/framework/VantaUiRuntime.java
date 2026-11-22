@@ -11,6 +11,44 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** Owns one screen's retained node tree, focus, pointer capture and layout bounds. */
 public final class VantaUiRuntime {
+    /** Immutable layout result expressed in the runtime's design coordinate space. */
+    public record ViewportLayout(float effectiveScale, int layoutWidth, int layoutHeight,
+                                 int x, int y, int width, int height) {
+        public boolean fits(int screenWidth, int screenHeight) {
+            float left = screenWidth * 0.5f + (x - screenWidth * 0.5f) * effectiveScale;
+            float top = screenHeight * 0.5f + (y - screenHeight * 0.5f) * effectiveScale;
+            float right = left + width * effectiveScale;
+            float bottom = top + height * effectiveScale;
+            return left >= -0.51f && top >= -0.51f
+                    && right <= screenWidth + 0.51f && bottom <= screenHeight + 0.51f;
+        }
+    }
+
+    /** Computes a centered viewport while keeping GUI, design and framebuffer units separate. */
+    public static ViewportLayout calculateViewportLayout(int screenWidth, int screenHeight,
+                                                          float guiScale, float preferredScale,
+                                                          float zoom, int maximumWidth,
+                                                          int maximumHeight) {
+        int safeWidth = Math.max(0, screenWidth);
+        int safeHeight = Math.max(0, screenHeight);
+        float safeGuiScale = Float.isFinite(guiScale) && guiScale >= 1.0f ? guiScale : 1.0f;
+        float safePreferredScale = Float.isFinite(preferredScale)
+                ? Math.max(0.8f, Math.min(1.2f, preferredScale)) : 1.0f;
+        float safeZoom = Float.isFinite(zoom) ? Math.max(0.5f, Math.min(3.0f, zoom)) : 1.0f;
+        float effectiveScale = safePreferredScale * safeZoom / safeGuiScale;
+        int layoutWidth = Math.max(0, Math.round(safeWidth / effectiveScale));
+        int layoutHeight = Math.max(0, Math.round(safeHeight / effectiveScale));
+        int marginX = Math.max(1, Math.round(layoutWidth * 0.025f));
+        int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
+        int maxWidth = maximumWidth > 0 ? maximumWidth : Integer.MAX_VALUE;
+        int maxHeight = maximumHeight > 0 ? maximumHeight : Integer.MAX_VALUE;
+        int arrangedWidth = Math.min(Math.max(0, layoutWidth - marginX * 2), maxWidth);
+        int arrangedHeight = Math.min(Math.max(0, layoutHeight - marginY * 2), maxHeight);
+        int left = Math.round((safeWidth - arrangedWidth) * 0.5f);
+        int top = Math.round((safeHeight - arrangedHeight) * 0.5f);
+        return new ViewportLayout(effectiveScale, layoutWidth, layoutHeight,
+                left, top, arrangedWidth, arrangedHeight);
+    }
     private final VantaUiNode root;
     private final VantaUiTheme theme = new VantaUiTheme();
 
@@ -155,10 +193,10 @@ public final class VantaUiRuntime {
         // Screen dimensions are already divided by Minecraft's GUI scale.
         // Compensate here so a 16px design control remains 16 physical pixels
         // at GUI scales 1–4 instead of growing with the vanilla coordinate scale.
-        float effectiveScale = preferredScale * zoom / minecraftGuiScale();
-        if (!Float.isFinite(effectiveScale) || effectiveScale <= 0.0f) effectiveScale = 1.0f;
-        if (Float.compare(uiScale, effectiveScale) != 0) {
-            uiScale = effectiveScale;
+        ViewportLayout viewport = calculateViewportLayout(screenWidth, screenHeight,
+                minecraftGuiScale(), preferredScale, zoom, maxViewportWidth, maxViewportHeight);
+        if (Float.compare(uiScale, viewport.effectiveScale()) != 0) {
+            uiScale = viewport.effectiveScale();
             lastWidth = -1;
         }
         if (screenWidth == lastWidth && screenHeight == lastHeight) return;
@@ -166,19 +204,7 @@ public final class VantaUiRuntime {
         lastHeight = screenHeight;
         viewportWidth = screenWidth;
         viewportHeight = screenHeight;
-        int layoutWidth = Math.max(0, Math.round(screenWidth / uiScale));
-        int layoutHeight = Math.max(0, Math.round(screenHeight / uiScale));
-
-        // Preserve a small edge inset on constrained screens, then center the
-        // resulting coordinate-space window. A maximum viewport is expressed in
-        // design units so it remains the same physical size at every GUI scale.
-        int marginX = Math.max(1, Math.round(layoutWidth * 0.025f));
-        int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
-        int arrangedWidth = Math.min(Math.max(0, layoutWidth - marginX * 2), maxViewportWidth);
-        int arrangedHeight = Math.min(Math.max(0, layoutHeight - marginY * 2), maxViewportHeight);
-        int logicalLeft = Math.round((screenWidth - arrangedWidth) * 0.5f);
-        int logicalTop = Math.round((screenHeight - arrangedHeight) * 0.5f);
-        root.arrange(logicalLeft, logicalTop, arrangedWidth, arrangedHeight, font);
+        root.arrange(viewport.x(), viewport.y(), viewport.width(), viewport.height(), font);
         clearFocusIfDetached();
     }
 
@@ -226,6 +252,7 @@ public final class VantaUiRuntime {
 
         theme.refreshComposeTheme();
         long renderStart = System.nanoTime();
+        graphics.enableScissor(0, 0, screenWidth, screenHeight);
         graphics.pose().pushMatrix();
         graphics.pose().translate(offsetX, offsetY);
         graphics.pose().scale(uiScale, uiScale);
@@ -236,6 +263,7 @@ public final class VantaUiRuntime {
             renderTooltip(graphics, font, layoutWidth, layoutHeight);
         } finally {
             graphics.pose().popMatrix();
+            graphics.disableScissor();
         }
         lastUiRenderNanos = Math.max(0L, System.nanoTime() - renderStart);
         averageUiRenderNanos = averageUiRenderNanos == 0L

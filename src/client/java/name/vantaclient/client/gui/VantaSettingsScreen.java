@@ -162,8 +162,16 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         return Math.min(Math.max(0, layoutWidth - margin * 2), MAX_WIDTH);
     }
 
+    private boolean compactLayout() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale < 1.0f) guiScale = 1.0f;
+        float userScale = (float) VantaClientPreferences.get().uiScale;
+        if (!Float.isFinite(userScale) || userScale <= 0.0f) userScale = 1.0f;
+        return width * guiScale / userScale < 900.0f;
+    }
+
     private int sidebarWidth() {
-        return shellWidth() < 900 ? 210 : 252;
+        return compactLayout() ? 210 : 252;
     }
 
     @Override

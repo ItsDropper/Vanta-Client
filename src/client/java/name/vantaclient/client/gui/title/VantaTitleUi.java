@@ -138,7 +138,7 @@ public final class VantaTitleUi {
 
     public void init(ScreenAccessor accessor) {
         current = this;
-        u = Math.max(0.8f, Math.min(2.0f, screen.height / 420.0f));
+        u = Math.max(0.12f, Math.min(2.0f, Math.min(screen.height / 420.0f, screen.width / 680.0f)));
         AbstractButton realmsButton = null, optionsButton = null, quitButton = null;
         List<AbstractButton> extra = new ArrayList<>();
         for (GuiEventListener child : new ArrayList<>(screen.children())) {

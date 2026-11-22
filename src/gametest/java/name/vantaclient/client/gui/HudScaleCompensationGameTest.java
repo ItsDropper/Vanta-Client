@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui;
 
 import name.vantaclient.client.hud.VanillaHudElement;
+import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.hudeditor.HudElement;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -19,6 +20,38 @@ public final class HudScaleCompensationGameTest implements FabricClientGameTest 
             assertScale(6, 1.0f / 6.0f);
             assertScale(12, 1.0f / 12.0f);
             assertScale(0, 1.0f);
+
+            int[][] framebufferSizes = {
+                    {1920, 1080}, {1280, 720}, {960, 540},
+                    {640, 360}, {480, 270}, {320, 180}
+            };
+            float[] preferredScales = {0.8f, 1.0f, 1.2f};
+            float[] zoomLevels = {0.5f, 1.0f, 3.0f};
+            for (int guiScale = 1; guiScale <= 8; guiScale++) {
+                for (int[] framebuffer : framebufferSizes) {
+                    int guiWidth = Math.max(1, Math.round(framebuffer[0] / (float) guiScale));
+                    int guiHeight = Math.max(1, Math.round(framebuffer[1] / (float) guiScale));
+                    for (float preferred : preferredScales) {
+                        for (float zoom : zoomLevels) {
+                            VantaUiRuntime.ViewportLayout viewport =
+                                    VantaUiRuntime.calculateViewportLayout(guiWidth, guiHeight,
+                                            guiScale, preferred, zoom, 1400, 780);
+                            if (!viewport.fits(guiWidth, guiHeight)) {
+                                throw new AssertionError("Retained UI viewport escaped the screen at GUI scale "
+                                        + guiScale + ", framebuffer " + framebuffer[0] + "x" + framebuffer[1]
+                                        + ", preferred scale " + preferred + ", zoom " + zoom
+                                        + ": " + viewport);
+                            }
+                        }
+                    }
+                }
+            }
+            VantaUiRuntime.ViewportLayout invalidScale =
+                    VantaUiRuntime.calculateViewportLayout(640, 360, Float.NaN,
+                            Float.NaN, Float.POSITIVE_INFINITY, 1400, 780);
+            if (!invalidScale.fits(640, 360)) {
+                throw new AssertionError("Invalid scale preferences must fall back to a safe viewport.");
+            }
 
             var window = client.getWindow();
             int guiScale = Math.max(1, window.getGuiScale());
