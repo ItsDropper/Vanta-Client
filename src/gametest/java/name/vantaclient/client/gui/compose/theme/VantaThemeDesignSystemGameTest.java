@@ -4,6 +4,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.compose.typography.VantaTypography;
+import name.vantaclient.client.gui.framework.VantaUiComponent;
+import name.vantaclient.client.gui.framework.VantaUiNode;
 
 /** Guards the design-token hierarchy, semantic palette and accent contrast. */
 @SuppressWarnings("UnstableApiUsage")
@@ -39,6 +41,13 @@ public final class VantaThemeDesignSystemGameTest implements FabricClientGameTes
         require(VantaTypography.font(VantaTypography.Role.HEADING).getPath().equals("heading")
                         && VantaTypography.font(VantaTypography.Role.CAPTION).getPath().equals("caption"),
                 "Semantic roles must use the bundled Vanta font providers.");
+        require(VantaTypography.size(VantaTypography.Role.DISPLAY) == type.displaySize()
+                        && VantaTypography.size(VantaTypography.Role.LABEL) == type.labelSize(),
+                "Typography role sizes must resolve from the immutable theme snapshot.");
+        require(VantaUiNode.label("Status", 0xFFFFFFFF).semantics().role()
+                        == VantaUiComponent.Role.LABEL
+                        && "Heading".equals(VantaUiNode.heading("Heading").semantics().label()),
+                "Label and heading primitives must preserve semantic text.");
         require(theme.palette().success() != theme.palette().warning()
                         && theme.palette().warning() != theme.palette().danger(),
                 "Status roles must remain visually distinct.");
