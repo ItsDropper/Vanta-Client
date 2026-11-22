@@ -182,7 +182,19 @@ final class VantaUiLayout {
                         : intrinsicWidth(child, font);
                 int childWidth = child.constraints.constrainWidth(requestedWidth, innerWidth);
                 int childX = alignedOffset(innerX, innerWidth, childWidth, effectiveAlignment);
-                arrange(child, childX, cursor, childWidth, primary, font);
+                int childY = cursor;
+                if (node.scrollable && (childY + primary <= innerY || childY >= innerY + innerHeight)) {
+                    // Keep the direct child's bounds ordered for binary-search culling,
+                    // but do not recursively measure/arrange its descendants until it
+                    // enters the viewport. Large keybind and mod pages otherwise walk
+                    // every nested control whenever the scroll position changes.
+                    child.x = childX;
+                    child.y = childY;
+                    child.width = childWidth;
+                    child.height = primary;
+                } else {
+                    arrange(child, childX, childY, childWidth, primary, font);
+                }
                 cursor += primary + node.gap + distributedGap;
             } else {
                 VantaUiNode.Alignment effectiveAlignment = effectiveAlignment(node, child);
