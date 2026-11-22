@@ -59,6 +59,38 @@ public final class VantaCompose {
         return VantaComponents.sectionHeader(eyebrow, title, detail);
     }
 
+    public static VantaUiNode panel(VantaComponents.Surface surface, int gap, int padding) {
+        return VantaComponents.panel(surface, gap, padding);
+    }
+
+    public static VantaUiNode divider() {
+        return VantaComponents.divider();
+    }
+
+    public static VantaUiNode badge(String label, VantaComponents.Tone tone) {
+        return VantaComponents.badge(label, tone);
+    }
+
+    public static VantaUiNode actionButton(String label, VantaUiNode.Icon icon,
+                                           VantaComponents.ButtonVariant variant, Runnable action) {
+        return VantaComponents.actionButton(label, icon, variant, action);
+    }
+
+    public static VantaUiNode settingRow(String title, String description,
+                                         VantaUiNode control, int controlWidth) {
+        return VantaComponents.settingRow(title, description, control, controlWidth);
+    }
+
+    public static VantaUiNode emptyState(VantaUiNode.Icon icon, String title,
+                                         String description, String actionLabel, Runnable action) {
+        return VantaComponents.emptyState(icon, title, description, actionLabel, action);
+    }
+
+    public static VantaUiNode statusRow(String title, String detail, String status,
+                                        VantaComponents.Tone tone) {
+        return VantaComponents.statusRow(title, detail, status, tone);
+    }
+
     public static VantaUiNode navigationItem(String label, VantaUiNode.Icon icon,
                                               boolean selected, Runnable action) {
         return VantaComponents.navigationItem(label, icon, selected, action);
