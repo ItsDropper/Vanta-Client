@@ -1,6 +1,7 @@
 package name.vantaclient.client.gui.compose.components;
 
 import name.vantaclient.client.gui.framework.VantaState;
+import name.vantaclient.client.gui.framework.VantaUiComponent;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 
@@ -113,7 +114,7 @@ public final class VantaComponents {
                 .align(VantaUiNode.Alignment.CENTER);
         VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
         String resolvedTitle = Objects.requireNonNull(title, "title");
-        if (!resolvedTitle.equals(control.semantics().label())) {
+        if (!containsVisibleLabel(control, resolvedTitle)) {
             labels.add(VantaUiNode.text(resolvedTitle));
         }
         if (hasDescription) {
@@ -122,6 +123,14 @@ public final class VantaComponents {
         if (!labels.children().isEmpty()) row.add(labels);
         row.add(controlWidth > 0 ? control.width(controlWidth) : control);
         return row;
+    }
+
+    private static boolean containsVisibleLabel(VantaUiComponent component, String label) {
+        if (label.equals(component.semantics().label())) return true;
+        for (VantaUiComponent child : component.children()) {
+            if (containsVisibleLabel(child, label)) return true;
+        }
+        return false;
     }
 
     /** Informational placeholder for genuinely empty collections or unavailable content. */
