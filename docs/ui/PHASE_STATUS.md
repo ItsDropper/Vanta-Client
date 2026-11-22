@@ -5,6 +5,16 @@
 
 This status distinguishes implemented code, successful CI, screenshot inspection and manual gameplay validation.
 
+## Phase 1 — shared UI foundation (2026-11-22)
+
+- Extracted retained-node surface resolution and painting into `VantaUiNodeStyle`; the node model no longer owns that surface-style policy. The Minecraft `GuiGraphics` backend and existing drawing output are preserved.
+- Added the `VantaUiComponent` inspection contract with immutable bounds, semantic role, accessible label/value/description, enabled/selected/focused state and child traversal. `VantaUiRuntime` exposes the root and focused component for future narration and accessibility adapters.
+- Added explicit observable-state bindings. A runtime subscribes to state used by its component tree, tracks visual and layout invalidation revisions, and releases every subscription on disposal. State changes are equality-checked by `VantaState`; no-op writes do not invalidate.
+- Routed retained-screen pointer, keyboard, focus, scroll and dropdown transitions through the shared invalidation path. Layout-affecting state can request remeasurement separately from paint-only changes.
+- Added client GameTest coverage for component semantics, state-driven paint invalidation, layout invalidation and subscription cleanup.
+- The shared runtime changes automatically cover settings, integration settings, installed-mod library, Modrinth browser, world sharing and the HUD editor's retained toolbar/inspector. Title-screen, pause-menu, loading, notification and in-game HUD rendering remain specialized where they need Minecraft-native content, but continue using the shared `VantaUiTheme` drawing primitives. The obsolete `ClickGuiScreen` redirects to the active installed-mod library and is not a separate live UI implementation.
+
+
 ## Foundation
 
 <badge>Implemented; interaction coverage still expanding</badge>
