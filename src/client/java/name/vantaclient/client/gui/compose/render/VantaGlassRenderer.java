@@ -87,7 +87,7 @@ public final class VantaGlassRenderer {
                     VantaUiTheme.withAlpha(palette.accent(), glass.focusAlpha() / 2));
         } else if (state == VantaCompose.State.SELECTED) {
             VantaUiTheme.fillSquircle(graphics, x + 1, y + 1, width - 2, height - 2,
-                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.accent(), glass.selectedAlpha()));
+                    Math.max(0, safeRadius - 1), VantaUiTheme.withAlpha(palette.selection(), glass.selectedAlpha()));
             VantaUiTheme.outlineSquircle(graphics, x, y, width, height, safeRadius,
                     VantaUiTheme.withAlpha(palette.accent(), glass.focusAlpha()));
             graphics.fill(x + 1, y + Math.min(5, height / 3),
