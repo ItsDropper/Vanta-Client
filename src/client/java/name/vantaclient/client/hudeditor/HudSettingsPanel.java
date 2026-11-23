@@ -8,6 +8,9 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.VanillaHudElement;
 import name.vantaclient.client.feature.VanillaHudFeature;
+import name.vantaclient.client.gui.menu.MenuComponents;
+import name.vantaclient.client.gui.menu.MenuIcons;
+import name.vantaclient.client.gui.menu.MenuTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -80,108 +83,100 @@ public final class HudSettingsPanel {
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
 
-        VantaUiNode panel = VantaComponents.panel(VantaComponents.Surface.POPOVER, 10, 18)
+        VantaUiNode panel = VantaUiNode.column(10, 18)
                 .width(panelWidth).height(panelHeight).scrollable()
                 // Opaque enough that the placeholder HUD elements behind never show through.
                 .background(0xFF0B111B).border(0x30FFFFFF).radius(18);
+        net.minecraft.client.gui.Font font = mc.font;
+        int labelWidth = Math.max(60, panelWidth - 36 - 32 - 230);
 
-        VantaUiNode header = VantaUiNode.row(8, 0)
-                .height(38)
+        VantaUiNode header = VantaUiNode.row(8, 0).height(52)
                 .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode labels = VantaUiNode.column(2, 0).flex(1);
-        labels.add(VantaUiNode.text("Element inspector", VantaUiTheme.TEXT_MUTED));
-        labels.add(VantaUiNode.dynamicText(HudSettingsPanel::selectedName,
-                VantaUiTheme.TEXT_PRIMARY));
-        header.add(labels);
-        header.add(name.vantaclient.client.gui.menu.MenuComponents.iconButton(
-                name.vantaclient.client.gui.menu.MenuIcons.Icon.CLOSE, "Close inspector", true,
+        header.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, "Element inspector", x, y + 12, MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            MenuTheme.text(g, f, MenuTheme.fit(f, selectedName(), w, MenuTheme.FONT_MEDIUM), x, y + 34,
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+        }).flex(1).height(48));
+        header.add(MenuComponents.iconButton(MenuIcons.Icon.CLOSE, "Close inspector", true,
                 HudSettingsPanel::close));
         panel.add(header);
-        panel.add(VantaUiNode.paragraph("Changes apply immediately to the selected HUD element.",
-                VantaUiTheme.TEXT_SECONDARY, 2));
-        panel.add(VantaComponents.divider());
 
-        panel.add(VantaUiNode.text("Scale and position", VantaUiTheme.TEXT_MUTED));
-        panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
-                () -> selected == null ? 1.0 : selected.getScale(),
-                value -> { if (selected != null) selected.setScale((float) value); }));
-        panel.add(VantaUiNode.row(0, 0).height(40).add(
-                name.vantaclient.client.gui.menu.MenuComponents.button(mc.font, "Center on screen", null, false, () -> {
+        panel.add(MenuComponents.sectionTitle("Position and size"));
+        panel.add(MenuComponents.settingRow(font, "Element scale", null,
+                VantaUiNode.slider("", 0.25, 3.0, 0.05,
+                        () -> selected == null ? 1.0 : selected.getScale(),
+                        value -> { if (selected != null) selected.setScale((float) value); })
+                        .menuStyle().height(30), 230, labelWidth));
+        panel.add(VantaUiNode.row(0, 0).height(44).add(
+                MenuComponents.button(font, "Center on screen", MenuIcons.Icon.HUD, false, () -> {
                     if (selected != null) selected.centerOnScreen();
-                }).flex(1).tooltip("Move the selected HUD element to the center of the screen")));
+                }).flex(1)));
 
         if (selected instanceof ArmorHudElement armor) {
-            panel.add(VantaUiNode.dropdown("Orientation",
-                    java.util.List.of("Vertical", "Horizontal"),
-                    () -> armor.isHorizontal() ? "Horizontal" : "Vertical",
-                    value -> armor.setHorizontal(value.equals("Horizontal"))));
+            panel.add(MenuComponents.settingRow(font, "Orientation", null,
+                    VantaUiNode.dropdown("", java.util.List.of("Vertical", "Horizontal"),
+                            () -> armor.isHorizontal() ? "Horizontal" : "Vertical",
+                            value -> armor.setHorizontal(value.equals("Horizontal"))).menuStyle().height(34),
+                    150, labelWidth));
         }
-
         if (selected instanceof VanillaHudElement) {
-            panel.add(toggleRow("Apply vanilla HUD positions",
-                    VanillaHudFeature.INSTANCE::isEnabled,
-                    enabled -> {
+            panel.add(MenuComponents.settingRow(font, "Apply vanilla HUD positions",
+                    "Changes only where Minecraft draws it.",
+                    toggleControl(VanillaHudFeature.INSTANCE::isEnabled, enabled -> {
                         VanillaHudFeature.INSTANCE.setEnabled(enabled);
                         VanillaHudFeature.INSTANCE.saveConfig();
-                    }));
-            panel.add(VantaUiNode.text(
-                    "Native Minecraft rendering is retained; this changes only the component position.",
-                    VantaUiTheme.TEXT_MUTED));
+                    }), 70, labelWidth));
         }
 
-        panel.add(VantaComponents.divider());
-        panel.add(VantaUiNode.text("Background", VantaUiTheme.TEXT_MUTED));
-        panel.add(toggleRow("Show dark background",
-                () -> selected != null && VantaClientPreferences.get()
+        panel.add(MenuComponents.sectionTitle("Background"));
+        panel.add(MenuComponents.settingRow(font, "Show dark background", null,
+                toggleControl(() -> selected != null && VantaClientPreferences.get()
                         .isHudBackgroundEnabled(selected.getBackgroundId()),
-                enabled -> {
-                    if (selected != null) {
-                        VantaClientPreferences.get().setHudBackgroundEnabled(
-                                selected.getBackgroundId(), enabled);
-                    }
-                }));
-        panel.add(toggleRow("Connect nearby backgrounds",
-                () -> VantaClientPreferences.get().connectHudBackgrounds,
-                enabled -> {
-                    VantaClientPreferences.get().connectHudBackgrounds = enabled;
-                    VantaClientPreferences.save();
-                }));
-        panel.add(VantaUiNode.slider("Connection distance", 0, 24, 1,
-                () -> VantaClientPreferences.get().hudBackgroundConnectionGap,
-                value -> {
-                    VantaClientPreferences.get().hudBackgroundConnectionGap =
-                            Math.max(0, Math.min(24, (int) Math.round(value)));
-                    VantaClientPreferences.save();
-                }));
-        panel.add(VantaUiNode.paragraph(
-                "Connected hitboxes merge into one continuous panel. Background opacity is 80%.",
-                VantaUiTheme.TEXT_MUTED, 2));
+                        enabled -> {
+                            if (selected != null) {
+                                VantaClientPreferences.get().setHudBackgroundEnabled(
+                                        selected.getBackgroundId(), enabled);
+                            }
+                        }), 70, labelWidth));
+        panel.add(MenuComponents.settingRow(font, "Connect nearby backgrounds",
+                "Merges close hitboxes into one panel.",
+                toggleControl(() -> VantaClientPreferences.get().connectHudBackgrounds,
+                        enabled -> {
+                            VantaClientPreferences.get().connectHudBackgrounds = enabled;
+                            VantaClientPreferences.save();
+                        }), 70, labelWidth));
+        panel.add(MenuComponents.settingRow(font, "Connection distance", null,
+                VantaUiNode.slider("", 0, 24, 1,
+                        () -> VantaClientPreferences.get().hudBackgroundConnectionGap,
+                        value -> {
+                            VantaClientPreferences.get().hudBackgroundConnectionGap =
+                                    Math.max(0, Math.min(24, (int) Math.round(value)));
+                            VantaClientPreferences.save();
+                        }).menuStyle().height(30), 230, labelWidth));
 
-        panel.add(VantaComponents.divider());
-        panel.add(VantaUiNode.text("Grid and snapping", VantaUiTheme.TEXT_MUTED));
-        panel.add(toggleRow("Snap to grid",
-                () -> VantaClientPreferences.get().hudSnapToGrid,
-                value -> {
-                    VantaClientPreferences.get().hudSnapToGrid = value;
-                    VantaClientPreferences.save();
-                }));
-        panel.add(toggleRow("Show grid",
-                () -> VantaClientPreferences.get().hudShowGrid,
-                value -> {
-                    VantaClientPreferences.get().hudShowGrid = value;
-                    VantaClientPreferences.save();
-                }));
-        panel.add(VantaUiNode.dropdown("Grid spacing",
-                java.util.List.of("8 px", "16 px", "24 px", "32 px"),
-                () -> VantaClientPreferences.get().hudGridSize + " px",
-                value -> {
-                    VantaClientPreferences.get().hudGridSize =
-                            Integer.parseInt(value.substring(0, value.indexOf(' ')));
-                    VantaClientPreferences.save();
-                }));
-        panel.add(VantaUiNode.row(0, 0).height(42).add(
-                name.vantaclient.client.gui.menu.MenuComponents.button(mc.font, "Done", null, true,
-                        HudSettingsPanel::close).flex(1)));
+        panel.add(MenuComponents.sectionTitle("Grid"));
+        panel.add(MenuComponents.settingRow(font, "Snap to grid", null,
+                toggleControl(() -> VantaClientPreferences.get().hudSnapToGrid,
+                        value -> {
+                            VantaClientPreferences.get().hudSnapToGrid = value;
+                            VantaClientPreferences.save();
+                        }), 70, labelWidth));
+        panel.add(MenuComponents.settingRow(font, "Show grid", null,
+                toggleControl(() -> VantaClientPreferences.get().hudShowGrid,
+                        value -> {
+                            VantaClientPreferences.get().hudShowGrid = value;
+                            VantaClientPreferences.save();
+                        }), 70, labelWidth));
+        panel.add(MenuComponents.settingRow(font, "Grid spacing", null,
+                VantaUiNode.dropdown("", java.util.List.of("8 px", "16 px", "24 px", "32 px"),
+                        () -> VantaClientPreferences.get().hudGridSize + " px",
+                        value -> {
+                            VantaClientPreferences.get().hudGridSize =
+                                    Integer.parseInt(value.substring(0, value.indexOf(' ')));
+                            VantaClientPreferences.save();
+                        }).menuStyle().height(34), 150, labelWidth));
+        panel.add(VantaUiNode.row(0, 0).height(46).add(
+                MenuComponents.button(font, "Done", null, true, HudSettingsPanel::close).flex(1)));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
                 .width(panelWidth)
@@ -193,13 +188,9 @@ public final class HudSettingsPanel {
         return root;
     }
 
-    /** Label on the left, Vanta switch on the right, matching the main menu's setting rows. */
-    private static VantaUiNode toggleRow(String label, java.util.function.BooleanSupplier value,
-                                         java.util.function.Consumer<Boolean> setter) {
-        VantaUiNode row = VantaUiNode.row(8, 0).height(38).align(VantaUiNode.Alignment.CENTER);
-        row.add(VantaUiNode.text(label, VantaUiTheme.TEXT_PRIMARY).flex(1));
-        row.add(name.vantaclient.client.gui.menu.ModSettingsPage.toggleControl(value, setter).width(70));
-        return row;
+    private static VantaUiNode toggleControl(java.util.function.BooleanSupplier value,
+                                              java.util.function.Consumer<Boolean> setter) {
+        return name.vantaclient.client.gui.menu.ModSettingsPage.toggleControl(value, setter);
     }
 
     private static String selectedName() {
