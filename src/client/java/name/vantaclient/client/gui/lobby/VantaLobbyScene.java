@@ -33,7 +33,9 @@ public final class VantaLobbyScene {
         float deltaSeconds = lastFrameNanos == 0L
                 ? 0.0f : (now - lastFrameNanos) / 1_000_000_000.0f;
         lastFrameNanos = now;
-        CAMERA.update(mouseX, mouseY, width, height, deltaSeconds);
+        double elapsedSeconds = Math.max(0L, now - openedAtNanos) / 1_000_000_000.0;
+        boolean animationsEnabled = name.vantaclient.client.config.VantaClientPreferences.get().animations;
+        CAMERA.update(mouseX, mouseY, width, height, deltaSeconds, elapsedSeconds, animationsEnabled);
     }
 
     public static VantaLobbyCamera camera() {
