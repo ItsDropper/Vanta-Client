@@ -92,21 +92,22 @@ public final class VantaLobbyCamera {
         }
 
         double time = Double.isFinite(elapsedSeconds) ? Math.max(0.0, elapsedSeconds) : 0.0;
-        float opening = 1.0f - easeOutCubic((float) (time / INTRO_SECONDS));
-        sceneYaw = pointerSceneYaw - INTRO_YAW * -opening
-                + (float) Math.sin(time * 0.17) * SWAY_YAW;
+        float settled = easeOutCubic((float) (time / INTRO_SECONDS));
+        float opening = 1.0f - settled;
+        sceneYaw = pointerSceneYaw + INTRO_YAW * opening
+                + (float) Math.sin(time * 0.17) * SWAY_YAW * settled;
         scenePitch = pointerScenePitch + INTRO_PITCH * opening
-                + (float) Math.sin(time * 0.23 + 0.7) * SWAY_PITCH;
+                + (float) Math.sin(time * 0.23 + 0.7) * SWAY_PITCH * settled;
 
         // A small lateral arc during the crane-in gives the camera a real 3D path,
         // followed by barely perceptible positional drift once it reaches its mark.
         float arc = (float) Math.sin(Math.PI * clamp((float) (time / INTRO_SECONDS), 0.0f, 1.0f));
         cameraOffsetX = INTRO_CAMERA_X * opening + arc * 0.32f
-                + (float) Math.sin(time * 0.11) * DRIFT_X;
+                + (float) Math.sin(time * 0.11) * DRIFT_X * settled;
         cameraOffsetY = INTRO_CAMERA_Y * opening + arc * 0.16f
-                + (float) Math.sin(time * 0.29) * DRIFT_Y;
+                + (float) Math.sin(time * 0.29) * DRIFT_Y * settled;
         cameraOffsetZ = INTRO_CAMERA_Z * opening
-                + (float) Math.cos(time * 0.13) * DRIFT_Z;
+                + (float) Math.cos(time * 0.13) * DRIFT_Z * settled;
 
         // The avatar has its own restrained idle pose instead of remaining a rigid statue.
         avatarHeadYaw = subjectYaw + (float) Math.sin(time * 0.41) * 1.1f;
