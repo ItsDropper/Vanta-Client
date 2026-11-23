@@ -1747,12 +1747,22 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         // Wait for the first real terrain frame instead of sleeping a fixed four seconds.
         // This captures the camera near the beginning of its entrance, not after it has settled.
         boolean worldReady = false;
-        for (int tick = 0; tick < 100 && !worldReady; tick++) {
+        for (int tick = 0; tick < 200 && !worldReady; tick++) {
             context.waitTicks(1);
             worldReady = context.computeOnClient(client -> VantaLobbyWorld.isWorldReadyForDisplay());
         }
         if (!worldReady) {
-            throw new AssertionError("Title lobby did not finish rendering its world within 100 ticks.");
+            throw new AssertionError("Title lobby did not finish compiling its terrain within 200 ticks.");
+        }
+
+        // Capture the authored resting composition, not the first partial chunk frame or
+        // the wide, elevated opening pose. The runtime still plays the five-second entrance.
+        for (int tick = 0; tick < 110; tick++) {
+            if (context.computeOnClient(client -> VantaLobbyScene.cameraElapsedMillis() >= 5_000L)) break;
+            context.waitTicks(1);
+        }
+        if (context.computeOnClient(client -> VantaLobbyScene.cameraElapsedMillis() < 5_000L)) {
+            throw new AssertionError("Lobby camera entrance did not reach its settled composition.");
         }
         context.runOnClient(client -> {
             if (!VantaLobbyWorld.isWorldReadyForDisplay()) {
