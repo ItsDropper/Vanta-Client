@@ -251,6 +251,10 @@ public final class VantaLobbyWorld {
                         random.nextDouble(-0.012, -0.003),
                         random.nextDouble(-0.012, 0.006));
             }
+            // The real Minecraft tick skips ParticleEngine while the client has no
+            // active world. The lobby swaps its ClientLevel only for rendering/ticking,
+            // so advance the particle queue here as part of the isolated world tick.
+            mc.particleEngine.tick();
             mc.gameRenderer.tick();
             level.tickBlockEntities();
             level.tick(() -> true);
