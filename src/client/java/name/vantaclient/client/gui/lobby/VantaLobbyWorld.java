@@ -86,6 +86,8 @@ public final class VantaLobbyWorld {
     private static boolean active;
     private static long nextStartAttemptNanos;
     private static boolean terrainRendered;
+    private static long firstTerrainFrameNanos;
+    private static final long TERRAIN_WARMUP_NANOS = 2_500_000_000L;
     private static boolean swapped;
     private static ClientLevel previousLevel;
     private static LocalPlayer previousPlayer;
@@ -142,13 +144,26 @@ public final class VantaLobbyWorld {
         diagnose("renderLevel-tail", Minecraft.getInstance());
         if (!active || level == null || Minecraft.getInstance().level != level || terrainRendered) return;
         int renderedSections = getVisibleTerrainSectionCount();
-        // renderLevel's tail is reached only after the actual terrain pass. Requiring
-        // hasRenderedAllSections() here deadlocks some startup/render backends: they
-        // keep reporting pending section work even while visible terrain is on screen.
-        if (renderedSections > 0) {
+        if (renderedSections <= 0) return;
+
+        long now = System.nanoTime();
+        if (firstTerrainFrameNanos == 0L) {
+            firstTerrainFrameNanos = now;
+            java.util.logging.Logger.getLogger("VantaClient").info(
+                    "Vanta title world began producing terrain (" + renderedSections + " visible sections)");
+            return;
+        }
+
+        // The chunk renderer compiles the injected ClientLevel asynchronously. A non-zero
+        // visible count only proves that the first section arrived; removing the panorama
+        // at that point exposes a mostly empty sky while the remaining scene is still compiling.
+        // Keep the fallback panorama until the initial chunk compilation has had time to settle.
+        long warmupNanos = now - firstTerrainFrameNanos;
+        if (warmupNanos >= TERRAIN_WARMUP_NANOS) {
             terrainRendered = true;
             java.util.logging.Logger.getLogger("VantaClient").info(
-                    "Vanta title world is visible (" + renderedSections + " rendered sections)");
+                    "Vanta title world is ready (" + renderedSections + " visible sections, "
+                            + (warmupNanos / 1_000_000L) + " ms warmup)");
         }
     }
 
@@ -192,6 +207,7 @@ public final class VantaLobbyWorld {
             // Start the camera clock only after the isolated ClientLevel and its chunks exist.
             VantaLobbyScene.restartCameraIntro();
             terrainRendered = false;
+            firstTerrainFrameNanos = 0L;
             active = true;
             nextStartAttemptNanos = 0L;
         } catch (Throwable error) {
@@ -618,6 +634,7 @@ public final class VantaLobbyWorld {
         }
         mc.particleEngine.setLevel(mc.level);
         terrainRendered = false;
+        firstTerrainFrameNanos = 0L;
         level = null;
         listener = null;
         gameMode = null;
