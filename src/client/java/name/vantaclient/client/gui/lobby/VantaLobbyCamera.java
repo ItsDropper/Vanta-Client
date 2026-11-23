@@ -31,6 +31,10 @@ public final class VantaLobbyCamera {
     private float pointerY = 0.5f;
     private float pointerSceneYaw;
     private float pointerScenePitch;
+    private float pointerSceneYawVelocity;
+    private float pointerScenePitchVelocity;
+    private float subjectYawVelocity;
+    private float subjectPitchVelocity;
     private float sceneYaw;
     private float scenePitch;
     private float subjectYaw;
@@ -47,6 +51,10 @@ public final class VantaLobbyCamera {
         pointerY = 0.5f;
         pointerSceneYaw = 0.0f;
         pointerScenePitch = 0.0f;
+        pointerSceneYawVelocity = 0.0f;
+        pointerScenePitchVelocity = 0.0f;
+        subjectYawVelocity = 0.0f;
+        subjectPitchVelocity = 0.0f;
         sceneYaw = 0.0f;
         scenePitch = 0.0f;
         subjectYaw = 0.0f;
@@ -130,17 +138,33 @@ public final class VantaLobbyCamera {
         float targetSubjectYaw = horizontal * MAX_SUBJECT_YAW;
         float targetSubjectPitch = vertical * MAX_SUBJECT_PITCH;
 
-        float delta = clamp(deltaSeconds, 0.0f, 0.05f);
+        float delta = Float.isFinite(deltaSeconds) ? clamp(deltaSeconds, 0.0f, 0.05f) : 0.0f;
         boolean resting = Math.abs(horizontal) < 0.015f && Math.abs(vertical) < 0.015f;
         float rate = resting ? REST_RATE : FOLLOW_RATE;
-        float blend = interpolate
-                ? 1.0f - (float) Math.exp(-rate * delta)
-                : 1.0f;
+        if (!interpolate) {
+            pointerSceneYaw = targetSceneYaw;
+            pointerScenePitch = targetScenePitch;
+            subjectYaw = targetSubjectYaw;
+            subjectPitch = targetSubjectPitch;
+            pointerSceneYawVelocity = 0.0f;
+            pointerScenePitchVelocity = 0.0f;
+            subjectYawVelocity = 0.0f;
+            subjectPitchVelocity = 0.0f;
+            return;
+        }
 
-        pointerSceneYaw = approach(pointerSceneYaw, targetSceneYaw, blend);
-        pointerScenePitch = approach(pointerScenePitch, targetScenePitch, blend);
-        subjectYaw = approach(subjectYaw, targetSubjectYaw, blend);
-        subjectPitch = approach(subjectPitch, targetSubjectPitch, blend);
+        SpringState yaw = spring(pointerSceneYaw, pointerSceneYawVelocity, targetSceneYaw, rate, delta);
+        pointerSceneYaw = yaw.value();
+        pointerSceneYawVelocity = yaw.velocity();
+        SpringState pitch = spring(pointerScenePitch, pointerScenePitchVelocity, targetScenePitch, rate, delta);
+        pointerScenePitch = pitch.value();
+        pointerScenePitchVelocity = pitch.velocity();
+        SpringState headYaw = spring(subjectYaw, subjectYawVelocity, targetSubjectYaw, rate, delta);
+        subjectYaw = headYaw.value();
+        subjectYawVelocity = headYaw.velocity();
+        SpringState headPitch = spring(subjectPitch, subjectPitchVelocity, targetSubjectPitch, rate, delta);
+        subjectPitch = headPitch.value();
+        subjectPitchVelocity = headPitch.velocity();
     }
 
     public float sceneYaw() { return sceneYaw; }
@@ -166,8 +190,18 @@ public final class VantaLobbyCamera {
         return 1.0f - inverse * inverse * inverse;
     }
 
-    private static float approach(float current, float target, float amount) {
-        return current + (target - current) * amount;
+    private record SpringState(float value, float velocity) {}
+
+    /** Exact critically damped spring step; stable across frame rates and free of overshoot. */
+    private static SpringState spring(float current, float velocity, float target,
+                                      float angularFrequency, float deltaSeconds) {
+        if (deltaSeconds <= 0.0f) return new SpringState(current, velocity);
+        float displacement = current - target;
+        float coupling = velocity + angularFrequency * displacement;
+        float decay = (float) Math.exp(-angularFrequency * deltaSeconds);
+        float value = target + (displacement + coupling * deltaSeconds) * decay;
+        float nextVelocity = (velocity - angularFrequency * coupling * deltaSeconds) * decay;
+        return new SpringState(value, nextVelocity);
     }
 
     private static float clamp(float value, float minimum, float maximum) {
