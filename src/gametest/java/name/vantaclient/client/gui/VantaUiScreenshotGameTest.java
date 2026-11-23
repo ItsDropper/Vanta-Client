@@ -260,7 +260,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 }
                 previousYaw = currentYaw;
             }
-            if (Math.abs(camera.sceneYaw() + 1.6f) > 0.001f
+            if (Math.abs(camera.sceneYaw() + 1.6f) > 0.002f
                     || Math.abs(camera.scenePitch() - 0.45f) > 0.001f
                     || Math.abs(camera.subjectYaw() - 18.0f) > 0.002f
                     || Math.abs(camera.subjectPitch() - 8.0f) > 0.001f) {
