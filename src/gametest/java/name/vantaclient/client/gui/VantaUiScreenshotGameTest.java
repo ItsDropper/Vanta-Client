@@ -37,6 +37,7 @@ import name.vantaclient.client.integration.net.VantaRelayClient;
 import name.vantaclient.client.integration.net.VantaRemoteSessionManager;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
+import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
