@@ -5,6 +5,7 @@ import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.LevelTargetBundle;
+import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
 
 /**
