@@ -393,25 +393,25 @@ public final class VantaTitleUi {
         }
 
         // Play card, bottom right.
-        cardW = s(304);
-        cardH = entries.isEmpty() ? s(212) : s(302);
+        cardW = s(260);
+        cardH = entries.isEmpty() ? s(176) : s(224);
         cardX = w - margin - cardW;
         cardY = bottom - cardH;
-        int pad = s(14);
+        int pad = s(12);
         int innerW = cardW - pad * 2;
-        bounds(segSingle, cardX + pad + s(3), cardY + pad + s(3), innerW / 2 - s(3), s(34));
-        bounds(segMulti, cardX + pad + innerW / 2, cardY + pad + s(3), innerW / 2 - s(3), s(34));
-        int bodyY = cardY + pad + s(40) + s(16);
-        int playY = bodyY + s(66) + s(18);
-        bounds(play, cardX + pad, playY, innerW, s(48));
-        int recentY = playY + s(48) + s(16);
-        int tile = s(34);
+        bounds(segSingle, cardX + pad + s(3), cardY + pad + s(3), innerW / 2 - s(3), s(28));
+        bounds(segMulti, cardX + pad + innerW / 2, cardY + pad + s(3), innerW / 2 - s(3), s(28));
+        int bodyY = cardY + pad + s(34) + s(10);
+        int playY = bodyY + s(52) + s(12);
+        bounds(play, cardX + pad, playY, innerW, s(38));
+        int recentY = playY + s(38) + s(10);
+        int tile = s(28);
         for (int i = 0; i < recent.length; i++) {
-            bounds(recent[i], cardX + pad + s(56) + i * (tile + s(8)), recentY, tile, tile);
+            bounds(recent[i], cardX + pad + s(46) + i * (tile + s(6)), recentY, tile, tile);
             recent[i].visible = i < entries.size();
             recent[i].active = recent[i].visible;
         }
-        bounds(all, cardX + cardW - pad - s(78), recentY + s(1), s(78), s(32));
+        bounds(all, cardX + cardW - pad - s(66), recentY + s(1), s(66), s(26));
         all.visible = !entries.isEmpty();
         all.active = all.visible;
 
@@ -735,7 +735,7 @@ public final class VantaTitleUi {
 
         // Segmented control.
         int segY = y + pad;
-        VantaUiTheme.fillSquircle(g, x + pad, segY, innerW, s(40), s(12), alpha(0xFF05080E, 0.7f * a));
+        VantaUiTheme.fillSquircle(g, x + pad, segY, innerW, s(34), s(12), alpha(0xFF05080E, 0.7f * a));
         int half = innerW / 2;
         int thumbX = x + pad + s(3) + Math.round(segSlide * half);
         VantaUiTheme.fillSquircle(g, thumbX, segY + s(3), half - s(3), s(34), s(10), alpha(accent, a));
@@ -754,28 +754,28 @@ public final class VantaTitleUi {
         }
 
         // Selected world or server.
-        int bodyY = segY + s(40) + s(16) + 0;
-        int tile = s(66);
+        int bodyY = segY + s(34) + s(10);
+        int tile = s(52);
         Entry entry = entries.isEmpty() ? null : entries.get(Math.min(selected, entries.size() - 1));
         drawTile(g, x + pad, bodyY, tile, entry, a, accent, s(16), true);
-        int tx = x + pad + tile + s(14);
+        int tx = x + pad + tile + s(10);
         int maxW = cardW - pad - (tx - x);
         if (entry == null) {
             boolean waiting = tab == Tab.SINGLEPLAYER && worlds == null;
             text(g, waiting ? "Loading worlds" : tab == Tab.SINGLEPLAYER ? "No worlds yet" : "No servers yet",
-                    tx, bodyY + s(22), 16, alpha(TEXT_BRIGHT, a), true);
+                    tx, bodyY + s(16), 14, alpha(TEXT_BRIGHT, a), true);
             text(g, tab == Tab.SINGLEPLAYER ? "Create your first one" : "Add a server to play online",
-                    tx, bodyY + s(46), 12, alpha(TEXT_DIM, a), false);
+                    tx, bodyY + s(34), 11, alpha(TEXT_DIM, a), false);
         } else {
-            text(g, fit(entry.title(), 17, true, maxW), tx, bodyY + s(18), 17, alpha(TEXT_BRIGHT, a), true);
-            renderSubtitle(g, entry, tx, bodyY + s(44), maxW, a);
+            text(g, fit(entry.title(), 17, true, maxW), tx, bodyY + s(14), 15, alpha(TEXT_BRIGHT, a), true);
+            renderSubtitle(g, entry, tx, bodyY + s(34), maxW, a);
         }
 
         // Play button.
         Item playItem = items.get(play);
         int playY = play.getY();
         int btnColor = mix(accent, 0xFFFFFFFF, 0.14f * playItem.hover);
-        VantaAmbience.glow(g, play.getX() + play.getWidth() / 2, playY + play.getHeight() / 2 + s(6),
+        VantaAmbience.glow(g, play.getX() + play.getWidth() / 2, playY + play.getHeight() / 2 + s(4),
                 Math.round(play.getWidth() * 0.62f), accent, (0.10f + 0.14f * playItem.hover) * a);
         VantaUiTheme.fillSquircle(g, play.getX(), playY, play.getWidth(), play.getHeight(), s(14), alpha(btnColor, a));
         VantaAmbience.sheen(g, play.getX(), playY, play.getWidth(), play.getHeight(),
@@ -792,7 +792,7 @@ public final class VantaTitleUi {
         // Recent row, only when there is something to show.
         if (entries.isEmpty()) return;
         int rowY = recent[0].getY();
-        text(g, "Recent", x + pad, rowY + s(17), 12, alpha(TEXT_DIM, a), false);
+        text(g, "Recent", x + pad, rowY + s(14), 11, alpha(TEXT_DIM, a), false);
         for (int i = 0; i < recent.length; i++) {
             if (!recent[i].visible) continue;
             Item item = items.get(recent[i]);
