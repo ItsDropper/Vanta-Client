@@ -738,7 +738,7 @@ public final class VantaTitleUi {
         VantaUiTheme.fillSquircle(g, x + pad, segY, innerW, s(34), s(12), alpha(0xFF05080E, 0.7f * a));
         int half = innerW / 2;
         int thumbX = x + pad + s(3) + Math.round(segSlide * half);
-        VantaUiTheme.fillSquircle(g, thumbX, segY + s(3), half - s(3), s(34), s(10), alpha(accent, a));
+        VantaUiTheme.fillSquircle(g, thumbX, segY + s(3), half - s(3), s(28), s(10), alpha(accent, a));
         for (AbstractButton seg : new AbstractButton[]{segSingle, segMulti}) {
             Item item = items.get(seg);
             boolean active = (seg == segSingle) == (tab == Tab.SINGLEPLAYER);
