@@ -10,6 +10,9 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModrinthBrowserService;
 import name.vantaclient.client.platform.ClientPlatform;
+import name.vantaclient.client.gui.menu.MenuComponents;
+import name.vantaclient.client.gui.menu.MenuIcons;
+import name.vantaclient.client.gui.menu.MenuTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -93,169 +96,123 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         }
     }
 
+    private static final int MAX_WIDTH = 1040;
+    private static final int MAX_HEIGHT = 640;
+
+    private float zoom() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale <= 0) guiScale = 1.0f;
+        float userScale = (float) VantaClientPreferences.get().uiScale;
+        if (!Float.isFinite(userScale) || userScale <= 0) userScale = 1.0f;
+        float fit = Math.min(width * guiScale * 0.94f / MAX_WIDTH, height * guiScale * 0.90f / MAX_HEIGHT) / userScale;
+        float stepped = Math.round(fit * 8.0f) / 8.0f;
+        return Math.max(0.5f, Math.min(3.0f, stepped));
+    }
+
+    private boolean compactLayout() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale < 1.0f) guiScale = 1.0f;
+        return width * guiScale / (float) Math.max(0.5, VantaClientPreferences.get().uiScale) < 860.0f;
+    }
+
     private void rebuildUi() {
         if (runtime != null) runtime.dispose();
-        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
+        boolean compact = compactLayout();
 
-        VantaUiNode root = VantaUiNode.column(compact ? 4 : 14, compact ? 5 : 16)
-                .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL))
-                .padding(compact ? 4 : 14)
-                .clipToBounds();
+        VantaUiNode shell = VantaUiNode.stack(0);
+        shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.fill(g, x - 3, y + 4, w + 6, h + 4, 22, 0x1E000000);
+            MenuTheme.gradient(g, x, y, w, h, 18, MenuTheme.panel(), MenuTheme.panelBottom());
+            MenuTheme.outline(g, x, y, w, h, 18, 0x38FFFFFF);
+        }));
 
-        VantaUiNode header = VantaUiNode.row(compact ? 8 : 12, 0)
-                .height(compact ? 30 : 50)
-                .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode identity = VantaComponents.sectionHeader(
-                "VANTA CLIENT / LIBRARY", "Modrinth", null).flex(1);
-        header.add(identity);
-        if (VantaUiRuntime.designWidth(width, height) >= WIDE_LAYOUT_THRESHOLD) {
-            header.add(VantaUiNode.text("Minecraft "
-                    + ClientPlatform.minecraftVersion(),
-                    VantaUiTheme.TEXT_MUTED));
-        }
-        header.add(VantaComponents.actionButton("Back", VantaUiNode.Icon.OVERVIEW,
-                VantaComponents.ButtonVariant.SECONDARY, this::onClose).size(82, 30));
-        root.add(header);
+        VantaUiNode page = VantaUiNode.column(0, 0);
+        VantaUiNode bar = VantaUiNode.row(compact ? 6 : 10, compact ? 12 : 22)
+                .height(compact ? 64 : 84).align(VantaUiNode.Alignment.CENTER);
+        bar.add(MenuComponents.iconButton(MenuIcons.Icon.ARROW_LEFT, "Back", true, this::onClose));
+        bar.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, "Mod library", x + 6, y + h / 2 - 8, MenuTheme.TEXT, MenuTheme.FONT_HEADING);
+            MenuTheme.text(g, f, "Fabric mods for Minecraft " + ClientPlatform.minecraftVersion(),
+                    x + 6, y + h / 2 + 16, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+        }).flex(1).height(48));
+        bar.add(MenuComponents.button(font, "Installed", null, installedView, this::showInstalled)
+                .size(compact ? 92 : 112, 38).enabled(!busy));
+        bar.add(MenuComponents.button(font, "Discover", null, !installedView, this::showDiscover)
+                .size(compact ? 92 : 112, 38).enabled(!busy));
+        page.add(bar);
 
+        VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 22).flex(1);
         if (!installedView) {
-            VantaUiNode search = VantaUiNode.row(compact ? 6 : 10, compact ? 6 : 10)
-                    .height(compact ? 30 : 48)
-                    .background(VantaUiTheme.INPUT_SURFACE)
-                    .align(VantaUiNode.Alignment.CENTER);
-            search.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH));
-            search.add(VantaUiNode.textField("Search Fabric mods…",
-                    () -> searchQuery,
-                    value -> searchQuery = value,
-                    100).flex(1).minSize(54, 30));
-            search.add(VantaComponents.actionButton("Search", VantaUiNode.Icon.SEARCH,
-                    VantaComponents.ButtonVariant.PRIMARY, this::search).size(100, 30).enabled(!busy));
-            if (!compact) search.add(VantaUiNode.button("Clear", () -> {
-                if (busy) return;
-                searchQuery = "";
-                search();
-            }).size(46, 30).enabled(!busy));
-            root.add(search);
+            VantaUiNode search = VantaUiNode.row(10, 0).height(48).align(VantaUiNode.Alignment.CENTER);
+            VantaUiNode field = VantaUiNode.row(0, 0).height(48).flex(1)
+                    .background(MenuTheme.FIELD).radius(13).border(0x33FFFFFF);
+            field.add(VantaUiNode.textField("Search Fabric mods", () -> searchQuery,
+                    value -> searchQuery = value, 100).menuStyle().height(48).flex(1));
+            search.add(field);
+            search.add(MenuComponents.button(font, "Search", MenuIcons.Icon.SEARCH, true, this::search)
+                    .size(120, 44).enabled(!busy));
+            content.add(search);
         }
+        content.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f,
+                MenuTheme.fit(f, busy ? "Working…" : status, w - 4, MenuTheme.FONT_SMALL), x + 2, y + h / 2,
+                MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL)).height(20));
+        if (busy) content.add(VantaUiNode.progressIndicator("Working…").height(26));
 
-        VantaUiNode body = compact
-                ? VantaUiNode.column(6, 0).flex(1)
-                : VantaUiNode.row(14, 0).flex(1);
-        VantaUiNode sidebar = compact
-                ? VantaUiNode.row(4, 4).height(26)
-                        .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                        .padding(4)
-                : VantaUiNode.column(8, 10).width(164)
-                        .background(VantaUiTheme.applyPanelOpacity(VantaUiTheme.PANEL_RAISED))
-                        .padding(12);
-        if (compact) {
-            sidebar.add(VantaUiNode.button("Installed", VantaUiNode.Icon.OVERVIEW,
-                    this::showInstalled).height(22).flex(1)
-                    .selected(installedView).enabled(!busy));
-            sidebar.add(VantaUiNode.button("Discover", VantaUiNode.Icon.SEARCH,
-                    this::showDiscover).height(22).flex(1)
-                    .selected(!installedView).enabled(!busy));
-        } else {
-            sidebar.add(VantaUiNode.eyebrow("Library"));
-            sidebar.add(VantaUiNode.button("Installed", VantaUiNode.Icon.OVERVIEW,
-                    this::showInstalled).height(34).selected(installedView).enabled(!busy));
-            sidebar.add(VantaUiNode.button("Discover", VantaUiNode.Icon.SEARCH,
-                    this::showDiscover).height(34).selected(!installedView).enabled(!busy));
-            sidebar.add(VantaUiNode.spacer(4));
-            sidebar.add(VantaUiNode.button("Vanta Client", VantaUiNode.Icon.BRAND,
-                    this::onClose).height(34));
-            sidebar.add(VantaUiNode.spacer(1).flex(1));
-            sidebar.add(VantaUiNode.eyebrow("Installation"));
-            sidebar.add(VantaUiNode.paragraph(
-                    "Fabric-compatible files only. Most new mods require a Minecraft restart.",
-                    VantaUiTheme.TEXT_MUTED, 4));
-        }
-        body.add(sidebar);
-
-        VantaUiNode main = VantaComponents.panel(VantaComponents.Surface.ELEVATED,
-                compact ? 4 : 8, compact ? 5 : 14).flex(1);
-        VantaUiNode heading = VantaUiNode.row(8, 0)
-                .height(compact ? 16 : 24)
-                .align(VantaUiNode.Alignment.CENTER);
-        heading.add(VantaUiNode.eyebrow(installedView ? "INSTALLED MODS" : "DISCOVER MODS"));
-        heading.add(VantaUiNode.spacer(1).flex(1));
-        heading.add(VantaUiNode.dynamicText(
-                () -> busy ? "Working…" : trim(status, VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD ? 18 : 24),
-                VantaUiTheme.TEXT_MUTED).flex(1).align(VantaUiNode.Alignment.END));
-        main.add(heading);
-        if (busy) {
-            main.add(VantaUiNode.progressIndicator("Working…").height(30));
-        }
-
-        VantaUiNode cards = VantaComponents.panel(VantaComponents.Surface.FIELD,
-                compact ? 4 : 8, compact ? 4 : 8).flex(1).scrollable();
+        VantaUiNode cards = VantaUiNode.column(12, 0).flex(1).scrollable();
         if (busy && visibleCount() == 0) {
-            VantaUiNode loading = VantaUiNode.column(8, 16)
-                    .height(132)
-                    .background(VantaUiTheme.PANEL_RAISED)
-                    .align(VantaUiNode.Alignment.CENTER);
-            loading.add(VantaUiNode.icon(VantaUiNode.Icon.SEARCH).iconColor(VantaUiTheme.TEXT_MUTED));
-            loading.add(VantaUiNode.title(installedView ? "Scanning installed mods" : "Searching Modrinth"));
-            loading.add(VantaUiNode.text("This runs asynchronously. The interface remains responsive.",
-                    VantaUiTheme.TEXT_MUTED));
-            cards.add(loading);
+            cards.add(emptyPanel(installedView ? "Scanning installed mods" : "Searching Modrinth",
+                    "This runs in the background. The interface stays responsive."));
         } else if (visibleCount() == 0) {
-            cards.add(VantaComponents.emptyState(VantaUiNode.Icon.OVERVIEW,
-                    emptyTitle(), emptyDescription(), null, null).height(140));
+            cards.add(emptyPanel(emptyTitle(), emptyDescription()));
         } else {
             addVisibleCards(cards);
         }
-        main.add(cards);
+        content.add(cards);
 
-        boolean compactViewport = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
         boolean showSessionAction = enableModId != null;
-        VantaUiNode footer = VantaUiNode.column(4, 0)
-                .height(showSessionAction && compactViewport ? 54 : compact ? 22 : 32);
-        VantaUiNode pagination = VantaUiNode.row(6, 0)
-                .height(compact ? 22 : 30)
-                .align(VantaUiNode.Alignment.CENTER);
-        pagination.add(VantaUiNode.button("Previous", () -> changePage(-1))
-                .size(compact ? 64 : 64, compact ? 24 : 30).enabled(!busy && page > 0));
-        pagination.add(VantaUiNode.dynamicText(
-                () -> (page + 1) + " / " + pageCount(),
-                VantaUiTheme.TEXT_MUTED).width(34));
-        pagination.add(VantaUiNode.button("Next", () -> changePage(1))
-                .size(compact ? 50 : 50, compact ? 24 : 30).enabled(!busy && page + 1 < pageCount()));
+        VantaUiNode pagination = VantaUiNode.row(10, 0).height(40).align(VantaUiNode.Alignment.CENTER);
+        pagination.add(MenuComponents.button(font, "Previous", null, false, () -> changePage(-1))
+                .size(100, 36).enabled(!busy && page > 0));
+        pagination.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.textCentered(g, f,
+                (page + 1) + " of " + pageCount(), x + w / 2, y + h / 2, MenuTheme.TEXT_DIM,
+                MenuTheme.FONT_SMALL)).width(70).height(36));
+        pagination.add(MenuComponents.button(font, "Next", null, false, () -> changePage(1))
+                .size(100, 36).enabled(!busy && page + 1 < pageCount()));
         pagination.add(VantaUiNode.spacer(1).flex(1));
-        if (showSessionAction && !compactViewport) {
-            pagination.add(VantaUiNode.button("Enable now*",
-                    VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
-                    .size(116, 30).enabled(!busy));
+        if (showSessionAction) {
+            pagination.add(MenuComponents.button(font, "Enable now", null, true, this::attemptSessionLoad)
+                    .size(compact ? 124 : 140, 38).enabled(!busy)
+                    .tooltip("Loads the mod into this session. Experimental; a restart is safest."));
         }
-        footer.add(pagination);
-        if (showSessionAction && compactViewport) {
-            VantaUiNode actionRow = VantaUiNode.row(8, 0)
-                    .height(30)
-                    .align(VantaUiNode.Alignment.CENTER);
-            actionRow.add(VantaUiNode.spacer(1).flex(1));
-            actionRow.add(VantaUiNode.button("Enable now*",
-                    VantaUiNode.Icon.SPARK, this::attemptSessionLoad)
-                    .size(116, 30).enabled(!busy));
-            footer.add(actionRow);
-        }
-        main.add(footer);
-        body.add(main);
-        root.add(body);
+        content.add(pagination);
+        page.add(content);
+        shell.add(page);
 
-        runtime = new VantaUiRuntime(root);
+        runtime = new VantaUiRuntime(shell);
         runtime.setScale((float) VantaClientPreferences.get().uiScale);
+        runtime.setZoom(zoom());
+        runtime.setMaxViewportSize(MAX_WIDTH, MAX_HEIGHT);
         if (width > 0 && height > 0) runtime.layout(font, width, height);
+    }
+
+    private VantaUiNode emptyPanel(String title, String detail) {
+        return VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.fill(g, x, y, w, h, 16, 0x5C141926);
+            MenuTheme.outline(g, x, y, w, h, 16, 0x1FFFFFFF);
+            MenuTheme.textCentered(g, f, title, x + w / 2, y + h / 2 - 12, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.textCentered(g, f, MenuTheme.fit(f, detail, w - 40, MenuTheme.FONT_SMALL),
+                    x + w / 2, y + h / 2 + 14, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+        }).height(140);
     }
 
     private void addVisibleCards(VantaUiNode cards) {
         int count = visibleCount();
         int start = Math.min(page * PAGE_SIZE, Math.max(0, count - 1));
         int end = Math.min(count, start + PAGE_SIZE);
-        int columns = VantaUiRuntime.designWidth(width, height) >= WIDE_LAYOUT_THRESHOLD ? 2 : 1;
+        int columns = compactLayout() ? 1 : 2;
 
         for (int index = start; index < end; index += columns) {
-            VantaUiNode row = VantaUiNode.row(8, 0)
-                    .height(VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD ? 88 : 132)
-                    .align(VantaUiNode.Alignment.STRETCH);
+            VantaUiNode row = VantaUiNode.row(12, 0).height(96).align(VantaUiNode.Alignment.STRETCH);
             row.add(installedView
                     ? buildInstalledCard(installedMods.get(index))
                     : buildProjectCard(projects.get(index)));
@@ -270,84 +227,62 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
         }
     }
 
-    private VantaUiNode buildProjectCard(ModrinthBrowserService.Project project) {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
-        VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
-                .flex(1)
-                .height(compact ? 88 : 132)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 6 : 10);
+    private static VantaUiNode letterTile(String initial) {
+        return VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            int accent = MenuTheme.accent();
+            MenuTheme.gradient(g, x, y, w, h, 14, MenuTheme.alpha(accent, 58), MenuTheme.alpha(accent, 24));
+            MenuTheme.outline(g, x, y, w, h, 14, MenuTheme.alpha(accent, 96));
+            MenuTheme.textCentered(g, f, initial, x + w / 2, y + h / 2, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+        }).size(56, 56);
+    }
 
-        VantaUiNode top = VantaUiNode.row(8, 0)
-                .height(compact ? 28 : 42)
+    private VantaUiNode cardShell() {
+        return VantaUiNode.row(14, 16).flex(1).height(96)
+                .background(0x8C141926).border(0x22FFFFFF).radius(16)
                 .align(VantaUiNode.Alignment.CENTER);
+    }
+
+    private VantaUiNode buildProjectCard(ModrinthBrowserService.Project project) {
+        VantaUiNode card = cardShell();
         String initial = project.title().isBlank() ? "?" :
                 project.title().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-        top.add(VantaUiNode.dynamicImage(
-                () -> projectIconTextures.get(project.id()), initial)
-                .size(compact ? 26 : 38, compact ? 26 : 38)
-                .background(VantaUiTheme.SURFACE_SELECTED)
-                .align(VantaUiNode.Alignment.CENTER));
-        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(trim(project.title(), 32), VantaUiTheme.TEXT_PRIMARY));
-        labels.add(VantaUiNode.text(trim(project.author(), 22), VantaUiTheme.TEXT_MUTED));
-        top.add(labels);
-        card.add(top);
-        if (!compact) {
-            card.add(VantaUiNode.paragraph(trim(project.description(), 180),
-                    VantaUiTheme.TEXT_SECONDARY, 2).flex(1));
-        }
-
-        VantaUiNode footer = VantaUiNode.row(8, 0)
-                .height(compact ? 24 : 30)
-                .align(VantaUiNode.Alignment.CENTER);
-        footer.add(VantaUiNode.text(compact(project.downloads()) + " downloads",
-                VantaUiTheme.TEXT_MUTED).flex(1));
-        footer.add(VantaUiNode.button("Install", VantaUiNode.Icon.SPARK,
-                () -> install(project)).height(compact ? 24 : 28).enabled(!busy));
-        card.add(footer);
+        card.add(VantaUiNode.dynamicImage(() -> projectIconTextures.get(project.id()), initial)
+                .size(56, 56).background(MenuTheme.alpha(MenuTheme.accent(), 40)).radius(14));
+        String meta = project.author() + "  ·  " + compact(project.downloads()) + " downloads";
+        card.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, MenuTheme.fit(f, project.title(), w, MenuTheme.FONT_MEDIUM), x, y + 16,
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.text(g, f, MenuTheme.fit(f, meta, w, MenuTheme.FONT_SMALL), x, y + 38,
+                    MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            MenuTheme.text(g, f, MenuTheme.fit(f, project.description(), w, MenuTheme.FONT_SMALL), x, y + 58,
+                    MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+        }).flex(1).height(72));
+        card.add(MenuComponents.button(font, "Install", null, true, () -> install(project))
+                .size(92, 38).enabled(!busy));
         return card;
     }
 
     private VantaUiNode buildInstalledCard(ExperimentalModHotLoader.AvailableMod mod) {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < WIDE_LAYOUT_THRESHOLD;
-        VantaUiNode card = VantaUiNode.column(compact ? 4 : 6, compact ? 6 : 10)
-                .flex(1)
-                .height(compact ? 88 : 132)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(compact ? 6 : 10);
-        VantaUiNode top = VantaUiNode.row(8, 0)
-                .height(compact ? 28 : 42)
-                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode card = cardShell();
         String initial = mod.name().isBlank() ? "?" :
                 mod.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
-        top.add(VantaUiNode.text(initial, VantaUiTheme.TEXT_PRIMARY)
-                .size(compact ? 26 : 38, compact ? 26 : 38)
-                .background(VantaUiTheme.SURFACE_SELECTED)
-                .align(VantaUiNode.Alignment.CENTER));
-        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(trim(mod.name(), 32), VantaUiTheme.TEXT_PRIMARY));
-        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 34),
-                VantaUiTheme.TEXT_MUTED));
-        top.add(labels);
-        card.add(top);
-
+        card.add(letterTile(initial));
         boolean fabricLoaded = fabricLoadedIds.contains(mod.id());
         boolean sessionLoaded = sessionLoadedIds.contains(mod.id());
         String state = fabricLoaded ? "Enabled by Fabric"
-                : sessionLoaded ? "Session-loaded · experimental"
-                : "Installed · restart to load";
-        int stateColor = fabricLoaded ? 0xFF78D6A0
-                : sessionLoaded ? 0xFFFFC978 : VantaUiTheme.TEXT_SECONDARY;
-        card.add(VantaUiNode.text(state, stateColor));
-        if (!compact) {
-            card.add(VantaUiNode.paragraph(fabricLoaded
-                            ? "Fabric loaded this mod at startup."
-                            : sessionLoaded
-                            ? "This mod was loaded experimentally in the current session."
-                            : "The JAR is present, but it has not been loaded by Fabric.",
-                    VantaUiTheme.TEXT_MUTED, 2));
-        }
+                : sessionLoaded ? "Loaded this session (experimental)"
+                : "Installed, restart to load";
+        int stateColor = fabricLoaded ? 0xFF3DD68C : sessionLoaded ? 0xFFF2C14E : 0xFF8B94A6;
+        String meta = mod.id() + "  ·  " + mod.version();
+        card.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, MenuTheme.fit(f, mod.name(), w, MenuTheme.FONT_MEDIUM), x, y + 16,
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.text(g, f, MenuTheme.fit(f, meta, w, MenuTheme.FONT_SMALL), x, y + 38,
+                    MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            MenuTheme.dot(g, x + 5, y + 58, 8, stateColor);
+            MenuTheme.text(g, f, MenuTheme.fit(f, state, w - 18, MenuTheme.FONT_SMALL), x + 16, y + 58,
+                    MenuTheme.mix(stateColor, 0xFFFFFFFF, 0.35f), MenuTheme.FONT_SMALL);
+        }).flex(1).height(72));
         return card;
     }
 

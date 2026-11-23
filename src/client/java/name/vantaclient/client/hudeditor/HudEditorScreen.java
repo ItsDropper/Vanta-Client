@@ -4,6 +4,9 @@ import name.vantaclient.client.gui.VantaText;
 import name.vantaclient.client.gui.compose.VantaCompose;
 import name.vantaclient.client.gui.compose.components.VantaComponents;
 import net.minecraft.client.Minecraft;
+import name.vantaclient.client.gui.menu.MenuComponents;
+import name.vantaclient.client.gui.menu.MenuTheme;
+import name.vantaclient.client.gui.menu.ModSettingsPage;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -47,50 +50,53 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         boolean compact = VantaUiRuntime.designWidth(width, height) < 700.0f
                 || VantaUiRuntime.designHeight(width, height) < 400.0f;
         boolean showGridControl = !compact;
-        int toolbarHeight = compact ? 36 : 56;
+        int toolbarHeight = compact ? 52 : 64;
+        var menuFont = font;
 
         VantaUiNode root = VantaUiNode.row(0, 0).height(toolbarHeight)
                 .align(VantaUiNode.Alignment.START);
-        VantaUiNode toolbar = VantaComponents.panel(VantaComponents.Surface.POPOVER,
-                VantaUiNode.Direction.ROW, compact ? 8 : 12, compact ? 8 : 14)
+        VantaUiNode toolbar = VantaUiNode.row(compact ? 10 : 14, compact ? 14 : 20)
                 .height(toolbarHeight).flex(1)
+                .background(0xEB0B111B).border(0x2EFFFFFF).radius(compact ? 14 : 18)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "vanta", "textures/gui/title/mark_small.png"))
-                .size(compact ? 20 : 26, compact ? 20 : 26));
-        VantaUiNode labels = VantaUiNode.column(2, 0);
-        labels.add(VantaUiNode.title("HUD editor"));
-        if (!compact) {
-            labels.add(VantaUiNode.text("Arrange your on-screen elements",
-                    VantaUiTheme.TEXT_MUTED));
-        }
-        toolbar.add(labels);
+                .size(compact ? 22 : 28, compact ? 22 : 28));
+        toolbar.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, "HUD editor", x, y + (compact ? h / 2 : h / 2 - 9),
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            if (!compact) {
+                MenuTheme.text(g, f, "Drag elements to arrange your screen", x, y + h / 2 + 11,
+                        MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            }
+        }).width(compact ? 96 : 250).height(40));
         toolbar.add(VantaUiNode.spacer(1).flex(1));
         if (showGridControl) {
-            toolbar.add(VantaUiNode.toggle("Grid",
-                    () -> VantaClientPreferences.get().hudShowGrid,
-                    value -> {
-                        VantaClientPreferences.get().hudShowGrid = value;
-                        VantaClientPreferences.save();
-                    }).width(compact ? 76 : 92).tooltip("Show or hide the alignment grid")
-                    .align(VantaUiNode.Alignment.CENTER));
+            toolbar.add(toolbarSwitch("Grid", () -> VantaClientPreferences.get().hudShowGrid, value -> {
+                VantaClientPreferences.get().hudShowGrid = value;
+                VantaClientPreferences.save();
+            }));
         }
-        toolbar.add(VantaUiNode.toggle("Snap",
-                () -> VantaClientPreferences.get().hudSnapToGrid,
-                value -> {
-                    VantaClientPreferences.get().hudSnapToGrid = value;
-                    VantaClientPreferences.save();
-                }).width(compact ? 68 : 84)
-                .tooltip("Snap moved elements to the alignment grid")
-                .align(VantaUiNode.Alignment.CENTER));
-        toolbar.add(VantaComponents.actionButton("Done", null,
-                VantaComponents.ButtonVariant.PRIMARY, this::onClose)
-                .size(compact ? 56 : 82, compact ? 26 : 32)
-                .tooltip("Finish editing the HUD"));
+        toolbar.add(toolbarSwitch("Snap", () -> VantaClientPreferences.get().hudSnapToGrid, value -> {
+            VantaClientPreferences.get().hudSnapToGrid = value;
+            VantaClientPreferences.save();
+        }));
+        toolbar.add(MenuComponents.button(menuFont, "Done", null, true, this::onClose)
+                .size(compact ? 72 : 96, compact ? 34 : 40).tooltip("Finish editing the HUD"));
         root.add(toolbar);
         toolbarRuntime = new VantaUiRuntime(root);
         toolbarRuntime.setScale((float) VantaClientPreferences.get().uiScale);
         toolbarRuntime.layout(font, width, height);
+    }
+
+    private static VantaUiNode toolbarSwitch(String label, java.util.function.Supplier<Boolean> value,
+                                             java.util.function.Consumer<Boolean> setter) {
+        VantaUiNode group = VantaUiNode.row(10, 0).height(40).align(VantaUiNode.Alignment.CENTER);
+        group.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f, label, x, y + h / 2,
+                MenuTheme.TEXT_DIM, MenuTheme.FONT_MEDIUM)).width(MenuTheme.width(
+                Minecraft.getInstance().font, label, MenuTheme.FONT_MEDIUM) + 2).height(32));
+        group.add(ModSettingsPage.toggleControl(value, setter).width(70).height(32));
+        return group;
     }
 
     @Override
@@ -131,30 +137,41 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         super.render(graphics, mouseX, mouseY, delta);
     }
 
+    /** Gui units covering {@code devicePixels} on screen, so overlay chrome keeps one physical size. */
+    private float dev(float devicePixels) {
+        float gui = (float) Minecraft.getInstance().getWindow().getGuiScale();
+        return devicePixels / Math.max(1.0f, gui);
+    }
+
+    private int devInt(float devicePixels) {
+        return Math.max(1, Math.round(dev(devicePixels)));
+    }
+
     private void drawInteractionHint(GuiGraphics graphics, Minecraft mc) {
         String[] hints = HudSettingsPanel.isOpen()
                 ? new String[]{"Adjust settings", "Drag to reposition", "Esc to exit"}
                 : new String[]{"Drag to move", "Click to edit", "Esc to exit"};
-        float size = 11.5f;
-        int gap = 18;
+        float size = dev(13.0f);
+        int gap = devInt(28);
+        int pad = devInt(24);
         // Drop the leading hints until the pill fits the screen so it never runs off the edges.
         int total = hintsWidth(hints, size, gap);
-        while (hints.length > 1 && total + 36 > this.width - 24) {
+        while (hints.length > 1 && total + pad * 2 > this.width - devInt(32)) {
             hints = java.util.Arrays.copyOfRange(hints, 1, hints.length);
             total = hintsWidth(hints, size, gap);
         }
-        int w = total + 36;
-        int h = 26;
+        int w = total + pad * 2;
+        int h = devInt(36);
         int x = (this.width - w) / 2;
-        int y = this.height - h - 14;
-        fillRounded(graphics, x, y, w, h, 13, 0xD60A1018);
-        drawRoundedOutline(graphics, x, y, w, h, 13, 0x2EFFFFFF, 1);
-        int tx = x + 18;
+        int y = this.height - h - devInt(20);
+        fillRounded(graphics, x, y, w, h, h / 2, 0xDB0B111B);
+        drawRoundedOutline(graphics, x, y, w, h, h / 2, 0x2EFFFFFF, 1);
+        int tx = x + pad;
         for (int i = 0; i < hints.length; i++) {
             VantaText.draw(graphics, hints[i], tx, y + h / 2.0f, size, 0xFFC3CDDC, VantaText.Weight.MEDIUM);
             tx += VantaText.width(hints[i], size, VantaText.Weight.MEDIUM);
             if (i < hints.length - 1) {
-                graphics.fill(tx + gap / 2, y + 8, tx + gap / 2 + 1, y + h - 8, 0x33FFFFFF);
+                graphics.fill(tx + gap / 2, y + h / 4, tx + gap / 2 + 1, y + h - h / 4, 0x33FFFFFF);
                 tx += gap;
             }
         }
@@ -204,13 +221,6 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                     hot ? VantaUiTheme.withAlpha(accent, 0x2E) : 0x12FFFFFF);
             drawRoundedOutline(graphics, x, y, w, h, 6,
                     hot ? accent : 0x3DFFFFFF, 1);
-            if (hot) continue;
-            // A quiet in-box name; boxes too small for it stay unlabeled until hovered.
-            String name = elementName(element);
-            int available = w - 12;
-            if (h >= 18 && VantaText.width(name, 10, VantaText.Weight.MEDIUM) <= available) {
-                VantaText.draw(graphics, name, x + 6, y + 9, 10, 0xB8DCE6F5, VantaText.Weight.MEDIUM);
-            }
         }
     }
 
@@ -228,13 +238,17 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
     private void drawElementTag(GuiGraphics graphics, Minecraft mc,
                                 HudElement element, int accent) {
         String label = elementName(element);
-        int tagWidth = VantaText.width(label, 11, VantaText.Weight.BOLD) + 18;
+        float size = dev(12.0f);
+        int tagHeight = devInt(26);
+        int tagWidth = VantaText.width(label, size, VantaText.Weight.BOLD) + devInt(24);
         int x = Math.max(8, Math.min(element.getHitboxX() - 3, width - tagWidth - 8));
-        int toolbarBottom = 68;
-        int y = element.getHitboxY() - 28;
-        if (y < toolbarBottom) y = Math.min(height - 30, element.getHitboxY() + element.getHitboxHeight() + 10);
-        fillRounded(graphics, x, y, tagWidth, 20, 10, accent);
-        VantaText.drawCentered(graphics, label, x + tagWidth / 2.0f, y + 10, 11,
+        int toolbarBottom = devInt(96);
+        int y = element.getHitboxY() - tagHeight - devInt(10);
+        if (y < toolbarBottom) {
+            y = Math.min(height - tagHeight - 4, element.getHitboxY() + element.getHitboxHeight() + devInt(10));
+        }
+        fillRounded(graphics, x, y, tagWidth, tagHeight, tagHeight / 2, accent);
+        VantaText.drawCentered(graphics, label, x + tagWidth / 2.0f, y + tagHeight / 2.0f, size,
                 0xFFFFFFFF, VantaText.Weight.BOLD);
     }
 
