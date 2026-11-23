@@ -104,8 +104,25 @@ public final class MenuTheme {
     public static void text(GuiGraphics graphics, Font font, String text, int x, int centerY,
                             int color, Identifier fontId) {
         if (text == null || text.isEmpty()) return;
-        graphics.drawString(font, VantaTypography.styledText(text, fontId),
-                x, textTop(centerY, sizeOf(fontId)), color);
+        float top = textTop(centerY, sizeOf(fontId));
+        var pose = graphics.pose();
+        float gui = (float) net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale();
+        float sx = pose.m00();
+        float sy = pose.m11();
+        if (gui > 0f && sx > 0.0001f && sy > 0.0001f) {
+            // Land the glyph origin on a whole device pixel so nearest-sampled glyph quads stay crisp
+            // at fractional zoom levels instead of smearing across two pixel rows.
+            float snappedX = (Math.round((sx * x + pose.m20()) * gui) / gui - pose.m20()) / sx;
+            float snappedY = (Math.round((sy * top + pose.m21()) * gui) / gui - pose.m21()) / sy;
+            if (Float.isFinite(snappedX) && Float.isFinite(snappedY)) {
+                pose.pushMatrix();
+                pose.translate(snappedX, snappedY);
+                graphics.drawString(font, VantaTypography.styledText(text, fontId), 0, 0, color);
+                pose.popMatrix();
+                return;
+            }
+        }
+        graphics.drawString(font, VantaTypography.styledText(text, fontId), x, Math.round(top), color);
     }
 
     public static void textCentered(GuiGraphics graphics, Font font, String text, int centerX,

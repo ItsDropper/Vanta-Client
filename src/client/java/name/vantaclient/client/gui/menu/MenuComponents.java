@@ -1,5 +1,6 @@
 package name.vantaclient.client.gui.menu;
 
+import name.vantaclient.client.config.VantaClientPreferences;
 import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.menu.MenuIcons.Icon;
 import net.minecraft.client.gui.Font;
@@ -36,11 +37,34 @@ public final class MenuComponents {
         return node;
     }
 
+    // The selection pill glides between items instead of jumping: the selected item draws it at an
+    // eased offset from where the previous selection was, so rebuilds on navigation stay continuous.
+    private static float pillY = Float.NaN;
+    private static long pillStamp;
+
+    private static float glidingPillY(float targetY) {
+        long now = System.nanoTime();
+        float dt = Math.min(0.05f, (now - pillStamp) / 1_000_000_000.0f);
+        boolean stale = pillStamp == 0L || now - pillStamp > 400_000_000L || Float.isNaN(pillY)
+                || Math.abs(pillY - targetY) > 900f;
+        pillStamp = now;
+        if (stale) {
+            pillY = targetY;
+        } else if (VantaClientPreferences.get().animations) {
+            pillY += (targetY - pillY) * (1.0f - (float) Math.exp(-dt * 16.0f));
+            if (Math.abs(targetY - pillY) < 0.25f) pillY = targetY;
+        } else {
+            pillY = targetY;
+        }
+        return pillY;
+    }
+
     public static VantaUiNode navItem(Icon icon, String label, boolean selected, Runnable action) {
         return VantaUiNode.canvas((g, font, x, y, w, h, st) -> {
             if (selected) {
-                MenuTheme.fill(g, x, y, w, h, 13, 0x14FFFFFF);
-                MenuTheme.outline(g, x, y, w, h, 13, 0x55FFFFFF);
+                int py = Math.round(glidingPillY(y));
+                MenuTheme.fill(g, x, py, w, h, 13, 0x14FFFFFF);
+                MenuTheme.outline(g, x, py, w, h, 13, 0x55FFFFFF);
             } else if (st.hover() > 0.01f) {
                 MenuTheme.fill(g, x, y, w, h, 13, MenuTheme.alpha(0xFFFFFFFF, Math.round(16 * st.hover())));
             }
