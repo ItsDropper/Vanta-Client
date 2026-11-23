@@ -72,7 +72,7 @@ public final class VantaLobbyCamera {
      * the lobby scene clock (including the focused camera regression test).
      */
     public void update(int mouseX, int mouseY, int width, int height, float deltaSeconds) {
-        updatePointer(mouseX, mouseY, width, height, deltaSeconds, true);
+        updatePointer(mouseX, mouseY, width, height, deltaSeconds);
         sceneYaw = pointerSceneYaw;
         scenePitch = pointerScenePitch;
         cameraOffsetX = 0.0f;
@@ -118,8 +118,7 @@ public final class VantaLobbyCamera {
         avatarBreathOffset = (float) Math.sin(time * 1.15) * 0.018f;
     }
 
-    private void updatePointer(int mouseX, int mouseY, int width, int height,
-                               float deltaSeconds, boolean interpolate) {
+    private void updatePointer(int mouseX, int mouseY, int width, int height, float deltaSeconds) {
         if (width <= 0 || height <= 0) return;
 
         boolean pointerInside = mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height;
@@ -136,18 +135,6 @@ public final class VantaLobbyCamera {
         float delta = Float.isFinite(deltaSeconds) ? clamp(deltaSeconds, 0.0f, 0.05f) : 0.0f;
         boolean resting = Math.abs(horizontal) < 0.015f && Math.abs(vertical) < 0.015f;
         float rate = resting ? REST_RATE : FOLLOW_RATE;
-        if (!interpolate) {
-            pointerSceneYaw = targetSceneYaw;
-            pointerScenePitch = targetScenePitch;
-            subjectYaw = targetSubjectYaw;
-            subjectPitch = targetSubjectPitch;
-            pointerSceneYawVelocity = 0.0f;
-            pointerScenePitchVelocity = 0.0f;
-            subjectYawVelocity = 0.0f;
-            subjectPitchVelocity = 0.0f;
-            return;
-        }
-
         SpringState yaw = spring(pointerSceneYaw, pointerSceneYawVelocity, targetSceneYaw, rate, delta);
         pointerSceneYaw = yaw.value();
         pointerSceneYawVelocity = yaw.velocity();
