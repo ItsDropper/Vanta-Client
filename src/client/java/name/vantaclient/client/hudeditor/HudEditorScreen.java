@@ -89,7 +89,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
         toolbarRuntime.layout(font, width, height);
     }
 
-    private static VantaUiNode toolbarSwitch(String label, java.util.function.Supplier<Boolean> value,
+    private static VantaUiNode toolbarSwitch(String label, java.util.function.BooleanSupplier value,
                                              java.util.function.Consumer<Boolean> setter) {
         VantaUiNode group = VantaUiNode.row(10, 0).height(40).align(VantaUiNode.Alignment.CENTER);
         group.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f, label, x, y + h / 2,

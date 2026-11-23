@@ -126,7 +126,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
             MenuTheme.outline(g, x, y, w, h, 18, 0x38FFFFFF);
         }));
 
-        VantaUiNode page = VantaUiNode.column(0, 0);
+        VantaUiNode layout = VantaUiNode.column(0, 0);
         VantaUiNode bar = VantaUiNode.row(compact ? 6 : 10, compact ? 12 : 22)
                 .height(compact ? 64 : 84).align(VantaUiNode.Alignment.CENTER);
         bar.add(MenuComponents.iconButton(MenuIcons.Icon.ARROW_LEFT, "Back", true, this::onClose));
@@ -139,7 +139,7 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
                 .size(compact ? 92 : 112, 38).enabled(!busy));
         bar.add(MenuComponents.button(font, "Discover", null, !installedView, this::showDiscover)
                 .size(compact ? 92 : 112, 38).enabled(!busy));
-        page.add(bar);
+        layout.add(bar);
 
         VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 22).flex(1);
         if (!installedView) {
@@ -185,8 +185,8 @@ public final class VantaModrinthBrowserScreen extends Screen implements VantaCom
                     .tooltip("Loads the mod into this session. Experimental; a restart is safest."));
         }
         content.add(pagination);
-        page.add(content);
-        shell.add(page);
+        layout.add(content);
+        shell.add(layout);
 
         runtime = new VantaUiRuntime(shell);
         runtime.setScale((float) VantaClientPreferences.get().uiScale);

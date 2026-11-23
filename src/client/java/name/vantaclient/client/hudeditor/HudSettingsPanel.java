@@ -191,7 +191,7 @@ public final class HudSettingsPanel {
     }
 
     /** Label on the left, Vanta switch on the right, matching the main menu's setting rows. */
-    private static VantaUiNode toggleRow(String label, java.util.function.Supplier<Boolean> value,
+    private static VantaUiNode toggleRow(String label, java.util.function.BooleanSupplier value,
                                          java.util.function.Consumer<Boolean> setter) {
         VantaUiNode row = VantaUiNode.row(8, 0).height(38).align(VantaUiNode.Alignment.CENTER);
         row.add(VantaUiNode.text(label, VantaUiTheme.TEXT_PRIMARY).flex(1));
