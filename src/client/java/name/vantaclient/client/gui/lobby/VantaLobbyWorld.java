@@ -238,16 +238,18 @@ public final class VantaLobbyWorld {
             // the generated level and inherit its camera perspective and lighting.
             if (avatar != null
                     && name.vantaclient.client.config.VantaClientPreferences.get().animations
-                    && ++ambientParticleTicks >= 4) {
+                    && ++ambientParticleTicks >= 3) {
                 ambientParticleTicks = 0;
                 ThreadLocalRandom random = ThreadLocalRandom.current();
-                double x = avatar.getX() + random.nextDouble(-9.0, 9.0);
-                double y = 66.0 + random.nextDouble(1.0, 10.0);
-                double z = avatar.getZ() - random.nextDouble(3.0, 28.0);
+                // Keep most petals between the camera and avatar so they read as
+                // foreground motion instead of disappearing into the distant tree line.
+                double x = avatar.getX() + random.nextDouble(-5.5, 5.5);
+                double y = 65.5 + random.nextDouble(0.5, 6.5);
+                double z = avatar.getZ() + random.nextDouble(1.0, 7.0);
                 level.addParticle(ParticleTypes.CHERRY_LEAVES, x, y, z,
-                        random.nextDouble(-0.012, 0.012),
-                        random.nextDouble(-0.008, -0.002),
-                        random.nextDouble(-0.018, 0.006));
+                        random.nextDouble(-0.010, 0.010),
+                        random.nextDouble(-0.012, -0.003),
+                        random.nextDouble(-0.012, 0.006));
             }
             mc.gameRenderer.tick();
             level.tickBlockEntities();
