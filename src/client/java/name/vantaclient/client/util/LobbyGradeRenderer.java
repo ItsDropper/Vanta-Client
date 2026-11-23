@@ -19,11 +19,21 @@ public final class LobbyGradeRenderer {
             Identifier.fromNamespaceAndPath("dropperutils", "lobby_grade");
 
     private static boolean failed;
+    private static boolean loaded;
 
     private LobbyGradeRenderer() {}
 
     public static void reset() {
         failed = false;
+        loaded = false;
+    }
+
+    public static boolean isLoaded() {
+        return loaded;
+    }
+
+    public static boolean hasFailed() {
+        return failed;
     }
 
     public static void render(GraphicsResourceAllocator allocator) {
@@ -41,6 +51,7 @@ public final class LobbyGradeRenderer {
                     .getPostChain(EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
             if (chain == null) return;
             chain.process(client.getMainRenderTarget(), allocator);
+            loaded = true;
         } catch (Throwable error) {
             failed = true;
             System.err.println("[Vanta Client] Lobby color grading failed; disabled for this session.");
