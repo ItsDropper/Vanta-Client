@@ -35,3 +35,10 @@ framing remain visible.
 
 The lobby world is ticked each client tick (`VantaLobbyWorld.tick`); without that its sky, light and
 environment state stay uninitialised and the frame renders black.
+
+
+The panorama remains visible while the generated chunks are first compiled. A non-zero visible-section
+count only means the first chunk reached the renderer; it is not a complete-scene readiness signal.
+The lobby waits for a 2.5-second terrain warm-up before revealing the world. Screenshot GameTests
+wait for that reveal and for the five-second camera entrance to settle, so captures validate the intended
+composition rather than a transient frame with only a few compiled chunks.
