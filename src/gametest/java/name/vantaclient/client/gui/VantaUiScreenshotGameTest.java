@@ -255,15 +255,30 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 camera.update(99, 99, 100, 100, 0.05f);
             }
 
-            if (Math.abs(camera.sceneYaw() + 1.568f) > 0.01f
-                    || Math.abs(camera.scenePitch() - 0.441f) > 0.01f
-                    || Math.abs(camera.subjectYaw() - 17.64f) > 0.05f
-                    || Math.abs(camera.subjectPitch() - 7.84f) > 0.05f) {
-                throw new AssertionError("Lobby camera must smoothly converge to its bounded cursor target.");
+            float previousYaw = 0.0f;
+            for (int frame = 0; frame < 40; frame++) {
+                camera.update(99, 99, 100, 100, 0.05f);
+                float currentYaw = camera.subjectYaw();
+                if (currentYaw + 0.0001f < previousYaw || currentYaw > 18.0001f) {
+                    throw new AssertionError("Critically damped gaze must approach its target without overshoot.");
+                }
+                previousYaw = currentYaw;
+            }
+            if (Math.abs(camera.sceneYaw() + 1.6f) > 0.001f
+                    || Math.abs(camera.scenePitch() - 0.45f) > 0.001f
+                    || Math.abs(camera.subjectYaw() - 18.0f) > 0.001f
+                    || Math.abs(camera.subjectPitch() - 8.0f) > 0.001f) {
+                throw new AssertionError("Lobby gaze spring must converge to its bounded cursor target.");
             }
 
+            previousYaw = camera.subjectYaw();
             for (int frame = 0; frame < 60; frame++) {
                 camera.update(-1, -1, 100, 100, 0.05f);
+                float currentYaw = camera.subjectYaw();
+                if (currentYaw - 0.0001f > previousYaw || currentYaw < -0.0001f) {
+                    throw new AssertionError("Lobby gaze spring must return monotonically to neutral.");
+                }
+                previousYaw = currentYaw;
             }
             if (Math.abs(camera.sceneYaw()) > 0.02f
                     || Math.abs(camera.scenePitch()) > 0.02f
