@@ -271,6 +271,36 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                     || Math.abs(camera.subjectPitch()) > 0.1f) {
                 throw new AssertionError("Lobby camera must return smoothly to center when the pointer leaves the viewport.");
             }
+
+            VantaLobbyCamera cinematic = new VantaLobbyCamera();
+            cinematic.reset();
+            cinematic.update(-1, -1, 100, 100, 0.05f, 0.0, true);
+            if (Math.abs(cinematic.cameraOffsetX() + 1.85f) > 0.001f
+                    || Math.abs(cinematic.cameraOffsetY() - 1.10f) > 0.001f
+                    || Math.abs(cinematic.cameraOffsetZ() - 4.20f) > 0.001f) {
+                throw new AssertionError("Lobby entrance must begin from its authored 3D crane-in pose.");
+            }
+            if (Math.abs(cinematic.sceneYaw() + 8.5f) > 0.001f
+                    || Math.abs(cinematic.scenePitch() + 2.6f) > 0.001f) {
+                throw new AssertionError("Lobby entrance must begin with the authored camera orientation.");
+            }
+
+            cinematic.update(-1, -1, 100, 100, 0.05f, 5.0, true);
+            if (Math.abs(cinematic.cameraOffsetX()) > 0.001f
+                    || Math.abs(cinematic.cameraOffsetY()) > 0.001f
+                    || Math.abs(cinematic.cameraOffsetZ()) > 0.001f
+                    || Math.abs(cinematic.sceneYaw()) > 0.2f
+                    || Math.abs(cinematic.scenePitch()) > 0.2f) {
+                throw new AssertionError("Lobby entrance must settle into the resting camera composition.");
+            }
+
+            cinematic.update(-1, -1, 100, 100, 0.05f, 0.0, false);
+            if (cinematic.cameraOffsetX() != 0.0f || cinematic.cameraOffsetY() != 0.0f
+                    || cinematic.cameraOffsetZ() != 0.0f
+                    || cinematic.sceneYaw() != 0.0f || cinematic.scenePitch() != 0.0f
+                    || cinematic.avatarBreathOffset() != 0.0f) {
+                throw new AssertionError("Disabling animations must skip the lobby entrance and idle motion.");
+            }
         });
     }
 
