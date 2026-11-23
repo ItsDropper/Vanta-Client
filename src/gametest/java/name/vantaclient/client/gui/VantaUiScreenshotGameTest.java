@@ -283,6 +283,19 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 throw new AssertionError("Lobby camera must return smoothly to center when the pointer leaves the viewport.");
             }
 
+            VantaLobbyScene.begin();
+            VantaLobbyCamera sceneCamera = VantaLobbyScene.camera();
+            sceneCamera.update(-1, -1, 100, 100, 0.05f, 5.0, true);
+            long uiElapsedBeforeRestart = VantaLobbyScene.elapsedMillis();
+            VantaLobbyScene.restartCameraIntro();
+            if (sceneCamera.cameraOffsetX() != 0.0f
+                    || sceneCamera.cameraOffsetY() != 0.0f
+                    || sceneCamera.cameraOffsetZ() != 0.0f
+                    || VantaLobbyScene.cameraElapsedMillis() > 250L
+                    || VantaLobbyScene.elapsedMillis() < uiElapsedBeforeRestart) {
+                throw new AssertionError("Restarting the lobby camera after world creation must reset only its clock and pose.");
+            }
+
             VantaLobbyCamera cinematic = new VantaLobbyCamera();
             cinematic.reset();
             cinematic.update(-1, -1, 100, 100, 0.05f, 0.0, true);
