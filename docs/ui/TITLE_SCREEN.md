@@ -34,7 +34,13 @@ drifting motes and button sheen, and snaps menu transitions to their final state
 framing remain visible.
 
 The lobby world is ticked each client tick (`VantaLobbyWorld.tick`); without that its sky, light and
-environment state stay uninitialised and the frame renders black.
+environment state stay uninitialised and the frame renders black. Sparse cherry-leaf particles are spawned
+in the camera foreground while animations are enabled, giving the scene a real world-space depth cue.
+
+A lightweight `lobby_grade` post-chain runs after the 3D world pass and before title UI composition.
+It applies restrained saturation, contrast, warm lift and edge falloff to the world only; menu text and
+controls are not processed. Shader assets are part of the screenshot workflow's path filter so changes
+to the post-effect are exercised by the real-client visual test.
 
 
 The panorama remains visible while the generated chunks are first compiled. A non-zero visible-section
