@@ -44,6 +44,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -54,6 +55,7 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.util.Util;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -231,6 +233,22 @@ public final class VantaLobbyWorld {
         beginFrame();
         if (!swapped) return;
         try {
+            // A sparse layer of real world-space cherry petals gives the camera a
+            // foreground depth cue; unlike GUI dust, these particles move through
+            // the generated level and inherit its camera perspective and lighting.
+            if (avatar != null
+                    && name.vantaclient.client.config.VantaClientPreferences.get().animations
+                    && ++ambientParticleTicks >= 4) {
+                ambientParticleTicks = 0;
+                ThreadLocalRandom random = ThreadLocalRandom.current();
+                double x = avatar.getX() + random.nextDouble(-9.0, 9.0);
+                double y = 66.0 + random.nextDouble(1.0, 10.0);
+                double z = avatar.getZ() - random.nextDouble(3.0, 28.0);
+                level.addParticle(ParticleTypes.CHERRY_LEAVES, x, y, z,
+                        random.nextDouble(-0.012, 0.012),
+                        random.nextDouble(-0.008, -0.002),
+                        random.nextDouble(-0.018, 0.006));
+            }
             mc.gameRenderer.tick();
             level.tickBlockEntities();
             level.tick(() -> true);
@@ -247,6 +265,7 @@ public final class VantaLobbyWorld {
 
     private static boolean tickFailureLogged;
     private static int timeTicks;
+    private static int ambientParticleTicks;
 
     /** Day time following the player's wall clock; night is held at dusk/dawn so the scene stays readable. */
     private static long lobbyDayTime() {
@@ -635,6 +654,7 @@ public final class VantaLobbyWorld {
         mc.particleEngine.setLevel(mc.level);
         terrainRendered = false;
         firstTerrainFrameNanos = 0L;
+        ambientParticleTicks = 0;
         level = null;
         listener = null;
         gameMode = null;
