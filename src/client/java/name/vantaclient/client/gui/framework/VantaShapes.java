@@ -89,16 +89,10 @@ public final class VantaShapes {
         if (roundLeft) {
             corner(g, tex, level, 0, 0, x, y, r, topCorner);
             corner(g, tex, level, 0, 1, x, y + h - r, r, bottomCorner);
-        } else {
-            g.fill(x, y, x + r, y + r, topCorner);
-            g.fill(x, y + h - r, x + r, y + h, bottomCorner);
         }
         if (roundRight) {
             corner(g, tex, level, 1, 0, x + w - r, y, r, topCorner);
             corner(g, tex, level, 1, 1, x + w - r, y + h - r, r, bottomCorner);
-        } else {
-            g.fill(x + w - r, y, x + w, y + r, topCorner);
-            g.fill(x + w - r, y + h - r, x + w, y + h, bottomCorner);
         }
     }
 

@@ -129,7 +129,7 @@ public final class ModsPage {
             }));
         }
 
-        int available = Math.max(200, host.contentWidth() - 84);
+        int available = Math.max(200, host.contentWidth() - 64);
         List<VantaUiNode> line = new ArrayList<>();
         int used = 0;
         boolean first = true;
