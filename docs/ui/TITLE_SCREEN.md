@@ -29,7 +29,7 @@ drift. Cursor parallax uses a critically damped gaze spring, so the camera and a
 without overshooting. The world avatar has independent head tracking, a restrained idle turn and subtle
 breathing movement. The camera transform is applied to the real lobby `ClientLevel`, not to a
 background texture. The existing Appearance **Animations** preference disables the entrance and idle
-motion and leaves the camera at its resting composition. It also removes the animated light shafts,
+motion and cursor parallax, leaving the camera at its resting composition. It also removes the animated light shafts,
 drifting motes and button sheen, and snaps menu transitions to their final state; static lighting and
 framing remain visible.
 
