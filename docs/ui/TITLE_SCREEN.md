@@ -27,7 +27,9 @@ it settles into low-amplitude camera sway and positional drift. Cursor parallax 
 that motion, while the world avatar has independent head tracking, a restrained idle turn and subtle
 breathing movement. The camera transform is applied to the real lobby `ClientLevel`, not to a
 background texture. The existing Appearance **Animations** preference disables the entrance and idle
-motion and leaves the camera at its resting composition.
+motion and leaves the camera at its resting composition. It also removes the animated light shafts,
+drifting motes and button sheen, and snaps menu transitions to their final state; static lighting and
+framing remain visible.
 
 The lobby world is ticked each client tick (`VantaLobbyWorld.tick`); without that its sky, light and
 environment state stay uninitialised and the frame renders black.
