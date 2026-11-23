@@ -39,6 +39,7 @@ import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.lobby.VantaLobbyCamera;
 import name.vantaclient.client.gui.lobby.VantaLobbyScene;
 import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
+import name.vantaclient.client.util.LobbyGradeRenderer;
 import name.vantaclient.client.init.Keybinds;
 import name.vantaclient.client.feature.ChatTimestampsFeature;
 import name.vantaclient.client.init.FeatureKeybinds;
@@ -1763,6 +1764,10 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         }
         if (context.computeOnClient(client -> VantaLobbyScene.cameraElapsedMillis() < 5_000L)) {
             throw new AssertionError("Lobby camera entrance did not reach its settled composition.");
+        }
+        if (!context.computeOnClient(client -> LobbyGradeRenderer.isLoaded()
+                && !LobbyGradeRenderer.hasFailed())) {
+            throw new AssertionError("Lobby cinematic post-processing did not load and render successfully.");
         }
         context.runOnClient(client -> {
             if (!VantaLobbyWorld.isWorldReadyForDisplay()) {
