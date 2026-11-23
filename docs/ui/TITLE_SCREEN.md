@@ -23,8 +23,8 @@ Layout uses one scale unit derived from the screen height; every size is a multi
 
 `VantaLobbyScene` owns the title-screen animation clock and `VantaLobbyCamera` composes the scene
 transform. The opening camera move is a five-second cubic ease-out crane-in with a short lateral arc;
-it settles into low-amplitude camera sway and positional drift. Cursor parallax remains layered over
-that motion, while the world avatar has independent head tracking, a restrained idle turn and subtle
+it settles into low-amplitude camera sway and positional drift. Cursor parallax uses a critically damped gaze spring, so the camera and avatar settle naturally
+without overshooting. The world avatar has independent head tracking, a restrained idle turn and subtle
 breathing movement. The camera transform is applied to the real lobby `ClientLevel`, not to a
 background texture. The existing Appearance **Animations** preference disables the entrance and idle
 motion and leaves the camera at its resting composition. It also removes the animated light shafts,
