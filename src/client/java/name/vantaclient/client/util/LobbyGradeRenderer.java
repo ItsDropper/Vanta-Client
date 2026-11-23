@@ -5,7 +5,6 @@ import name.vantaclient.client.gui.lobby.VantaLobbyWorld;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.LevelTargetBundle;
-import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -18,13 +17,11 @@ public final class LobbyGradeRenderer {
     private static final Identifier EFFECT_ID =
             Identifier.fromNamespaceAndPath("dropperutils", "lobby_grade");
 
-    private static PostChain cachedChain;
     private static boolean failed;
 
     private LobbyGradeRenderer() {}
 
     public static void reset() {
-        cachedChain = null;
         failed = false;
     }
 
@@ -42,7 +39,6 @@ public final class LobbyGradeRenderer {
             PostChain chain = client.getShaderManager()
                     .getPostChain(EFFECT_ID, LevelTargetBundle.MAIN_TARGETS);
             if (chain == null) return;
-            cachedChain = chain;
             chain.process(client.getMainRenderTarget(), allocator);
         } catch (Throwable error) {
             failed = true;
