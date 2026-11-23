@@ -36,12 +36,15 @@ final class VantaAmbience {
     }
 
     /** Draws the full-screen lighting layer underneath the interface. */
-    static void render(GuiGraphics g, int w, int h, long millis, int accent, float intro, float unit) {
-        float t = millis / 1000.0f;
+    static void render(GuiGraphics g, int w, int h, long millis, int accent, float intro, float unit,
+                       boolean animationsEnabled) {
+        float t = animationsEnabled ? millis / 1000.0f : 0.0f;
 
         // Warm key light from above, easing out before the middle so the world keeps its colour.
         g.fillGradient(0, 0, w, Math.round(h * 0.55f), argb(0xFFB56B, 0.10f * intro), argb(0xFFB56B, 0.0f));
 
+        // Moving light and particles are omitted entirely in reduced-motion mode.
+        if (animationsEnabled) {
         // Two slow shafts of light leaning in from the upper left.
         for (int i = 0; i < 2; i++) {
             float sway = (float) Math.sin(t * 0.18f + i * 2.1f);
@@ -72,6 +75,8 @@ final class VantaAmbience {
             int s = Math.max(2, Math.round(size));
             g.blit(RenderPipelines.GUI_TEXTURED, GLOW, Math.round(px - s / 2.0f), Math.round(py - s / 2.0f),
                     0.0f, 0.0f, s, s, 128, 128, 128, 128, argb(color, alpha));
+        }
+
         }
 
         // Vignette last, so it frames everything above it.
