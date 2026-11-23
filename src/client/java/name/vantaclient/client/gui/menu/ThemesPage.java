@@ -32,7 +32,7 @@ public final class ThemesPage {
         scroll.add(MenuComponents.sectionTitle("GENERAL"));
         int toggleDesc = ModSettingsPage.descriptionWidth(host, ModSettingsPage.TOGGLE_WIDTH);
         int sliderDesc = ModSettingsPage.descriptionWidth(host, ModSettingsPage.SLIDER_WIDTH);
-        scroll.add(MenuComponents.settingRow(font, "Animations", "Smooth hover and toggle transitions.",
+        scroll.add(MenuComponents.settingRow(font, "Animations", "Menu motion, lobby camera and interface transitions.",
                 ModSettingsPage.toggleControl(() -> preferences.animations, value -> {
                     preferences.animations = value;
                     VantaClientPreferences.save();
