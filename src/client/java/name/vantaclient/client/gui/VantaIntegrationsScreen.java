@@ -12,6 +12,9 @@ import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.integration.ExperimentalModHotLoader;
 import name.vantaclient.client.integration.ModConfigDiscovery;
 import name.vantaclient.client.platform.ClientPlatform;
+import name.vantaclient.client.gui.menu.MenuComponents;
+import name.vantaclient.client.gui.menu.MenuIcons;
+import name.vantaclient.client.gui.menu.MenuTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -99,138 +102,129 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         rebuildRetainedUi();
     }
 
+    private static final int MAX_WIDTH = 1040;
+    private static final int MAX_HEIGHT = 640;
+
+    private float zoom() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale <= 0) guiScale = 1.0f;
+        float userScale = (float) preferences.uiScale;
+        if (!Float.isFinite(userScale) || userScale <= 0) userScale = 1.0f;
+        float fit = Math.min(width * guiScale * 0.94f / MAX_WIDTH, height * guiScale * 0.90f / MAX_HEIGHT) / userScale;
+        float stepped = Math.round(fit * 8.0f) / 8.0f;
+        return Math.max(0.5f, Math.min(3.0f, stepped));
+    }
+
+    private boolean compactLayout() {
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        if (!Float.isFinite(guiScale) || guiScale < 1.0f) guiScale = 1.0f;
+        return width * guiScale / (float) Math.max(0.5, preferences.uiScale) < 860.0f;
+    }
+
     private void rebuildRetainedUi() {
         if (runtime != null) runtime.dispose();
         runtime = new VantaUiRuntime(buildRetainedRoot());
         runtime.setScale((float) preferences.uiScale);
+        runtime.setZoom(zoom());
+        runtime.setMaxViewportSize(MAX_WIDTH, MAX_HEIGHT);
         runtime.layout(font, width, height);
     }
 
     private VantaUiNode buildRetainedRoot() {
-        boolean compact = VantaUiRuntime.designWidth(width, height) < 760.0f;
-        VantaUiNode root = VantaUiNode.column(compact ? 6 : 14, compact ? 8 : 16)
-                
-                .clipToBounds();
+        boolean compact = compactLayout();
+        VantaUiNode shell = VantaUiNode.stack(0);
+        shell.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.fill(g, x - 3, y + 4, w + 6, h + 4, 22, 0x1E000000);
+            MenuTheme.gradient(g, x, y, w, h, 18, MenuTheme.panel(), MenuTheme.panelBottom());
+            MenuTheme.outline(g, x, y, w, h, 18, 0x38FFFFFF);
+        }));
 
-        VantaUiNode header = VantaUiNode.row(compact ? 8 : 10, 0)
-                .height(compact ? 40 : 54)
-                .background(VantaUiTheme.PANEL)
-                .padding(compact ? 8 : 14)
-                .align(VantaUiNode.Alignment.CENTER);
-        VantaUiNode identity = VantaUiNode.column(2, 0);
-        identity.add(VantaUiNode.eyebrow("Mod library"));
-        identity.add(VantaUiNode.title(selection == Selection.INSTALLED_MOD
-                ? selectedModTitle() : "Installed mods"));
-        header.add(identity.flex(1));
-        if (!compact) {
-            header.add(VantaComponents.actionButton("Modrinth", VantaUiNode.Icon.SEARCH,
-                    VantaComponents.ButtonVariant.SECONDARY,
-                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this))).size(112, 32));
-            header.add(VantaComponents.actionButton("HUD editor", VantaUiNode.Icon.HUD,
-                    VantaComponents.ButtonVariant.SECONDARY,
+        VantaUiNode layout = VantaUiNode.column(0, 0);
+        boolean details = selection == Selection.INSTALLED_MOD;
+        VantaUiNode bar = VantaUiNode.row(compact ? 6 : 10, compact ? 12 : 22)
+                .height(compact ? 64 : 84).align(VantaUiNode.Alignment.CENTER);
+        bar.add(MenuComponents.iconButton(MenuIcons.Icon.ARROW_LEFT, "Back", true, details ? () -> {
+            selection = Selection.NONE;
+            selectedModId = null;
+            rebuildRetainedUi();
+        } : this::onClose));
+        String title = details ? selectedModTitle() : "Installed mods";
+        bar.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, MenuTheme.fit(f, title, w - 12, MenuTheme.FONT_HEADING), x + 6, y + h / 2 - 8,
+                    MenuTheme.TEXT, MenuTheme.FONT_HEADING);
+            MenuTheme.text(g, f, details ? "Mod details" : "Everything in this instance's mods folder",
+                    x + 6, y + h / 2 + 16, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+        }).flex(1).height(48));
+        if (!compact && !details) {
+            bar.add(MenuComponents.button(font, "Modrinth", MenuIcons.Icon.SEARCH, false,
+                    () -> minecraft.setScreen(new VantaModrinthBrowserScreen(this))).size(124, 38));
+            bar.add(MenuComponents.button(font, "HUD editor", MenuIcons.Icon.HUD, false,
                     () -> minecraft.setScreen(new name.vantaclient.client.hudeditor.HudEditorScreen(this)))
-                    .size(104, 32));
-            header.add(VantaComponents.actionButton("Settings", VantaUiNode.Icon.DISPLAY,
-                    VantaComponents.ButtonVariant.SECONDARY,
-                    () -> minecraft.setScreen(new VantaSettingsScreen(this))).size(92, 32));
+                    .size(132, 38));
         }
-        header.add(VantaUiNode.button(compact ? "×" : "Close", this::onClose)
-                .size(compact ? 28 : 62, 30));
-        root.add(header);
+        bar.add(MenuComponents.iconButton(MenuIcons.Icon.CLOSE, "Close", true, this::onClose));
+        layout.add(bar);
 
-        if (selection == Selection.INSTALLED_MOD) {
-            root.add(buildRetainedModDetails());
-            return root;
+        if (details) {
+            layout.add(buildRetainedModDetails());
+            shell.add(layout);
+            return shell;
         }
 
-        if (compact) {
-            VantaUiNode search = VantaUiNode.row(6, 6)
-                    .height(34)
-                    .align(VantaUiNode.Alignment.CENTER);
-            search.add(VantaUiNode.textField("Search installed mods…",
-                    () -> modSearchQuery, value -> modSearchQuery = value, 64)
-                    .flex(1).minSize(70, 28));
-            search.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::rebuildRetainedUi).size(100, 28));
-            root.add(search);
+        VantaUiNode content = VantaUiNode.column(12, compact ? 12 : 22).flex(1);
+        VantaUiNode toolbar = VantaUiNode.row(10, 0).height(48).align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode field = VantaUiNode.row(0, 0).height(48).flex(1)
+                .background(MenuTheme.FIELD).radius(13).border(0x33FFFFFF);
+        field.add(VantaUiNode.textField("Search installed mods", () -> modSearchQuery,
+                value -> modSearchQuery = value, 64).menuStyle().height(48).flex(1));
+        toolbar.add(field);
+        toolbar.add(MenuComponents.button(font, "Search", MenuIcons.Icon.SEARCH, true, this::rebuildRetainedUi)
+                .size(compact ? 104 : 120, 44));
+        content.add(toolbar);
 
-            VantaUiNode filters = VantaUiNode.row(6, 6)
-                    .height(30)
-                    .align(VantaUiNode.Alignment.CENTER);
-            filters.add(VantaUiNode.button("All mods", () -> {
-                favoritesOnly = false;
-                rebuildRetainedUi();
-            }).size(92, 26).selected(!favoritesOnly));
-            filters.add(VantaUiNode.button("Favorites", () -> {
-                favoritesOnly = true;
-                rebuildRetainedUi();
-            }).size(92, 26).selected(favoritesOnly));
-            filters.add(VantaUiNode.spacer(1).flex(1));
-            filters.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
-                    .size(74, 26).enabled(!modScanInProgress));
-            root.add(filters);
-        } else {
-            VantaUiNode toolbar = VantaUiNode.row(7, 0)
-                    .height(38)
-                    .align(VantaUiNode.Alignment.CENTER);
-            toolbar.add(VantaUiNode.textField("Search installed mods…",
-                    () -> modSearchQuery, value -> modSearchQuery = value, 64)
-                    .flex(1).minSize(70, 32));
-            toolbar.add(VantaUiNode.button("Search", VantaUiNode.Icon.SEARCH,
-                    this::rebuildRetainedUi).size(100, 32));
-            toolbar.add(VantaUiNode.button("All", () -> {
-                favoritesOnly = false;
-                rebuildRetainedUi();
-            }).size(46, 32).selected(!favoritesOnly));
-            toolbar.add(VantaUiNode.button("★", () -> {
-                favoritesOnly = true;
-                rebuildRetainedUi();
-            }).size(42, 32).selected(favoritesOnly));
-            toolbar.add(VantaUiNode.button("Refresh", this::refreshInstalledMods)
-                    .size(72, 32).enabled(!modScanInProgress));
-            root.add(toolbar);
-        }
-
-        VantaUiNode content = VantaComponents.panel(VantaComponents.Surface.PANEL,
-                compact ? 6 : 10, compact ? 8 : 14).flex(1);
-        VantaUiNode heading = VantaUiNode.row(8, 0)
-                .height(compact ? 18 : 24)
-                .align(VantaUiNode.Alignment.CENTER);
+        VantaUiNode filters = VantaUiNode.row(8, 0).height(36).align(VantaUiNode.Alignment.CENTER);
+        filters.add(MenuComponents.button(font, "All mods", null, !favoritesOnly, () -> {
+            favoritesOnly = false;
+            rebuildRetainedUi();
+        }).size(96, 34));
+        filters.add(MenuComponents.button(font, "Favorites", MenuIcons.Icon.STAR, favoritesOnly, () -> {
+            favoritesOnly = true;
+            rebuildRetainedUi();
+        }).size(118, 34));
+        filters.add(VantaUiNode.spacer(1).flex(1));
         List<ExperimentalModHotLoader.AvailableMod> mods = filteredMods();
-        heading.add(VantaUiNode.eyebrow(favoritesOnly ? "Favorites" : "Mods in this instance"));
-        heading.add(VantaUiNode.spacer(1).flex(1));
-        heading.add(VantaUiNode.dynamicText(
-                () -> modScanInProgress ? "Scanning…" : filteredMods().size()
-                        + " / " + availableMods.size(),
-                VantaUiTheme.TEXT_MUTED));
-        content.add(heading);
-        if (modScanInProgress) {
-            content.add(VantaUiNode.progressIndicator("Scanning local mod inventory")
-                    .height(compact ? 24 : 30));
-        }
+        filters.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.textRight(g, f,
+                modScanInProgress ? "Scanning…" : filteredMods().size() + " of " + availableMods.size(),
+                x + w, y + h / 2, MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL)).width(96).height(30));
+        filters.add(MenuComponents.button(font, "Refresh", null, false, this::refreshInstalledMods)
+                .size(96, 34).enabled(!modScanInProgress));
+        content.add(filters);
+        if (modScanInProgress) content.add(VantaUiNode.progressIndicator("Scanning local mod inventory").height(26));
 
-        VantaUiNode cards = VantaComponents.panel(VantaComponents.Surface.FIELD,
-                compact ? 6 : 10, compact ? 6 : 10).flex(1).scrollable();
+        VantaUiNode cards = VantaUiNode.column(12, 0).flex(1).scrollable();
         if (mods.isEmpty()) {
-            cards.add(VantaComponents.emptyState(
-                    modScanInProgress ? VantaUiNode.Icon.SEARCH : VantaUiNode.Icon.OVERVIEW,
-                    modScanInProgress ? "Reading installed mods"
-                            : favoritesOnly ? "No favorite mods yet" : "Your mod library is empty",
-                    modScanInProgress
-                            ? "Checking the mods folder and reading Fabric metadata…"
-                            : favoritesOnly
-                            ? "Mark a mod with the star to keep it in this list."
-                            : "Add Fabric mod JARs to this instance, then refresh the library.",
-                    null, null).height(compact ? 104 : 140));
+            String emptyTitle = modScanInProgress ? "Reading installed mods"
+                    : favoritesOnly ? "No favorite mods yet" : "Your mod library is empty";
+            String emptyDetail = modScanInProgress ? "Checking the mods folder and reading Fabric metadata…"
+                    : favoritesOnly ? "Star a mod to keep it in this list."
+                    : "Add Fabric mod JARs to this instance, then refresh.";
+            cards.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+                MenuTheme.fill(g, x, y, w, h, 16, 0x5C141926);
+                MenuTheme.outline(g, x, y, w, h, 16, 0x1FFFFFFF);
+                MenuTheme.textCentered(g, f, emptyTitle, x + w / 2, y + h / 2 - 12, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+                MenuTheme.textCentered(g, f, MenuTheme.fit(f, emptyDetail, w - 40, MenuTheme.FONT_SMALL),
+                        x + w / 2, y + h / 2 + 14, MenuTheme.TEXT_DIM, MenuTheme.FONT_SMALL);
+            }).height(140));
         } else {
-            addRetainedModCards(cards, mods, compact ? 1 : 3, compact);
+            addRetainedModCards(cards, mods, compact ? 1 : 2, compact);
         }
         content.add(cards);
-        content.add(VantaUiNode.dynamicText(
-                () -> trim(hotLoadStatus, compact ? 36 : 108),
-                VantaUiTheme.TEXT_MUTED).height(compact ? 18 : 26));
-        root.add(content);
-        return root;
+        content.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> MenuTheme.text(g, f,
+                MenuTheme.fit(f, hotLoadStatus, w - 4, MenuTheme.FONT_SMALL), x + 2, y + h / 2,
+                MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL)).height(22));
+        layout.add(content);
+        shell.add(layout);
+        return shell;
     }
 
     private void addRetainedModCards(VantaUiNode cards,
@@ -239,9 +233,7 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         Set<String> hotLoadedIds = new HashSet<>();
         ExperimentalModHotLoader.getHotLoadedMods().forEach(mod -> hotLoadedIds.add(mod.id()));
         for (int index = 0; index < mods.size(); index += columns) {
-            VantaUiNode row = VantaUiNode.row(8, 0)
-                    .height(compact ? 108 : 132)
-                    .align(VantaUiNode.Alignment.STRETCH);
+            VantaUiNode row = VantaUiNode.row(12, 0).height(96).align(VantaUiNode.Alignment.STRETCH);
             for (int column = 0; column < columns && index + column < mods.size(); column++) {
                 row.add(buildRetainedModCard(mods.get(index + column), hotLoadedIds));
             }
@@ -258,45 +250,35 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
                                               Set<String> hotLoadedIds) {
         boolean fabricLoaded = ClientPlatform.isModLoaded(mod.id());
         boolean sessionLoaded = hotLoadedIds.contains(mod.id());
-        VantaUiNode card = VantaUiNode.column(6, 9)
-                .flex(1)
-                .height(VantaUiRuntime.designWidth(width, height) < 760.0f ? 108 : 132)
-                .background(VantaUiTheme.PANEL_RAISED)
-                .padding(9);
-        VantaUiNode top = VantaUiNode.row(8, 0)
-                .height(38)
+        VantaUiNode card = VantaUiNode.row(12, 16).flex(1).height(96)
+                .background(0x8C141926).border(0x22FFFFFF).radius(16)
                 .align(VantaUiNode.Alignment.CENTER);
         String initial = mod.name().isBlank() ? "?"
                 : mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
-        top.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
-                .size(34, 34)
-                .background(VantaUiTheme.SURFACE_SELECTED)
-                .align(VantaUiNode.Alignment.CENTER));
-        VantaUiNode labels = VantaUiNode.column(3, 0).flex(1);
-        labels.add(VantaUiNode.text(trim(mod.name(), 30), VantaUiTheme.TEXT_PRIMARY));
-        labels.add(VantaUiNode.text(trim(mod.id() + "  ·  " + mod.version(), 34),
-                VantaUiTheme.TEXT_MUTED));
-        top.add(labels);
-        card.add(top);
-        card.add(VantaUiNode.text(fabricLoaded ? "Enabled by Fabric"
-                        : sessionLoaded ? "Session-loaded · experimental"
-                        : "Installed · restart to load",
-                fabricLoaded ? 0xFF78D6A0
-                        : sessionLoaded ? 0xFFFFC978 : VantaUiTheme.TEXT_SECONDARY));
-        VantaUiNode actions = VantaUiNode.row(6, 0)
-                .height(28)
-                .align(VantaUiNode.Alignment.CENTER);
-        actions.add(VantaUiNode.button(preferences.favoriteMods.contains(mod.id()) ? "★" : "☆",
-                () -> toggleFavorite(mod.id())).size(30, 28));
-        actions.add(VantaUiNode.button("Details", () -> selectInstalledMod(mod.id()))
-                .size(62, 28));
+        card.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
+                .size(52, 52).background(MenuTheme.alpha(MenuTheme.accent(), 40)).radius(14));
+        String state = fabricLoaded ? "Enabled by Fabric"
+                : sessionLoaded ? "Loaded this session (experimental)" : "Installed, restart to load";
+        int stateColor = fabricLoaded ? 0xFF3DD68C : sessionLoaded ? 0xFFF2C14E : 0xFF8B94A6;
+        String meta = mod.id() + "  ·  " + mod.version();
+        card.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, MenuTheme.fit(f, mod.name(), w, MenuTheme.FONT_MEDIUM), x, y + 16,
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.text(g, f, MenuTheme.fit(f, meta, w, MenuTheme.FONT_SMALL), x, y + 38,
+                    MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+            MenuTheme.dot(g, x + 5, y + 58, 8, stateColor);
+            MenuTheme.text(g, f, MenuTheme.fit(f, state, w - 18, MenuTheme.FONT_SMALL), x + 16, y + 58,
+                    MenuTheme.mix(stateColor, 0xFFFFFFFF, 0.35f), MenuTheme.FONT_SMALL);
+        }).flex(1).height(72));
+        boolean favorite = preferences.favoriteMods.contains(mod.id());
+        card.add(MenuComponents.iconButton(favorite ? MenuIcons.Icon.STAR_FILLED : MenuIcons.Icon.STAR,
+                favorite ? "Remove from favorites" : "Add to favorites", true, () -> toggleFavorite(mod.id())));
+        card.add(MenuComponents.button(font, "Details", null, false, () -> selectInstalledMod(mod.id()))
+                .size(84, 36));
         if (!fabricLoaded && !sessionLoaded) {
-            actions.add(VantaUiNode.button("Hotload", () -> hotLoadMod(mod.id()))
-                    .size(68, 28).enabled(!modScanInProgress));
-        } else {
-            actions.add(VantaUiNode.text("ACTIVE", VantaUiTheme.TEXT_MUTED).flex(1));
+            card.add(MenuComponents.button(font, "Hotload", null, true, () -> hotLoadMod(mod.id()))
+                    .size(92, 36).enabled(!modScanInProgress));
         }
-        card.add(actions);
         return card;
     }
 
@@ -304,69 +286,59 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         ExperimentalModHotLoader.AvailableMod mod = availableMods.stream()
                 .filter(candidate -> candidate.id().equals(selectedModId))
                 .findFirst().orElse(null);
-        VantaUiNode details = VantaUiNode.column(10, 14)
-                .flex(1)
-                .background(VantaUiTheme.PANEL)
-                .padding(14)
-                .scrollable();
+        VantaUiNode details = VantaUiNode.column(14, compact_pad()).flex(1).scrollable();
         if (mod == null) {
-            details.add(VantaUiNode.title("Mod not found"));
-            details.add(VantaUiNode.text(
-                    "The mod JAR may have been removed or the folder was rescanned.",
-                    VantaUiTheme.TEXT_MUTED));
-        } else {
-            String initial = mod.name().isBlank() ? "?"
-                    : mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
-            VantaUiNode identity = VantaUiNode.row(12, 0)
-                    .height(64)
-                    .align(VantaUiNode.Alignment.CENTER);
-            identity.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
-                    .size(56, 56)
-                    .background(VantaUiTheme.SURFACE_SELECTED)
-                    .align(VantaUiNode.Alignment.CENTER));
-            VantaUiNode labels = VantaUiNode.column(4, 0).flex(1);
-            labels.add(VantaUiNode.title(mod.name()));
-            labels.add(VantaUiNode.text(mod.id() + "  ·  " + mod.version(),
-                    VantaUiTheme.TEXT_MUTED));
-            identity.add(labels);
-            details.add(identity);
-
-            ModDescriptor descriptor = integrations.stream()
-                    .filter(candidate -> candidate.id().equals(mod.id()))
-                    .findFirst().orElse(null);
-            Object configFactory = discoveredConfigFactories.get(mod.id());
-            if (descriptor != null) {
-                details.add(VantaUiNode.button("Open Vanta integration settings",
-                        VantaUiNode.Icon.DISPLAY,
-                        () -> minecraft.setScreen(new VantaIntegrationSettingsScreen(this, descriptor)))
-                        .height(34));
-            } else if (configFactory != null) {
-                details.add(VantaUiNode.button("Open mod settings",
-                        VantaUiNode.Icon.DISPLAY, () -> {
-                            Screen configScreen = ModConfigDiscovery.open(configFactory, this);
-                            if (configScreen != null) minecraft.setScreen(configScreen);
-                        }).height(34));
-            } else if (ClientPlatform.isModLoaded("modmenu")) {
-                details.add(VantaUiNode.button("Open Mod Menu",
-                        VantaUiNode.Icon.DISPLAY, this::openModMenu).height(34));
-            } else {
-                details.add(VantaUiNode.paragraph(
-                        "This mod does not expose a settings screen that Vanta can safely open. "
-                                + "Install Mod Menu to discover supported configuration screens.",
-                        VantaUiTheme.TEXT_MUTED, 3));
-            }
-            details.add(VantaUiNode.paragraph(
-                    "JAR: " + mod.path().getFileName()
-                            + ". Mods loaded by Fabric cannot be safely unloaded at runtime. "
-                            + "Session hotloading is experimental and restart is the recovery path.",
-                    VantaUiTheme.TEXT_MUTED, 3));
+            details.add(VantaUiNode.paragraph("Mod not found. The JAR may have been removed or the folder rescanned.",
+                    MenuTheme.TEXT_DIM, 3));
+            return details;
         }
-        details.add(VantaUiNode.button("Back to mod library", () -> {
-            selection = Selection.NONE;
-            selectedModId = null;
-            rebuildWidgets();
-        }).height(34));
+        String initial = mod.name().isBlank() ? "?" : mod.name().substring(0, 1).toUpperCase(Locale.ROOT);
+        VantaUiNode identity = VantaUiNode.row(16, 18).height(96)
+                .background(0x8C141926).border(0x22FFFFFF).radius(16).align(VantaUiNode.Alignment.CENTER);
+        identity.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
+                .size(60, 60).background(MenuTheme.alpha(MenuTheme.accent(), 40)).radius(16));
+        String meta = mod.id() + "  ·  " + mod.version();
+        identity.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
+            MenuTheme.text(g, f, MenuTheme.fit(f, mod.name(), w, MenuTheme.FONT_MEDIUM), x, y + h / 2 - 10,
+                    MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.text(g, f, MenuTheme.fit(f, meta, w, MenuTheme.FONT_SMALL), x, y + h / 2 + 12,
+                    MenuTheme.TEXT_MUTED, MenuTheme.FONT_SMALL);
+        }).flex(1).height(60));
+        details.add(identity);
+
+        ModDescriptor descriptor = integrations.stream()
+                .filter(candidate -> candidate.id().equals(mod.id()))
+                .findFirst().orElse(null);
+        Object configFactory = discoveredConfigFactories.get(mod.id());
+        if (descriptor != null) {
+            details.add(wide(MenuComponents.button(font, "Open Vanta integration settings", MenuIcons.Icon.PREFERENCES,
+                    true, () -> minecraft.setScreen(new VantaIntegrationSettingsScreen(this, descriptor)))));
+        } else if (configFactory != null) {
+            details.add(wide(MenuComponents.button(font, "Open mod settings", MenuIcons.Icon.PREFERENCES, true, () -> {
+                Screen configScreen = ModConfigDiscovery.open(configFactory, this);
+                if (configScreen != null) minecraft.setScreen(configScreen);
+            })));
+        } else if (ClientPlatform.isModLoaded("modmenu")) {
+            details.add(wide(MenuComponents.button(font, "Open Mod Menu", MenuIcons.Icon.PREFERENCES, true,
+                    this::openModMenu)));
+        } else {
+            details.add(VantaUiNode.paragraph(
+                    "This mod has no settings screen Vanta can safely open. Install Mod Menu to discover supported ones.",
+                    MenuTheme.TEXT_DIM, 3));
+        }
+        details.add(VantaUiNode.paragraph(
+                "JAR: " + mod.path().getFileName()
+                        + ". Mods loaded by Fabric cannot be unloaded at runtime. Session hotloading is experimental, and a restart is the recovery path.",
+                MenuTheme.TEXT_MUTED, 3));
         return details;
+    }
+
+    private int compact_pad() {
+        return compactLayout() ? 12 : 22;
+    }
+
+    private static VantaUiNode wide(VantaUiNode button) {
+        return VantaUiNode.row(0, 0).height(44).add(button.flex(1));
     }
 
     private String selectedModTitle() {

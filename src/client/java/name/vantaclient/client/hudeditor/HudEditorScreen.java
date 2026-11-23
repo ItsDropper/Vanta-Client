@@ -57,7 +57,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
                 .align(VantaUiNode.Alignment.START);
         VantaUiNode toolbar = VantaUiNode.row(compact ? 10 : 14, compact ? 14 : 20)
                 .height(toolbarHeight).flex(1)
-                .background(0xEB0B111B).border(0x2EFFFFFF).radius(compact ? 14 : 18)
+                .background(0xFA0B111B).border(0x2EFFFFFF).radius(compact ? 14 : 18)
                 .align(VantaUiNode.Alignment.CENTER);
         toolbar.add(VantaUiNode.image(Identifier.fromNamespaceAndPath(
                 "vanta", "textures/gui/title/mark_small.png"))

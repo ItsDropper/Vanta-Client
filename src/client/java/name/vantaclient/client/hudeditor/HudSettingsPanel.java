@@ -83,7 +83,7 @@ public final class HudSettingsPanel {
         VantaUiNode panel = VantaComponents.panel(VantaComponents.Surface.POPOVER, 10, 18)
                 .width(panelWidth).height(panelHeight).scrollable()
                 // Opaque enough that the placeholder HUD elements behind never show through.
-                .background(0xF20B111B).border(0x30FFFFFF).radius(18);
+                .background(0xFF0B111B).border(0x30FFFFFF).radius(18);
 
         VantaUiNode header = VantaUiNode.row(8, 0)
                 .height(38)
@@ -93,8 +93,9 @@ public final class HudSettingsPanel {
         labels.add(VantaUiNode.dynamicText(HudSettingsPanel::selectedName,
                 VantaUiTheme.TEXT_PRIMARY));
         header.add(labels);
-        header.add(VantaUiNode.button("×", HudSettingsPanel::close)
-                .size(28, 28).tooltip("Close inspector"));
+        header.add(name.vantaclient.client.gui.menu.MenuComponents.iconButton(
+                name.vantaclient.client.gui.menu.MenuIcons.Icon.CLOSE, "Close inspector", true,
+                HudSettingsPanel::close));
         panel.add(header);
         panel.add(VantaUiNode.paragraph("Changes apply immediately to the selected HUD element.",
                 VantaUiTheme.TEXT_SECONDARY, 2));
@@ -104,9 +105,10 @@ public final class HudSettingsPanel {
         panel.add(VantaUiNode.slider("Element scale", 0.25, 3.0, 0.05,
                 () -> selected == null ? 1.0 : selected.getScale(),
                 value -> { if (selected != null) selected.setScale((float) value); }));
-        panel.add(VantaUiNode.button("Center on screen", () -> {
-            if (selected != null) selected.centerOnScreen();
-        }).height(32).tooltip("Move the selected HUD element to the center of the screen"));
+        panel.add(VantaUiNode.row(0, 0).height(40).add(
+                name.vantaclient.client.gui.menu.MenuComponents.button(mc.font, "Center on screen", null, false, () -> {
+                    if (selected != null) selected.centerOnScreen();
+                }).flex(1).tooltip("Move the selected HUD element to the center of the screen")));
 
         if (selected instanceof ArmorHudElement armor) {
             panel.add(VantaUiNode.dropdown("Orientation",
@@ -177,8 +179,9 @@ public final class HudSettingsPanel {
                             Integer.parseInt(value.substring(0, value.indexOf(' ')));
                     VantaClientPreferences.save();
                 }));
-        panel.add(name.vantaclient.client.gui.menu.MenuComponents.button(mc.font, "Done", null, true,
-                HudSettingsPanel::close).height(40));
+        panel.add(VantaUiNode.row(0, 0).height(42).add(
+                name.vantaclient.client.gui.menu.MenuComponents.button(mc.font, "Done", null, true,
+                        HudSettingsPanel::close).flex(1)));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
                 .width(panelWidth)
