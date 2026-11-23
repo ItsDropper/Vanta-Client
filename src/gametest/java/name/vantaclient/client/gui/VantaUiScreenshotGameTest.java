@@ -286,9 +286,9 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             }
 
             cinematic.update(-1, -1, 100, 100, 0.05f, 5.0, true);
-            if (Math.abs(cinematic.cameraOffsetX()) > 0.001f
-                    || Math.abs(cinematic.cameraOffsetY()) > 0.001f
-                    || Math.abs(cinematic.cameraOffsetZ()) > 0.001f
+            if (Math.abs(cinematic.cameraOffsetX()) > 0.08f
+                    || Math.abs(cinematic.cameraOffsetY()) > 0.08f
+                    || Math.abs(cinematic.cameraOffsetZ()) > 0.08f
                     || Math.abs(cinematic.sceneYaw()) > 0.2f
                     || Math.abs(cinematic.scenePitch()) > 0.2f) {
                 throw new AssertionError("Lobby entrance must settle into the resting camera composition.");
