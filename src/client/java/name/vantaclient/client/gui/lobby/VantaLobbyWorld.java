@@ -188,6 +188,9 @@ public final class VantaLobbyWorld {
         nextStartAttemptNanos = now + 250_000_000L;
         try {
             build();
+            // Terrain generation can take long enough to consume most of the opening move.
+            // Start the camera clock only after the isolated ClientLevel and its chunks exist.
+            VantaLobbyScene.restartCameraIntro();
             terrainRendered = false;
             active = true;
             nextStartAttemptNanos = 0L;
