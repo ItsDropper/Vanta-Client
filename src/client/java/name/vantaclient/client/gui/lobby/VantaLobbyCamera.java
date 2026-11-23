@@ -86,18 +86,13 @@ public final class VantaLobbyCamera {
     /** Advances the complete lobby camera, opening choreography and idle motion. */
     public void update(int mouseX, int mouseY, int width, int height, float deltaSeconds,
                        double elapsedSeconds, boolean animationsEnabled) {
-        updatePointer(mouseX, mouseY, width, height, deltaSeconds, animationsEnabled);
         if (!animationsEnabled) {
-            sceneYaw = pointerSceneYaw;
-            scenePitch = pointerScenePitch;
-            cameraOffsetX = 0.0f;
-            cameraOffsetY = 0.0f;
-            cameraOffsetZ = 0.0f;
-            avatarHeadYaw = subjectYaw;
-            avatarBodyYaw = subjectYaw;
-            avatarBreathOffset = 0.0f;
+            // Reduced motion also disables pointer-driven camera parallax; snapping the
+            // camera to the cursor would still create large, immediate viewpoint changes.
+            reset();
             return;
         }
+        updatePointer(mouseX, mouseY, width, height, deltaSeconds, true);
 
         double time = Double.isFinite(elapsedSeconds) ? Math.max(0.0, elapsedSeconds) : 0.0;
         float settled = easeOutCubic((float) (time / INTRO_SECONDS));
