@@ -1741,12 +1741,19 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         TitleScreen titleScreen = context.computeOnClient(client -> new TitleScreen());
         context.setScreen(() -> titleScreen);
         context.waitForScreen(TitleScreen.class);
-        // The title lobby compiles its generated chunks asynchronously. Four ticks
-        // only captured the fallback panorama before the world had rendered.
-        context.waitTicks(80);
+        // Wait for the first real terrain frame instead of sleeping a fixed four seconds.
+        // This captures the camera near the beginning of its entrance, not after it has settled.
+        boolean worldReady = false;
+        for (int tick = 0; tick < 100 && !worldReady; tick++) {
+            context.waitTicks(1);
+            worldReady = context.computeOnClient(client -> VantaLobbyWorld.isWorldReadyForDisplay());
+        }
+        if (!worldReady) {
+            throw new AssertionError("Title lobby did not finish rendering its world within 100 ticks.");
+        }
         context.runOnClient(client -> {
             if (!VantaLobbyWorld.isWorldReadyForDisplay()) {
-                throw new AssertionError("Title lobby did not finish rendering its world before the screenshot.");
+                throw new AssertionError("Title lobby lost its rendered world before the screenshot.");
             }
             // The Vanta title style paints its own labels over unlabeled widgets, so assert on
             // the widget set instead: vanilla navigation plus the top-right actions, footer
