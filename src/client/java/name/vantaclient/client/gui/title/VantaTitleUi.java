@@ -558,15 +558,17 @@ public final class VantaTitleUi {
         long now = System.nanoTime();
         float dt = Math.min(0.1f, (now - lastFrame) / 1_000_000_000.0f);
         lastFrame = now;
-        float blend = 1.0f - (float) Math.exp(-dt * 16.0f);
+        boolean animationsEnabled = VantaClientPreferences.get().animations;
+        float blend = animationsEnabled ? 1.0f - (float) Math.exp(-dt * 16.0f) : 1.0f;
         popupProgress += (1.0f - popupProgress) * blend;
-        segSlide += ((tab == Tab.MULTIPLAYER ? 1.0f : 0.0f) - segSlide) * (1.0f - (float) Math.exp(-dt * 20.0f));
+        segSlide += ((tab == Tab.MULTIPLAYER ? 1.0f : 0.0f) - segSlide)
+                * (animationsEnabled ? 1.0f - (float) Math.exp(-dt * 20.0f) : 1.0f);
         if (notificationsOpen) layout();
 
         int w = screen.width;
         int h = screen.height;
         long elapsed = VantaLobbyScene.elapsedMillis();
-        float intro = ease(clamp01(elapsed / 520.0f));
+        float intro = animationsEnabled ? ease(clamp01(elapsed / 520.0f)) : 1.0f;
         int accent = THEME.accent();
 
         for (Map.Entry<AbstractButton, Item> entry : items.entrySet()) {
@@ -583,10 +585,10 @@ public final class VantaTitleUi {
         g.blit(RenderPipelines.GUI_TEXTURED, SCRIM_TOP, 0, 0, 0.0f, 0.0f,
                 w, s(110), 4, 128, 4, 128, alpha(0xFFFFFFFF, intro));
 
-        VantaAmbience.render(g, w, h, elapsed, accent, intro, u);
+        VantaAmbience.render(g, w, h, elapsed, accent, intro, u, animationsEnabled);
 
         renderTopBar(g, intro, accent);
-        float cards = ease(clamp01((elapsed - 120) / 520.0f));
+        float cards = animationsEnabled ? ease(clamp01((elapsed - 120) / 520.0f)) : 1.0f;
         int lift = Math.round((1.0f - cards) * s(16));
         renderLeftCards(g, cards, lift, accent);
         renderPlayCard(g, cards, lift, accent);
@@ -778,8 +780,10 @@ public final class VantaTitleUi {
         VantaAmbience.glow(g, play.getX() + play.getWidth() / 2, playY + play.getHeight() / 2 + s(4),
                 Math.round(play.getWidth() * 0.62f), accent, (0.10f + 0.14f * playItem.hover) * a);
         VantaUiTheme.fillSquircle(g, play.getX(), playY, play.getWidth(), play.getHeight(), s(14), alpha(btnColor, a));
-        VantaAmbience.sheen(g, play.getX(), playY, play.getWidth(), play.getHeight(),
-                VantaLobbyScene.elapsedMillis(), playItem.hover * a);
+        if (VantaClientPreferences.get().animations) {
+            VantaAmbience.sheen(g, play.getX(), playY, play.getWidth(), play.getHeight(),
+                    VantaLobbyScene.elapsedMillis(), playItem.hover * a);
+        }
         String label = entries.isEmpty() ? (tab == Tab.SINGLEPLAYER ? "Create world" : "Add server") : "Play";
         int lw = textWidth(label, 17, true);
         text(g, label, play.getX() + (play.getWidth() - lw) / 2.0f, playY + play.getHeight() / 2, 17,
