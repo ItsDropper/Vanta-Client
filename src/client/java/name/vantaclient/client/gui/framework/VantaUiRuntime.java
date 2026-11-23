@@ -75,6 +75,7 @@ public final class VantaUiRuntime {
     private int maxViewportWidth = Integer.MAX_VALUE;
     private int maxViewportHeight = Integer.MAX_VALUE;
     private long lastScrollNanos = System.nanoTime();
+    private long introStartNanos = 0L;
 
     private static final float DESIGN_WIDTH = 640.0f;
     private static final float DESIGN_HEIGHT = 360.0f;
@@ -262,6 +263,18 @@ public final class VantaUiRuntime {
         long renderStart = System.nanoTime();
         graphics.enableScissor(0, 0, screenWidth, screenHeight);
         graphics.pose().pushMatrix();
+        if (animationsEnabled) {
+            // Settle-in on first show: a short ease-out from 97% so screens never pop in.
+            if (introStartNanos == 0L) introStartNanos = System.nanoTime();
+            float t = Math.min(1.0f, (System.nanoTime() - introStartNanos) / 180_000_000.0f);
+            float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+            float introScale = 0.97f + 0.03f * eased;
+            if (introScale < 0.9999f) {
+                graphics.pose().translate(screenWidth * 0.5f, screenHeight * 0.5f);
+                graphics.pose().scale(introScale, introScale);
+                graphics.pose().translate(-screenWidth * 0.5f, -screenHeight * 0.5f);
+            }
+        }
         graphics.pose().translate(offsetX, offsetY);
         graphics.pose().scale(uiScale, uiScale);
         try {
