@@ -75,20 +75,23 @@ public final class HudSettingsPanel {
         int marginY = Math.max(1, Math.round(layoutHeight * 0.035f));
         int contentHeight = Math.max(0, layoutHeight - marginY * 2);
         int panelWidth = Math.max(160, Math.round(layoutWidth * 0.42f));
-        int panelHeight = Math.max(112, Math.round(layoutHeight * 0.72f));
-        int panelTop = Math.round(layoutHeight * 0.167f);
+        int panelHeight = Math.max(112, Math.round(layoutHeight * 0.80f));
+        int panelTop = Math.round(layoutHeight * 0.125f);
 
         VantaUiNode root = VantaUiNode.row(0, 0)
                 .height(contentHeight)
                 .align(VantaUiNode.Alignment.START);
         root.add(VantaUiNode.spacer(1).flex(1));
 
-        VantaUiNode panel = VantaUiNode.column(10, 18)
-                .width(panelWidth).height(panelHeight).scrollable()
+        VantaUiNode shellPanel = VantaUiNode.column(0, 0)
+                .width(panelWidth).height(panelHeight)
                 // Opaque enough that the placeholder HUD elements behind never show through.
                 .background(0xFF0B111B).border(0x30FFFFFF).radius(18);
         net.minecraft.client.gui.Font font = mc.font;
-        int labelWidth = Math.max(60, panelWidth - 36 - 32 - 230);
+        int labelWidthWide = Math.max(60, panelWidth - 36 - 32 - 230);
+        int labelWidthNarrow = Math.max(60, panelWidth - 36 - 32 - 150);
+        int labelWidth = labelWidthNarrow;
+        VantaUiNode panel = VantaUiNode.column(10, 16).flex(1).scrollable();
 
         VantaUiNode header = VantaUiNode.row(8, 0).height(52)
                 .align(VantaUiNode.Alignment.CENTER);
@@ -99,14 +102,15 @@ public final class HudSettingsPanel {
         }).flex(1).height(48));
         header.add(MenuComponents.iconButton(MenuIcons.Icon.CLOSE, "Close inspector", true,
                 HudSettingsPanel::close));
-        panel.add(header);
+        shellPanel.add(VantaUiNode.column(0, 16).height(68).add(header));
+        shellPanel.add(panel);
 
         panel.add(MenuComponents.sectionTitle("Position and size"));
         panel.add(MenuComponents.settingRow(font, "Element scale", null,
                 VantaUiNode.slider("", 0.25, 3.0, 0.05,
                         () -> selected == null ? 1.0 : selected.getScale(),
                         value -> { if (selected != null) selected.setScale((float) value); })
-                        .menuStyle().height(30), 230, labelWidth));
+                        .menuStyle().height(30), 230, labelWidthWide));
         panel.add(VantaUiNode.row(0, 0).height(44).add(
                 MenuComponents.button(font, "Center on screen", MenuIcons.Icon.HUD, false, () -> {
                     if (selected != null) selected.centerOnScreen();
@@ -152,7 +156,7 @@ public final class HudSettingsPanel {
                             VantaClientPreferences.get().hudBackgroundConnectionGap =
                                     Math.max(0, Math.min(24, (int) Math.round(value)));
                             VantaClientPreferences.save();
-                        }).menuStyle().height(30), 230, labelWidth));
+                        }).menuStyle().height(30), 230, labelWidthWide));
 
         panel.add(MenuComponents.sectionTitle("Grid"));
         panel.add(MenuComponents.settingRow(font, "Snap to grid", null,
@@ -175,15 +179,15 @@ public final class HudSettingsPanel {
                                     Integer.parseInt(value.substring(0, value.indexOf(' ')));
                             VantaClientPreferences.save();
                         }).menuStyle().height(34), 150, labelWidth));
-        panel.add(VantaUiNode.row(0, 0).height(46).add(
-                MenuComponents.button(font, "Done", null, true, HudSettingsPanel::close).flex(1)));
+        shellPanel.add(VantaUiNode.row(0, 16).height(70).align(VantaUiNode.Alignment.CENTER).add(
+                MenuComponents.button(font, "Done", null, true, HudSettingsPanel::close).flex(1).height(44)));
 
         VantaUiNode inspectorSlot = VantaUiNode.column(0, 0)
                 .width(panelWidth)
                 .height(contentHeight)
                 .align(VantaUiNode.Alignment.START);
         inspectorSlot.add(VantaUiNode.spacer(1).height(panelTop));
-        inspectorSlot.add(panel);
+        inspectorSlot.add(shellPanel);
         root.add(inspectorSlot);
         return root;
     }
