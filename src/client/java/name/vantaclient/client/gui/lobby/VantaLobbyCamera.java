@@ -92,7 +92,7 @@ public final class VantaLobbyCamera {
             reset();
             return;
         }
-        updatePointer(mouseX, mouseY, width, height, deltaSeconds, true);
+        updatePointer(mouseX, mouseY, width, height, deltaSeconds);
 
         double time = Double.isFinite(elapsedSeconds) ? Math.max(0.0, elapsedSeconds) : 0.0;
         float settled = easeOutCubic((float) (time / INTRO_SECONDS));
