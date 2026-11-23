@@ -16,6 +16,7 @@ on:
       - "src/client/java/name/vantaclient/client/hud/**"
       - "src/client/java/name/vantaclient/mixin/**"
       - "src/main/resources/dropperutils.mixins.json"
+      - "src/main/resources/assets/**"
       - "src/client/resources/**"
       - "src/gametest/**"
       - ".github/workflows/ui-screenshots.yml"
