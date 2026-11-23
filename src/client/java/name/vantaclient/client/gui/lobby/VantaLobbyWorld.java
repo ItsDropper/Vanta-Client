@@ -278,13 +278,15 @@ public final class VantaLobbyWorld {
             if (avatar != null) {
                 // Face the visible model toward the lobby camera. The camera sits
                 // on the +Z side of the avatar and looks back toward -Z.
-                float avatarYaw = camera.subjectYaw();
-                avatar.snapTo(avatar.getX(), avatar.getY(), avatar.getZ(), avatarYaw, 0.0f);
-                avatar.setYHeadRot(avatarYaw);
-                avatar.setYBodyRot(avatarYaw);
+                float avatarBodyYaw = camera.avatarBodyYaw();
+                float avatarHeadYaw = camera.avatarHeadYaw();
+                avatar.snapTo(avatar.getX(), 64.0 + camera.avatarBreathOffset(),
+                        avatar.getZ(), avatarBodyYaw, 0.0f);
+                avatar.setYHeadRot(avatarHeadYaw);
+                avatar.setYBodyRot(avatarBodyYaw);
                 LivingEntityAccessor avatarRotation = (LivingEntityAccessor) avatar;
-                avatarRotation.vanta$setPreviousHeadYaw(avatarYaw);
-                avatarRotation.vanta$setPreviousBodyYaw(avatarYaw);
+                avatarRotation.vanta$setPreviousHeadYaw(avatarHeadYaw);
+                avatarRotation.vanta$setPreviousBodyYaw(avatarBodyYaw);
             }
             LivingEntityAccessor rotationAccessor = (LivingEntityAccessor) cameraRig;
             // The lobby player is intentionally not ticked. Vanilla's player renderer
@@ -317,7 +319,10 @@ public final class VantaLobbyWorld {
         // camera position avoids the vanilla fixed-distance third-person composition.
         // The avatar is at z=-5.5. Keep the camera on its +Z side and
         // explicitly face north (-Z); yaw 0 would look away from the avatar.
-        cameraAccessor.vanta$setPosition(avatar.getX(), avatar.getY() + 6.0, avatar.getZ() + 13.0);
+        cameraAccessor.vanta$setPosition(
+                avatar.getX() + camera.cameraOffsetX(),
+                avatar.getY() + 6.0 + camera.cameraOffsetY(),
+                avatar.getZ() + 13.0 + camera.cameraOffsetZ());
         cameraAccessor.vanta$setRotation(
                 180.0f + camera.sceneYaw(), 19.0f + camera.scenePitch());
     }
