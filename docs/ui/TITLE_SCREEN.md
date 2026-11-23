@@ -38,8 +38,8 @@ environment state stay uninitialised and the frame renders black. Sparse cherry-
 in the camera foreground while animations are enabled, giving the scene a real world-space depth cue.
 
 A lightweight `lobby_grade` post-chain runs after the 3D world pass and before title UI composition.
-It applies restrained saturation, contrast, warm lift and edge falloff to the world only; menu text and
-controls are not processed. Shader assets are part of the screenshot workflow's path filter so changes
+It applies restrained saturation, contrast, warm lift, four-tap highlight bloom and edge falloff to the
+world only; menu text and controls are not processed. Shader assets are part of the screenshot workflow's path filter so changes
 to the post-effect are exercised by the real-client visual test.
 
 
