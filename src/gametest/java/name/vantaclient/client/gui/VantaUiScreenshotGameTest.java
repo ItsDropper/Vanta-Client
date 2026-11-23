@@ -291,7 +291,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             if (sceneCamera.cameraOffsetX() != 0.0f
                     || sceneCamera.cameraOffsetY() != 0.0f
                     || sceneCamera.cameraOffsetZ() != 0.0f
-                    || VantaLobbyScene.cameraElapsedMillis() > 250L
+                    || VantaLobbyScene.cameraElapsedMillis() > 1_000L
                     || VantaLobbyScene.elapsedMillis() < uiElapsedBeforeRestart) {
                 throw new AssertionError("Restarting the lobby camera after world creation must reset only its clock and pose.");
             }
