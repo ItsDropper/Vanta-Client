@@ -126,69 +126,17 @@ public final class VanillaHudElement extends HudElement {
     protected void renderElement(GuiGraphics graphics) {
         int width = getWidth();
         int height = getHeight();
-        graphics.fill(0, 0, width, height, 0x30243142);
-        graphics.fill(0, 0, width, 1, 0x509BAEC8);
-        graphics.fill(0, height - 1, width, height, 0x509BAEC8);
-
-        switch (part) {
-            case HOTBAR -> {
-                for (int i = 0; i < 9; i++) {
-                    int x = 2 + i * 20;
-                    graphics.fill(x, 2, x + 18, 20, 0x385D6C82);
-                    graphics.fill(x, 2, x + 18, 3, 0x669BAEC8);
-                }
-            }
-            case CROSSHAIR -> {
-                int centerX = width / 2;
-                int centerY = height / 2;
-                graphics.fill(centerX - 5, centerY, centerX + 5, centerY + 1, 0xFFFFFFFF);
-                graphics.fill(centerX, centerY - 5, centerX + 1, centerY + 5, 0xFFFFFFFF);
-            }
-            case HEALTH, ARMOR, FOOD, AIR -> {
-                int count = part == Part.FOOD || part == Part.AIR ? 10 : 10;
-                int cellWidth = part == Part.FOOD || part == Part.AIR ? 7 : 8;
-                for (int i = 0; i < count; i++) {
-                    int x = i * cellWidth;
-                    graphics.fill(x, 2, x + cellWidth - 1, height - 2, 0x509BAEC8);
-                }
-            }
-            case EFFECTS -> {
-                for (int row = 0; row < 3; row++) {
-                    for (int column = 0; column < 5; column++) {
-                        int x = column * 24 + 2;
-                        int y = row * 24 + 2;
-                        graphics.fill(x, y, x + 20, y + 20, 0x405D6C82);
-                    }
-                }
-            }
-            case BOSS_BAR -> {
-                graphics.fill(2, 4, width - 2, 8, 0x806A2837);
-                graphics.fill(2, 4, width - 28, 8, 0x90B64D66);
-                graphics.fill(2, 12, width - 2, 16, 0x806A2837);
-            }
-            case MOUNT_HEALTH -> {
-                for (int i = 0; i < 10; i++) {
-                    int x = 2 + i * 18;
-                    graphics.fill(x, 2, x + 16, 10, 0x509BAEC8);
-                    graphics.fill(x, 12, x + 16, 14, 0x385D6C82);
-                }
-            }
-            case SCOREBOARD -> {
-                graphics.fill(2, 2, width - 2, height - 2, 0x40465368);
-                graphics.fill(8, 10, width - 8, 13, 0x70D0D9E6);
-                for (int row = 0; row < 12; row++) {
-                    int y = 23 + row * 12;
-                    graphics.fill(8, y, width - 8, y + 5, 0x409BAEC8);
-                }
-            }
-            case EXPERIENCE -> {
-                graphics.fill(2, 3, width - 2, 8, 0x80252C35);
-                graphics.fill(2, 3, width / 2, 8, 0x9065B86D);
-            }
-            case JUMP_BAR -> {
-                graphics.fill(2, 3, width - 2, 8, 0x80252C35);
-                graphics.fill(2, 3, width / 3, 8, 0x9065A9E8);
-            }
+        // Quiet footprint: a faint tint and hairline frame, so the editor reads as a layout, not a mock-up.
+        graphics.fill(0, 0, width, height, 0x1C243142);
+        graphics.fill(0, 0, width, 1, 0x389BAEC8);
+        graphics.fill(0, height - 1, width, height, 0x389BAEC8);
+        graphics.fill(0, 0, 1, height, 0x389BAEC8);
+        graphics.fill(width - 1, 0, width, height, 0x389BAEC8);
+        if (part == Part.CROSSHAIR) {
+            int centerX = width / 2;
+            int centerY = height / 2;
+            graphics.fill(centerX - 5, centerY, centerX + 5, centerY + 1, 0xC8FFFFFF);
+            graphics.fill(centerX, centerY - 5, centerX + 1, centerY + 5, 0xC8FFFFFF);
         }
     }
 

@@ -254,9 +254,9 @@ public final class MenuComponents {
                 MenuTheme.dot(g, x + 20, y + 20, 7, 0xFF3DD68C);
             }
             int art = 60;
-            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 28, art);
+            drawModArt(g, font, entry, icon.get(), x + (w - art) / 2, y + 22, art);
             String name = MenuTheme.fit(font, entry.name(), w - 28, MenuTheme.FONT_MEDIUM);
-            MenuTheme.textCentered(g, font, name, x + w / 2, y + 28 + art + 26, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
+            MenuTheme.textCentered(g, font, name, x + w / 2, y + 22 + art + 24, MenuTheme.TEXT, MenuTheme.FONT_MEDIUM);
             if (!entry.configurableInVanta()) {
                 String status = entry.hasOwnConfigScreen() ? "Own settings" : "No options";
                 int chipW = MenuTheme.width(font, status, MenuTheme.FONT_SMALL) + 22;
@@ -271,7 +271,7 @@ public final class MenuComponents {
                         MenuTheme.FONT_SMALL);
             }
             focusRing(g, st, x, y, w, h, 16);
-        }).height(168).tooltip(entry.configurableInVanta()
+        }).height(150).tooltip(entry.configurableInVanta()
                 ? "Settings available in Vanta"
                 : entry.hasOwnConfigScreen() ? "Opens the mod's own settings" : "No settings Vanta can edit")
                 .onClick(open);

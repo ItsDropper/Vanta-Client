@@ -258,7 +258,7 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         card.add(VantaUiNode.dynamicImage(() -> modIconTextures.get(mod.id()), initial)
                 .size(52, 52).background(MenuTheme.alpha(MenuTheme.accent(), 40)).radius(14));
         String state = fabricLoaded ? "Enabled by Fabric"
-                : sessionLoaded ? "Loaded this session (experimental)" : "Installed, restart to load";
+                : sessionLoaded ? "Loaded this session" : "Restart to load";
         int stateColor = fabricLoaded ? 0xFF3DD68C : sessionLoaded ? 0xFFF2C14E : 0xFF8B94A6;
         String meta = mod.id() + "  ·  " + mod.version();
         card.add(VantaUiNode.canvas((g, f, x, y, w, h, st) -> {
