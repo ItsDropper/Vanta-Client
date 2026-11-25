@@ -38,7 +38,7 @@ All ten states are captured at six configurations:
 | 1920 × 1080 | 3 | 640 × 360 |
 | 1920 × 1080 | 4 | 480 × 270 |
 
-Expected output: **82 PNG files**. The workflow asserts that exactly 82 screenshots exist and each capture checks for a valid file of at least 1 KiB.
+Expected output: **83 PNG files**. The workflow asserts that exactly 83 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
 The 60-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at six viewport/GUI-scale combinations, including true GUI scales 3 and 4. Two additional screenshots capture the Bondies Utils EZ integration list and its ten-setting detail page inside the production `VantaSettingsScreen` main-menu shell. The fixture mirrors the private Bondies repository's `BondiesVantaIntegration` descriptor so public Vanta CI does not require private-repository credentials; its values are inert. Both screenshots therefore exercise the same navigation, shell, typography, cards and controls used by the rest of the current main UI. Four viewport configurations exercise the retained-mode Modrinth browser (eight screenshots including its progress state), the installed-mod library and selected-mod details (eight screenshots), and world sharing (four screenshots). All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
 
@@ -86,3 +86,5 @@ Fabric writes screenshots to `build/run/clientGameTest/screenshots/`; the workfl
 - Captures are static states. They do not exercise every mouse/keyboard interaction or automatically judge visual quality.
 - Modrinth and installed-mod screens are captured with deterministic preview fixtures. The suite does not cover every network result, JAR state or third-party configuration screen.
 - Manual gameplay interaction and final design acceptance remain separate checks.
+
+The Bondies Utils EZ coverage also registers a preview FPS HUD through the public `VantaHudElement` API, verifies that the HUD editor discovers it and invokes its position/scale persistence callbacks, and captures the element in the real Vanta HUD editor.
