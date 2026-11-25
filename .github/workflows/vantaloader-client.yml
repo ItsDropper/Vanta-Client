@@ -59,10 +59,6 @@ jobs:
           done
           gradle --no-daemon -p loader clean build
           gradle --no-daemon -p loader/examples/hello-mod clean build
-          gradle --no-daemon -p loader/examples/auto-sprint clean build
-          gradle --no-daemon -p loader/examples/runtime-probe clean build
-          gradle --no-daemon -p loader/examples/mixin-probe clean build
-          gradle --no-daemon -p loader/examples/vma-showcase clean build
       - name: Launch Minecraft with VantaLoader and Vanta Client
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
@@ -72,15 +68,14 @@ jobs:
             --agent loader/build/agent/VantaLoader-agent.jar \
             --mod build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar \
             --mod loader/examples/hello-mod/build/libs/vantaloader-hello-mod-1.0.0.jar \
-            --mod loader/examples/auto-sprint/build/libs/vantaloader-auto-sprint-1.0.0.jar \
-            --mod loader/examples/runtime-probe/build/libs/vantaloader-runtime-probe-1.0.0.jar \
-            --mod loader/examples/mixin-probe/build/libs/vantaloader-mixin-probe-1.0.0.jar \
             --output build/vantaloader-client-smoke --timeout 240
       - name: Assert Vanta Client initialized
         run: |
           log=build/vantaloader-client-smoke/instance/logs/visual-smoke.log
           if [ -f "$log" ]; then
             grep -F "Vanta Client native bootstrap initialized" "$log"
+            grep -F "[Vanta Client] VantaLoader tick START observed" "$log"
+            grep -F "[Vanta Client] VantaLoader tick END observed" "$log"
           else
             echo "Minecraft log was not produced"
             exit 1

@@ -21,6 +21,8 @@ public final class VantaLoaderEvents {
     private static final Set<UUID> HOST_PLAYERS = new HashSet<>();
     private static volatile MinecraftServer trackedServer;
     private static boolean remoteGuestConnected;
+    private static boolean startTickLogged;
+    private static boolean endTickLogged;
 
     private VantaLoaderEvents() {}
 
@@ -28,6 +30,10 @@ public final class VantaLoaderEvents {
         ClientBootstrap.initializeFeatures();
         eventBus.subscribe(ClientTickEvent.class, 0, event -> {
             if (event.phase() == ClientTickEvent.Phase.START) {
+                if (!startTickLogged) {
+                    startTickLogged = true;
+                    System.out.println("[Vanta Client] VantaLoader tick START observed");
+                }
                 if (!Keybinds.isNativeRegistered()) {
                     Keybinds.registerNative();
                     FeatureKeybinds.registerNative();
@@ -45,6 +51,10 @@ public final class VantaLoaderEvents {
             ClientTickHandler.tick(client);
             VantaRemoteSessionManager.tick(client);
             ClientPerformanceMetrics.endClientTick();
+            if (!endTickLogged) {
+                endTickLogged = true;
+                System.out.println("[Vanta Client] VantaLoader tick END observed");
+            }
         });
     }
 
