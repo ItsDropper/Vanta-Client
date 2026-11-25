@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import name.vantaclient.client.hudeditor.HudEditorScreen;
 import name.vantaclient.client.hud.HudBackgroundRenderer;
@@ -167,6 +168,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         configureViewport(context, 1280, 720, 1);
         captureIntegrationsLibrary(context, screen, "1280x720-gui1");
         captureBondiesIntegrationSettings(context, screen, "1280x720-gui1");
+        captureBondiesHudEditor(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureIntegrationsLibrary(context, screen, "960x540-gui2");
         configureViewport(context, 1920, 1080, 3);
@@ -2058,6 +2060,64 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.waitForScreen(VantaSettingsScreen.class);
     }
 
+    private static void captureBondiesHudEditor(ClientGameTestContext context,
+                                                   VantaSettingsScreen settingsScreen,
+                                                   String viewportLabel) {
+        BondiesPreviewHud preview = context.computeOnClient(client -> new BondiesPreviewHud());
+        context.runOnClient(client -> name.vantaclient.api.VantaClientApi.registerHud(
+                "bondies-utills-ez", preview));
+        context.runOnClient(client -> {
+            HudElement registered = HudManager.getElements().stream()
+                    .filter(element -> element.getDisplayName().equals("Bondies FPS"))
+                    .findFirst().orElseThrow(() ->
+                            new AssertionError("Bondies HUD was not added to HudManager"));
+            registered.move(72, 54);
+            registered.savePosition();
+            registered.setScale(1.25f);
+            if (preview.x <= 0.0f || preview.y <= 0.0f
+                    || Math.abs(preview.scale - 1.25f) > 0.001f) {
+                throw new AssertionError("Vanta HUD editor did not persist position/scale callbacks");
+            }
+            HudManager.refreshVisibleElements();
+        });
+
+        HudEditorScreen editor = context.computeOnClient(client -> new HudEditorScreen(settingsScreen));
+        context.setScreen(() -> editor);
+        context.waitForScreen(HudEditorScreen.class);
+        context.waitTicks(3);
+        captureIntegrationScreenshot(context,
+                "vanta-bondies-fps-hud-editor-" + viewportLabel);
+
+        context.runOnClient(client -> {
+            name.vantaclient.api.VantaClientApi.unregisterHuds("bondies-utills-ez");
+            HudManager.refreshVisibleElements();
+        });
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    private static final class BondiesPreviewHud implements name.vantaclient.api.hud.VantaHudElement {
+        private float x = 0.05f;
+        private float y = 0.05f;
+        private float scale = 1.0f;
+
+        @Override public String id() { return "fps"; }
+        @Override public String displayName() { return "Bondies FPS"; }
+        @Override public int getWidth() {
+            return Minecraft.getInstance().font.width("FPS: " + Minecraft.getInstance().getFps());
+        }
+        @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
+        @Override public void render(GuiGraphics graphics) {
+            graphics.drawString(Minecraft.getInstance().font,
+                    "FPS: " + Minecraft.getInstance().getFps(), 0, 0, 0xFFFFFFFF);
+        }
+        @Override public float initialX() { return x; }
+        @Override public float initialY() { return y; }
+        @Override public float initialScale() { return scale; }
+        @Override public void onPositionChanged(float x, float y) { this.x = x; this.y = y; }
+        @Override public void onScaleChanged(float scale) { this.scale = scale; }
+    }
+
     private static void captureIntegrationScreenshot(ClientGameTestContext context, String name) {
         Path screenshot = context.takeScreenshot(name);
         if (!Files.isRegularFile(screenshot)) {
@@ -2084,12 +2144,6 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 .setting(name.vantaclient.api.setting.SettingDefinition.bool(
                         "fps.enabled", "FPS HUD", "Show or hide the FPS counter.",
                         true, () -> true, value -> {}))
-                .setting(name.vantaclient.api.setting.SettingDefinition.integer(
-                        "fps.x", "FPS HUD X", "Horizontal HUD position in screen pixels.",
-                        10, -10000, 10000, () -> 10, value -> {}))
-                .setting(name.vantaclient.api.setting.SettingDefinition.integer(
-                        "fps.y", "FPS HUD Y", "Vertical HUD position in screen pixels.",
-                        10, -10000, 10000, () -> 10, value -> {}))
                 .setting(name.vantaclient.api.setting.SettingDefinition.integer(
                         "fps.font-size", "FPS font size", "Text size in pixels.",
                         16, 4, 64, () -> 16, value -> {}))
