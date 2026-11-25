@@ -36,7 +36,7 @@ public class GuiMixin {
     }
 
     /** Set -Dvanta.client.loaderHud=true to re-enable custom HUD rendering on VantaLoader. */
-    private static final boolean LOADER_HUD_ENABLED = Boolean.getBoolean("vanta.client.loaderHud");
+    private static final boolean LOADER_HUD_ENABLED = true;
     private static final Identifier SATURATION_TEXTURE =
             Identifier.fromNamespaceAndPath("dropperutils", "textures/gui/saturation.png");
 
