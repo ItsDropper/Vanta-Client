@@ -54,6 +54,9 @@ jobs:
           fi
       - name: Build matching VantaLoader agent and integration probes
         run: |
+          for gradle_file in loader/build.gradle.kts loader/examples/*/build.gradle.kts; do
+            sed -i 's@repositories { mavenCentral() }@repositories { maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/") }; mavenCentral() }@' "$gradle_file"
+          done
           gradle --no-daemon -p loader clean build
           gradle --no-daemon -p loader/examples/hello-mod clean build
           gradle --no-daemon -p loader/examples/auto-sprint clean build

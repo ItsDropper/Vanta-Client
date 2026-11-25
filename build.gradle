@@ -10,12 +10,16 @@ repositories {
 	// Resolve common transitive libraries from Central before specialized mod repositories.
 	maven { url = 'https://maven-central.storage-download.googleapis.com/maven2/' }
 	mavenCentral {
-		content { excludeGroupByRegex('net\\.fabricmc(\\..*)?') }
+		content {
+			excludeGroupByRegex('net\\.fabricmc(\\..*)?')
+			excludeGroupByRegex('com\\.terraformersmc(\\..*)?')
+		}
 	}
 
 	maven {
 		name = "Terraformers"
 		url = "https://maven.terraformersmc.com/"
+		content { includeGroupByRegex('com\\.terraformersmc(\\..*)?') }
 	}
 
 	maven {
