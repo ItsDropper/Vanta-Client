@@ -8,6 +8,7 @@ group = project.maven_group
 
 repositories {
 	// Resolve common transitive libraries from Central before specialized mod repositories.
+	maven { url = 'https://maven-central.storage-download.googleapis.com/maven2/' }
 	mavenCentral {
 		content { excludeGroupByRegex('net\\.fabricmc(\\..*)?') }
 	}
