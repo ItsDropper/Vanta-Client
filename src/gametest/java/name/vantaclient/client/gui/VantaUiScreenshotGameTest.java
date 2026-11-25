@@ -2122,6 +2122,15 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
             this.id = id;
             this.name = name;
             this.text = text;
+            this.x = 0.02f;
+            this.y = switch (id) {
+                case "fps" -> 0.02f;
+                case "coordinates" -> 0.10f;
+                case "ping" -> 0.17f;
+                case "keystrokes" -> 0.24f;
+                case "armor" -> 0.35f;
+                default -> 0.05f;
+            };
         }
 
         @Override public String id() { return id; }
@@ -2159,7 +2168,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
      */
     private static name.vantaclient.api.ModDescriptor createBondiesUtilsPreviewDescriptor() {
         return name.vantaclient.api.ModDescriptor.builder("bondies-utills-ez", "Bondies Utils EZ")
-                .description("Configure the FPS HUD and player tier nametags from Vanta Client.")
+                .description("Configure Bondies HUD overlays and player tier nametags from Vanta Client.")
                 .version("1")
                 .setting(name.vantaclient.api.setting.SettingDefinition.bool(
                         "fps.enabled", "FPS HUD", "Show or hide the FPS counter.",
