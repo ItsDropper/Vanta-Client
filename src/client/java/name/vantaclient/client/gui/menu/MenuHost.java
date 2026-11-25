@@ -7,9 +7,9 @@ import net.minecraft.client.gui.screens.Screen;
 
 /** Services the menu shell offers to its pages. */
 public interface MenuHost {
-    enum Page { MODS, PROFILES, KEYBINDS, THEMES, PREFERENCES, MOD }
+    enum Page { MODS, INTEGRATIONS, INTEGRATION, PROFILES, KEYBINDS, THEMES, PREFERENCES, MOD }
 
-    /** A navigable location; {@code modId} is only meaningful for {@link Page#MOD}. */
+    /** A navigable location; {@code modId} identifies a mod or integration detail page. */
     record Route(Page page, String modId) {
         public static Route of(Page page) { return new Route(page, null); }
     }
