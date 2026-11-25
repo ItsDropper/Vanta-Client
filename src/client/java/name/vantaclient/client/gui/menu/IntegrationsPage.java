@@ -114,9 +114,13 @@ public final class IntegrationsPage {
                 control = VantaUiNode.slider("", minimum, maximum, step, () -> {
                     Object value = readValue(setting);
                     return value instanceof Number number ? number.doubleValue() : minimum;
-                }, value -> writeValue(setting, setting.type() == SettingDefinition.Type.INTEGER
-                        ? Integer.valueOf((int) Math.round(value)) : Double.valueOf(value)))
-                        .menuStyle().height(30);
+                }, value -> {
+                    if (setting.type() == SettingDefinition.Type.INTEGER) {
+                        writeValue(setting, Integer.valueOf((int) Math.round(value)));
+                    } else {
+                        writeValue(setting, Double.valueOf(value));
+                    }
+                }).menuStyle().height(30);
             }
             case ENUM -> {
                 List<String> options = setting.options();
