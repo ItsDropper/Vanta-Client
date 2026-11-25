@@ -120,7 +120,9 @@ session-hot-loaded can also register directly from its client initializer.
 A Vanta integration can also contribute HUD elements to the shared HUD renderer and editor. Implement `VantaHudElement` and register it from `registerHudElements()` (or call `VantaClientApi.registerHud(modId, element)` from a client initializer):
 
 ```java
+import name.vantaclient.api.ModDescriptor;
 import name.vantaclient.api.VantaClientApi;
+import name.vantaclient.api.VantaClientIntegration;
 import name.vantaclient.api.hud.VantaHudElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
