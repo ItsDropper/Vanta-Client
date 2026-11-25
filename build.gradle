@@ -157,6 +157,10 @@ configurations {
 		canBeResolved = true
 		extendsFrom configurations.include
 	}
+	vantaLoaderMappings {
+		canBeConsumed = false
+		canBeResolved = true
+	}
 }
 
 // WebRTC data transport. Native binaries are platform-specific, so each
@@ -193,6 +197,9 @@ if (!supportedWebRtcPlatforms.contains(webrtcPlatform)) {
 
 dependencies {
 	compileOnly files(vantaLoaderApiFile)
+	// VantaLoader translates Loom's intermediary Mixin refmap entries through
+	// official Mojang mappings into the exact names used by the obfuscated client.
+	vantaLoaderMappings "net.fabricmc:intermediary:${project.minecraft_version}:v2"
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings loom.officialMojangMappings()
@@ -235,6 +242,9 @@ tasks.register("vantaLoaderJar", Jar) {
 	// runtime libraries. Fabric Loader/API and Mod Menu remain compile-only.
 	from({ configurations.vantaLoaderRuntime.collect { zipTree(it) } }) {
 		exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+	}
+	from({ configurations.vantaLoaderMappings.collect { zipTree(it) } }) {
+		include("mappings/mappings.tiny")
 	}
 	from("LICENSE.local") {
 		rename { "${it}_${project.name}" }
