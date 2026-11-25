@@ -100,6 +100,15 @@ jobs:
             grep -F "Vanta Client native bootstrap initialized" "$log"
             grep -F "[Vanta Client] VantaLoader tick START observed" "$log"
             grep -F "[Vanta Client] VantaLoader tick END observed" "$log"
+            # A discovered mod and a running event bus are not proof that its
+            # Minecraft integration works. Require the title-screen Mixin to
+            # actually transform the target and reject failed lobby/accessor setup.
+            grep -F "Sponge Mixin processed Minecraft TitleScreen; bytecodeChanged=true" "$log"
+            if grep -Eq "ClassCastException:.*name\\.vantaclient\\.mixin\\.|NoSuchMethodError:|Unable to create the Vanta title world" "$log"; then
+              echo "Vanta Client has unresolved Minecraft runtime integration failures"
+              exit 1
+            fi
+            test -s build/vantaloader-client-smoke/vanta-client-settings.png
           else
             echo "Minecraft log was not produced"
             exit 1
