@@ -67,7 +67,7 @@ The example fields are illustrative. A real integration should bind getters and 
 
 Mods can register a provider using Fabric's `vanta` entrypoint. Vanta discovers
 providers on the first client tick, after normal client initializers have run.
-The descriptor ID must match the declaring Fabric mod ID.
+The descriptor ID must match the declaring Fabric mod ID. After the descriptor is accepted, Vanta calls the provider's optional `registerHudElements()` method so the same entrypoint can contribute movable HUDs.
 
 Add the entrypoint to the integrating mod's `fabric.mod.json`:
 
@@ -115,6 +115,49 @@ This entrypoint is additive to the manual `VantaClientApi.registerMod` route.
 Use the entrypoint for normal startup integration. A mod that is successfully
 session-hot-loaded can also register directly from its client initializer.
 
+## Registering HUD elements
+
+A Vanta integration can also contribute HUD elements to the shared HUD renderer and editor. Implement `VantaHudElement` and register it from `registerHudElements()` (or call `VantaClientApi.registerHud(modId, element)` from a client initializer):
+
+```java
+import name.vantaclient.api.VantaClientApi;
+import name.vantaclient.api.hud.VantaHudElement;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+
+public final class ExampleVantaIntegration implements VantaClientIntegration {
+    @Override
+    public ModDescriptor createDescriptor() {
+        return ModDescriptor.builder("examplemod", "Example Mod").build();
+    }
+
+    @Override
+    public void registerHudElements() {
+        VantaClientApi.registerHud("examplemod", new VantaHudElement() {
+            @Override public String id() { return "status"; }
+            @Override public String displayName() { return "Example status"; }
+            @Override public int getWidth() { return Minecraft.getInstance().font.width("Ready"); }
+            @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
+            @Override public void render(GuiGraphics graphics) {
+                graphics.drawString(Minecraft.getInstance().font, "Ready", 0, 0, 0xFFFFFFFF);
+            }
+            @Override public void onPositionChanged(float x, float y) {
+                // Persist normalized GUI coordinates in the mod's config.
+            }
+            @Override public void onScaleChanged(float scale) {
+                // Persist the Vanta editor scale in the mod's config.
+            }
+        });
+    }
+}
+```
+
+HUD render methods draw in local coordinates starting at `(0, 0)`. Vanta applies the registered element's normalized GUI position and editor scale. `getWidth()` and `getHeight()` must return the unscaled dimensions of the rendered content. `initialX()` and `initialY()` default to `0.05` (5% of the viewport); `initialScale()` defaults to `1.0`.
+
+The HUD editor automatically includes registered elements in its normal hitbox, drag, selection, scale, centering, and background systems. `isEnabled()` controls normal in-game visibility; disabled elements remain previewable while the editor is open. Vanta invokes `onPositionChanged(x, y)` after a drag is committed and `onScaleChanged(scale)` when the editor scale changes. Persist these callbacks in the integrating mod if positions and scale should survive restarts. Call `unregisterHud(modId, elementId)` or `unregisterHuds(modId)` when removing registrations.
+
+Mod IDs and HUD element IDs must match `[a-z0-9][a-z0-9_.-]{0,63}`. An element ID is unique within its owning mod; duplicate registrations throw `IllegalArgumentException`. Registry reads return an immutable snapshot sorted by mod ID and element ID.
+
 ## Supported setting definitions
 
 - Boolean
@@ -133,7 +176,7 @@ Each setting has a stable ID, display name, description, default value, and type
 - Descriptors and their setting lists are immutable after construction.
 - Registry reads return an immutable snapshot sorted by mod ID.
 - Registration is safe from concurrent initializers.
-- The API has no Minecraft or Fabric types in its public method signatures.
+- The settings descriptor API has no Minecraft or Fabric types in its public method signatures. The optional HUD API intentionally accepts Minecraft's `GuiGraphics` because HUD contributors draw into Vanta's live render pass.
 
 ## Compatibility policy
 
@@ -149,7 +192,7 @@ The unified panel is opened from the Click GUI's **Settings** entry or through M
 - **Settings** contains Vanta Client appearance preferences: accent colour, interface animations, compact layout, description visibility, and UI scale/spacing. Preferences are stored separately in `config/vanta-client.json`.
 - **Mods** contains the built-in HUD, Visual, Combat, and Misc categories.
 - The installed-mod library scans the active instance's `mods` directory and reads each JAR's Fabric metadata and optional icon. It distinguishes Fabric-loaded mods from session-hot-loaded candidates; listing a JAR does not execute it.
-- Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The settings page is rendered by Vanta, not by Mod Menu. Every supported setting has a Reset action that writes its declared default through the integration's setter.
+- Mods that register a `ModDescriptor` through the `vanta` entrypoint or `VantaClientApi.registerMod` expose their typed settings directly in the panel. The same provider can register `VantaHudElement` instances; those appear in Vanta's HUD editor and use the same drag/scale/background handling as built-in elements. The settings page is rendered by Vanta, not by Mod Menu. Every supported setting has a Reset action that writes its declared default through the integration's setter.
 - Other installed mods are still listed. When Mod Menu is present, the panel can hand off to Mod Menu's own mod screen for configuration screens those mods provide.
 
 ## Built-in third-party adapters
@@ -190,4 +233,4 @@ The runtime keeps a session-only list of successfully invoked hot-loaded client 
 
 ## Current scope
 
-The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Each control includes a Reset action that invokes the same setter with the definition's declared default value. Integration setters remain responsible for persisting their own values. Existing Mod Menu configuration screens remain third-party screens and are opened as such; Vanta cannot safely introspect arbitrary screen widgets and turn them into native controls. Mods need a Vanta integration provider (or a future dedicated adapter) for native rendering. Custom control renderers and shared third-party persistence are not implemented.
+The panel supports boolean, bounded integer, bounded decimal, bounded string, and enum controls for Vanta API integrations. Each control includes a Reset action that invokes the same setter with the definition's declared default value. Integration setters remain responsible for persisting their own values. Existing Mod Menu configuration screens remain third-party screens and are opened as such; Vanta cannot safely introspect arbitrary screen widgets and turn them into native controls. Mods need a Vanta integration provider (or a future dedicated adapter) for native rendering. Custom control renderers and shared third-party persistence are not implemented. HUD elements provide their own renderer and remain responsible for persisting the position and scale callbacks.
