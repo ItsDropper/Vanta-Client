@@ -166,6 +166,7 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
 
         configureViewport(context, 1280, 720, 1);
         captureIntegrationsLibrary(context, screen, "1280x720-gui1");
+        captureBondiesIntegrationSettings(context, screen, "1280x720-gui1");
         configureViewport(context, 960, 540, 2);
         captureIntegrationsLibrary(context, screen, "960x540-gui2");
         configureViewport(context, 1920, 1080, 3);
@@ -2024,6 +2025,100 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         context.setScreen(() -> settingsScreen);
         context.waitForScreen(VantaSettingsScreen.class);
     }
+
+    /**
+     * Captures the real Vanta integration settings screen using the Bondies Utils EZ
+     * descriptor contract. The private Bondies repository is intentionally not checked
+     * out by CI; this deterministic fixture mirrors its committed integration descriptor.
+     */
+    private static void captureBondiesIntegrationSettings(ClientGameTestContext context,
+                                                            VantaSettingsScreen settingsScreen,
+                                                            String viewportLabel) {
+        name.vantaclient.api.ModDescriptor descriptor = context.computeOnClient(client ->
+                createBondiesUtilsPreviewDescriptor());
+        name.vantaclient.api.VantaClientApi.registerMod(descriptor);
+        name.vantaclient.api.ModDescriptor registered = name.vantaclient.api.VantaClientApi
+                .getRegisteredMods().stream()
+                .filter(mod -> mod.id().equals("bondies-utills-ez"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Bondies Utils EZ integration was not registered"));
+
+        VantaIntegrationSettingsScreen integrationScreen = context.computeOnClient(client ->
+                new VantaIntegrationSettingsScreen(settingsScreen, registered));
+        context.setScreen(() -> integrationScreen);
+        context.waitForScreen(VantaIntegrationSettingsScreen.class);
+        context.waitTicks(4);
+
+        Path screenshot = context.takeScreenshot("vanta-integration-bondies-utils-ez-" + viewportLabel);
+        if (!Files.isRegularFile(screenshot)) {
+            throw new AssertionError("Minecraft did not produce Bondies Utils EZ integration screenshot: "
+                    + screenshot);
+        }
+        try {
+            if (Files.size(screenshot) < 1_024L) {
+                throw new AssertionError("Bondies Utils EZ integration screenshot is unexpectedly small: "
+                        + screenshot);
+            }
+        } catch (java.io.IOException exception) {
+            throw new AssertionError("Could not verify Bondies Utils EZ integration screenshot: "
+                    + screenshot, exception);
+        }
+
+        System.out.println("[Vanta UI] Captured Bondies Utils EZ settings integration -> " + screenshot);
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    /**
+     * Mirrors BondiesVantaIntegration#createDescriptor from Bondies Utils EZ.
+     * Values are inert preview state; the screenshot exercises Vanta's production UI.
+     */
+    private static name.vantaclient.api.ModDescriptor createBondiesUtilsPreviewDescriptor() {
+        return name.vantaclient.api.ModDescriptor.builder("bondies-utills-ez", "Bondies Utils EZ")
+                .description("Configure the FPS HUD and player tier nametags from Vanta Client.")
+                .version("1")
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "fps.enabled", "FPS HUD", "Show or hide the FPS counter.",
+                        true, () -> true, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.integer(
+                        "fps.x", "FPS HUD X", "Horizontal HUD position in screen pixels.",
+                        10, -10000, 10000, () -> 10, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.integer(
+                        "fps.y", "FPS HUD Y", "Vertical HUD position in screen pixels.",
+                        10, -10000, 10000, () -> 10, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.integer(
+                        "fps.font-size", "FPS font size", "Text size in pixels.",
+                        16, 4, 64, () -> 16, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.string(
+                        "fps.color", "FPS color", "Six-digit RGB hex color, for example #FFFFFF.",
+                        "#FFFFFF", 7, () -> "#FFFFFF", value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.enumeration(
+                        "fps.format", "FPS format", "Choose how the FPS value is displayed.",
+                        BondiesFpsFormat.class, BondiesFpsFormat.LABEL_PREFIX,
+                        () -> BondiesFpsFormat.LABEL_PREFIX, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "tier.enabled", "TierTagger", "Show player tiers beside player nametags.",
+                        true, () -> true, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.enumeration(
+                        "tier.provider", "Tier provider",
+                        "Select the service used to look up player tiers.",
+                        BondiesTierProvider.class, BondiesTierProvider.MCTIERS,
+                        () -> BondiesTierProvider.MCTIERS, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.string(
+                        "tier.mode", "Tier mode",
+                        "Mode ID for the selected provider (for example sword, axe, pot, uhc or overall).",
+                        "sword", 32, () -> "sword", value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.enumeration(
+                        "tier.position", "Tier position",
+                        "Where the tier label appears relative to the nametag.",
+                        BondiesTierPosition.class, BondiesTierPosition.SIDE,
+                        () -> BondiesTierPosition.SIDE, value -> {}))
+                .build();
+    }
+
+    private enum BondiesFpsFormat { LABEL_PREFIX, VALUE_SUFFIX, VALUE_ONLY }
+    private enum BondiesTierProvider { MCTIERS, PVPHQ, MCPVP }
+    private enum BondiesTierPosition { SIDE, ABOVE, BELOW }
 
     private static void captureWorldShareScreen(ClientGameTestContext context,
                                                  VantaSettingsScreen settingsScreen,
