@@ -194,16 +194,7 @@ public class HudEditorScreen extends Screen implements VantaCompose.Screen {
     }
 
     private static String elementName(HudElement element) {
-        return element instanceof VanillaHudElement vanilla
-                ? vanilla.getDisplayName()
-                : switch (element.getClass().getSimpleName()) {
-                    case "ArmorHudElement" -> "Armor";
-                    case "DebugHudElement" -> "Debug";
-                    case "TotemCounterHudElement" -> "Totem counter";
-                    case "PotionEffectsHudElement" -> "Potion effects";
-                    default -> element.getClass().getSimpleName()
-                            .replace("HudElement", "").replaceAll("([a-z])([A-Z])", "$1 $2");
-                };
+        return element.getDisplayName();
     }
 
     private void drawElementHitboxes(GuiGraphics graphics, int accent) {
