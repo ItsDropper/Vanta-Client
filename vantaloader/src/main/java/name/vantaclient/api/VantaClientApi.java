@@ -2,6 +2,7 @@ package name.vantaclient.api;
 
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -12,6 +13,7 @@ public final class VantaClientApi {
     private static final ConcurrentMap<String, ModDescriptor> MODS = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, RegisteredHud> HUDS = new ConcurrentHashMap<>();
     private static final Pattern ID_PATTERN = Pattern.compile("[a-z0-9][a-z0-9_.-]{0,63}");
+    private static final AtomicLong HUD_REVISION = new AtomicLong();
     private VantaClientApi() {}
 
     /** Registers one integration. Duplicate mod ids are rejected, never overwritten. */
@@ -46,18 +48,26 @@ public final class VantaClientApi {
         if (HUDS.putIfAbsent(key, registration) != null) {
             throw new IllegalArgumentException("A Vanta HUD is already registered: " + key);
         }
+        HUD_REVISION.incrementAndGet();
     }
 
     /** Removes one previously registered HUD element. */
     public static void unregisterHud(String modId, String elementId) {
-        HUDS.remove(requireId(modId, "modId") + ":" + requireId(elementId, "elementId"));
+        if (HUDS.remove(requireId(modId, "modId") + ":" + requireId(elementId, "elementId")) != null) {
+            HUD_REVISION.incrementAndGet();
+        }
     }
 
     /** Removes all HUD elements contributed by a mod. */
     public static void unregisterHuds(String modId) {
         String prefix = requireId(modId, "modId") + ":";
-        HUDS.keySet().removeIf(key -> key.startsWith(prefix));
+        if (HUDS.keySet().removeIf(key -> key.startsWith(prefix))) {
+            HUD_REVISION.incrementAndGet();
+        }
     }
+
+    /** Monotonic revision for efficient client-thread synchronization of the HUD registry. */
+    public static long getHudRegistryRevision() { return HUD_REVISION.get(); }
 
     /** Returns an immutable, deterministic snapshot of all registered HUD elements. */
     public static List<RegisteredHud> getRegisteredHuds() {
