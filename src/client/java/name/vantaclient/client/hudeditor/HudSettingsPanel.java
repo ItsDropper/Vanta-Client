@@ -198,20 +198,7 @@ public final class HudSettingsPanel {
     }
 
     private static String selectedName() {
-        if (selected == null) return "No element selected";
-        if (selected instanceof VanillaHudElement vanilla) return vanilla.getDisplayName();
-        return switch (selected.getClass().getSimpleName()) {
-            case "ArmorHudElement" -> "Armor HUD";
-            case "DebugHudElement" -> "Debug HUD";
-            case "TotemCounterHudElement" -> "Totem Counter";
-            case "PotionEffectsHudElement" -> "Potion Effects";
-            case "FpsHudElement" -> "FPS";
-            case "PingHudElement" -> "Ping";
-            case "KeystrokesHudElement" -> "Keystrokes";
-            case "CpsHudElement" -> "CPS";
-            case "PerformanceHudElement" -> "Performance";
-            default -> selected.getClass().getSimpleName();
-        };
+        return selected == null ? "No element selected" : selected.getDisplayName();
     }
 
     private static void layout() {
