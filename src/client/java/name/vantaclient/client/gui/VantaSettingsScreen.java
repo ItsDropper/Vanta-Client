@@ -10,6 +10,7 @@ import name.vantaclient.client.gui.framework.VantaUiNode;
 import name.vantaclient.client.gui.framework.VantaUiRuntime;
 import name.vantaclient.client.gui.framework.VantaUiTheme;
 import name.vantaclient.client.gui.menu.KeybindsPage;
+import name.vantaclient.client.gui.menu.IntegrationsPage;
 import name.vantaclient.client.gui.menu.MenuComponents;
 import name.vantaclient.client.gui.menu.MenuHost;
 import name.vantaclient.client.gui.menu.MenuIcons.Icon;
@@ -239,6 +240,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         navigation.add(VantaUiNode.button("Mods",
                 () -> navigate(Route.of(Page.MODS))).flex(1).height(34)
                 .selected(route.page() == Page.MODS || route.page() == Page.MOD));
+        navigation.add(VantaUiNode.button("Integrations", () -> navigate(Route.of(Page.INTEGRATIONS)))
+                .flex(1).height(34).selected(route.page() == Page.INTEGRATIONS || route.page() == Page.INTEGRATION));
         navigation.add(VantaUiNode.button("Profiles",
                 () -> navigate(Route.of(Page.PROFILES))).flex(1).height(34)
                 .selected(route.page() == Page.PROFILES));
@@ -267,6 +270,7 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
         }));
         if (modsGroupOpen) {
             side.add(navItem(Icon.MODS, "Mods", Page.MODS));
+            side.add(navItem(Icon.WRENCH, "Integrations", Page.INTEGRATIONS));
             side.add(navItem(Icon.PROFILES, "Profiles", Page.PROFILES));
             side.add(navItem(Icon.KEYBINDS, "Keybinds", Page.KEYBINDS));
         }
@@ -298,6 +302,10 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     private String title() {
         return switch (route.page()) {
             case MODS -> "Mods";
+            case INTEGRATIONS -> "Integrations";
+            case INTEGRATION -> name.vantaclient.api.VantaClientApi.getRegisteredMods().stream()
+                    .filter(descriptor -> descriptor.id().equals(route.modId()))
+                    .map(name.vantaclient.api.ModDescriptor::displayName).findFirst().orElse(route.modId());
             case PROFILES -> "Profiles";
             case KEYBINDS -> "Keybinds";
             case THEMES -> "Themes";
@@ -362,6 +370,8 @@ public final class VantaSettingsScreen extends Screen implements VantaCompose.Sc
     private VantaUiNode buildBody() {
         return switch (route.page()) {
             case MODS -> ModsPage.build(this);
+            case INTEGRATIONS -> IntegrationsPage.build(this, null);
+            case INTEGRATION -> IntegrationsPage.build(this, route.modId());
             case PROFILES -> ProfilesPage.build(this);
             case KEYBINDS -> KeybindsPage.build(this);
             case THEMES -> ThemesPage.build(this);
