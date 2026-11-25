@@ -2063,14 +2063,27 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     private static void captureBondiesHudEditor(ClientGameTestContext context,
                                                    VantaSettingsScreen settingsScreen,
                                                    String viewportLabel) {
-        BondiesPreviewHud preview = context.computeOnClient(client -> new BondiesPreviewHud());
-        context.runOnClient(client -> name.vantaclient.api.VantaClientApi.registerHud(
-                "bondies-utills-ez", preview));
+        BondiesPreviewHud preview = context.computeOnClient(client -> new BondiesPreviewHud(
+                "fps", "Bondies FPS", "FPS: " + client.getFps()));
+        List<BondiesPreviewHud> previews = List.of(
+                preview,
+                new BondiesPreviewHud("coordinates", "Bondies Coordinates", "XYZ: 0.0 / 64.0 / 0.0 NORTH"),
+                new BondiesPreviewHud("ping", "Bondies Ping", "Ping: 32 ms"),
+                new BondiesPreviewHud("keystrokes", "Bondies Keystrokes", "W   A S D")
+        );
+        context.runOnClient(client -> previews.forEach(element ->
+                name.vantaclient.api.VantaClientApi.registerHud("bondies-utills-ez", element)));
         context.runOnClient(client -> {
-            HudElement registered = HudManager.getElements().stream()
+            List<HudElement> elements = HudManager.getElements();
+            for (String label : List.of("Bondies FPS", "Bondies Coordinates",
+                    "Bondies Ping", "Bondies Keystrokes")) {
+                if (elements.stream().noneMatch(element -> element.getDisplayName().equals(label))) {
+                    throw new AssertionError("Vanta HUD editor did not discover " + label);
+                }
+            }
+            HudElement registered = elements.stream()
                     .filter(element -> element.getDisplayName().equals("Bondies FPS"))
-                    .findFirst().orElseThrow(() ->
-                            new AssertionError("Bondies HUD was not added to HudManager"));
+                    .findFirst().orElseThrow();
             registered.move(72, 54);
             registered.savePosition();
             registered.setScale(1.25f);
@@ -2097,19 +2110,25 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
     }
 
     private static final class BondiesPreviewHud implements name.vantaclient.api.hud.VantaHudElement {
+        private final String id;
+        private final String name;
+        private final String text;
         private float x = 0.05f;
         private float y = 0.05f;
         private float scale = 1.0f;
 
-        @Override public String id() { return "fps"; }
-        @Override public String displayName() { return "Bondies FPS"; }
-        @Override public int getWidth() {
-            return Minecraft.getInstance().font.width("FPS: " + Minecraft.getInstance().getFps());
+        private BondiesPreviewHud(String id, String name, String text) {
+            this.id = id;
+            this.name = name;
+            this.text = text;
         }
+
+        @Override public String id() { return id; }
+        @Override public String displayName() { return name; }
+        @Override public int getWidth() { return Minecraft.getInstance().font.width(text); }
         @Override public int getHeight() { return Minecraft.getInstance().font.lineHeight; }
         @Override public void render(GuiGraphics graphics) {
-            graphics.drawString(Minecraft.getInstance().font,
-                    "FPS: " + Minecraft.getInstance().getFps(), 0, 0, 0xFFFFFFFF);
+            graphics.drawString(Minecraft.getInstance().font, text, 0, 0, 0xFFFFFFFF);
         }
         @Override public float initialX() { return x; }
         @Override public float initialY() { return y; }
@@ -2150,6 +2169,17 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 .setting(name.vantaclient.api.setting.SettingDefinition.string(
                         "fps.color", "FPS color", "Six-digit RGB hex color, for example #FFFFFF.",
                         "#FFFFFF", 7, () -> "#FFFFFF", value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "coordinates.enabled", "Coordinates HUD",
+                        "Show your XYZ position and horizontal facing direction.",
+                        false, () -> false, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "ping.enabled", "Ping HUD", "Show your current server latency.",
+                        false, () -> false, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "keystrokes.enabled", "Keystrokes HUD",
+                        "Show a compact WASD and jump-key display.",
+                        false, () -> false, value -> {}))
                 .setting(name.vantaclient.api.setting.SettingDefinition.enumeration(
                         "fps.format", "FPS format", "Choose how the FPS value is displayed.",
                         BondiesFpsFormat.class, BondiesFpsFormat.LABEL_PREFIX,
