@@ -34,6 +34,12 @@ public final class VantaIntegrationDiscovery {
                             + "' does not match declaring mod id '" + modId + "'");
                 }
                 VantaClientApi.registerMod(descriptor);
+                try {
+                    integration.registerHudElements();
+                } catch (RuntimeException | LinkageError hudException) {
+                    System.err.println("[Vanta Client] HUD registration failed for "
+                            + modId + ": " + safeMessage(hudException));
+                }
             } catch (RuntimeException | LinkageError exception) {
                 System.err.println("[Vanta Client] Integration discovery failed for "
                         + modId + ": " + safeMessage(exception));
