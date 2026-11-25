@@ -523,7 +523,7 @@ public final class VantaLobbyWorld {
             List<HolderLookup.RegistryLookup<?>> lookups = TagLoader.buildUpdatedLookups(worldContext, staticTags);
             var world = RegistryDataLoader.load(resources, lookups, RegistryDataLoader.WORLDGEN_REGISTRIES);
             var dimensionContext = new java.util.ArrayList<>(lookups);
-            dimensionContext.addAll(world.registries()
+            dimensionContext.addAll(((RegistryAccess) world).registries()
                     .map(entry -> (HolderLookup.RegistryLookup<?>) entry.value()).toList());
             var dimensions = RegistryDataLoader.load(resources, dimensionContext, RegistryDataLoader.DIMENSION_REGISTRIES);
             return layers.replaceFrom(worldLayer, world, dimensions).compositeAccess();

@@ -29,6 +29,9 @@ repositories {
 }
 
 loom {
+	mixin {
+		defaultRefmapName = "dropperutils.refmap.json"
+	}
 	accessWidenerPath = file("src/main/resources/dropperutils.accesswidener")
 	splitEnvironmentSourceSets()
 
@@ -36,6 +39,10 @@ loom {
 		"dropperutils" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
+			// The standalone VantaLoader source set contains the same Mixin-backed
+			// client UI and must participate in Loom's annotation processing so its
+			// refmap is generated against the official Minecraft mappings.
+			sourceSet sourceSets.vantaloader
 		}
 	}
 }
