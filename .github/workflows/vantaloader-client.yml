@@ -73,8 +73,7 @@ jobs:
             --mod loader/examples/runtime-probe/build/libs/vantaloader-runtime-probe-1.0.0.jar \
             --mod loader/examples/mixin-probe/build/libs/vantaloader-mixin-probe-1.0.0.jar \
             --output build/vantaloader-client-smoke --timeout 240
-      - name: Assert Vanta Client initialized and upload evidence
-        if: always()
+      - name: Assert Vanta Client initialized
         run: |
           log=build/vantaloader-client-smoke/instance/logs/visual-smoke.log
           if [ -f "$log" ]; then

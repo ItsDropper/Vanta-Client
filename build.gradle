@@ -129,6 +129,16 @@ tasks.matching { it.name == "remapSourcesJar" }.configureEach {
 	dependsOn(resolveVantaLoaderRuntime)
 }
 
+// Loom's nested-include configuration is declarable-only. Resolve it through
+// a dedicated runtime configuration when assembling the standalone native JAR.
+configurations {
+	vantaLoaderRuntime {
+		canBeConsumed = false
+		canBeResolved = true
+		extendsFrom configurations.include
+	}
+}
+
 // WebRTC data transport. Native binaries are platform-specific, so each
 // distributable embeds only the classifier selected for that target platform.
 // CI builds one artifact per supported desktop OS/architecture.
@@ -203,7 +213,7 @@ tasks.register("vantaLoaderJar", Jar) {
 	from(sourceSets.vantaloader.output)
 	// WebRTC Java and the selected native classifier are the only bundled
 	// runtime libraries. Fabric Loader/API and Mod Menu remain compile-only.
-	from({ configurations.include.collect { zipTree(it) } }) {
+	from({ configurations.vantaLoaderRuntime.collect { zipTree(it) } }) {
 		exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 	}
 	from("LICENSE.local") {
