@@ -30,6 +30,25 @@ loom {
 	}
 }
 
+// VantaLoader is a genuinely separate source tree. It is compiled against the
+// same official-mapped Minecraft and compile-time APIs, but its distributable
+// contains no Fabric descriptor or Fabric runtime libraries.
+sourceSets {
+	vantaloader {
+		java.srcDir("vantaloader/src/main/java")
+		resources.srcDir("vantaloader/src/main/resources")
+		compileClasspath += sourceSets.client.compileClasspath + sourceSets.client.output
+		runtimeClasspath += output + compileClasspath
+	}
+}
+
+tasks.named("processVantaloaderResources") {
+	def nativeVersion = project.version
+	inputs.property("version", nativeVersion)
+	filesMatching("vanta.mod.json") { expand(version: nativeVersion) }
+}
+
+
 fabricApi {
 	configureTests {
 		createSourceSet = true
@@ -173,10 +192,15 @@ tasks.named("remapJar") {
 // named-mapping class files produced by Loom before remapJar converts them to
 // Fabric intermediary names. Keep this artifact separate from the Fabric JAR.
 tasks.register("vantaLoaderJar", Jar) {
-	dependsOn(tasks.named("classes"), tasks.named("clientClasses"))
+	dependsOn(tasks.named("vantaloaderClasses"))
 	archiveFileName = "dropperutils-${project.mod_version}-${project.minecraft_version}-vantaloader.jar"
-	from(sourceSets.main.output)
-	from(sourceSets.client.output)
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	from(sourceSets.vantaloader.output)
+	// WebRTC Java and the selected native classifier are the only bundled
+	// runtime libraries. Fabric Loader/API and Mod Menu remain compile-only.
+	from({ configurations.include.collect { zipTree(it) } }) {
+		exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+	}
 	from("LICENSE.local") {
 		rename { "${it}_${project.name}" }
 	}

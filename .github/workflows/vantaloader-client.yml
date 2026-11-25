@@ -1,0 +1,94 @@
+name: VantaLoader client integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - "vantaloader/**"
+      - "build.gradle"
+      - "gradle.properties"
+      - ".github/workflows/vantaloader-client.yml"
+  pull_request:
+    paths:
+      - "vantaloader/**"
+      - "build.gradle"
+      - "gradle.properties"
+      - ".github/workflows/vantaloader-client.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vantaloader-client-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  launch:
+    name: Build and launch Vanta Client on VantaLoader
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          repository: ItsDropper/VantaLoader
+          ref: nightly-0.1.0-20261106-9ef67ef
+          path: loader
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14"
+      - name: Install headless graphics
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xdotool libgl1-mesa-dri libglx-mesa0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxrender1 libxtst6 libxkbcommon0 libopenal1 libasound2t64
+      - name: Build VantaLoader-native Vanta Client
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean build vantaLoaderJar -Pwebrtc_platform=linux-x86_64
+          test -s build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar
+          if jar tf build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar | grep -Eq '^(fabric\.mod\.json|net/fabricmc/|com/terraformersmc/)'; then
+            echo "Native VantaLoader artifact contains Fabric runtime metadata/classes"
+            exit 1
+          fi
+      - name: Build matching VantaLoader agent and integration probes
+        run: |
+          gradle --no-daemon -p loader clean build
+          gradle --no-daemon -p loader -p loader/examples/hello-mod clean build
+          gradle --no-daemon -p loader -p loader/examples/auto-sprint clean build
+          gradle --no-daemon -p loader -p loader/examples/runtime-probe clean build
+          gradle --no-daemon -p loader -p loader/examples/mixin-probe clean build
+          gradle --no-daemon -p loader -p loader/examples/vma-showcase clean build
+      - name: Launch Minecraft with VantaLoader and Vanta Client
+        env:
+          VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
+        run: |
+          javac loader/scripts/ci/ScreenCapture.java
+          XCURSOR_THEME=DMZ-White XCURSOR_SIZE=24 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" bash loader/scripts/ci/run_visual_smoke.sh \
+            --agent loader/build/agent/VantaLoader-agent.jar \
+            --mod build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar \
+            --mod loader/examples/hello-mod/build/libs/vantaloader-hello-mod-1.0.0.jar \
+            --mod loader/examples/auto-sprint/build/libs/vantaloader-auto-sprint-1.0.0.jar \
+            --mod loader/examples/runtime-probe/build/libs/vantaloader-runtime-probe-1.0.0.jar \
+            --mod loader/examples/mixin-probe/build/libs/vantaloader-mixin-probe-1.0.0.jar \
+            --output build/vantaloader-client-smoke --timeout 240
+      - name: Assert Vanta Client initialized and upload evidence
+        if: always()
+        run: |
+          log=build/vantaloader-client-smoke/instance/logs/visual-smoke.log
+          if [ -f "$log" ]; then
+            grep -F "Vanta Client native bootstrap initialized" "$log"
+          else
+            echo "Minecraft log was not produced"
+            exit 1
+          fi
+      - name: Upload screenshots and launch logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vantaloader-vanta-client-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            build/vantaloader-client-smoke/
+            build/reports/
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,1518 @@
+package name.vantaclient.client.util;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import name.vantaclient.client.feature.FarViewFeature;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+
+/**
+ * Singleplayer far-terrain renderer with two complementary data paths.
+ *
+ * Unexplored terrain uses bounded base-height sampling from the integrated
+ * generator. Explored chunks are captured as palette-compressed 3D block-state
+ * sections with sky/block light, persisted per chunk, reduced into sparse
+ * octrees, and greedily meshed on a dedicated worker. Opaque voxel meshes use
+ * the optional NV mesh-shader backend or the Minecraft VertexConsumer fallback.
+ * Live chunk/world objects never leave the client-thread capture boundary.
+ */
+public final class FarTerrainRenderer {
+    private static final int MAX_FAR_DISTANCE = 2048;
+    private static final int ROOT_TILE_SIZE_CHUNKS = 2048;
+    private static final int MIN_TILE_SIZE_CHUNKS = 2;
+    private static final int ADAPTIVE_REFRESH_TICKS = 40;
+    private static final int MAX_TILES_TO_SCHEDULE_PER_TICK = 6;
+    private static final int MAX_QUEUED_TILE_JOBS = 96;
+    private static final int MAX_DRAW_QUADS = 96_000;
+    private static final int MAX_DESIRED_TILES = 4096;
+    private static final int SKIRT_MIN_DEPTH = 24;
+
+    private static final Set<WorkKey> PENDING = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentMap<Long, FarTerrainChunkSnapshot> CHUNK_SNAPSHOTS = new ConcurrentHashMap<>();
+    private static final int MAX_CAPTURED_CHUNKS = 256;
+    private static final long MAX_CAPTURED_SNAPSHOT_BYTES = 64L * 1024L * 1024L;
+    private static final Object SNAPSHOT_CACHE_LOCK = new Object();
+    private static volatile long cachedSnapshotBytes;
+    private static final int MAX_VOXEL_MESHES = 128;
+    private static final long MAX_VOXEL_MESH_CACHE_BYTES = 64L * 1024L * 1024L;
+    private static final Object VOXEL_MESH_LOCK = new Object();
+    private static volatile long cachedVoxelMeshBytes;
+    private static final ConcurrentMap<Long, FarTerrainVoxelMesh> VOXEL_MESHES = new ConcurrentHashMap<>();
+    private static final ConcurrentLinkedDeque<Long> VOXEL_MESH_ORDER = new ConcurrentLinkedDeque<>();
+    private static final Set<VoxelWorkKey> VOXEL_PENDING = ConcurrentHashMap.newKeySet();
+    private static final Set<Long> VOXEL_EMPTY = ConcurrentHashMap.newKeySet();
+    private static final Set<Long> VOXEL_REQUEUE = ConcurrentHashMap.newKeySet();
+    private static final ThreadPoolExecutor VOXEL_WORKER = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(128),
+            runnable -> {
+                Thread thread = new Thread(runnable, "Vanta-FarTerrain-Voxels");
+                thread.setDaemon(true);
+                thread.setPriority(Thread.NORM_PRIORITY - 1);
+                return thread;
+            },
+            new ThreadPoolExecutor.AbortPolicy()
+    );
+    private static final ConcurrentLinkedDeque<Long> CHUNK_SNAPSHOT_ORDER = new ConcurrentLinkedDeque<>();
+    private static final Set<TileKey> FAILED = ConcurrentHashMap.newKeySet();
+    private static final Set<TileKey> CACHE_EVICTED = ConcurrentHashMap.newKeySet();
+    private static volatile Set<TileKey> DESIRED = Set.of();
+    private static final ConcurrentLinkedQueue<TileMesh> COMPLETED = new ConcurrentLinkedQueue<>();
+    private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(MAX_QUEUED_TILE_JOBS),
+            runnable -> {
+                Thread thread = new Thread(runnable, "Vanta-FarTerrain");
+                thread.setDaemon(true);
+                thread.setPriority(Thread.NORM_PRIORITY - 1);
+                return thread;
+            },
+            new ThreadPoolExecutor.AbortPolicy()
+    );
+
+    private static final Map<TileKey, TileMesh> MESHES = new HashMap<>();
+    private static long cachedMeshBytes;
+    private static List<TileKey> orderedTiles = List.of();
+
+    private static ServerLevel activeLevel;
+    private static ServerLevel snapshotLevel;
+    private static ClientLevel snapshotClientLevel;
+    private static volatile FarTerrainSnapshotStore snapshotStore;
+    private static volatile long revision;
+    private static int lastSnapshotQueryChunkX = Integer.MIN_VALUE;
+    private static int lastSnapshotQueryChunkZ = Integer.MIN_VALUE;
+    private static int ticksUntilAdaptiveUpdate;
+    private static int effectiveFarDistance = 512;
+    private static int lastSampleSpacing = -1;
+    private static int lastDetailDistance = -1;
+    private static int lastConfiguredFarDistance = -1;
+    private static int lastPlayerChunkX = Integer.MIN_VALUE;
+    private static int lastPlayerChunkZ = Integer.MIN_VALUE;
+    private static volatile String lastWorkerError = "";
+    private static double averageMeshSubmitMs;
+    private static volatile double lastTilePlanMs;
+    private static volatile double averageTileGenerationMs;
+    private static volatile double lastTileGenerationMs;
+    private static volatile long tilePlanBuildCount;
+    private static volatile long tileGenerationSamples;
+    private static volatile int lastDrawnQuads;
+    private static volatile int lastSubmittedMeshes;
+    private static int adaptiveDrawBudget = 36_000;
+    private static int drawBudgetAdjustmentFrames;
+    private static volatile long workerBackoffNanos;
+    private static volatile int lastPrunedQueuedJobs;
+    private static volatile long totalPrunedQueuedJobs;
+
+    private FarTerrainRenderer() {}
+
+    public static void register() {
+        FarTerrainRenderType.initialize();
+        WorldRenderEvents.BEFORE_ENTITIES.register(FarTerrainRenderer::render);
+        ClientChunkEvents.CHUNK_LOAD.register(FarTerrainRenderer::captureChunk);
+        // Capture once more immediately before unload so block edits made while
+        // the chunk was resident replace the older persisted surface snapshot.
+        ClientChunkEvents.CHUNK_UNLOAD.register(FarTerrainRenderer::captureChunk);
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            FarTerrainGpuRenderer.shutdown();
+            FarTerrainVoxelGpuRenderer.shutdown();
+        });
+    }
+
+    public static void tick(Minecraft client) {
+        if (!FarViewFeature.isRenderingEnabled() || client.player == null || client.level == null
+                || !client.hasSingleplayerServer()) {
+            if (activeLevel != null || snapshotLevel != null || snapshotStore != null
+                    || !MESHES.isEmpty() || !DESIRED.isEmpty() || !VOXEL_MESHES.isEmpty()
+                    || !VOXEL_PENDING.isEmpty() || !COMPLETED.isEmpty() || !PENDING.isEmpty()) {
+                disable();
+            }
+            return;
+        }
+
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server == null || !server.isRunning()) {
+            clearWorld();
+            return;
+        }
+
+        ServerLevel serverLevel = server.getLevel(client.level.dimension());
+        if (serverLevel == null) {
+            clearWorld();
+            return;
+        }
+
+        if (snapshotLevel != serverLevel) {
+            // Preserve chunks captured during initial world attachment; only clear
+            // when switching away from an already-established world/dimension.
+            if (snapshotLevel != null) {
+                synchronized (SNAPSHOT_CACHE_LOCK) {
+                    CHUNK_SNAPSHOTS.clear();
+                    CHUNK_SNAPSHOT_ORDER.clear();
+                    cachedSnapshotBytes = 0L;
+                }
+            }
+            snapshotLevel = serverLevel;
+            snapshotClientLevel = client.level;
+            FarTerrainSnapshotStore store = new FarTerrainSnapshotStore(
+                    server.getWorldPath(LevelResource.ROOT),
+                    serverLevel.dimension().identifier().toString());
+            snapshotStore = store;
+            for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
+                store.save(snapshot);
+            }
+            lastSnapshotQueryChunkX = client.player.chunkPosition().x;
+            lastSnapshotQueryChunkZ = client.player.chunkPosition().z;
+            loadNearestSnapshots(store, lastSnapshotQueryChunkX, lastSnapshotQueryChunkZ);
+        } else {
+            int playerChunkX = client.player.chunkPosition().x;
+            int playerChunkZ = client.player.chunkPosition().z;
+            if (Math.abs(playerChunkX - lastSnapshotQueryChunkX) >= 32
+                    || Math.abs(playerChunkZ - lastSnapshotQueryChunkZ) >= 32) {
+                lastSnapshotQueryChunkX = playerChunkX;
+                lastSnapshotQueryChunkZ = playerChunkZ;
+                loadNearestSnapshots(snapshotStore, playerChunkX, playerChunkZ);
+            }
+        }
+
+        if (activeLevel != serverLevel) {
+            clearWorld();
+            activeLevel = serverLevel;
+            effectiveFarDistance = FarViewFeature.getFarViewDistance();
+        }
+
+        updateAdaptiveDistance(client);
+        updateWorkerBackoff(client);
+        drainCompletedMeshes();
+
+        int playerChunkX = client.player.chunkPosition().x;
+        int playerChunkZ = client.player.chunkPosition().z;
+        int sampleSpacingChunks = FarViewFeature.getSampleSpacingChunks();
+        int detailDistance = Math.max(2, FarViewController.getEffectiveRenderDistance());
+        int configuredFarDistance = effectiveFarDistance;
+
+        if (FarTerrainLodMath.shouldRebuildPlan(!orderedTiles.isEmpty(),
+                lastPlayerChunkX, lastPlayerChunkZ, playerChunkX, playerChunkZ,
+                lastSampleSpacing, sampleSpacingChunks,
+                lastDetailDistance, detailDistance,
+                lastConfiguredFarDistance, configuredFarDistance)) {
+            lastPlayerChunkX = playerChunkX;
+            lastPlayerChunkZ = playerChunkZ;
+            lastSampleSpacing = sampleSpacingChunks;
+            lastDetailDistance = detailDistance;
+            lastConfiguredFarDistance = configuredFarDistance;
+            rebuildDesiredTiles(playerChunkX, playerChunkZ, detailDistance,
+                    configuredFarDistance, sampleSpacingChunks);
+        }
+
+        scheduleMissingTiles(serverLevel);
+        prioritizeVoxelMeshCache(playerChunkX, playerChunkZ);
+        scheduleMissingVoxelMeshes(playerChunkX, playerChunkZ);
+    }
+
+    private static void loadNearestSnapshots(FarTerrainSnapshotStore store, int centerChunkX, int centerChunkZ) {
+        if (store == null) return;
+        long expectedRevision = revision;
+        store.loadNearest(centerChunkX, centerChunkZ, MAX_CAPTURED_CHUNKS, snapshot -> {
+            synchronized (SNAPSHOT_CACHE_LOCK) {
+                if (!FarViewFeature.isRenderingEnabled()
+                        || snapshotStore != store || revision != expectedRevision) return;
+                addChunkSnapshotIfAbsent(snapshot);
+            }
+            if (!FarViewFeature.isRenderingEnabled()
+                    || snapshotStore != store || revision != expectedRevision) return;
+            long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+            if (CHUNK_SNAPSHOTS.get(key) == snapshot) {
+                queueVoxelMesh(snapshot);
+                queueAdjacentVoxelMeshes(snapshot);
+            }
+        });
+    }
+
+    private static void captureChunk(ClientLevel world, net.minecraft.world.level.chunk.LevelChunk chunk) {
+        // Chunk lifecycle events fire regardless of feature state. Do not snapshot,
+        // compress, cache, or queue voxel meshes when FarView is disabled: ordinary
+        // player movement would otherwise run the entire ingestion pipeline.
+        if (!FarViewFeature.isRenderingEnabled()) return;
+
+        FarTerrainChunkSnapshot snapshot = FarTerrainChunkSnapshot.capture(world, chunk);
+        addChunkSnapshot(snapshot);
+        FarTerrainSnapshotStore store = snapshotStore;
+        if (store != null && snapshotClientLevel == world) store.save(snapshot);
+        queueVoxelMesh(snapshot);
+        queueAdjacentVoxelMeshes(snapshot);
+    }
+
+    private static void queueAdjacentVoxelMeshes(FarTerrainChunkSnapshot snapshot) {
+        for (int[] offset : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            long key = net.minecraft.world.level.ChunkPos.asLong(
+                    snapshot.chunkX() + offset[0], snapshot.chunkZ() + offset[1]);
+            FarTerrainChunkSnapshot neighbor = CHUNK_SNAPSHOTS.get(key);
+            if (neighbor != null && !VOXEL_EMPTY.contains(key)) queueVoxelMesh(neighbor);
+        }
+    }
+
+    private static void queueVoxelMesh(FarTerrainChunkSnapshot snapshot) {
+        if (!FarViewFeature.isRenderingEnabled()) return;
+        long chunkKey = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+        long expectedRevision = revision;
+        VoxelWorkKey workKey = new VoxelWorkKey(chunkKey, expectedRevision);
+        if (!VOXEL_PENDING.add(workKey)) {
+            VOXEL_REQUEUE.add(chunkKey);
+            return;
+        }
+        Map<Long, FarTerrainChunkSnapshot> adjacentSnapshots = new HashMap<>(4);
+        for (int[] offset : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            long neighborKey = net.minecraft.world.level.ChunkPos.asLong(
+                    snapshot.chunkX() + offset[0], snapshot.chunkZ() + offset[1]);
+            FarTerrainChunkSnapshot neighbor = CHUNK_SNAPSHOTS.get(neighborKey);
+            if (neighbor != null) adjacentSnapshots.put(neighborKey, neighbor);
+        }
+        try {
+            VOXEL_WORKER.execute(() -> {
+                try {
+                    if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
+                    FarTerrainVoxelMesh mesh = FarTerrainVoxelMesh.build(snapshot, adjacentSnapshots);
+                    if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
+                    synchronized (VOXEL_MESH_LOCK) {
+                        if (!FarViewFeature.isRenderingEnabled() || expectedRevision != revision) return;
+                        if (mesh == null) {
+                            VOXEL_EMPTY.add(chunkKey);
+                            return;
+                        }
+                        VOXEL_EMPTY.remove(chunkKey);
+                        FarTerrainVoxelMesh previous = VOXEL_MESHES.put(chunkKey, mesh);
+                        if (previous != null) cachedVoxelMeshBytes -= previous.estimatedBytes();
+                        cachedVoxelMeshBytes += mesh.estimatedBytes();
+                        VOXEL_MESH_ORDER.remove(chunkKey);
+                        VOXEL_MESH_ORDER.addLast(chunkKey);
+                        while (VOXEL_MESHES.size() > MAX_VOXEL_MESHES
+                                || cachedVoxelMeshBytes > voxelMeshCacheLimitBytes()) {
+                            Long oldest = VOXEL_MESH_ORDER.pollFirst();
+                            if (oldest == null) break;
+                            FarTerrainVoxelMesh removed = VOXEL_MESHES.remove(oldest);
+                            if (removed != null) cachedVoxelMeshBytes -= removed.estimatedBytes();
+                        }
+                    }
+                } finally {
+                    VOXEL_PENDING.remove(workKey);
+                    if (VOXEL_REQUEUE.remove(chunkKey) && expectedRevision == revision) {
+                        FarTerrainChunkSnapshot latest = CHUNK_SNAPSHOTS.get(chunkKey);
+                        if (latest != null) queueVoxelMesh(latest);
+                    }
+                }
+            });
+        } catch (RejectedExecutionException ignored) {
+            VOXEL_PENDING.remove(workKey);
+        }
+    }
+
+    private static void prioritizeVoxelMeshCache(int centerChunkX, int centerChunkZ) {
+        synchronized (VOXEL_MESH_LOCK) {
+            List<FarTerrainVoxelMesh> ordered = new ArrayList<>(VOXEL_MESHES.values());
+            ordered.sort(Comparator.<FarTerrainVoxelMesh>comparingLong(mesh -> voxelDistanceSquared(
+                    mesh.chunkX(), mesh.chunkZ(), centerChunkX, centerChunkZ)).reversed());
+            VOXEL_MESH_ORDER.clear();
+            for (FarTerrainVoxelMesh mesh : ordered) {
+                VOXEL_MESH_ORDER.addLast(net.minecraft.world.level.ChunkPos.asLong(
+                        mesh.chunkX(), mesh.chunkZ()));
+            }
+        }
+    }
+
+    private static void scheduleMissingVoxelMeshes(int centerChunkX, int centerChunkZ) {
+        List<FarTerrainChunkSnapshot> candidates = new ArrayList<>(CHUNK_SNAPSHOTS.values());
+        candidates.sort(Comparator.comparingLong(snapshot -> voxelDistanceSquared(
+                snapshot.chunkX(), snapshot.chunkZ(), centerChunkX, centerChunkZ)));
+        long maxDistance = (long) Math.max(2, effectiveFarDistance + 2);
+        long maxDistanceSquared = maxDistance * maxDistance;
+        int scheduled = 0;
+        for (FarTerrainChunkSnapshot snapshot : candidates) {
+            if (scheduled >= 3) break;
+            long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+            if (VOXEL_MESHES.containsKey(key) || VOXEL_EMPTY.contains(key)
+                    || VOXEL_PENDING.contains(new VoxelWorkKey(key, revision))) continue;
+            if (voxelDistanceSquared(snapshot.chunkX(), snapshot.chunkZ(),
+                    centerChunkX, centerChunkZ) > maxDistanceSquared) continue;
+            queueVoxelMesh(snapshot);
+            scheduled++;
+        }
+    }
+
+    private static long voxelDistanceSquared(int chunkX, int chunkZ, int centerChunkX, int centerChunkZ) {
+        long dx = (long) chunkX - centerChunkX;
+        long dz = (long) chunkZ - centerChunkZ;
+        return dx * dx + dz * dz;
+    }
+
+    private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot) {
+        addChunkSnapshot(snapshot, true);
+    }
+
+    private static void addChunkSnapshotIfAbsent(FarTerrainChunkSnapshot snapshot) {
+        addChunkSnapshot(snapshot, false);
+    }
+
+    private static void addChunkSnapshot(FarTerrainChunkSnapshot snapshot, boolean replace) {
+        long key = net.minecraft.world.level.ChunkPos.asLong(snapshot.chunkX(), snapshot.chunkZ());
+        synchronized (SNAPSHOT_CACHE_LOCK) {
+            if (replace) {
+                FarTerrainChunkSnapshot previous = CHUNK_SNAPSHOTS.put(key, snapshot);
+                if (previous != null) cachedSnapshotBytes -= previous.estimatedBytes();
+            } else if (CHUNK_SNAPSHOTS.putIfAbsent(key, snapshot) != null) {
+                return;
+            }
+            if (replace) VOXEL_EMPTY.remove(key);
+            cachedSnapshotBytes += snapshot.estimatedBytes();
+            CHUNK_SNAPSHOT_ORDER.remove(key);
+            CHUNK_SNAPSHOT_ORDER.addLast(key);
+            while (CHUNK_SNAPSHOTS.size() > MAX_CAPTURED_CHUNKS
+                    || cachedSnapshotBytes > MAX_CAPTURED_SNAPSHOT_BYTES) {
+                Long oldest = CHUNK_SNAPSHOT_ORDER.pollFirst();
+                if (oldest == null) break;
+                FarTerrainChunkSnapshot removed = CHUNK_SNAPSHOTS.remove(oldest);
+                if (removed != null) cachedSnapshotBytes -= removed.estimatedBytes();
+                VOXEL_EMPTY.remove(oldest);
+            }
+        }
+    }
+
+    private static void updateAdaptiveDistance(Minecraft client) {
+        int target = FarViewFeature.getFarViewDistance();
+        if (!FarViewFeature.isAdaptiveEnabled()) {
+            effectiveFarDistance = target;
+            ticksUntilAdaptiveUpdate = 0;
+            return;
+        }
+
+        if (ticksUntilAdaptiveUpdate-- > 0) return;
+        ticksUntilAdaptiveUpdate = ADAPTIVE_REFRESH_TICKS;
+        effectiveFarDistance = Math.min(effectiveFarDistance <= 0 ? target : effectiveFarDistance, target);
+
+        double renderMs = ClientPerformanceMetrics.getAverageWorldRenderMs();
+        double tickMs = ClientPerformanceMetrics.getAverageClientTickMs();
+        if (renderMs <= 0.0 && tickMs <= 0.0) return;
+
+        boolean overloaded = renderMs > 22.0 || tickMs > 28.0 || client.getFps() < 45;
+        boolean hasHeadroom = renderMs > 0.0 && renderMs < 12.0
+                && (tickMs <= 0.0 || tickMs < 12.0) && client.getFps() >= 100;
+
+        if (overloaded) {
+            effectiveFarDistance = Math.max(Math.min(64, target), effectiveFarDistance - 64);
+        } else if (hasHeadroom && effectiveFarDistance < target) {
+            effectiveFarDistance = Math.min(target, effectiveFarDistance + 32);
+        }
+    }
+
+    private static void updateWorkerBackoff(Minecraft client) {
+        if (!FarViewFeature.isWorkerAdaptiveEnabled()) {
+            workerBackoffNanos = 0L;
+            return;
+        }
+        int backoffMillis = FarTerrainLodMath.workerBackoffMillis(
+                ClientPerformanceMetrics.getAverageWorldRenderMs(),
+                ClientPerformanceMetrics.getAverageClientTickMs(),
+                client.getFps());
+        workerBackoffNanos = TimeUnit.MILLISECONDS.toNanos(backoffMillis);
+    }
+
+    private static void rebuildDesiredTiles(int playerChunkX, int playerChunkZ,
+                                             int detailDistance, int farDistance, int sampleSpacingChunks) {
+        long planStartedNanos = System.nanoTime();
+        Set<TileKey> nextDesired = new HashSet<>();
+        int rootMinX = Math.floorDiv(playerChunkX - farDistance, ROOT_TILE_SIZE_CHUNKS)
+                * ROOT_TILE_SIZE_CHUNKS;
+        int rootMaxX = Math.floorDiv(playerChunkX + farDistance, ROOT_TILE_SIZE_CHUNKS)
+                * ROOT_TILE_SIZE_CHUNKS;
+        int rootMinZ = Math.floorDiv(playerChunkZ - farDistance, ROOT_TILE_SIZE_CHUNKS)
+                * ROOT_TILE_SIZE_CHUNKS;
+        int rootMaxZ = Math.floorDiv(playerChunkZ + farDistance, ROOT_TILE_SIZE_CHUNKS)
+                * ROOT_TILE_SIZE_CHUNKS;
+
+        for (int rootX = rootMinX; rootX <= rootMaxX; rootX += ROOT_TILE_SIZE_CHUNKS) {
+            for (int rootZ = rootMinZ; rootZ <= rootMaxZ; rootZ += ROOT_TILE_SIZE_CHUNKS) {
+                collectLeaves(rootX, rootZ, ROOT_TILE_SIZE_CHUNKS,
+                        playerChunkX, playerChunkZ, detailDistance, farDistance,
+                        sampleSpacingChunks, nextDesired);
+            }
+        }
+
+        List<TileKey> sorted = new ArrayList<>(nextDesired);
+        sorted.sort(Comparator.comparingDouble(key -> distanceSquaredToCenter(
+                key, playerChunkX + 0.5, playerChunkZ + 0.5)));
+        if (sorted.size() > MAX_DESIRED_TILES) {
+            sorted = new ArrayList<>(sorted.subList(0, MAX_DESIRED_TILES));
+        }
+        nextDesired.clear();
+        nextDesired.addAll(sorted);
+
+        DESIRED = Set.copyOf(nextDesired);
+        FAILED.removeIf(key -> !nextDesired.contains(key));
+        // Re-admit an intentionally evicted tile only after it moves into the
+        // inner 65% of the active radius. This prevents later movement-driven
+        // plan rebuilds from regenerating distant tiles that the memory cap evicts.
+        double reentryDistance = farDistance * 0.65;
+        double reentryDistanceSquared = reentryDistance * reentryDistance;
+        CACHE_EVICTED.removeIf(key -> !nextDesired.contains(key)
+                || distanceSquaredToCenter(key, playerChunkX, playerChunkZ)
+                <= reentryDistanceSquared);
+        MESHES.keySet().removeIf(key -> !nextDesired.contains(key));
+        recalculateMeshCacheBytes();
+        orderedTiles = List.copyOf(sorted);
+        lastPrunedQueuedJobs = pruneObsoleteQueuedJobs();
+        totalPrunedQueuedJobs += lastPrunedQueuedJobs;
+        lastTilePlanMs = (System.nanoTime() - planStartedNanos) / 1_000_000.0;
+        tilePlanBuildCount++;
+    }
+
+    private static void collectLeaves(int minChunkX, int minChunkZ, int size,
+                                      int playerChunkX, int playerChunkZ,
+                                      int detailDistance, int farDistance, int sampleSpacingChunks,
+                                      Set<TileKey> output) {
+        double nearestDistanceSquared = FarTerrainLodMath.distanceToRectangleSquared(
+                playerChunkX + 0.5, playerChunkZ + 0.5,
+                minChunkX, minChunkZ, minChunkX + size, minChunkZ + size);
+        if (nearestDistanceSquared > (double) farDistance * farDistance) return;
+
+        double farthestDistanceSquared = FarTerrainLodMath.farthestCornerDistanceSquared(
+                playerChunkX + 0.5, playerChunkZ + 0.5,
+                minChunkX, minChunkZ, minChunkX + size, minChunkZ + size);
+        double detailThreshold = Math.max(1, detailDistance - 1);
+        if (farthestDistanceSquared < detailThreshold * detailThreshold) return;
+
+        double centerDistanceSquared = distanceSquaredToCenter(
+                minChunkX, minChunkZ, size, playerChunkX + 0.5, playerChunkZ + 0.5);
+        int desiredSize = FarTerrainLodMath.desiredTileSizeForDistanceSquared(centerDistanceSquared);
+
+        if (size > desiredSize && size > MIN_TILE_SIZE_CHUNKS) {
+            int half = size / 2;
+            collectLeaves(minChunkX, minChunkZ, half, playerChunkX, playerChunkZ,
+                    detailDistance, farDistance, sampleSpacingChunks, output);
+            collectLeaves(minChunkX + half, minChunkZ, half, playerChunkX, playerChunkZ,
+                    detailDistance, farDistance, sampleSpacingChunks, output);
+            collectLeaves(minChunkX, minChunkZ + half, half, playerChunkX, playerChunkZ,
+                    detailDistance, farDistance, sampleSpacingChunks, output);
+            collectLeaves(minChunkX + half, minChunkZ + half, half, playerChunkX, playerChunkZ,
+                    detailDistance, farDistance, sampleSpacingChunks, output);
+            return;
+        }
+
+        int tileResolution = resolutionForDistance(size, sampleSpacingChunks);
+        output.add(new TileKey(minChunkX, minChunkZ, size, tileResolution));
+    }
+
+    private static int resolutionForDistance(int tileSizeChunks, int targetSpacingChunks) {
+        int requested = (int) Math.ceil(tileSizeChunks / (double) targetSpacingChunks);
+        return Math.max(4, Math.min(64, requested));
+    }
+
+    private static void scheduleMissingTiles(ServerLevel level) {
+        int scheduled = 0;
+        ChunkGenerator generator = null;
+        RandomState randomState = null;
+        BiomeSource biomeSource = null;
+        Climate.Sampler climateSampler = null;
+        LevelHeightAccessor heightAccessor = null;
+        int seaLevel = 0;
+        boolean waterSurfaceEnabled = false;
+        boolean generationContextReady = false;
+
+        for (TileKey key : orderedTiles) {
+            if (scheduled >= MAX_TILES_TO_SCHEDULE_PER_TICK) break;
+            if (MESHES.containsKey(key) || FAILED.contains(key) || CACHE_EVICTED.contains(key)) continue;
+            WorkKey workKey = new WorkKey(key, revision);
+            if (PENDING.contains(workKey)) continue;
+
+            // Avoid touching generator/heightmap context on idle ticks where every
+            // desired tile is already cached, failed, evicted, or currently pending.
+            if (!generationContextReady) {
+                generator = level.getChunkSource().getGenerator();
+                randomState = level.getChunkSource().randomState();
+                biomeSource = generator.getBiomeSource();
+                climateSampler = randomState.sampler();
+                heightAccessor = LevelHeightAccessor.create(level.getMinY(), level.getHeight());
+                seaLevel = level.getSeaLevel();
+                waterSurfaceEnabled = FarViewFeature.isWaterEnabled()
+                        && level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD);
+                generationContextReady = true;
+            }
+            if (!PENDING.add(workKey)) continue;
+
+            TileGenerationJob job = new TileGenerationJob(workKey, generator, randomState,
+                    heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled);
+            try {
+                WORKER.execute(job);
+                scheduled++;
+            } catch (RejectedExecutionException rejected) {
+                PENDING.remove(workKey);
+                break;
+            }
+        }
+    }
+
+    /**
+     * A plan rebuild can invalidate dozens of queued meshes. Remove those jobs
+     * immediately instead of making the single worker wake up and reject them
+     * one by one ahead of the newly relevant tiles.
+     */
+    private static int pruneObsoleteQueuedJobs() {
+        int removed = 0;
+        Runnable[] queuedTasks = WORKER.getQueue().toArray(new Runnable[0]);
+        for (Runnable queuedTask : queuedTasks) {
+            if (queuedTask instanceof TileGenerationJob job
+                    && job.isObsolete()
+                    && WORKER.getQueue().remove(queuedTask)) {
+                PENDING.remove(job.workKey);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private static TileMesh generateTile(TileGenerationJob job, TileKey key,
+                                         ChunkGenerator generator, RandomState randomState,
+                                         LevelHeightAccessor heightAccessor, BiomeSource biomeSource,
+                                         Climate.Sampler climateSampler, int seaLevel,
+                                         boolean waterSurfaceEnabled, long generationStartedNanos) {
+        int side = key.resolution + 1;
+        int[] heights = new int[side * side];
+        int[] colors = new int[side * side];
+        int[] waterColors = new int[side * side];
+        int originX = key.chunkX * 16;
+        int originZ = key.chunkZ * 16;
+        int spanBlocks = key.sizeChunks * 16;
+        int[] sampleWorldX = new int[side];
+        int[] sampleWorldZ = new int[side];
+        for (int coordinate = 0; coordinate <= key.resolution; coordinate++) {
+            sampleWorldX[coordinate] = FarTerrainLodMath.sampleWorldCoordinate(
+                    originX, spanBlocks, coordinate, key.resolution);
+            sampleWorldZ[coordinate] = FarTerrainLodMath.sampleWorldCoordinate(
+                    originZ, spanBlocks, coordinate, key.resolution);
+        }
+
+        for (int z = 0; z <= key.resolution; z++) {
+            if (job.isObsolete()) return null;
+            int worldZ = sampleWorldZ[z];
+            for (int x = 0; x <= key.resolution; x++) {
+                int worldX = sampleWorldX[x];
+                FarTerrainChunkSnapshot actualChunk = CHUNK_SNAPSHOTS.get(
+                        net.minecraft.world.level.ChunkPos.asLong(
+                                Math.floorDiv(worldX, 16), Math.floorDiv(worldZ, 16)));
+                int localX = Math.floorMod(worldX, 16);
+                int localZ = Math.floorMod(worldZ, 16);
+                int height = actualChunk == null
+                        ? generator.getBaseHeight(worldX, worldZ,
+                                Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState)
+                        : actualChunk.height(localX, localZ);
+                height = Math.max(heightAccessor.getMinY(),
+                        Math.min(heightAccessor.getMaxY(), height));
+                int index = z * side + x;
+                heights[index] = height;
+                if (actualChunk != null) {
+                    colors[index] = actualChunk.surfaceColor(localX, localZ);
+                }
+                FarTerrainBiomeBlender.SurfaceColors biomeColors =
+                        FarTerrainBiomeBlender.sample(biomeSource, climateSampler,
+                                worldX, height, worldZ, seaLevel);
+                waterColors[index] = biomeColors.waterColor();
+                if (actualChunk == null) colors[index] = biomeColors.terrainColor();
+            }
+        }
+
+        // Fold every captured chunk in this tile into its nearest LOD vertex.
+        // Sampling only the exact grid coordinates discarded almost all explored
+        // chunk data when the LOD spacing was larger than one chunk.
+        long[] capturedHeightSums = new long[side * side];
+        long[] capturedColorSums = new long[side * side * 3];
+        int[] capturedCounts = new int[side * side];
+        for (FarTerrainChunkSnapshot snapshot : CHUNK_SNAPSHOTS.values()) {
+            if (job.isObsolete()) return null;
+            int chunkOriginX = snapshot.chunkX() * 16;
+            int chunkOriginZ = snapshot.chunkZ() * 16;
+            if (chunkOriginX < originX || chunkOriginZ < originZ
+                    || chunkOriginX >= originX + spanBlocks
+                    || chunkOriginZ >= originZ + spanBlocks) continue;
+
+            double chunkCenterX = chunkOriginX + 8.0;
+            double chunkCenterZ = chunkOriginZ + 8.0;
+            int gridX = Math.max(0, Math.min(key.resolution,
+                    (int) Math.round((chunkCenterX - originX) / spanBlocks * key.resolution)));
+            int gridZ = Math.max(0, Math.min(key.resolution,
+                    (int) Math.round((chunkCenterZ - originZ) / spanBlocks * key.resolution)));
+            int gridIndex = gridZ * side + gridX;
+            long heightSum = 0L;
+            long redSum = 0L;
+            long greenSum = 0L;
+            long blueSum = 0L;
+            for (int sampleZ = 2; sampleZ < 16; sampleZ += 4) {
+                for (int sampleX = 2; sampleX < 16; sampleX += 4) {
+                    heightSum += snapshot.height(sampleX, sampleZ);
+                    int color = snapshot.surfaceColor(sampleX, sampleZ);
+                    redSum += (color >>> 16) & 0xFF;
+                    greenSum += (color >>> 8) & 0xFF;
+                    blueSum += color & 0xFF;
+                }
+            }
+            capturedHeightSums[gridIndex] += heightSum / 16L;
+            capturedColorSums[gridIndex * 3] += redSum / 16L;
+            capturedColorSums[gridIndex * 3 + 1] += greenSum / 16L;
+            capturedColorSums[gridIndex * 3 + 2] += blueSum / 16L;
+            capturedCounts[gridIndex]++;
+        }
+        for (int index = 0; index < capturedCounts.length; index++) {
+            int count = capturedCounts[index];
+            if (count == 0) continue;
+            heights[index] = (int) Math.round(capturedHeightSums[index] / (double) count);
+            int red = (int) (capturedColorSums[index * 3] / count);
+            int green = (int) (capturedColorSums[index * 3 + 1] / count);
+            int blue = (int) (capturedColorSums[index * 3 + 2] / count);
+            colors[index] = 0xFF000000 | (red << 16) | (green << 8) | blue;
+        }
+
+        double sampleSpacing = (double) spanBlocks / key.resolution;
+        for (int z = 0; z <= key.resolution; z++) {
+            if (job.isObsolete()) return null;
+            for (int x = 0; x <= key.resolution; x++) {
+                int index = z * side + x;
+                int left = z * side + Math.max(0, x - 1);
+                int right = z * side + Math.min(key.resolution, x + 1);
+                int north = Math.max(0, z - 1) * side + x;
+                int south = Math.min(key.resolution, z + 1) * side + x;
+                double dx = (heights[right] - heights[left])
+                        / (double) Math.max(1, (Math.min(key.resolution, x + 1)
+                        - Math.max(0, x - 1)) * sampleSpacing);
+                double dz = (heights[south] - heights[north])
+                        / (double) Math.max(1, (Math.min(key.resolution, z + 1)
+                        - Math.max(0, z - 1)) * sampleSpacing);
+
+                if (FarViewFeature.isTerrainShadingEnabled()) {
+                    // A fixed distant sun direction gives the coarse terrain enough shape
+                    // to read clearly without depending on block-light or client chunk data.
+                    double normalLength = Math.sqrt(dx * dx + dz * dz + 1.0);
+                    double diffuse = Math.max(0.0,
+                            (-dx * -0.42 + 1.0 * 0.82 + -dz * -0.38) / normalLength);
+                    double shadow = FarTerrainLodMath.terrainShadowFactor(
+                            heights, key.resolution, x, z, sampleSpacing);
+                    double brightness = (0.48 + diffuse * 0.52) * shadow;
+                    colors[index] = shadeColor(colors[index], brightness);
+                }
+            }
+        }
+
+        List<TreeImpostor> trees = FarViewFeature.isTreesEnabled()
+                ? generateTreeImpostors(key, heights, sampleWorldX,
+                sampleWorldZ, biomeSource, climateSampler, seaLevel, sampleSpacing,
+                waterSurfaceEnabled) : List.of();
+        long[] waterCellMask = FarTerrainLodMath.createWaterCellMask(
+                heights, key.resolution, seaLevel, waterSurfaceEnabled);
+        return new TileMesh(job.workKey.revision(),
+                (System.nanoTime() - generationStartedNanos) / 1_000_000.0,
+                key, originX, originZ, spanBlocks, seaLevel,
+                sampleWorldX, sampleWorldZ, heights, colors, waterColors, waterCellMask,
+                List.copyOf(trees));
+    }
+
+    private static List<TreeImpostor> generateTreeImpostors(
+            TileKey key, int[] heights, int[] sampleWorldX, int[] sampleWorldZ,
+            BiomeSource biomeSource, Climate.Sampler climateSampler,
+            int seaLevel, double sampleSpacing, boolean overworldVegetation) {
+        if (!overworldVegetation) return List.of();
+        List<TreeImpostor> trees = new ArrayList<>();
+        int resolution = key.resolution;
+        int side = resolution + 1;
+        int stride = Math.max(1, resolution / 16);
+        int maxTrees = 256;
+
+        for (int z = 1; z < resolution && trees.size() < maxTrees; z += stride) {
+            for (int x = 1; x < resolution && trees.size() < maxTrees; x += stride) {
+                int index = z * side + x;
+                int height = heights[index];
+                if (height <= seaLevel + 1) continue;
+
+                int localMin = Math.min(Math.min(heights[index - 1], heights[index + 1]),
+                        Math.min(heights[index - side], heights[index + side]));
+                int localMax = Math.max(Math.max(heights[index - 1], heights[index + 1]),
+                        Math.max(heights[index - side], heights[index + side]));
+                if (localMax - localMin > Math.max(14.0, sampleSpacing * 0.18)) continue;
+
+                int worldX = sampleWorldX[x];
+                int worldZ = sampleWorldZ[z];
+                Holder<Biome> biome = biomeSource.getNoiseBiome(
+                        QuartPos.fromBlock(worldX), QuartPos.fromBlock(height),
+                        QuartPos.fromBlock(worldZ), climateSampler);
+                String biomePath = biome.unwrapKey()
+                        .map(resourceKey -> resourceKey.identifier().getPath()).orElse("");
+                if (!FarTerrainVegetation.shouldPlaceTree(biomePath, worldX, worldZ)) continue;
+
+                double treeHeight = Math.max(6.0, Math.min(36.0, sampleSpacing * 0.20));
+                double canopyWidth = Math.max(4.0, Math.min(28.0, sampleSpacing * 0.22));
+                double jitterX = FarTerrainVegetation.jitter(worldX, worldZ, sampleSpacing, true);
+                double jitterZ = FarTerrainVegetation.jitter(worldX, worldZ, sampleSpacing, false);
+                trees.add(new TreeImpostor(worldX + jitterX, height, worldZ + jitterZ,
+                        treeHeight, canopyWidth, biome.value().getFoliageColor(),
+                        FarTerrainVegetation.trunkColor(biomePath),
+                        FarTerrainVegetation.isConifer(biomePath)));
+            }
+        }
+        return trees;
+    }
+
+    private static int shadeColor(int color, double brightness) {
+        int red = Math.min(255, (int) Math.round(((color >>> 16) & 0xFF) * brightness));
+        int green = Math.min(255, (int) Math.round(((color >>> 8) & 0xFF) * brightness));
+        int blue = Math.min(255, (int) Math.round((color & 0xFF) * brightness));
+        return 0xFF000000 | (red << 16) | (green << 8) | blue;
+    }
+
+    private static void drainCompletedMeshes() {
+        for (int i = 0; i < 24; i++) {
+            TileMesh mesh = COMPLETED.poll();
+            if (mesh == null) break;
+            if (!FarTerrainLodMath.isWorkObsolete(
+                    mesh.revision, revision, DESIRED.contains(mesh.key))) {
+                recordTileGeneration(mesh.generationMillis);
+                TileMesh previous = MESHES.put(mesh.key, mesh);
+                if (previous != null) cachedMeshBytes -= previous.estimatedBytes();
+                cachedMeshBytes += mesh.estimatedBytes();
+            }
+        }
+        trimMeshCache();
+    }
+
+    private static void recalculateMeshCacheBytes() {
+        cachedMeshBytes = 0L;
+        for (TileMesh mesh : MESHES.values()) cachedMeshBytes += mesh.estimatedBytes();
+    }
+
+    private static long getMeshCacheLimitBytes() {
+        return (long) FarViewFeature.getCacheMegabytes() * 1024L * 1024L;
+    }
+
+    private static void trimMeshCache() {
+        long cacheLimit = getMeshCacheLimitBytes();
+        if (cachedMeshBytes <= cacheLimit) return;
+        // orderedTiles is nearest-first; discard the least useful distant meshes first.
+        for (int i = orderedTiles.size() - 1; i >= 0 && cachedMeshBytes > cacheLimit; i--) {
+            TileKey key = orderedTiles.get(i);
+            TileMesh removed = MESHES.remove(key);
+            if (removed != null) {
+                cachedMeshBytes -= removed.estimatedBytes();
+                CACHE_EVICTED.add(key);
+            }
+        }
+    }
+
+    private static void render(WorldRenderContext context) {
+        Minecraft client = Minecraft.getInstance();
+        if (!FarViewFeature.isRenderingEnabled() || client.player == null || client.level == null
+                || !client.hasSingleplayerServer() || activeLevel == null
+                || (orderedTiles.isEmpty() && VOXEL_MESHES.isEmpty())) return;
+
+        Camera camera = client.gameRenderer.getMainCamera();
+        Vec3 cameraPosition = camera.position();
+        var cameraForward = camera.forwardVector();
+        double forwardX = cameraForward.x();
+        double forwardZ = cameraForward.z();
+        double forwardLength = Math.hypot(forwardX, forwardZ);
+        boolean hasHorizontalForward = forwardLength > 1.0E-5;
+        if (hasHorizontalForward) {
+            forwardX /= forwardLength;
+            forwardZ /= forwardLength;
+        }
+        double cameraX = cameraPosition.x;
+        double cameraY = cameraPosition.y;
+        double cameraZ = cameraPosition.z;
+        double playerX = client.player.getX();
+        double playerZ = client.player.getZ();
+        double innerRadius = (Math.max(2, FarViewController.getEffectiveRenderDistance()) + 6) * 16.0;
+        double outerRadius = effectiveFarDistance * 16.0;
+        double innerRadiusSquared = innerRadius * innerRadius;
+        double outerRadiusSquared = outerRadius * outerRadius;
+
+        long renderStartNanos = System.nanoTime();
+        int drawBudget = getDrawBudget();
+        int terrainDrawBudget = Math.max(1, drawBudget * 3 / 4);
+        Matrix4f positionMatrix = context.matrices().last().pose();
+        if (context.consumers() == null) return;
+        VertexConsumer consumer = context.consumers().getBuffer(FarTerrainRenderType.TYPE);
+        // Reuse one position scratch vector for every emitted vertex. The PoseStack
+        // VertexConsumer overload allocates a temporary Vector3f per vertex.
+        Vector3f transformedVertex = new Vector3f();
+        int gpuDrawnQuads = FarTerrainGpuRenderer.render(context, getGpuMeshes(),
+                cameraX, cameraZ, playerX, playerZ, innerRadius, outerRadius, terrainDrawBudget);
+        boolean gpuTerrainRendered = gpuDrawnQuads >= 0;
+        int drawnQuads = gpuTerrainRendered ? gpuDrawnQuads : 0;
+        int submittedMeshes = 0;
+        for (TileKey key : orderedTiles) {
+            TileMesh mesh = MESHES.get(key);
+            if (mesh == null) continue;
+            if (drawnQuads >= terrainDrawBudget) break;
+
+            double tileCenterX = mesh.originX + mesh.spanBlocks * 0.5;
+            double tileCenterZ = mesh.originZ + mesh.spanBlocks * 0.5;
+            double tileDx = tileCenterX - playerX;
+            double tileDz = tileCenterZ - playerZ;
+            double tileDistanceSquared = tileDx * tileDx + tileDz * tileDz;
+            double tileHalfSpan = mesh.spanBlocks * 0.5;
+            double nearestDx = Math.max(0.0, Math.abs(tileDx) - tileHalfSpan);
+            double nearestDz = Math.max(0.0, Math.abs(tileDz) - tileHalfSpan);
+            double nearestTileDistanceSquared = nearestDx * nearestDx + nearestDz * nearestDz;
+            if (nearestTileDistanceSquared > outerRadiusSquared) continue;
+
+            // If every point in this tile lies inside the vanilla-detail radius,
+            // skip it completely. If the tile lies wholly inside the drawable
+            // annulus, its individual cells do not need distance checks.
+            double farthestDx = Math.abs(tileDx) + tileHalfSpan;
+            double farthestDz = Math.abs(tileDz) + tileHalfSpan;
+            double farthestTileDistanceSquared = farthestDx * farthestDx + farthestDz * farthestDz;
+            if (FarTerrainLodMath.isEntireTileInsideInnerRadius(
+                    farthestTileDistanceSquared, innerRadiusSquared)) continue;
+            boolean tileEntirelyInsideRenderBand = FarTerrainLodMath.isEntireTileInsideRenderBand(
+                    nearestTileDistanceSquared, farthestTileDistanceSquared,
+                    innerRadiusSquared, outerRadiusSquared);
+            if (hasHorizontalForward && FarTerrainLodMath.isOutsideHorizontalViewCone(
+                    tileDx, tileDz, forwardX, forwardZ, mesh.spanBlocks * 0.72)) {
+                continue;
+            }
+
+            if (gpuTerrainRendered) {
+                if (drawnQuads < terrainDrawBudget) {
+                    drawnQuads += emitSkirts(consumer, positionMatrix, transformedVertex, mesh,
+                            cameraX, cameraY, cameraZ, playerX, playerZ,
+                            innerRadiusSquared, outerRadiusSquared, drawnQuads, terrainDrawBudget);
+                }
+                submittedMeshes++;
+                continue;
+            }
+
+            int resolution = mesh.key.resolution;
+            int side = resolution + 1;
+            int[] heights = mesh.heights;
+            int[] colors = mesh.colors;
+            int[] waterColors = mesh.waterColors;
+            int[] sampleWorldX = mesh.sampleWorldX;
+            int[] sampleWorldZ = mesh.sampleWorldZ;
+
+            for (int z = 0; z < resolution && drawnQuads < terrainDrawBudget; z++) {
+                double z0 = sampleWorldZ[z];
+                double z1 = sampleWorldZ[z + 1];
+                for (int x = 0; x < resolution && drawnQuads < terrainDrawBudget; x++) {
+                    double x0 = sampleWorldX[x];
+                    double x1 = sampleWorldX[x + 1];
+                    if (!tileEntirelyInsideRenderBand) {
+                        double centerX = (x0 + x1) * 0.5;
+                        double centerZ = (z0 + z1) * 0.5;
+                        double dx = centerX - playerX;
+                        double dz = centerZ - playerZ;
+                        double distanceSquared = dx * dx + dz * dz;
+                        if (distanceSquared < innerRadiusSquared
+                                || distanceSquared > outerRadiusSquared) continue;
+                    }
+
+                    int i00 = z * side + x;
+                    int i10 = i00 + 1;
+                    int i01 = i00 + side;
+                    int i11 = i01 + 1;
+                    boolean submerged = FarTerrainLodMath.isWaterCell(
+                            mesh.waterCellMask, z * resolution + x);
+                    if (submerged) {
+                        // Distant water is a single opaque, biome-tinted sea-level surface.
+                        // Full transparency is intentionally left to the nearby vanilla renderer.
+                        double waterY = mesh.seaLevel + 0.04;
+                        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                                x0, waterY, z0, waterColors[i00],
+                                x0, waterY, z1, waterColors[i01],
+                                x1, waterY, z1, waterColors[i11],
+                                x1, waterY, z0, waterColors[i10]);
+                    } else {
+                        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                                x0, heights[i00], z0, colors[i00],
+                                x0, heights[i01], z1, colors[i01],
+                                x1, heights[i11], z1, colors[i11],
+                                x1, heights[i10], z0, colors[i10]);
+                    }
+                    drawnQuads++;
+                }
+            }
+
+            if (drawnQuads < terrainDrawBudget) {
+                drawnQuads += emitSkirts(consumer, positionMatrix, transformedVertex, mesh, cameraX, cameraY, cameraZ,
+                        playerX, playerZ, innerRadiusSquared, outerRadiusSquared,
+                        drawnQuads, terrainDrawBudget);
+            }
+            submittedMeshes++;
+        }
+        int gpuVoxelQuads = FarTerrainVoxelGpuRenderer.render(context, getGpuVoxelMeshes(playerX, playerZ),
+                cameraX, cameraY, cameraZ, playerX, playerZ,
+                innerRadius, outerRadius, drawBudget - drawnQuads);
+        if (gpuVoxelQuads >= 0) {
+            drawnQuads += gpuVoxelQuads;
+        } else {
+            drawnQuads += emitVoxelMeshes(consumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+        }
+        if (drawnQuads < drawBudget) {
+            VertexConsumer translucentConsumer = context.consumers().getBuffer(FarTerrainRenderType.TRANSLUCENT_TYPE);
+            drawnQuads += emitTranslucentVoxelMeshes(translucentConsumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+        }
+        for (TileKey key : orderedTiles) {
+            if (drawnQuads >= drawBudget) break;
+            TileMesh mesh = MESHES.get(key);
+            if (mesh == null || mesh.trees.isEmpty()) continue;
+            drawnQuads += emitTreeImpostors(consumer, positionMatrix, transformedVertex, mesh,
+                    cameraX, cameraY, cameraZ, playerX, playerZ,
+                    hasHorizontalForward, forwardX, forwardZ,
+                    innerRadiusSquared, outerRadiusSquared, drawnQuads, drawBudget);
+        }
+        lastDrawnQuads = drawnQuads;
+        lastSubmittedMeshes = submittedMeshes;
+        updateDrawBudget((System.nanoTime() - renderStartNanos) / 1_000_000.0);
+    }
+
+    private static int getDrawBudget() {
+        int profileBudget = switch (FarViewFeature.getQuality()) {
+            case "PERFORMANCE" -> 18_000;
+            case "HIGH" -> 64_000;
+            case "ULTRA" -> MAX_DRAW_QUADS;
+            default -> 36_000;
+        };
+        return FarViewFeature.isAdaptiveEnabled()
+                ? Math.max(12_000, Math.min(profileBudget, adaptiveDrawBudget))
+                : profileBudget;
+    }
+
+    private static void recordTileGeneration(double generationMillis) {
+        lastTileGenerationMs = generationMillis;
+        averageTileGenerationMs = tileGenerationSamples == 0L
+                ? generationMillis
+                : averageTileGenerationMs + (generationMillis - averageTileGenerationMs) * 0.12;
+        tileGenerationSamples++;
+    }
+
+    private static void updateDrawBudget(double renderMillis) {
+        if (!FarViewFeature.isAdaptiveEnabled()) {
+            drawBudgetAdjustmentFrames = 0;
+            return;
+        }
+        averageMeshSubmitMs = averageMeshSubmitMs == 0.0
+                ? renderMillis : averageMeshSubmitMs * 0.82 + renderMillis * 0.18;
+        if (++drawBudgetAdjustmentFrames < 10) return;
+        drawBudgetAdjustmentFrames = 0;
+        adaptiveDrawBudget = FarTerrainLodMath.adjustDrawBudget(
+                adaptiveDrawBudget, averageMeshSubmitMs, 12_000, MAX_DRAW_QUADS);
+    }
+
+    private static int emitTreeImpostors(VertexConsumer consumer, Matrix4f positionMatrix,
+                                          Vector3f transformedVertex, TileMesh mesh,
+                                          double cameraX, double cameraY, double cameraZ,
+                                          double playerX, double playerZ,
+                                          boolean hasHorizontalForward, double forwardX, double forwardZ,
+                                          double innerRadiusSquared, double outerRadiusSquared,
+                                          int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        for (TreeImpostor tree : mesh.trees) {
+            int treeCost = tree.conifer ? 24 : 18;
+            if (alreadyDrawn + emitted + treeCost > maxQuads) break;
+            double dx = tree.x - playerX;
+            double dz = tree.z - playerZ;
+            double distanceSquared = dx * dx + dz * dz;
+            if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+            if (hasHorizontalForward && FarTerrainLodMath.isOutsideHorizontalViewCone(
+                    dx, dz, forwardX, forwardZ, tree.canopyWidth * 0.9)) continue;
+
+            double trunkHeight = tree.height * 0.68;
+            double trunkWidth = Math.max(1.0, tree.canopyWidth * 0.12);
+            int trunk = shadeColor(tree.trunkColor, 0.82);
+            int leaves = shadeColor(tree.leafColor, 0.88);
+            emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                    cameraX, cameraY, cameraZ, tree.x, tree.y, tree.z,
+                    trunkWidth, trunkHeight, trunkWidth, trunk);
+
+            if (tree.conifer) {
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.28,
+                        tree.z, tree.canopyWidth, tree.height * 0.34,
+                        tree.canopyWidth, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.49,
+                        tree.z, tree.canopyWidth * 0.76, tree.height * 0.30,
+                        tree.canopyWidth * 0.76, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.68,
+                        tree.z, tree.canopyWidth * 0.48, tree.height * 0.24,
+                        tree.canopyWidth * 0.48, leaves);
+            } else {
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.39,
+                        tree.z, tree.canopyWidth, tree.height * 0.43,
+                        tree.canopyWidth, leaves);
+                emitted += emitBox(consumer, positionMatrix, transformedVertex,
+                        cameraX, cameraY, cameraZ, tree.x, tree.y + tree.height * 0.66,
+                        tree.z, tree.canopyWidth * 0.72, tree.height * 0.34,
+                        tree.canopyWidth * 0.72, leaves);
+            }
+        }
+        return emitted;
+    }
+
+    private static int emitBox(VertexConsumer consumer, Matrix4f positionMatrix,
+                               Vector3f transformedVertex,
+                               double cameraX, double cameraY, double cameraZ,
+                               double centerX, double bottomY, double centerZ,
+                               double width, double height, double depth, int color) {
+        double minX = centerX - width * 0.5;
+        double maxX = centerX + width * 0.5;
+        double minY = bottomY;
+        double maxY = bottomY + height;
+        double minZ = centerZ - depth * 0.5;
+        double maxZ = centerZ + depth * 0.5;
+        int side = shadeColor(color, 0.76);
+        int bottom = shadeColor(color, 0.52);
+
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, minZ, side, minX, maxY, minZ, side,
+                maxX, maxY, minZ, side, maxX, minY, minZ, side);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                maxX, minY, maxZ, side, maxX, maxY, maxZ, side,
+                minX, maxY, maxZ, side, minX, minY, maxZ, side);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, maxZ, side, minX, maxY, maxZ, side,
+                minX, maxY, minZ, side, minX, minY, minZ, side);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                maxX, minY, minZ, side, maxX, maxY, minZ, side,
+                maxX, maxY, maxZ, side, maxX, minY, maxZ, side);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, maxY, minZ, color, minX, maxY, maxZ, color,
+                maxX, maxY, maxZ, color, maxX, maxY, minZ, color);
+        emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                minX, minY, maxZ, bottom, minX, minY, minZ, bottom,
+                maxX, minY, minZ, bottom, maxX, minY, maxZ, bottom);
+        return 6;
+    }
+
+    private static int emitTranslucentVoxelMeshes(VertexConsumer consumer, Matrix4f positionMatrix,
+                                                      Vector3f transformedVertex,
+                                                      double cameraX, double cameraY, double cameraZ,
+                                                      double playerX, double playerZ,
+                                                      double innerRadiusSquared, double outerRadiusSquared,
+                                                      int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        List<FarTerrainVoxelMesh> meshes = new ArrayList<>(VOXEL_MESHES.values());
+        meshes.sort(Comparator.comparingDouble((FarTerrainVoxelMesh mesh) -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - cameraX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - cameraZ;
+            return dx * dx + dz * dz;
+        }).reversed());
+        for (FarTerrainVoxelMesh mesh : meshes) {
+            if (alreadyDrawn + emitted >= maxQuads) break;
+            double originX = mesh.chunkX() * 16.0;
+            double originZ = mesh.chunkZ() * 16.0;
+            float[] positions = mesh.translucentPositions();
+            int[] colors = mesh.translucentColors();
+            for (int quad = 0; quad < mesh.translucentQuadCount()
+                    && alreadyDrawn + emitted < maxQuads; quad++) {
+                int offset = quad * 12;
+                double centerX = originX + (positions[offset] + positions[offset + 3]
+                        + positions[offset + 6] + positions[offset + 9]) * 0.25;
+                double centerZ = originZ + (positions[offset + 2] + positions[offset + 5]
+                        + positions[offset + 8] + positions[offset + 11]) * 0.25;
+                double dx = centerX - playerX;
+                double dz = centerZ - playerZ;
+                double distanceSquared = dx * dx + dz * dz;
+                if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+                int color = colors[quad];
+                emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                        originX + positions[offset], positions[offset + 1], originZ + positions[offset + 2], color,
+                        originX + positions[offset + 3], positions[offset + 4], originZ + positions[offset + 5], color,
+                        originX + positions[offset + 6], positions[offset + 7], originZ + positions[offset + 8], color,
+                        originX + positions[offset + 9], positions[offset + 10], originZ + positions[offset + 11], color);
+                emitted++;
+            }
+        }
+        return emitted;
+    }
+
+    private static int emitVoxelMeshes(VertexConsumer consumer, Matrix4f positionMatrix,
+                                        Vector3f transformedVertex,
+                                        double cameraX, double cameraY, double cameraZ,
+                                        double playerX, double playerZ,
+                                        double innerRadiusSquared, double outerRadiusSquared,
+                                        int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        List<FarTerrainVoxelMesh> orderedVoxelMeshes = new ArrayList<>(VOXEL_MESHES.values());
+        orderedVoxelMeshes.sort(Comparator.comparingDouble(mesh -> {
+            double dx = mesh.chunkX() * 16.0 + 8.0 - playerX;
+            double dz = mesh.chunkZ() * 16.0 + 8.0 - playerZ;
+            return dx * dx + dz * dz;
+        }));
+        for (FarTerrainVoxelMesh mesh : orderedVoxelMeshes) {
+            if (alreadyDrawn + emitted >= maxQuads) break;
+            double originX = mesh.chunkX() * 16.0;
+            double originZ = mesh.chunkZ() * 16.0;
+            double dx = originX + 8.0 - playerX;
+            double dz = originZ + 8.0 - playerZ;
+            double nearestX = Math.max(0.0, Math.abs(dx) - 8.0);
+            double nearestZ = Math.max(0.0, Math.abs(dz) - 8.0);
+            if (nearestX * nearestX + nearestZ * nearestZ > outerRadiusSquared) continue;
+            double farthestX = Math.abs(dx) + 8.0;
+            double farthestZ = Math.abs(dz) + 8.0;
+            if (farthestX * farthestX + farthestZ * farthestZ < innerRadiusSquared) continue;
+
+            float[] positions = mesh.positions();
+            int[] colors = mesh.colors();
+            for (int quad = 0; quad < mesh.quadCount() && alreadyDrawn + emitted < maxQuads; quad++) {
+                int offset = quad * 12;
+                double quadCenterX = originX + (positions[offset] + positions[offset + 3]
+                        + positions[offset + 6] + positions[offset + 9]) * 0.25;
+                double quadCenterZ = originZ + (positions[offset + 2] + positions[offset + 5]
+                        + positions[offset + 8] + positions[offset + 11]) * 0.25;
+                double qx = quadCenterX - playerX;
+                double qz = quadCenterZ - playerZ;
+                double distanceSquared = qx * qx + qz * qz;
+                if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+
+                int color = colors[quad];
+                emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                        originX + positions[offset], positions[offset + 1], originZ + positions[offset + 2], color,
+                        originX + positions[offset + 3], positions[offset + 4], originZ + positions[offset + 5], color,
+                        originX + positions[offset + 6], positions[offset + 7], originZ + positions[offset + 8], color,
+                        originX + positions[offset + 9], positions[offset + 10], originZ + positions[offset + 11], color);
+                emitted++;
+            }
+        }
+        return emitted;
+    }
+
+    private static int emitSkirts(VertexConsumer consumer, Matrix4f positionMatrix,
+                                  Vector3f transformedVertex, TileMesh mesh,
+                                  double cameraX, double cameraY, double cameraZ,
+                                  double playerX, double playerZ, double innerRadiusSquared,
+                                  double outerRadiusSquared, int alreadyDrawn, int maxQuads) {
+        int emitted = 0;
+        int resolution = mesh.key.resolution;
+        int side = resolution + 1;
+        int[] heights = mesh.heights;
+        int[] colors = mesh.colors;
+        int[] sampleWorldX = mesh.sampleWorldX;
+        int[] sampleWorldZ = mesh.sampleWorldZ;
+        double step = (double) mesh.spanBlocks / resolution;
+        int depth = Math.max(SKIRT_MIN_DEPTH, (int) Math.min(96, step * 0.2));
+
+        for (int edge = 0; edge < 4 && alreadyDrawn + emitted < maxQuads; edge++) {
+            for (int i = 0; i < resolution && alreadyDrawn + emitted < maxQuads; i++) {
+                int a;
+                int b;
+                double ax;
+                double az;
+                double bx;
+                double bz;
+                if (edge == 0) {
+                    a = i; b = i + 1;
+                    ax = sampleWorldX[i]; az = sampleWorldZ[0];
+                    bx = sampleWorldX[i + 1]; bz = sampleWorldZ[0];
+                } else if (edge == 1) {
+                    a = resolution * side + i; b = a + 1;
+                    ax = sampleWorldX[i]; az = sampleWorldZ[resolution];
+                    bx = sampleWorldX[i + 1]; bz = az;
+                } else if (edge == 2) {
+                    a = i * side; b = (i + 1) * side;
+                    ax = sampleWorldX[0]; az = sampleWorldZ[i];
+                    bx = ax; bz = sampleWorldZ[i + 1];
+                } else {
+                    a = i * side + resolution; b = (i + 1) * side + resolution;
+                    ax = sampleWorldX[resolution]; az = sampleWorldZ[i];
+                    bx = ax; bz = sampleWorldZ[i + 1];
+                }
+
+                double midX = (ax + bx) * 0.5;
+                double midZ = (az + bz) * 0.5;
+                double dx = midX - playerX;
+                double dz = midZ - playerZ;
+                double distanceSquared = dx * dx + dz * dz;
+                if (distanceSquared < innerRadiusSquared || distanceSquared > outerRadiusSquared) continue;
+
+                int darkA = FarTerrainLodMath.darkenOpaqueArgb(colors[a]);
+                int darkB = FarTerrainLodMath.darkenOpaqueArgb(colors[b]);
+                emitQuad(consumer, positionMatrix, transformedVertex, cameraX, cameraY, cameraZ,
+                        ax, heights[a], az, colors[a],
+                        ax, heights[a] - depth, az, darkA,
+                        bx, heights[b] - depth, bz, darkB,
+                        bx, heights[b], bz, colors[b]);
+                emitted++;
+            }
+        }
+        return emitted;
+    }
+
+    private static void emitQuad(VertexConsumer consumer, Matrix4f positionMatrix,
+                                 Vector3f transformedVertex,
+                                 double cameraX, double cameraY, double cameraZ,
+                                 double x0, double y0, double z0, int color0,
+                                 double x1, double y1, double z1, int color1,
+                                 double x2, double y2, double z2, int color2,
+                                 double x3, double y3, double z3, int color3) {
+        putVertex(consumer, positionMatrix, transformedVertex,
+                x0 - cameraX, y0 - cameraY, z0 - cameraZ, color0);
+        putVertex(consumer, positionMatrix, transformedVertex,
+                x1 - cameraX, y1 - cameraY, z1 - cameraZ, color1);
+        putVertex(consumer, positionMatrix, transformedVertex,
+                x2 - cameraX, y2 - cameraY, z2 - cameraZ, color2);
+        putVertex(consumer, positionMatrix, transformedVertex,
+                x3 - cameraX, y3 - cameraY, z3 - cameraZ, color3);
+    }
+
+    private static void putVertex(VertexConsumer consumer, Matrix4f positionMatrix,
+                                  Vector3f transformedVertex, double x, double y, double z,
+                                  int color) {
+        transformedVertex.set((float) x, (float) y, (float) z);
+        positionMatrix.transformPosition(transformedVertex);
+        consumer.addVertex(transformedVertex.x, transformedVertex.y, transformedVertex.z)
+                .setColor(color);
+    }
+
+    private static double distanceSquaredToCenter(TileKey key, double playerChunkX, double playerChunkZ) {
+        return distanceSquaredToCenter(key.chunkX, key.chunkZ, key.sizeChunks,
+                playerChunkX, playerChunkZ);
+    }
+
+    private static double distanceSquaredToCenter(int minX, int minZ, int size,
+                                                   double playerX, double playerZ) {
+        double dx = minX + size * 0.5 - playerX;
+        double dz = minZ + size * 0.5 - playerZ;
+        return dx * dx + dz * dz;
+    }
+
+    /**
+     * Immediately disables FarView and invalidates every in-flight renderer/cache operation.
+     * Persisted snapshots remain on disk and are loaded again only after explicit re-enable.
+     */
+    public static void disable() {
+        // Invalidate disk callbacks before touching the in-memory cache.
+        snapshotStore = null;
+        clearWorld();
+        snapshotLevel = null;
+        snapshotClientLevel = null;
+        lastSnapshotQueryChunkX = Integer.MIN_VALUE;
+        lastSnapshotQueryChunkZ = Integer.MIN_VALUE;
+        synchronized (SNAPSHOT_CACHE_LOCK) {
+            CHUNK_SNAPSHOTS.clear();
+            CHUNK_SNAPSHOT_ORDER.clear();
+            cachedSnapshotBytes = 0L;
+        }
+    }
+
+    private static void clearWorld() {
+        activeLevel = null;
+        revision++;
+        lastWorkerError = "";
+        averageMeshSubmitMs = 0.0;
+        adaptiveDrawBudget = 36_000;
+        drawBudgetAdjustmentFrames = 0;
+        DESIRED = Set.of();
+        MESHES.clear();
+        synchronized (VOXEL_MESH_LOCK) {
+            VOXEL_MESHES.clear();
+            VOXEL_MESH_ORDER.clear();
+            VOXEL_REQUEUE.clear();
+            VOXEL_PENDING.clear();
+            VOXEL_EMPTY.clear();
+            cachedVoxelMeshBytes = 0L;
+        }
+        VOXEL_WORKER.getQueue().clear();
+        VOXEL_PENDING.clear();
+        cachedMeshBytes = 0L;
+        FAILED.clear();
+        CACHE_EVICTED.clear();
+        orderedTiles = List.of();
+        COMPLETED.clear();
+        WORKER.getQueue().clear();
+        PENDING.removeIf(work -> work.revision != revision);
+        lastPlayerChunkX = Integer.MIN_VALUE;
+        lastPlayerChunkZ = Integer.MIN_VALUE;
+        lastSampleSpacing = -1;
+        lastDetailDistance = -1;
+        lastConfiguredFarDistance = -1;
+        effectiveFarDistance = 512;
+        ticksUntilAdaptiveUpdate = 0;
+        lastTilePlanMs = 0.0;
+        averageTileGenerationMs = 0.0;
+        lastTileGenerationMs = 0.0;
+        tilePlanBuildCount = 0L;
+        tileGenerationSamples = 0L;
+        lastDrawnQuads = 0;
+        lastSubmittedMeshes = 0;
+        workerBackoffNanos = 0L;
+        lastPrunedQueuedJobs = 0;
+        totalPrunedQueuedJobs = 0L;
+        FarTerrainGpuRenderer.clearWorld();
+        FarTerrainVoxelGpuRenderer.clearWorld();
+    }
+
+    private static List<TileMesh> getGpuMeshes() {
+        List<TileMesh> result = new ArrayList<>(orderedTiles.size());
+        for (TileKey key : orderedTiles) {
+            TileMesh mesh = MESHES.get(key);
+            if (mesh != null) result.add(mesh);
+        }
+        return result;
+    }
+
+    private static long voxelMeshCacheLimitBytes() {
+        return Math.min(MAX_VOXEL_MESH_CACHE_BYTES,
+                Math.max(8L * 1024L * 1024L, getMeshCacheLimitBytes() / 3L));
+    }
+
+    private static List<FarTerrainVoxelMesh> getGpuVoxelMeshes(double playerX, double playerZ) {
+        List<FarTerrainVoxelMesh> result = new ArrayList<>(VOXEL_MESHES.values());
+        result.sort(Comparator.comparingInt(FarTerrainVoxelMesh::chunkX)
+                .thenComparingInt(FarTerrainVoxelMesh::chunkZ));
+        return result;
+    }
+
+    public static String getStatusLine() {
+        if (!FarViewFeature.isRenderingEnabled()) return "Far terrain renderer is disabled";
+        if (activeLevel == null) return "Far terrain LOD is available in singleplayer worlds";
+        String suffix = lastWorkerError.isBlank() ? "" : " | worker warning: " + lastWorkerError;
+        return "LOD tiles: " + MESHES.size() + "/" + DESIRED.size()
+                + " ready | " + WORKER.getQueue().size() + " queued | " + FAILED.size()
+                + " failed | " + CACHE_EVICTED.size() + " memory-evicted | cache "
+                + (cachedMeshBytes / (1024 * 1024)) + "/"
+                + (getMeshCacheLimitBytes() / (1024 * 1024)) + " MiB | range "
+                + effectiveFarDistance + " chunks | plan "
+                + String.format(java.util.Locale.ROOT, "%.2f", lastTilePlanMs) + " ms/"
+                + tilePlanBuildCount + " rebuilds | mesh avg "
+                + String.format(java.util.Locale.ROOT, "%.2f", lastTileGenerationMs)
+                + "/" + String.format(java.util.Locale.ROOT, "%.2f", averageTileGenerationMs)
+                + " ms last/avg over " + tileGenerationSamples + " jobs | submit avg "
+                + String.format(java.util.Locale.ROOT, "%.2f", averageMeshSubmitMs)
+                + " ms | snapshots " + CHUNK_SNAPSHOTS.size() + "/" + (cachedSnapshotBytes / (1024 * 1024))
+                + " MiB | voxel meshes " + VOXEL_MESHES.size() + "/" + (cachedVoxelMeshBytes / (1024 * 1024))
+                + " MiB | " + FarTerrainVoxelGpuRenderer.getStatusLine()
+                + " | worker pause " + TimeUnit.NANOSECONDS.toMillis(workerBackoffNanos)
+                + " ms | stale queue jobs " + lastPrunedQueuedJobs + " last / "
+                + totalPrunedQueuedJobs + " total | draw " + lastDrawnQuads + "/" + getDrawBudget()
+                + " quads, " + lastSubmittedMeshes + " tiles | " + FarTerrainGpuRenderer.getStatusLine() + suffix;
+    }
+
+    private static final class TileGenerationJob implements Runnable {
+        private final WorkKey workKey;
+        private final ChunkGenerator generator;
+        private final RandomState randomState;
+        private final LevelHeightAccessor heightAccessor;
+        private final BiomeSource biomeSource;
+        private final Climate.Sampler climateSampler;
+        private final int seaLevel;
+        private final boolean waterSurfaceEnabled;
+
+        private TileGenerationJob(WorkKey workKey, ChunkGenerator generator, RandomState randomState,
+                                  LevelHeightAccessor heightAccessor, BiomeSource biomeSource,
+                                  Climate.Sampler climateSampler, int seaLevel,
+                                  boolean waterSurfaceEnabled) {
+            this.workKey = workKey;
+            this.generator = generator;
+            this.randomState = randomState;
+            this.heightAccessor = heightAccessor;
+            this.biomeSource = biomeSource;
+            this.climateSampler = climateSampler;
+            this.seaLevel = seaLevel;
+            this.waterSurfaceEnabled = waterSurfaceEnabled;
+        }
+
+        private boolean isObsolete() {
+            return FarTerrainLodMath.isWorkObsolete(
+                    workKey.revision(), revision, DESIRED.contains(workKey.key()));
+        }
+
+        @Override
+        public void run() {
+            boolean generated = false;
+            try {
+                if (isObsolete()) return;
+                long generationStartedNanos = System.nanoTime();
+                TileMesh mesh = generateTile(this, workKey.key(), generator, randomState,
+                        heightAccessor, biomeSource, climateSampler, seaLevel, waterSurfaceEnabled,
+                        generationStartedNanos);
+                if (mesh != null && !isObsolete()) {
+                    COMPLETED.add(mesh);
+                    generated = true;
+                }
+            } catch (RuntimeException | LinkageError error) {
+                // A job from an old world revision must never poison the new world's tile state.
+                if (!isObsolete()) {
+                    FAILED.add(workKey.key());
+                    String message = error.getMessage();
+                    lastWorkerError = error.getClass().getSimpleName()
+                            + (message == null || message.isBlank() ? "" : ": " + message);
+                    if (lastWorkerError.length() > 180) {
+                        lastWorkerError = lastWorkerError.substring(0, 177) + "...";
+                    }
+                }
+            } finally {
+                PENDING.remove(workKey);
+                if (generated && !isObsolete()) {
+                    long backoff = workerBackoffNanos;
+                    if (backoff > 0L) LockSupport.parkNanos(backoff);
+                }
+            }
+        }
+    }
+
+    record TileKey(int chunkX, int chunkZ, int sizeChunks, int resolution) {}
+    private record WorkKey(TileKey key, long revision) {}
+    private record VoxelWorkKey(long chunkKey, long revision) {}
+    private record TreeImpostor(double x, double y, double z,
+                                 double height, double canopyWidth,
+                                 int leafColor, int trunkColor, boolean conifer) {}
+
+    record TileMesh(long revision, double generationMillis,
+                            TileKey key, int originX, int originZ, int spanBlocks,
+                            int seaLevel, int[] sampleWorldX, int[] sampleWorldZ,
+                            int[] heights, int[] colors, int[] waterColors, long[] waterCellMask,
+                            List<TreeImpostor> trees) {
+        private long estimatedBytes() {
+            return ((long) sampleWorldX.length + sampleWorldZ.length
+                    + heights.length + colors.length + waterColors.length) * Integer.BYTES
+                    + (long) waterCellMask.length * Long.BYTES
+                    + (long) trees.size() * 64L;
+        }
+    }
+}
