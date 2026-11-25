@@ -58,7 +58,7 @@ jobs:
             sed -i 's@repositories { mavenCentral() }@repositories { maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/") }; mavenCentral() }@' "$gradle_file"
           done
           gradle --no-daemon -p loader clean build
-          gradle --no-daemon -p loader/examples/hello-mod clean build
+          gradle --no-daemon -p loader/examples/auto-sprint clean build
       - name: Launch Minecraft with VantaLoader and Vanta Client
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
