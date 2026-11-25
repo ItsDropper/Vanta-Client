@@ -71,6 +71,12 @@ public abstract class HudElement {
         return scale;
     }
 
+    /** Human-readable label used by the HUD editor and selection inspector. */
+    public String getDisplayName() {
+        return getClass().getSimpleName().replace("HudElement", "")
+                .replaceAll("([a-z])([A-Z])", "$1 $2");
+    }
+
     /** Stable preference key used by the optional per-element background. */
     public String getBackgroundId() {
         return getClass().getSimpleName();
