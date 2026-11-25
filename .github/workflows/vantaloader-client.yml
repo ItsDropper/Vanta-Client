@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: ItsDropper/VantaLoader
-          ref: 3273f18765bf1620c505ac314128272c969ae1b8
+          ref: 86cccb70eef2e77e615b7ff1bd9556099e2158a7
           path: loader
       - uses: actions/setup-java@v5
         with:
