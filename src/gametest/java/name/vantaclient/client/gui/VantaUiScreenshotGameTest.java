@@ -2037,36 +2037,40 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
         name.vantaclient.api.ModDescriptor descriptor = context.computeOnClient(client ->
                 createBondiesUtilsPreviewDescriptor());
         name.vantaclient.api.VantaClientApi.registerMod(descriptor);
-        name.vantaclient.api.ModDescriptor registered = name.vantaclient.api.VantaClientApi
-                .getRegisteredMods().stream()
-                .filter(mod -> mod.id().equals("bondies-utills-ez"))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Bondies Utils EZ integration was not registered"));
 
-        VantaIntegrationSettingsScreen integrationScreen = context.computeOnClient(client ->
-                new VantaIntegrationSettingsScreen(settingsScreen, registered));
-        context.setScreen(() -> integrationScreen);
-        context.waitForScreen(VantaIntegrationSettingsScreen.class);
-        context.waitTicks(4);
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+        context.runOnClient(client -> settingsScreen.navigate(
+                name.vantaclient.client.gui.menu.MenuHost.Route.of(
+                        name.vantaclient.client.gui.menu.MenuHost.Page.INTEGRATIONS)));
+        context.waitTicks(3);
+        captureIntegrationScreenshot(context,
+                "vanta-integrations-main-ui-" + viewportLabel);
 
-        Path screenshot = context.takeScreenshot("vanta-integration-bondies-utils-ez-" + viewportLabel);
+        context.runOnClient(client -> settingsScreen.navigate(new
+                name.vantaclient.client.gui.menu.MenuHost.Route(
+                        name.vantaclient.client.gui.menu.MenuHost.Page.INTEGRATION,
+                        "bondies-utills-ez")));
+        context.waitTicks(3);
+        captureIntegrationScreenshot(context,
+                "vanta-integration-bondies-utils-ez-main-ui-" + viewportLabel);
+        context.setScreen(() -> settingsScreen);
+        context.waitForScreen(VantaSettingsScreen.class);
+    }
+
+    private static void captureIntegrationScreenshot(ClientGameTestContext context, String name) {
+        Path screenshot = context.takeScreenshot(name);
         if (!Files.isRegularFile(screenshot)) {
-            throw new AssertionError("Minecraft did not produce Bondies Utils EZ integration screenshot: "
-                    + screenshot);
+            throw new AssertionError("Minecraft did not produce integration screenshot: " + screenshot);
         }
         try {
             if (Files.size(screenshot) < 1_024L) {
-                throw new AssertionError("Bondies Utils EZ integration screenshot is unexpectedly small: "
-                        + screenshot);
+                throw new AssertionError("Integration screenshot is unexpectedly small: " + screenshot);
             }
         } catch (java.io.IOException exception) {
-            throw new AssertionError("Could not verify Bondies Utils EZ integration screenshot: "
-                    + screenshot, exception);
+            throw new AssertionError("Could not verify integration screenshot: " + screenshot, exception);
         }
-
-        System.out.println("[Vanta UI] Captured Bondies Utils EZ settings integration -> " + screenshot);
-        context.setScreen(() -> settingsScreen);
-        context.waitForScreen(VantaSettingsScreen.class);
+        System.out.println("[Vanta UI] Captured main-menu integration page " + name + " -> " + screenshot);
     }
 
     /**
