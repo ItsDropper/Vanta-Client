@@ -54,11 +54,11 @@ jobs:
       - name: Build matching VantaLoader agent and integration probes
         run: |
           gradle --no-daemon -p loader clean build
-          gradle --no-daemon -p loader -p loader/examples/hello-mod clean build
-          gradle --no-daemon -p loader -p loader/examples/auto-sprint clean build
-          gradle --no-daemon -p loader -p loader/examples/runtime-probe clean build
-          gradle --no-daemon -p loader -p loader/examples/mixin-probe clean build
-          gradle --no-daemon -p loader -p loader/examples/vma-showcase clean build
+          gradle --no-daemon -p loader/examples/hello-mod clean build
+          gradle --no-daemon -p loader/examples/auto-sprint clean build
+          gradle --no-daemon -p loader/examples/runtime-probe clean build
+          gradle --no-daemon -p loader/examples/mixin-probe clean build
+          gradle --no-daemon -p loader/examples/vma-showcase clean build
       - name: Launch Minecraft with VantaLoader and Vanta Client
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
