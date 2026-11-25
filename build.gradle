@@ -43,7 +43,7 @@ loom {
 		// The native source set is compiled separately from Loom's standard
 		// Fabric source sets, so explicitly generate its Mixin refmap.
 		useLegacyMixinAp = true
-		defaultRefmapName = "vantaloader-dropperutils.refmap.json"
+		defaultRefmapName = "dropperutils.refmap.json"
 	}
 	accessWidenerPath = file("src/main/resources/dropperutils.accesswidener")
 	splitEnvironmentSourceSets()
