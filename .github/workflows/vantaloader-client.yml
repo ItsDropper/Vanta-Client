@@ -63,12 +63,13 @@ jobs:
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
         run: |
-          javac loader/scripts/ci/ScreenCapture.java
-          XCURSOR_THEME=DMZ-White XCURSOR_SIZE=24 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" bash loader/scripts/ci/run_visual_smoke.sh \
-            --agent loader/build/agent/VantaLoader-agent.jar \
-            --mod build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar \
-            --mod loader/examples/hello-mod/build/libs/vantaloader-hello-mod-1.0.0.jar \
-            --output build/vantaloader-client-smoke --timeout 240
+          cd loader
+          javac scripts/ci/ScreenCapture.java
+          XCURSOR_THEME=DMZ-White XCURSOR_SIZE=24 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" bash scripts/ci/run_visual_smoke.sh \
+            --agent build/agent/VantaLoader-agent.jar \
+            --mod ../build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar \
+            --mod examples/hello-mod/build/libs/vantaloader-hello-mod-1.0.0.jar \
+            --output ../build/vantaloader-client-smoke --timeout 240
       - name: Assert Vanta Client initialized
         run: |
           log=build/vantaloader-client-smoke/instance/logs/visual-smoke.log
