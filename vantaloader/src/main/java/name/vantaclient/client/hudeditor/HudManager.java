@@ -1,5 +1,7 @@
 package name.vantaclient.client.hudeditor;
 
+import name.vantaclient.api.RegisteredHud;
+import name.vantaclient.api.VantaClientApi;
 import name.vantaclient.client.hud.ArmorHudElement;
 import name.vantaclient.client.hud.DebugHudElement;
 import name.vantaclient.client.hud.CpsHudElement;
@@ -15,6 +17,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class HudManager {
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
@@ -23,6 +29,7 @@ public class HudManager {
     private static final List<VanillaHudElement> READ_ONLY_VANILLA_ELEMENTS =
             Collections.unmodifiableList(VANILLA_ELEMENTS);
     private static final List<HudElement> ACTIVE_ELEMENTS = new ArrayList<>();
+    private static final Map<String, RegisteredHudElement> REGISTERED_ELEMENTS = new LinkedHashMap<>();
     private static final List<HudElement> READ_ONLY_ACTIVE_ELEMENTS =
             Collections.unmodifiableList(ACTIVE_ELEMENTS);
     private static boolean initialized = false;
@@ -30,19 +37,46 @@ public class HudManager {
     private static long layoutRevision;
 
     public static void init() {
-        if (initialized) return;
-        initialized = true;
-        add(new DebugHudElement());
-        add(new ArmorHudElement());
-        add(new TotemCounterHudElement());
-        add(new PotionEffectsHudElement());
-        add(new FpsHudElement());
-        add(new PingHudElement());
-        add(new KeystrokesHudElement());
-        add(new CpsHudElement());
-        add(new PerformanceHudElement());
-        for (VanillaHudElement.Part part : VanillaHudElement.Part.values()) {
-            add(new VanillaHudElement(part));
+        if (!initialized) {
+            initialized = true;
+            add(new DebugHudElement());
+            add(new ArmorHudElement());
+            add(new TotemCounterHudElement());
+            add(new PotionEffectsHudElement());
+            add(new FpsHudElement());
+            add(new PingHudElement());
+            add(new KeystrokesHudElement());
+            add(new CpsHudElement());
+            add(new PerformanceHudElement());
+            for (VanillaHudElement.Part part : VanillaHudElement.Part.values()) {
+                add(new VanillaHudElement(part));
+            }
+        }
+        syncRegisteredHuds();
+    }
+
+    /** Reconcile the public API registry on the client thread. */
+    private static void syncRegisteredHuds() {
+        List<RegisteredHud> registrations = VantaClientApi.getRegisteredHuds();
+        Set<String> present = new HashSet<>();
+        for (RegisteredHud registration : registrations) {
+            String key = registration.modId() + ":" + registration.element().id();
+            present.add(key);
+            RegisteredHudElement current = REGISTERED_ELEMENTS.get(key);
+            if (current != null && current.represents(registration)) continue;
+            if (current != null) ELEMENTS.remove(current);
+            RegisteredHudElement element = new RegisteredHudElement(registration);
+            REGISTERED_ELEMENTS.put(key, element);
+            ELEMENTS.add(element);
+            visibilityInitialized = false;
+        }
+        var iterator = REGISTERED_ELEMENTS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, RegisteredHudElement> entry = iterator.next();
+            if (present.contains(entry.getKey())) continue;
+            ELEMENTS.remove(entry.getValue());
+            iterator.remove();
+            visibilityInitialized = false;
         }
     }
 
