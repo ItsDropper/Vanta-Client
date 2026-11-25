@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/** Stable, Minecraft-independent entry point for third-party integrations. */
+/** Public registration entry point for third-party settings and HUD integrations. */
 public final class VantaClientApi {
     public static final int API_VERSION = 1;
     private static final ConcurrentMap<String, ModDescriptor> MODS = new ConcurrentHashMap<>();
