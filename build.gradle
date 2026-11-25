@@ -35,8 +35,6 @@ sourceSets {
 	vantaloader {
 		java.srcDir("vantaloader/src/main/java")
 		resources.srcDir("vantaloader/src/main/resources")
-		compileClasspath += sourceSets.client.compileClasspath + sourceSets.client.output
-		runtimeClasspath += output + compileClasspath
 	}
 }
 
@@ -60,6 +58,13 @@ loom {
 			sourceSet sourceSets.vantaloader
 		}
 	}
+}
+
+ // Loom creates the split client source set above; wire it into the native
+ // source set only after that source set exists.
+sourceSets.named("vantaloader") {
+	compileClasspath += sourceSets.client.compileClasspath + sourceSets.client.output
+	runtimeClasspath += output + compileClasspath
 }
 
 tasks.named("processVantaloaderResources") {
