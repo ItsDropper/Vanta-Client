@@ -2069,14 +2069,15 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 preview,
                 new BondiesPreviewHud("coordinates", "Bondies Coordinates", "XYZ: 0.0 / 64.0 / 0.0 NORTH"),
                 new BondiesPreviewHud("ping", "Bondies Ping", "Ping: 32 ms"),
-                new BondiesPreviewHud("keystrokes", "Bondies Keystrokes", "W   A S D")
+                new BondiesPreviewHud("keystrokes", "Bondies Keystrokes", "W   A S D"),
+                new BondiesPreviewHud("armor", "Bondies Armor", "H: 100%  C: 100%  L: 100%  B: 100%")
         );
         context.runOnClient(client -> previews.forEach(element ->
                 name.vantaclient.api.VantaClientApi.registerHud("bondies-utills-ez", element)));
         context.runOnClient(client -> {
             List<HudElement> elements = HudManager.getElements();
             for (String label : List.of("Bondies FPS", "Bondies Coordinates",
-                    "Bondies Ping", "Bondies Keystrokes")) {
+                    "Bondies Ping", "Bondies Keystrokes", "Bondies Armor")) {
                 if (elements.stream().noneMatch(element -> element.getDisplayName().equals(label))) {
                     throw new AssertionError("Vanta HUD editor did not discover " + label);
                 }
@@ -2179,6 +2180,10 @@ public final class VantaUiScreenshotGameTest implements FabricClientGameTest {
                 .setting(name.vantaclient.api.setting.SettingDefinition.bool(
                         "keystrokes.enabled", "Keystrokes HUD",
                         "Show a compact WASD and jump-key display.",
+                        false, () -> false, value -> {}))
+                .setting(name.vantaclient.api.setting.SettingDefinition.bool(
+                        "armor.enabled", "Armor HUD",
+                        "Show remaining durability for helmet, chestplate, leggings, and boots.",
                         false, () -> false, value -> {}))
                 .setting(name.vantaclient.api.setting.SettingDefinition.enumeration(
                         "fps.format", "FPS format", "Choose how the FPS value is displayed.",
