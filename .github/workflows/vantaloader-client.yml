@@ -58,7 +58,9 @@ jobs:
             sed -i 's@repositories { mavenCentral() }@repositories { maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/") }; mavenCentral() }@' "$gradle_file"
           done
           gradle --no-daemon -p loader clean build
+          gradle --no-daemon -p loader/examples/hello-mod clean build
           gradle --no-daemon -p loader/examples/auto-sprint clean build
+          sed -i 's/entries=2/entries=3/g' loader/scripts/ci/minecraft_visual_smoke.py
       - name: Launch Minecraft with VantaLoader and Vanta Client
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
@@ -68,6 +70,7 @@ jobs:
           XCURSOR_THEME=DMZ-White XCURSOR_SIZE=24 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" bash scripts/ci/run_visual_smoke.sh \
             --agent build/agent/VantaLoader-agent.jar \
             --mod ../build/libs/dropperutils-2.3.0-1.21.11-vantaloader.jar \
+            --mod examples/hello-mod/build/libs/vantaloader-hello-mod-1.0.0.jar \
             --mod examples/auto-sprint/build/libs/vantaloader-auto-sprint-1.0.0.jar \
             --output ../build/vantaloader-client-smoke --timeout 240
       - name: Assert Vanta Client initialized
