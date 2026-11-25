@@ -38,9 +38,9 @@ All ten states are captured at six configurations:
 | 1920 × 1080 | 3 | 640 × 360 |
 | 1920 × 1080 | 4 | 480 × 270 |
 
-Expected output: **80 PNG files**. The workflow independently asserts that exactly 80 screenshots exist and each capture checks for a valid file of at least 1 KiB.
+Expected output: **81 PNG files**. The workflow independently asserts that exactly 80 screenshots exist and each capture checks for a valid file of at least 1 KiB.
 
-The 60-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at six viewport/GUI-scale combinations, including true GUI scales 3 and 4. Four viewport configurations exercise the retained-mode Modrinth browser (eight screenshots including its progress state), the installed-mod library and selected-mod details (eight screenshots), and world sharing (four screenshots). All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
+The 60-image matrix covers the title screen, eight settings pages (including Controls) and the HUD editor at six viewport/GUI-scale combinations, including true GUI scales 3 and 4. One additional screenshot captures the production `VantaIntegrationSettingsScreen` with the Bondies Utils EZ descriptor and all ten settings from its real `BondiesVantaIntegration` implementation. The fixture is mirrored from the private Bondies repository so the public Vanta CI does not require private-repository credentials; its values are inert and only the real Vanta UI is rendered. Four viewport configurations exercise the retained-mode Modrinth browser (eight screenshots including its progress state), the installed-mod library and selected-mod details (eight screenshots), and world sharing (four screenshots). All additional screens use fixed local preview data and do not depend on the Modrinth API, CDN or a populated local mods folder.
 
 ## Interaction smoke check
 
@@ -56,7 +56,7 @@ Before capturing the screenshot matrix, the client GameTest:
 - Temporarily duplicates a Vanta binding and verifies the conflict warning, rebinds the GUI shortcut, confirms suppression lasts until key release, checks Escape cancel and Backspace unbind, then restores the original mapping.
 - Opens a selected mod's details/configuration-routing view with the same local fixture and captures it at desktop and compact sizes.
 
-These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state.
+These are targeted smoke checks in a real Minecraft client, not exhaustive coverage of every control or gameplay state. The Bondies Utils EZ image validates the integration settings presentation and API registration using a deterministic descriptor fixture; it does not launch the private Bondies mod or test its live configuration callbacks.
 
 ## Artifacts
 
