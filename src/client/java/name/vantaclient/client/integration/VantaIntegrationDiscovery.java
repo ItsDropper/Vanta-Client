@@ -5,7 +5,7 @@ import name.vantaclient.api.VantaClientApi;
 import name.vantaclient.api.VantaClientIntegration;
 import net.fabricmc.loader.api.FabricLoader;
 
-/** Discovers native Vanta settings providers declared by installed Fabric mods. */
+/** Discovers native Vanta settings and HUD providers declared by installed Fabric mods. */
 public final class VantaIntegrationDiscovery {
     private static boolean discovered;
 
