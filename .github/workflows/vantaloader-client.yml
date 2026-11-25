@@ -5,6 +5,7 @@ on:
     paths:
       - "vantaloader/**"
       - "build.gradle"
+      - "settings.gradle"
       - "gradle.properties"
       - ".github/workflows/vantaloader-client.yml"
   pull_request:
