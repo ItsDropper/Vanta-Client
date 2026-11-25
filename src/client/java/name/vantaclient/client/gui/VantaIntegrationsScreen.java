@@ -312,7 +312,12 @@ public final class VantaIntegrationsScreen extends Screen implements VantaCompos
         Object configFactory = discoveredConfigFactories.get(mod.id());
         if (descriptor != null) {
             details.add(wide(MenuComponents.button(font, "Open Vanta integration settings", MenuIcons.Icon.PREFERENCES,
-                    true, () -> minecraft.setScreen(new VantaIntegrationSettingsScreen(this, descriptor)))));
+                    true, () -> {
+                        VantaSettingsScreen settings = new VantaSettingsScreen(this);
+                        minecraft.setScreen(settings);
+                        settings.navigate(new name.vantaclient.client.gui.menu.MenuHost.Route(
+                                name.vantaclient.client.gui.menu.MenuHost.Page.INTEGRATION, descriptor.id()));
+                    })));
         } else if (configFactory != null) {
             details.add(wide(MenuComponents.button(font, "Open mod settings", MenuIcons.Icon.PREFERENCES, true, () -> {
                 Screen configScreen = ModConfigDiscovery.open(configFactory, this);
