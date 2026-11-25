@@ -15,4 +15,7 @@ public interface VantaClientIntegration {
      * The descriptor ID must exactly match that mod's Fabric mod ID.
      */
     ModDescriptor createDescriptor();
+
+    /** Register optional HUD elements after the settings descriptor has been accepted. */
+    default void registerHudElements() {}
 }
