@@ -35,6 +35,7 @@ public class HudManager {
     private static boolean initialized = false;
     private static boolean visibilityInitialized = false;
     private static long layoutRevision;
+    private static long registeredHudRevision = Long.MIN_VALUE;
 
     public static void init() {
         if (!initialized) {
@@ -57,7 +58,10 @@ public class HudManager {
 
     /** Reconcile the public API registry on the client thread. */
     private static void syncRegisteredHuds() {
+        long revision = VantaClientApi.getHudRegistryRevision();
+        if (revision == registeredHudRevision) return;
         List<RegisteredHud> registrations = VantaClientApi.getRegisteredHuds();
+        registeredHudRevision = revision;
         Set<String> present = new HashSet<>();
         for (RegisteredHud registration : registrations) {
             String key = registration.modId() + ":" + registration.element().id();
