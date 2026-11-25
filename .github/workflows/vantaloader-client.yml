@@ -61,6 +61,26 @@ jobs:
           gradle --no-daemon -p loader/examples/hello-mod clean build
           gradle --no-daemon -p loader/examples/auto-sprint clean build
           sed -i 's/entries=2/entries=3/g' loader/scripts/ci/minecraft_visual_smoke.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("loader/scripts/ci/minecraft_visual_smoke.py")
+          source = path.read_text(encoding="utf-8")
+          needle = '            shutil.copy2(output / "mod-menu-probe.png", output / "mod-menu.png")\n'
+          addition = '''
+                      # Vanta Client is the second sorted entry; its native ModMenuApi
+                      # button is positioned at logical (508, 124) on the 640x360 UI.
+                      subprocess.run(["xdotool", "mousemove", "--sync", "1128", "268"], check=True, timeout=10)
+                      time.sleep(1)
+                      subprocess.run(["xdotool", "click", "--clearmodifiers", "--delay", "100", "1"], check=True, timeout=10)
+                      wait_for_log_marker(process, log_path, "[Vanta Client] Native settings screen opened from VantaLoader Mod Menu", 20)
+                      time.sleep(3)
+                      subprocess.run(["java", "-cp", str(Path(__file__).resolve().parent), "ScreenCapture",
+                                      str(output / "vanta-client-settings.png")], check=True, timeout=15)
+          '''
+          if needle not in source:
+              raise SystemExit("Could not locate mod-menu screenshot insertion point")
+          path.write_text(source.replace(needle, needle + addition), encoding="utf-8")
+          PY
       - name: Launch Minecraft with VantaLoader and Vanta Client
         env:
           VANTA_MINECRAFT_CACHE: ${{ runner.temp }}/minecraft/1.21.11
