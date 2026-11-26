@@ -18,8 +18,8 @@ repositories {
 
 	maven {
 		name = "Terraformers"
-		url = "https://maven.terraformersmc.com/"
-		content { includeGroupByRegex('com\\.terraformersmc(\\..*)?') }
+		url = "https://maven.terraformersmc.com/releases/"
+		content { includeGroup('com.terraformersmc') }
 	}
 
 	maven {
