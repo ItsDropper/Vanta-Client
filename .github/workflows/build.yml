@@ -39,6 +39,13 @@ jobs:
       - name: build VantaLoader artifact
         if: matrix.platform == 'linux-x86_64'
         run: ./gradlew vantaLoaderJar -Pwebrtc_platform=${{ matrix.platform }}
+      - name: diagnose generated Mixin refmaps
+        shell: bash
+        run: |
+          echo "Generated refmap candidates:"
+          find build -type f -iname '*refmap*.json' -print | sort
+          echo "Refmap-related build outputs:"
+          find build -type f | grep -Ei 'refmap|mixin' | sort | head -100 || true
       - name: verify exactly one WebRTC native platform is bundled
         shell: bash
         run: |
