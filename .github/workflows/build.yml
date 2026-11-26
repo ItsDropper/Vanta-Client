@@ -50,6 +50,15 @@ jobs:
           printf '%s\n' "$native_jars"
           test "$(printf '%s\n' "$native_jars" | grep -c .)" -eq 1
           [[ "$native_jars" == *"-${{ matrix.platform }}.jar"* ]]
+
+          # Mixin targets are compiled against official Mojang names but run
+          # under Fabric intermediary names. Require the generated refmap in
+          # every distributed Fabric artifact so accessors and injections
+          # resolve their runtime selectors correctly.
+          jar tf "$artifact" | grep -Fx "dropperutils.mixins.json"
+          jar tf "$artifact" | grep -Fx "dropperutils.refmap.json"
+          unzip -p "$artifact" dropperutils.mixins.json | grep -Fq '"refmap": "dropperutils.refmap.json"'
+          unzip -p "$artifact" dropperutils.refmap.json | grep -Fq '"mappings"'
       - name: upload platform mod
         uses: actions/upload-artifact@v7
         with:
