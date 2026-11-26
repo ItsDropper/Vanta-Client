@@ -219,7 +219,9 @@ dependencies {
 	include "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}"
 
 	def webrtcNativeArtifact = "dev.onvoid.webrtc:webrtc-java:${webrtcVersion}:${webrtcPlatform}"
-	implementation webrtcNativeArtifact
+	// The classifier contains native runtime payloads, not Java compile-time APIs.
+	// Keep it off compileClientJava's classpath; it is embedded in the distributable.
+	runtimeOnly webrtcNativeArtifact
 	include webrtcNativeArtifact
 
 	// The production client-test launcher needs Fabric API in its runtime installation.
