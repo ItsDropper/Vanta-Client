@@ -1,0 +1,117 @@
+name: Release Vanta Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (blank uses mod_version from gradle.properties)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vanta-client-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        platform:
+          - windows-x86_64
+          - windows-aarch64
+          - macos-x86_64
+          - macos-aarch64
+          - linux-x86_64
+          - linux-aarch64
+          - linux-aarch32
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Resolve release version
+        id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="$REQUESTED_VERSION"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(sed -n 's/^mod_version=//p' gradle.properties | head -n1)"
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION"
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Build platform-specific Fabric mod
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean build -Pmod_version="$RELEASE_VERSION" -Pwebrtc_platform="$PLATFORM"
+          ARTIFACT="build/libs/dropperutils-$RELEASE_VERSION-1.21.11-$PLATFORM.jar"
+          test -s "$ARTIFACT"
+          sha256sum "$ARTIFACT" > "$ARTIFACT.sha256"
+          mkdir -p release-assets
+          cp "$ARTIFACT" "$ARTIFACT.sha256" release-assets/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vanta-client-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Resolve release version
+        id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="$REQUESTED_VERSION"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(sed -n 's/^mod_version=//p' gradle.properties | head -n1)"
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION"
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vanta-client-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release payload
+        run: |
+          test "$(find release-assets -maxdepth 1 -name 'dropperutils-*.jar' | wc -l)" -eq 7
+          for artifact in release-assets/dropperutils-*.jar; do
+            test -s "$artifact"
+            test -s "$artifact.sha256"
+            (cd release-assets && sha256sum --check "$(basename "$artifact").sha256")
+          done
+      - name: Publish latest Vanta Client release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Vanta Client v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: true
+          files: release-assets/*
+          fail_on_unmatched_files: true
