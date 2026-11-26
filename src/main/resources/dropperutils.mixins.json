@@ -36,6 +36,7 @@
     "OgAnimationsMixin",
     "EntityRendererMixin",
     "MinecraftCrashReportMixin",
+    "AnchorPredictionTransitionGuardMixin",
     "ExperienceBarRendererMixin",
     "JumpableVehicleBarRendererMixin",
     "RemoteWorldIdentityMixin"
