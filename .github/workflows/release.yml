@@ -62,7 +62,7 @@ jobs:
           ./gradlew --no-daemon clean build -Pmod_version="$RELEASE_VERSION" -Pwebrtc_platform="$PLATFORM"
           ARTIFACT="build/libs/dropperutils-$RELEASE_VERSION-1.21.11-$PLATFORM.jar"
           test -s "$ARTIFACT"
-          sha256sum "$ARTIFACT" > "$ARTIFACT.sha256"
+          (cd build/libs && sha256sum "$(basename "$ARTIFACT")" > "$(basename "$ARTIFACT").sha256")
           mkdir -p release-assets
           cp "$ARTIFACT" "$ARTIFACT.sha256" release-assets/
       - uses: actions/upload-artifact@v7
