@@ -16,10 +16,14 @@ repositories {
 		}
 	}
 
-	maven {
-		name = "Terraformers"
-		url = "https://maven.terraformersmc.com/releases/"
-		content { includeGroup('com.terraformersmc') }
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = "Terraformers"
+				url = "https://maven.terraformersmc.com/"
+			}
+		}
+		filter { includeGroup("com.terraformersmc") }
 	}
 
 	maven {
