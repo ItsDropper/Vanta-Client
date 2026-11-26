@@ -63,9 +63,9 @@ jobs:
           # every distributed Fabric artifact so accessors and injections
           # resolve their runtime selectors correctly.
           jar tf "$artifact" | grep -Fx "dropperutils.mixins.json"
-          jar tf "$artifact" | grep -Fx "dropperutils.refmap.json"
-          unzip -p "$artifact" dropperutils.mixins.json | grep -Fq '"refmap": "dropperutils.refmap.json"'
-          unzip -p "$artifact" dropperutils.refmap.json | grep -Fq '"mappings"'
+          jar tf "$artifact" | grep -Fx "client-dropperutils.refmap.json"
+          unzip -p "$artifact" dropperutils.mixins.json | grep -Fq '"refmap": "client-dropperutils.refmap.json"'
+          unzip -p "$artifact" client-dropperutils.refmap.json | grep -Fq '"mappings"'
       - name: upload platform mod
         uses: actions/upload-artifact@v7
         with:
